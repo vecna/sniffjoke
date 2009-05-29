@@ -1,0 +1,28 @@
+AC_INIT(main.cc)
+AM_INIT_AUTOMAKE(sniffjoke,0.3)
+AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_INSTALL
+
+AC_ARG_WITH([swillpath],
+	    [AS_HELP_STRING(
+	     [--with-swillpath=<path>],
+	     [swill installation path (default /usr/local/)])
+	    ],
+	    [],
+	    [with_swillpath=/usr/local])
+AC_SUBST(SWILL_PATH,$with_swillpath)
+
+AC_OUTPUT(Makefile)
+
+cat <<EOF
+
+
+	Path to swill installation:	$SWILL_PATH
+	(you can change this with 
+	 	'$ ./configure --with_swillpath=<path>')
+
+	Now is the 'make && make install' turn
+
+
+EOF

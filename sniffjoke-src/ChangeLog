@@ -1,0 +1,34 @@
+15 Apr 2009:	patch swill_file("images/visualroute.gif", 0); by dezperado
+		adding xplico proof
+
+8 Apr 2009:	patch by packz for supporting different path for
+		swill library
+
+1 Feb 2009:	stabilization of 0.3 release, 
+		lack of:
+			port configuration,
+			statistics
+			hack selection
+			hack analysis
+
+8 Jan 2009:	fixed 0.3-beta to 0.3-beta-2
+		fixed includes, warnings, bugs
+
+1 Jan 2009:	stabilization of SniffJoke 0.3 beta release
+		Features available:
+			swill web interface,
+			standard hacks (ttl, bad checksum, innocent)
+			TCP port not available
+			autodetect in Linux system
+			
+
+Great thanks to:
+		kpanic,
+		baku,
+		boos,
+		packz,
+		enchiphered wererabbit,
+		father giannibi,
+		omnibus jedi master marcoc,
+		Flavio (hey, un nome normale?),
+		Ridah

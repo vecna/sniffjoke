@@ -1,0 +1,149 @@
+SWILL (Simple Web Interface Link Library)
+
+Version: 0.2 (Jan 3, 2007)
+
+$Header: /cvsroot/swill/SWILL/README,v 1.4 2007/11/15 17:24:44 gonzalodiethelm Exp $
+
+Author(s) : David Beazley (dave@dabeaz.com)
+            Sotiria Lampoudi (slampoud@cs.uchicago.edu)
+            Gonzalo Diethelm (gonzo@diethelm.org)
+
+Copyright (C) 2005-2007
+David M. Beazley
+
+Copyright (C) 1998-2005
+University of Chicago
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+See the file COPYING for a complete copy of the LGPL.
+
+
+Overview
+========
+
+SWILL is a programming library that makes it easy to add an embedded
+web-server interface to a program. This allows a programmer to provide
+remote monitoring and access to long-running programs.  SWILL was
+primarily developed to support the needs of scientific software.
+However, it could certainly be used in other settings.
+
+The guilty parties currently working on SWILL are:
+
+   Dave Beazley (dave@dabeaz.com)
+   Gonzalo Diethelm (gonzo@diethelm.org)
+
+Past contributors include:
+
+  Sotiria Lampoudi
+  Hasan Baran Kovuk
+  Mike Sliczniak
+
+Up-to-date SWILL related information can be found at
+
+  http://www.dabeaz.com/swill
+
+Unix Installation
+=================
+
+To build and install SWILL on any flavor of Unix, simply type the
+following:
+
+     $ ./configure
+     $ make
+     $ make install
+
+By default SWILL installs itself in /usr/local.  If you need to
+install SWILL in a different location or in your home directory, use
+the --prefix option to ./configure.  For example:
+
+     $ ./configure --prefix=/home/yourname/projects
+     $ make
+     $ make install
+
+Note: the directory given to --prefix must be an absolute pathname.
+Do *NOT* use the ~ shell-escape to refer to your home directory.
+
+By default, SWILL is built as both a static library (libswill.a) and a
+shared library (libswill.so).  The use of shared libraries is a
+delicate topic and they may not work in all cases.
+
+
+Installation with MPI
+=====================
+
+To use SWILL in MPI applications, it is necessary to compile with MPI
+support enabled. To do that use ./configure --with-mpi=[PATH_TO_MPI]
+(PATH_TO_MPI could be something like /usr/local/mpi).
+
+When MPI support is enabled, SWILL builds libraries called
+libswillmpi.a and libswillmpi.so respectively.  This allows both
+non-MPI and MPI versions of the libraries to be installed in the same
+directory.
+
+Note: if you have already built and installed SWILL without MPI
+support, make sure you follow these steps to enable MPI:
+
+     $ make clean
+     $ rm config.cache
+     $ ./configure --with-mpi=/usr/local/mpi
+     $ make
+     $ make install
+
+
+Win32 Installation
+==================
+
+To build and install SWILL on Win32 using Microsoft Visual C++, there
+is a project group under msvc/SWILL.dsw, containing the projects
+swill_dll and swill_lib (both in Debug and Release flavors).  When
+building a DLL, you must compile the code with "-DSWILL_DLL=1" (which
+is the default); when building a LIB, you must compile the code with
+"-DSWILL_DLL=0".
+
+
+SSL Support
+===========
+
+SWILL provides SSL support using OpenSSL.  To enable SSL (under any of
+the supported platforms), you must compile your code with
+"-DSWILL_SSL=1".  Of course, you must have OpenSSL installed in your
+machine, and the compiler must be able to find the appropriate include
+and library files.
+
+
+Documentation
+=============
+
+The Doc/ directory contains documentation in HTML format.  The Paper/
+directory contains the draft paper we presented at the USENIX
+Freenix'02 conference.
+
+
+Examples
+========
+
+The Examples directory contains a few examples of using SWILL.  This
+is still somewhat incomplete.  However, it might be enough to get
+started.
+
+
+Participate!
+============
+
+Please report any errors and submit patches (if possible)!  We only
+have access to a limited variety of hardware (Linux and Solaris).
+
+If you would like to work on SWILL, send email to any of the authors.

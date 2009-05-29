@@ -1,0 +1,25 @@
+CHANGES
+
+Version 0.2
+============
+1/1/2007: Diethelm
+          Added Support for SSH
+
+Version 0.1
+===========
+4/3/2002: beazley
+          Changed swill_close() to swill_shutdown().  Suggested
+          by Pat Tullmann.
+
+2/21/2002: beazley
+           Modified the build process.  SWILL now builds as a shared
+           library libswill.so.  An optional I/O filter library
+           can be built in the Source/Filter library.  If compiled,
+           this creates a library libswillc.so.
+
+---------------------------------------------------------------------------
+last: 2/18/2002
+
+*(TL) added --with-mpi=<mpi_root>
+	currently only works with argument, must collect standard locations
+	and make --with-mpi[=mpi_root]
