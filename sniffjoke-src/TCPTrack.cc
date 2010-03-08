@@ -31,6 +31,12 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	sex_list = (struct sniffjoke_track *)calloc( sextraxmax, sizeof(struct sniffjoke_track) );
 	pblock_list = (struct packetblock *)calloc( paxmax, sizeof(struct packetblock) );
 	ttlfocus_list = (struct ttlfocus *)calloc( maxttlfocus, sizeof(struct ttlfocus) );
+	sex_list_count[0] = 0;
+	sex_list_count[1] = 0;
+	pblock_list_count[0] = 0;
+	pblock_list_count[1] = 0;
+	ttlfocus_list_count[0] = 0;
+	ttlfocus_list_count[1] = 0;
 
 	for( i = 0; i < (random() % 40) ; i++ ) 
 		srandom( (unsigned int)time(NULL) ^ random() );
@@ -77,7 +83,7 @@ void TCPTrack::add_packet_queue(source_t source, unsigned char *buff, int nbyte)
 
 void TCPTrack::update_pblock_pointers( struct packetblock *pb ) {
 
-    pb->ip = (struct iphdr *)pb->pbuf;
+	pb->ip = (struct iphdr *)pb->pbuf;
 
 	if(pb->ip->protocol == IPPROTO_TCP) {
 		pb->proto = TCP;
@@ -453,6 +459,12 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 	if( first_free != -1 ) {
 		memset(&pblock_list[first_free], 0x00, sizeof(struct packetblock));
 		pblock_list[first_free].pbuf_size = pktsize;
+		
+		if ( first_free < paxmax / 2 )
+			pblock_list_count[0]++;
+		else
+			pblock_list_count[1]++;
+			
 		return &pblock_list[first_free];
 	}
 	else {
@@ -503,9 +515,9 @@ struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, prot
 
 		if(pkt_id && ignore_until)
 			continue;
-        
-        update_pblock_pointers( &pblock_list[i] );
-        
+		
+		update_pblock_pointers( &pblock_list[i] );
+		
 		return &(pblock_list[i]);
 	}
 
@@ -515,17 +527,65 @@ struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, prot
 void TCPTrack::clear_pblock(struct packetblock *used_pb)
 {
 	int i;
+	int free = 1;
 
 	for(i = 0; i < paxmax; i++) 
-	{
+	{		
 		if( &(pblock_list[i]) == used_pb ) 
 		{
 			memset(used_pb, 0x00, sizeof(struct packetblock));
+			
+			if ( i < paxmax /2 )
+				pblock_list_count[0]--;
+			else
+				pblock_list_count[1]--;
+			
+			if (pblock_list_count[0] == 0)
+				recompact_pblock_list(0);
+			else if (pblock_list_count[1] == 0)
+				recompact_pblock_list(1);
+				
 			return;
 		}
 	}
-
+		
 	check_call_ret("unforeseen bug: TCPTrack.cc, function clear_pblock", 0, -1);
+}
+
+void TCPTrack::recompact_pblock_list(int what)
+{
+	if (paxmax > runcopy->max_packet_que )
+	{
+		struct packetblock *newlist;
+		
+		paxmax /= 2;
+
+		newlist = (struct packetblock *)calloc( paxmax, sizeof( struct packetblock) );
+
+		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0 );
+
+		switch( what )
+		{
+			case 0:
+				memcpy(	(void *)newlist, 
+						(void *)&pblock_list[0], 
+						sizeof(struct packetblock) * paxmax
+				);
+				pblock_list_count[1] = 0;
+				return;
+			case 1:
+				memcpy(	(void *)newlist, 
+						(void *)&pblock_list[paxmax], 
+						sizeof(struct packetblock) * paxmax
+				);
+				pblock_list_count[0] = pblock_list_count[1];
+				pblock_list_count[1] = 0;
+				return;
+		}
+		
+		free(pblock_list);
+		pblock_list = newlist;
+	}
 }
 
 /* get_sexion search for the session, if not found, return NULL */
@@ -550,25 +610,31 @@ struct sniffjoke_track * TCPTrack::get_sexion( unsigned int daddr, unsigned shor
 
 struct sniffjoke_track * TCPTrack::init_sexion( int i, struct packetblock *pb ) 
 {
-    sex_list[i].daddr = pb->ip->daddr;
-    sex_list[i].sport = pb->tcp->source;
-    sex_list[i].dport = pb->tcp->dest;
-    sex_list[i].isn = pb->tcp->seq;
-    sex_list[i].packet_number = 1;
-    sex_list[i].shutdown = false;
+	sex_list[i].daddr = pb->ip->daddr;
+	sex_list[i].sport = pb->tcp->source;
+	sex_list[i].dport = pb->tcp->dest;
+	sex_list[i].isn = pb->tcp->seq;
+	sex_list[i].packet_number = 1;
+	sex_list[i].shutdown = false;
 
-    /* pb is the refsyn, SYN packet reference for starting ttl bruteforce */
-    sex_list[i].tf = find_ttl_focus(pb->ip->daddr, pb);
-    printf("Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d \n", 
-            i, ntohs(sex_list[i].sport), 
-            inet_ntoa( *((struct in_addr *)&sex_list[i].daddr) ) ,
-            ntohs(sex_list[i].dport),
-            sex_list[i].isn,
-            ntohs(sex_list[i].tf->puppet_port),
-            sex_list[i].tf->expiring_ttl,
-            sex_list[i].tf->min_working_ttl
-    );
-    return &sex_list[i];
+	/* pb is the refsyn, SYN packet reference for starting ttl bruteforce */
+	sex_list[i].tf = find_ttl_focus(pb->ip->daddr, pb);
+	printf("Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d \n", 
+			i, ntohs(sex_list[i].sport), 
+			inet_ntoa( *((struct in_addr *)&sex_list[i].daddr) ) ,
+			ntohs(sex_list[i].dport),
+			sex_list[i].isn,
+			ntohs(sex_list[i].tf->puppet_port),
+			sex_list[i].tf->expiring_ttl,
+			sex_list[i].tf->min_working_ttl
+	);
+	
+	if ( i < sextraxmax / 2 )
+		sex_list_count[0]++;
+	else
+		sex_list_count[1]++;
+	
+	return &sex_list[i];
 } 
 
 /* find sexion must return a session, if a session is not found, a new one is 
@@ -590,9 +656,9 @@ struct sniffjoke_track * TCPTrack::find_sexion( struct packetblock *pb )
 	/* realloc double size */
 	sextraxmax *= 2;
 	sex_list = (struct sniffjoke_track *)realloc( 
-            (void *)sex_list,
-			sizeof(struct sniffjoke_track) * sextraxmax
-    );
+		(void *)sex_list,
+		sizeof(struct sniffjoke_track) * sextraxmax
+	);
 	printf("### recursion in %s:%d new size: %d\n", __FILE__, __LINE__, sextraxmax);
 	return init_sexion( sextraxmax / 2, pb );
 }
@@ -611,7 +677,7 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
 			if(used_ct->shutdown == false) {
 #ifdef DEBUG
 				printf("SHUTDOWN sexion [%d] sport %d dport %d daddr %u\n",
-					i, ntohs(sex_list[i].sport), ntohs(sex_list[i].dport), sex_list[i].daddr
+					i, ntohs(used_ct->sport), ntohs(used_ct->dport), used_ct->daddr
 				);
 #endif
 				used_ct->shutdown = true;
@@ -619,17 +685,64 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
 			else {
 				printf("Removing session[%d]: local:%d -> %s:%d TTL exp %d wrk %d #%d\n", 
 					i, ntohs(sex_list[i].sport), 
-					inet_ntoa( *((struct in_addr *)&sex_list[i].daddr) ) ,
-					ntohs(sex_list[i].dport),
-					sex_list[i].tf->expiring_ttl,
-					sex_list[i].tf->min_working_ttl,
-					sex_list[i].packet_number
+					inet_ntoa( *((struct in_addr *)&used_ct->daddr) ) ,
+					ntohs(used_ct->dport),
+					used_ct->tf->expiring_ttl,
+					used_ct->tf->min_working_ttl,
+					used_ct->packet_number
 				);
 				memset( (void *)used_ct, 0x00, sizeof(struct sniffjoke_track ) );
+				
+				if ( i < sextraxmax / 2 )
+					sex_list_count[0]--;
+				else
+					sex_list_count[1]--;
+				
+				if (sex_list_count[0] == 0)
+					recompact_sex_list(0);
+				else if (sex_list_count[1] == 0)
+					recompact_sex_list(1);
 			}
 
 			return;
 		}
+	}
+}
+
+void TCPTrack::recompact_sex_list(int what)
+{
+	if (sextraxmax > runcopy->max_session_tracked )
+	{
+		struct sniffjoke_track *newlist;
+		
+		sextraxmax /= 2;
+
+		newlist = (struct sniffjoke_track *)calloc( paxmax, sizeof( struct sniffjoke_track ) );
+
+		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0 );
+
+		switch( what )
+		{
+			case 0:
+				memcpy(	(void *)newlist, 
+						(void *)&sex_list[0], 
+						sizeof(struct packetblock) * sextraxmax
+				);
+				sex_list_count[1] = 0;
+				return;
+			case 1:
+				memcpy(	(void *)newlist, 
+						(void *)&sex_list[sextraxmax], 
+						sizeof(struct packetblock) * sextraxmax
+				);
+				sex_list_count[0] = sex_list_count[1];
+				sex_list_count[1] = 0;
+				return;
+		}
+		
+		free(sex_list);
+		sex_list = newlist;
+		printf("free sex list\n");
 	}
 }
 
@@ -869,7 +982,7 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 	/* the copy is done to keep refsyn ORIGINAL */
 	memcpy( injpb->pbuf, delayed_syn_pkt->pbuf, delayed_syn_pkt->pbuf_size);
 
-    injpb->ip = (struct iphdr *)injpb->pbuf;
+	injpb->ip = (struct iphdr *)injpb->pbuf;
 	injpb->tcp = (struct tcphdr *)(injpb->pbuf + (injpb->ip->ihl * 4) );
 
 	/* 
@@ -1020,10 +1133,10 @@ bool TCPTrack::percentage(float math_choosed, int vecna_choosed)
 	return ( (random() % 100) <= ( (int)(math_choosed * vecna_choosed ) / 100 ) );
 }
 
-/*    the variable is used from the sniffjoke routing for decreete the possibility of
- *    an hack happens. this variable are mixed in probabiliy with the ct->packet_number, because
- *    the hacks must happens, for the most, in the start of the session (the first 10 packets),
- *    other hacks injection should happen in the randomic mode express in logarithm function.
+/*	the variable is used from the sniffjoke routing for decreete the possibility of
+ *	an hack happens. this variable are mixed in probabiliy with the ct->packet_number, because
+ *	the hacks must happens, for the most, in the start of the session (the first 10 packets),
+ *	other hacks injection should happen in the randomic mode express in logarithm function.
  */
 float TCPTrack::logarithm(int packet_number)
 {
@@ -1221,8 +1334,8 @@ TCPTrack::packet_orphanotrophy( struct iphdr *ip, struct tcphdr *tcp, int resize
 /*
  * TCP/IP hacks, focus:
  *
- *    suppose the sniffer reconstruction flow, suppose which variable they use, make them
- *    variables fake and send a packet that don't ruin the real flow.
+ *	suppose the sniffer reconstruction flow, suppose which variable they use, make them
+ *	variables fake and send a packet that don't ruin the real flow.
  *
  * SjH__ = sniffjoke hack
  *

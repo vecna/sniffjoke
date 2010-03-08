@@ -193,10 +193,12 @@ private:
 
 	/* functions for work in queue and lists */
 	struct packetblock *get_free_pblock(int, priority_t, unsigned int);
+	void recompact_pblock_list(int);
     struct sniffjoke_track *init_sexion(int, struct packetblock *);    
 	struct sniffjoke_track *find_sexion(struct packetblock *);
 	struct sniffjoke_track *get_sexion(unsigned int, unsigned short, unsigned short);
 	void clear_sexion(struct sniffjoke_track *);
+	void recompact_sex_list(int);
     struct ttlfocus *init_ttl_focus(int, unsigned int, struct packetblock *);
 	struct ttlfocus *find_ttl_focus(unsigned int, struct packetblock *);
 
@@ -208,6 +210,9 @@ private:
 	struct sniffjoke_track *sex_list;
 	struct packetblock *pblock_list;
 	struct ttlfocus *ttlfocus_list;
+	int sex_list_count[2];
+	int pblock_list_count[2];
+	int ttlfocus_list_count[2];
 
 	/* as usually in those classess */
 	struct sj_config *runcopy;
