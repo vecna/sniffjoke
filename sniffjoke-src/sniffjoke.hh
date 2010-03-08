@@ -147,6 +147,7 @@ enum priority_t { HIGH = 188, LOW = 169 };
 class TCPTrack {
 private:
 	/* main function of packet analysis, called by analyze_packets_queue */
+	void update_pblock_pointers( struct packetblock *); 
 	void analyze_incoming_icmp(struct packetblock *);
 	void analyze_incoming_synack(struct packetblock *);
 	void analyze_incoming_rstfin(struct packetblock *);
@@ -192,9 +193,11 @@ private:
 
 	/* functions for work in queue and lists */
 	struct packetblock *get_free_pblock(int, priority_t, unsigned int);
+    struct sniffjoke_track *init_sexion(int, struct packetblock *);    
 	struct sniffjoke_track *find_sexion(struct packetblock *);
 	struct sniffjoke_track *get_sexion(unsigned int, unsigned short, unsigned short);
 	void clear_sexion(struct sniffjoke_track *);
+    struct ttlfocus *init_ttl_focus(int, unsigned int, struct packetblock *);
 	struct ttlfocus *find_ttl_focus(unsigned int, struct packetblock *);
 
 	int paxmax; 		/* max packet tracked */

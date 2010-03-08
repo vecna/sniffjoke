@@ -61,7 +61,7 @@ void TCPTrack::add_packet_queue(source_t source, unsigned char *buff, int nbyte)
  	 * the nbyte is added with the max ip/tcp option injection because
  	 * the packets options could be modify by last_pkt_fix
  	 */
-	target = get_free_pblock(nbyte + (MAXOPTINJ * 3), LOW, packet_id );
+	target = get_free_pblock( nbyte + (MAXOPTINJ * 3), LOW, packet_id );
 
 	target->packet_id = packet_id;
 	target->source = source;
@@ -72,16 +72,21 @@ void TCPTrack::add_packet_queue(source_t source, unsigned char *buff, int nbyte)
 
 	memcpy(target->pbuf, buff, nbyte);
 
-	target->ip = (struct iphdr *)target->pbuf;
+	update_pblock_pointers( target );
+}
 
-	if(target->ip->protocol == IPPROTO_TCP) {
-		target->proto = TCP;
-		target->tcp = (struct tcphdr *)(((unsigned char *)target->ip) + (target->ip->ihl * 4));
-	} else if (target->ip->protocol == IPPROTO_ICMP) {
-		target->proto = ICMP;
-		target->icmp = (struct icmphdr *)(((unsigned char *)target->ip) + (target->ip->ihl * 4));
+void TCPTrack::update_pblock_pointers( struct packetblock *pb ) {
+
+    pb->ip = (struct iphdr *)pb->pbuf;
+
+	if(pb->ip->protocol == IPPROTO_TCP) {
+		pb->proto = TCP;
+		pb->tcp = (struct tcphdr *)(((unsigned char *)pb->ip) + (pb->ip->ihl * 4));
+	} else if (pb->ip->protocol == IPPROTO_ICMP) {
+		pb->proto = ICMP;
+		pb->icmp = (struct icmphdr *)(((unsigned char *)pb->ip) + (pb->ip->ihl * 4));
 	} else {
-		target->proto = OTHER_IP;
+		pb->proto = OTHER_IP;
 	}
 }
 
@@ -161,8 +166,10 @@ void TCPTrack::analyze_packets_queue()
 	}
 
 	/* last_packet_id is used to avoid repeats in get_pblock return value */
+	int i = 0;
 	while ( ( newp = get_pblock(KEEP, TUNNEL, TCP, last_packet_id) ) != NULL ) 
 	{
+		
 		last_packet_id = make_pkt_id(newp->ip);
 		ct = find_sexion( newp );
 
@@ -454,6 +461,7 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 		paxmax *= 2;
 
 		newlist = (struct packetblock *)calloc( paxmax, sizeof( struct packetblock) );
+
 		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0 );
 
 		memcpy(	(void *)&newlist[0], 
@@ -495,7 +503,9 @@ struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, prot
 
 		if(pkt_id && ignore_until)
 			continue;
-
+        
+        update_pblock_pointers( &pblock_list[i] );
+        
 		return &(pblock_list[i]);
 	}
 
@@ -538,6 +548,29 @@ struct sniffjoke_track * TCPTrack::get_sexion( unsigned int daddr, unsigned shor
 	return NULL;
 }
 
+struct sniffjoke_track * TCPTrack::init_sexion( int i, struct packetblock *pb ) 
+{
+    sex_list[i].daddr = pb->ip->daddr;
+    sex_list[i].sport = pb->tcp->source;
+    sex_list[i].dport = pb->tcp->dest;
+    sex_list[i].isn = pb->tcp->seq;
+    sex_list[i].packet_number = 1;
+    sex_list[i].shutdown = false;
+
+    /* pb is the refsyn, SYN packet reference for starting ttl bruteforce */
+    sex_list[i].tf = find_ttl_focus(pb->ip->daddr, pb);
+    printf("Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d \n", 
+            i, ntohs(sex_list[i].sport), 
+            inet_ntoa( *((struct in_addr *)&sex_list[i].daddr) ) ,
+            ntohs(sex_list[i].dport),
+            sex_list[i].isn,
+            ntohs(sex_list[i].tf->puppet_port),
+            sex_list[i].tf->expiring_ttl,
+            sex_list[i].tf->min_working_ttl
+    );
+    return &sex_list[i];
+} 
+
 /* find sexion must return a session, if a session is not found, a new one is 
  * created */
 struct sniffjoke_track * TCPTrack::find_sexion( struct packetblock *pb ) 
@@ -550,40 +583,19 @@ struct sniffjoke_track * TCPTrack::find_sexion( struct packetblock *pb )
 
 	for(i =0; i < sextraxmax; i++) 
 	{
-		if( sex_list[i].daddr == 0 ) 
-		{
-			sex_list[i].daddr = pb->ip->daddr;
-			sex_list[i].sport = pb->tcp->source;
-			sex_list[i].dport = pb->tcp->dest;
-			sex_list[i].isn = pb->tcp->seq;
-			sex_list[i].packet_number = 1;
-			sex_list[i].shutdown = false;
-
-			/* pb is the refsyn, SYN packet reference for starting ttl bruteforce */
-			sex_list[i].tf = find_ttl_focus(pb->ip->daddr, pb);
-			printf("Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d \n", 
-				i, ntohs(sex_list[i].sport), 
-				inet_ntoa( *((struct in_addr *)&sex_list[i].daddr) ) ,
-				ntohs(sex_list[i].dport),
-				sex_list[i].isn,
-				ntohs(sex_list[i].tf->puppet_port),
-				sex_list[i].tf->expiring_ttl,
-				sex_list[i].tf->min_working_ttl
-			);
-			return &sex_list[i];
-		}
+		if( sex_list[i].daddr == 0 )
+			return init_sexion( i, pb );
 	}
 
 	/* realloc double size */
 	sextraxmax *= 2;
 	sex_list = (struct sniffjoke_track *)realloc( 
-			(void *)sex_list,
+            (void *)sex_list,
 			sizeof(struct sniffjoke_track) * sextraxmax
-		);
+    );
 	printf("### recursion in %s:%d new size: %d\n", __FILE__, __LINE__, sextraxmax);
-	return find_sexion( pb );
+	return init_sexion( sextraxmax / 2, pb );
 }
-
 
 /* clear_sexion: clear a session in two step, the first RST/FIN set shutdown 
  * variable to true, the second close finally.
@@ -626,7 +638,7 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
  *
  * the hacks are, for the most, two kinds.
  *
- * one kind require the knowledge of exaclty hop distance between the two hops, to forge
+ * one kind require the knowledge of exactly hop distance between the two hops, to forge
  * packets able to expire an hop before the destination IP addres, and inject in the
  * stream some valid TCP RSQ, TCP FIN and fake sequenced packet.
  *
@@ -856,7 +868,8 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 
 	/* the copy is done to keep refsyn ORIGINAL */
 	memcpy( injpb->pbuf, delayed_syn_pkt->pbuf, delayed_syn_pkt->pbuf_size);
-	injpb->ip = (struct iphdr *)injpb->pbuf;
+
+    injpb->ip = (struct iphdr *)injpb->pbuf;
 	injpb->tcp = (struct tcphdr *)(injpb->pbuf + (injpb->ip->ihl * 4) );
 
 	/* 
@@ -882,6 +895,17 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 #endif
 }
 
+struct ttlfocus *TCPTrack::init_ttl_focus(int i, unsigned int destip, struct packetblock *refsyn)
+{
+		ttlfocus_list[i].daddr = destip;
+		ttlfocus_list[i].min_working_ttl = 0xff;
+		ttlfocus_list[i].status = TTL_BRUTALFORCE;
+		ttlfocus_list[i].refsyn = refsyn;
+		ttlfocus_list[i].rand_key = random();
+		ttlfocus_list[i].puppet_port = htons( (random() % 15000) + 1100 );
+		return &ttlfocus_list[i];
+} 
+
 /* 
  * find_ttl_focus is used whenever you need a ttlfocus struct, this struct is used
  * as reference for each conntrack with the some distination address. every session
@@ -896,7 +920,7 @@ struct ttlfocus *TCPTrack::find_ttl_focus(unsigned int destip, struct packetbloc
 	for(i =0; i < maxttlfocus; i++) 
 	{
 		if( first_free == -1 && ttlfocus_list[i].daddr == 0)
-			first_free =i;
+			first_free = i;
 			
 		if( ttlfocus_list[i].daddr == destip ) {
 #ifdef DEBUG
@@ -910,16 +934,9 @@ struct ttlfocus *TCPTrack::find_ttl_focus(unsigned int destip, struct packetbloc
 	if(refsyn == NULL)
 		return NULL;
 
-	if(first_free != -1) {
-		ttlfocus_list[first_free].daddr = destip;
-		ttlfocus_list[first_free].min_working_ttl = 0xff;
-		ttlfocus_list[first_free].status = TTL_BRUTALFORCE;
-		ttlfocus_list[first_free].refsyn = refsyn;
-		ttlfocus_list[first_free].rand_key = random();
-		ttlfocus_list[first_free].puppet_port = htons( (random() % 15000) + 1100 );
+	if(first_free != -1)
+		return init_ttl_focus( first_free, destip, refsyn );
 
-		return &ttlfocus_list[first_free];
-	}
 	else {
 		maxttlfocus *= 2;
 		ttlfocus_list = (struct ttlfocus *)realloc( 
@@ -931,7 +948,7 @@ struct ttlfocus *TCPTrack::find_ttl_focus(unsigned int destip, struct packetbloc
 			(sizeof(struct ttlfocus) * maxttlfocus / 2)
 		);
 		printf("### recursion in %s:%d new size: %d\n", __FILE__, __LINE__, maxttlfocus);
-		return find_ttl_focus( destip, refsyn );
+		return init_ttl_focus( maxttlfocus / 2, destip, refsyn );
 	}
 }
 
@@ -1421,6 +1438,6 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 		hackp->tcp->syn, hackp->tcp->ack, hackp->tcp->psh, hackp->tcp->fin, hackp->tcp->rst
 	);
 #endif
-	hackp->tcp->doff = (sizeof(struct tcphdr) + 2);
+	hackp->tcp->doff = (sizeof(struct tcphdr) + 2) & 0xF;
 	hackp->ip->tot_len = htons(hdrlen + faketcpopt + payload_len);
 }
