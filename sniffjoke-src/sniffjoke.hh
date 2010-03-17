@@ -31,20 +31,20 @@ enum size_buf_t {
 
 #define MAGICVAL	0xADECADDE
 struct sj_config {
-	char gw_ip_addr[SMALLBUF]; 	/* default: autodetect */
-	char local_ip_addr[SMALLBUF];	/* default: autodetect */
-	char gw_mac_str[SMALLBUF]; 	/* default: autodetect */
+	char gw_ip_addr[SMALLBUF];				/* default: autodetect */
+	char local_ip_addr[SMALLBUF];			/* default: autodetect */
+	char gw_mac_str[SMALLBUF];				/* default: autodetect */
 	unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
-	float MAGIC; /* integrity check for saved binary configuration */
-	unsigned char sj_run; 		/* default: 0 = NO RUNNING */
-	unsigned short web_bind_port; 	/* default: 8844 */
-	unsigned short max_ttl_probe;	/* default: 26 */
-	unsigned short max_session_tracked; /* default: 20 */
-	unsigned short max_packet_que; 	/* default: 60 */
-	unsigned short max_tracked_ttl; /* default: 1024 */
-	unsigned char interface[SMALLBUF]; /* default: autodetect */
-	int tun_number;			/* tunnel interface number */
-	int port_range_n; 		/* default: 0 */
+	float MAGIC;							/* integrity check for saved binary configuration */
+	unsigned char sj_run;					/* default: 0 = NO RUNNING */
+	unsigned short web_bind_port;			/* default: 8844 */
+	unsigned short max_ttl_probe;			/* default: 26 */
+	unsigned short max_session_tracked;		/* default: 20 */
+	unsigned short max_packet_que;			/* default: 60 */
+	unsigned short max_tracked_ttl;			/* default: 1024 */
+	unsigned char interface[SMALLBUF];		/* default: autodetect */
+	int tun_number;							/* tunnel interface number */
+	int port_range_n;						/* default: 0 */
 
 	bool reload_conf;
 	char *error;
@@ -129,6 +129,8 @@ struct sniffjoke_track {
 	struct ttlfocus *tf;
 };
 
+
+
 enum ttlsearch_t { TTL_KNOW = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOW = 9 };
 struct ttlfocus {
 	unsigned int daddr;
@@ -138,7 +140,7 @@ struct ttlfocus {
 	unsigned char received_probe;
 	unsigned short puppet_port;
 	unsigned int rand_key;
-	struct packetblock *refsyn;
+	//struct packetblock *refsyn;
 
 	ttlsearch_t status;
 };
@@ -159,6 +161,7 @@ private:
 	void discern_working_ttl( struct packetblock *, struct sniffjoke_track *);
 	unsigned int make_pkt_id( struct iphdr *);
 	bool analyze_ttl_stats(struct sniffjoke_track *);
+	void mark_real_syn_packets_SEND(unsigned int);
 
 	/* functions for decrete which, and if, inject hacks */
 	bool check_uncommon_tcpopt(struct tcphdr *);
@@ -199,8 +202,8 @@ private:
 	struct sniffjoke_track *get_sexion(unsigned int, unsigned short, unsigned short);
 	void clear_sexion(struct sniffjoke_track *);
 	void recompact_sex_list(int);
-    struct ttlfocus *init_ttl_focus(int, unsigned int, struct packetblock *);
-	struct ttlfocus *find_ttl_focus(unsigned int, struct packetblock *);
+    struct ttlfocus *init_ttl_focus(int, unsigned int);
+	struct ttlfocus *find_ttl_focus(unsigned int, int);
 
 	int paxmax; 		/* max packet tracked */
 	int sextraxmax; 	/* max tcp session tracked */
@@ -212,7 +215,6 @@ private:
 	struct ttlfocus *ttlfocus_list;
 	int sex_list_count[2];
 	int pblock_list_count[2];
-	int ttlfocus_list_count[2];
 
 	/* as usually in those classess */
 	struct sj_config *runcopy;
