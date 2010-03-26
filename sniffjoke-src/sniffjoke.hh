@@ -140,7 +140,6 @@ struct ttlfocus {
 	unsigned char received_probe;
 	unsigned short puppet_port;
 	unsigned int rand_key;
-	//struct packetblock *refsyn;
 
 	ttlsearch_t status;
 };
@@ -197,7 +196,7 @@ private:
 	/* functions for work in queue and lists */
 	struct packetblock *get_free_pblock(int, priority_t, unsigned int);
 	void recompact_pblock_list(int);
-    struct sniffjoke_track *init_sexion(int, struct packetblock *);    
+    struct sniffjoke_track *init_sexion(struct packetblock *);    
 	struct sniffjoke_track *find_sexion(struct packetblock *);
 	struct sniffjoke_track *get_sexion(unsigned int, unsigned short, unsigned short);
 	void clear_sexion(struct sniffjoke_track *);
