@@ -222,7 +222,7 @@ public:
 	~TCPTrack();
 	void add_packet_queue(source_t, unsigned char *, int);
 	void analyze_packets_queue();
-	struct packetblock *get_pblock(status_t, source_t, proto_t, unsigned int);
+	struct packetblock *get_pblock(status_t, source_t, proto_t, unsigned int, int);
 	void clear_pblock(struct packetblock *);
 	void last_pkt_fix(struct packetblock *);
 };

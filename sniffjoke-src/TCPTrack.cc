@@ -119,7 +119,8 @@ void TCPTrack::analyze_packets_queue()
 	struct sniffjoke_track *ct;
 	unsigned int last_packet_id = 0;
 
-	while ( ( newp = get_pblock(YOUNG, NETWORK, ICMP, 0) ) != NULL )
+	newp = get_pblock(YOUNG, NETWORK, ICMP, 0, 0);
+	while ( newp != NULL )
 	{
 		/* 
  		 * a TIME_EXCEEDED packet should contains informations
@@ -131,13 +132,16 @@ void TCPTrack::analyze_packets_queue()
 		/* if packet exist again = is not destroyed by analyze function */
 		if(newp->status == YOUNG)
 			newp->status = SEND;
+		
+		newp = get_pblock(YOUNG, NETWORK, ICMP, 0, 1);
 	}
 
 	/* 
  	 * incoming TCP. sniffjoke algorithm open/close sessions and detect TTL
  	 * lists analyzing SYN+ACK and FIN|RST packet
  	 */
-	while ( ( newp = get_pblock(YOUNG, NETWORK, TCP, 0) ) != NULL ) 
+ 	newp = get_pblock(YOUNG, NETWORK, TCP, 0, 0);
+	while ( newp != NULL ) 
 	{
 		if(newp->tcp->syn && newp->tcp->ack)
 			analyze_incoming_synack(newp);
@@ -148,10 +152,13 @@ void TCPTrack::analyze_packets_queue()
 		/* if packet exist again = is not destroyed by analyze function */
 		if(newp->status == YOUNG)
 			newp->status = SEND;
+			
+		newp = get_pblock(YOUNG, NETWORK, TCP, 0, 1);
 	}
 
 	/* outgoing TCP packets ! */
-	while ( ( newp = get_pblock(YOUNG, TUNNEL, TCP, 0) ) != NULL )
+	newp = get_pblock(YOUNG, TUNNEL, TCP, 0, 0);
+	while ( newp != NULL )
 	{
 #if 0
 		if(! (ntohs(newp->tcp->dest) == 80) || (ntohs(newp->tcp->source) == 80)) {
@@ -173,13 +180,15 @@ void TCPTrack::analyze_packets_queue()
 
 		if(newp->status == YOUNG)
 			newp->status = SEND;
+			
+		newp = get_pblock(YOUNG, TUNNEL, TCP, 0, 1);
 	}
 
 	/* last_packet_id is used to avoid repeats in get_pblock return value */
 	int i = 0;
-	while ( ( newp = get_pblock(KEEP, TUNNEL, TCP, last_packet_id) ) != NULL ) 
+	newp = get_pblock(KEEP, TUNNEL, TCP, last_packet_id, 0);
+	while ( newp != NULL ) 
 	{
-		
 		last_packet_id = make_pkt_id(newp->ip);
 		ct = find_sexion( newp );
 
@@ -195,12 +204,15 @@ void TCPTrack::analyze_packets_queue()
 #endif
 			enque_ttl_probe( newp, ct );
 		}
+		newp = get_pblock(KEEP, TUNNEL, TCP, last_packet_id, 1);
 	}
 
 	/* all others YOUNG packets must be send immediatly */
-	while ( ( newp = get_pblock(YOUNG, ANY_SOURCE, ANY_PROTO, 0) ) != NULL ) 
+	newp = get_pblock(YOUNG, ANY_SOURCE, ANY_PROTO, 0, 0);
+	while ( newp != NULL ) 
 	{
 		newp->status = SEND;
+		newp = get_pblock(YOUNG, ANY_SOURCE, ANY_PROTO, 0, 1);
 	}
 }
 
@@ -492,12 +504,16 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 	}
 }
 
-struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, proto_t proto, unsigned int pkt_id) 
+struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, proto_t proto, unsigned int pkt_id, int must_continue) 
 {
-	bool ignore_until = true;
+	static int start_index = 0;
 	int i;
+	bool ignore_until = true;
 
-	for(i = 0; i < paxmax; i++) 
+	if (!must_continue)
+		start_index = 0;
+
+	for(i = start_index; i < paxmax; i++) 
 	{
 		if (status != ANY_STATUS && pblock_list[i].status != status )
 			continue;
@@ -518,11 +534,13 @@ struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, prot
 		
 		update_pblock_pointers( &pblock_list[i] );
 		
+		start_index = i + 1;
 		return &(pblock_list[i]);
 	}
 
 	return NULL;
 }
+
 void TCPTrack::clear_pblock(struct packetblock *used_pb)
 {
 	int i;
@@ -626,6 +644,11 @@ struct sniffjoke_track * TCPTrack::init_sexion( struct packetblock *pb )
 		);
 		check_call_ret("memory allocation", errno, sex_list == NULL ? -1 : 0 );
 
+		memset(	(void *)&sex_list[sextraxmax / 2], 
+			0x00, 
+			(sizeof(struct sniffjoke_track) * sextraxmax / 2)
+		);
+
 		printf("### recursion in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
 
 		first_free = sextraxmax / 2;
@@ -640,6 +663,7 @@ struct sniffjoke_track * TCPTrack::init_sexion( struct packetblock *pb )
 
 	/* pb is the refsyn, SYN packet reference for starting ttl bruteforce */
 	sex_list[first_free].tf = find_ttl_focus(pb->ip->daddr, 1);
+	
 	printf("Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d \n", 
 			first_free, ntohs(sex_list[first_free].sport), 
 			inet_ntoa( *((struct in_addr *)&sex_list[first_free].daddr) ) ,
@@ -1054,6 +1078,7 @@ struct ttlfocus *TCPTrack::init_ttl_focus(int first_free, unsigned int destip)
 				0x00, 
 				(sizeof(struct ttlfocus) * maxttlfocus / 2)
 			);
+			
 			printf("### recursion in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, maxttlfocus);
 			
 			first_free = maxttlfocus / 2;
