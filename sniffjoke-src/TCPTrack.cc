@@ -56,7 +56,7 @@ TCPTrack::~TCPTrack() {
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
-void TCPTrack::add_packet_queue(source_t source, unsigned char *buff, int nbyte) 
+void TCPTrack::add_packet_queue(const source_t source, const unsigned char *buff, int nbyte) 
 {
 	struct packetblock *target;
 	unsigned int packet_id = make_pkt_id( (struct iphdr *)buff );
@@ -129,7 +129,7 @@ void TCPTrack::analyze_packets_queue()
 			analyze_incoming_icmp(newp);
 
 		/* if packet exist again = is not destroyed by analyze function */
-		if(newp->status == YOUNG)
+		if(newp != NULL)
 			newp->status = SEND;
 		
 		newp = get_pblock(YOUNG, NETWORK, ICMP, 0, 1);
@@ -149,7 +149,7 @@ void TCPTrack::analyze_packets_queue()
 			analyze_incoming_rstfin(newp);	
 
 		/* if packet exist again = is not destroyed by analyze function */
-		if(newp->status == YOUNG)
+		if(newp != NULL)
 			newp->status = SEND;
 			
 		newp = get_pblock(YOUNG, NETWORK, TCP, 0, 1);
@@ -160,7 +160,7 @@ void TCPTrack::analyze_packets_queue()
 	while ( newp != NULL )
 	{
 #if 0
-		if(! (ntohs(newp->tcp->dest) == 80) || (ntohs(newp->tcp->source) == 80)) {
+		if(!(ntohs(newp->tcp->dest) == 80) || (ntohs(newp->tcp->source) == 80)) {
 			newp->status = SEND; 
 			continue;
 		}
@@ -177,7 +177,8 @@ void TCPTrack::analyze_packets_queue()
  		 */
 		manage_outgoing_packets(newp);
 
-		if(newp->status == YOUNG)
+		/* all outgoing packets, exception for starting SYN (status = KEEP), are sent immediatly */
+		if(newp != NULL && newp->status != KEEP)
 			newp->status = SEND;
 			
 		newp = get_pblock(YOUNG, TUNNEL, TCP, 0, 1);
@@ -223,7 +224,7 @@ void TCPTrack::analyze_incoming_icmp(struct packetblock *timeexc)
 
 	badiph = (struct iphdr *)(((unsigned char *)timeexc->ip + 
 			(timeexc->ip->ihl * 4) + sizeof(struct icmphdr)));
-	badtcph =(struct tcphdr *)((unsigned char *)badiph + (badiph->ihl *4));
+	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl *4));
 
 	tf = find_ttl_focus(badiph->daddr, 0);
 
@@ -255,9 +256,7 @@ void TCPTrack::analyze_incoming_icmp(struct packetblock *timeexc)
 #endif
 		}
 		clear_pblock(timeexc);
-	}
-	else {
-		timeexc->status = SEND;
+		timeexc = NULL;
 	}
 }
 
@@ -383,9 +382,6 @@ void TCPTrack::manage_outgoing_packets(struct packetblock *newp)
 			return;
 		}
 	}
-
-	/* all outgoing packets, exception for starting SYN, is send immediatly */
-	newp->status = SEND;
 	
 	ct = get_sexion( newp->ip->daddr, newp->tcp->source, newp->tcp->dest);
 
@@ -481,6 +477,7 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 			(void *)pblock_list, 
 			sizeof(struct packetblock) * paxmax / 4 
 		);
+		
 		memcpy( (void *)&newlist[paxmax / 2], 
 			(void *)&pblock_list[paxmax / 4], 
 			sizeof(struct packetblock) * paxmax / 4 
@@ -627,7 +624,7 @@ struct sniffjoke_track * TCPTrack::get_sexion( unsigned int daddr, unsigned shor
 	return NULL;
 }
 
-struct sniffjoke_track * TCPTrack::init_sexion( struct packetblock *pb ) 
+struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb ) 
 {
 	int i, first_free = -1;
 	for(i = 0; i < sextraxmax; i++) 
@@ -686,7 +683,7 @@ struct sniffjoke_track * TCPTrack::init_sexion( struct packetblock *pb )
 
 /* find sexion must return a session, if a session is not found, a new one is 
  * created */
-struct sniffjoke_track * TCPTrack::find_sexion( struct packetblock *pb ) 
+struct sniffjoke_track * TCPTrack::find_sexion( const struct packetblock *pb ) 
 {
 	struct sniffjoke_track *ret;
 
@@ -771,11 +768,11 @@ void TCPTrack::recompact_sex_list(int what)
 		}
 		
 		sex_list_count[1] = 0;
-		
-		printf("### memory deallocation for sex_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
 
 		free(sex_list);
 		sex_list = newlist;
+		
+		printf("### memory deallocation for sex_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
 	}
 }
 
@@ -792,8 +789,6 @@ void TCPTrack::recompact_sex_list(int what)
  * those irregularity and poison the connection tracking: injection of RST with bad checksum;
  * bad checksum FIN packet; bad checksum fake SEQ; valid reset with bad sequence number ...
  *
- * the packet mangling is the some, the sendint type is choosen randomly by packets_court(),
- * and the programmer should change the probability of the choose.
  */
 void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_track *ct ) 
 {
@@ -967,44 +962,6 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 	pb->status = SEND;
 }
 
-bool TCPTrack::analyze_ttl_stats(struct sniffjoke_track *ct)
-{
-	if(ct->tf->sent_probe == maxttlprobe) 
-	{
-		ct->tf->status = TTL_UNKNOW;
-		return true;
-	}
-	return false;
-}
-
-void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
-	struct packetblock *refsyn = NULL;
-
-	int i;
-
-	for(i = 0; i < paxmax; i++) 
-	{
-		pblock_list[i].ip = (struct iphdr *)pblock_list[i].pbuf;
-
-		if(pblock_list[i].ip->protocol != IPPROTO_TCP)
-			continue;
-
-		pblock_list[i].tcp = (struct tcphdr *)(((unsigned char *)pblock_list[i].ip) + (pblock_list[i].ip->ihl * 4));
-
-		if(!pblock_list[i].tcp->syn)
-			continue;
-				
-		if (pblock_list[i].ip->daddr != daddr )
-			continue;
-
-		#ifdef DEBUG
-			printf("The REAL SYN change status from KEEP to SEND\n");
-		#endif
-
-		pblock_list[i].status = SEND;
-	}
-}
-
 /* 
  * enque_ttl_probe has not the intelligence to understand if TTL bruteforcing 
  * is required or not more. Is called in different section of code
@@ -1042,8 +999,7 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 	/* the copy is done to keep refsyn ORIGINAL */
 	memcpy( injpb->pbuf, delayed_syn_pkt->pbuf, delayed_syn_pkt->pbuf_size);
 
-	injpb->ip = (struct iphdr *)injpb->pbuf;
-	injpb->tcp = (struct tcphdr *)(injpb->pbuf + (injpb->ip->ihl * 4) );
+	update_pblock_pointers( injpb );
 
 	/* 
  	 * if TTL expire and is generated and ICMP TIME EXCEEDED,
@@ -1066,6 +1022,44 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 		injpb->ip->daddr
 	);
 #endif
+}
+
+bool TCPTrack::analyze_ttl_stats(struct sniffjoke_track *ct)
+{
+	if(ct->tf->sent_probe == maxttlprobe) 
+	{
+		ct->tf->status = TTL_UNKNOW;
+		return true;
+	}
+	return false;
+}
+
+void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
+	struct packetblock *refsyn = NULL;
+
+	int i;
+
+	for(i = 0; i < paxmax; i++) 
+	{
+		pblock_list[i].ip = (struct iphdr *)pblock_list[i].pbuf;
+
+		if(pblock_list[i].ip->protocol != IPPROTO_TCP)
+			continue;
+
+		pblock_list[i].tcp = (struct tcphdr *)(((unsigned char *)pblock_list[i].ip) + (pblock_list[i].ip->ihl * 4));
+
+		if(!pblock_list[i].tcp->syn)
+			continue;
+				
+		if (pblock_list[i].ip->daddr != daddr )
+			continue;
+
+		#ifdef DEBUG
+			printf("The REAL SYN change status from KEEP to SEND\n");
+		#endif
+
+		pblock_list[i].status = SEND;
+	}
 }
 
 struct ttlfocus *TCPTrack::init_ttl_focus(int first_free, unsigned int destip)
@@ -1124,7 +1118,7 @@ struct ttlfocus *TCPTrack::find_ttl_focus(unsigned int destip, int initialize)
 	return init_ttl_focus( first_free, destip );
 }
 
-unsigned int TCPTrack::half_cksum(void *pointed_data, int len)
+unsigned int TCPTrack::half_cksum(const void *pointed_data, int len)
 {
 	unsigned int sum = 0x00;
 	unsigned short carry = 0x00;
@@ -1169,7 +1163,7 @@ void TCPTrack::fix_iptcp_sum(struct iphdr *iph, struct tcphdr *tcph)
 	tcph->check = compute_sum (sum);
 }
 
-unsigned int TCPTrack::make_pkt_id(struct iphdr *ip) 
+unsigned int TCPTrack::make_pkt_id(const struct iphdr *ip) 
 {
 	struct tcphdr *tcp;
 
@@ -1284,13 +1278,15 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt)
  	 * ready with "int variable_iptcpopt = (MAXOPTINJ * 3);" byte, in 
  	 * packet_orphanotrophy.
  	 */
-	if( (! pkt->tcp->syn) && ntohs(pkt->ip->tot_len) < (MTU - 72) )
-		if( percentage( 1, 100 ) )
-			SjH__inject_ipopt( pkt );
+	if (!pkt->tcp->syn) { 
+		if (ntohs(pkt->ip->tot_len) < (MTU - 72) )
+			if( percentage( 1, 100 ) )
+				SjH__inject_ipopt( pkt );
 
-	if( (!pkt->tcp->syn) && (!check_uncommon_tcpopt(pkt->tcp)) && pkt->wtf != INNOCENT )
-		if( percentage( 25, 100 ) )
-			SjH__inject_tcpopt( pkt );
+		if (!check_uncommon_tcpopt(pkt->tcp) && pkt->wtf != INNOCENT )
+			if( percentage( 25, 100 ) )
+				SjH__inject_tcpopt( pkt );
+	}
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
 	fix_iptcp_sum(pkt->ip, pkt->tcp);
@@ -1299,7 +1295,7 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt)
 		pkt->tcp->check ^= (0xd34d * (unsigned short)random() +1);
 }
 
-bool TCPTrack::check_uncommon_tcpopt(struct tcphdr *tcp) 
+bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp) 
 {
 	unsigned char check;
 	int i;
@@ -1331,7 +1327,7 @@ bool TCPTrack::check_uncommon_tcpopt(struct tcphdr *tcp)
 
 /* packet orphanotrophy, create the oraphans packet and raise them correctly */
 struct packetblock *
-TCPTrack::packet_orphanotrophy( struct iphdr *ip, struct tcphdr *tcp, int resize)
+TCPTrack::packet_orphanotrophy( const struct iphdr *ip, const struct tcphdr *tcp, int resize)
 {
 	struct packetblock *ret;
 	int pbuf_size = 0;
@@ -1339,7 +1335,6 @@ TCPTrack::packet_orphanotrophy( struct iphdr *ip, struct tcphdr *tcp, int resize
 	int tcplen = tcp->doff * 4;
 	int payload_len;
 	int new_tot_len;
-	int dptr = 0;
 
 	/* 
 	 * the packets generated could be resized, for the sniffjoke hack
@@ -1371,18 +1366,16 @@ TCPTrack::packet_orphanotrophy( struct iphdr *ip, struct tcphdr *tcp, int resize
 	ret->orig_pktlen = ntohs(ip->tot_len);
 
 	/* IP header copy */
-	memcpy(&ret->pbuf[dptr], (void *)ip, iplen);
-	ret->ip = (struct iphdr *)&ret->pbuf[dptr];
-	dptr = iplen;
+	memcpy(&ret->pbuf[0], (void *)ip, iplen);
 
 	/* TCP header copy */
-	memcpy(&ret->pbuf[dptr], (void *)tcp, tcplen );
-	ret->tcp = (struct tcphdr *)&ret->pbuf[dptr];
-	dptr += tcplen;
+	memcpy(&ret->pbuf[iplen], (void *)tcp, tcplen );
+
+	update_pblock_pointers( ret );
 
 	/* Payload copy, if preserved */
 	if(payload_len) 
-		memcpy(&ret->pbuf[dptr], (unsigned char *)ip + (iplen + tcplen), payload_len);
+		memcpy(&ret->pbuf[iplen + tcplen], (unsigned char *)ip + (iplen + tcplen), payload_len);
 
 	/* fixing the new length */
 	ret->ip->tot_len = htons(new_tot_len);
@@ -1426,11 +1419,10 @@ void TCPTrack::SjH__fake_seq( struct packetblock *hackp)
 	if( !payload ) {
 		hackp->tcp->seq = htonl(ntohl(hackp->tcp->seq) + MAXOPTINJ);
 		hackp->ip->tot_len = htons(ntohs(hackp->ip->tot_len) + MAXOPTINJ);
-
 	}
 	else
 		if(what == 0)
-			what =2;
+			what = 2;
 
 	if(what == 2) 
 		hackp->tcp->seq = htonl(ntohl(hackp->tcp->seq) + (random() % 5000));
@@ -1530,6 +1522,7 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	int l47len, i = 0, x = 0;
 	int route_n = (random() % 5) + 5; /* 5 - 9 */
 	unsigned char *endip = hackp->pbuf + sizeof(struct iphdr);
+	unsigned int randip;
 
 	/* l47len = length of the frame layer 4 to 7 */
 	l47len = ntohs(hackp->ip->tot_len) - (hackp->ip->ihl * 4);
@@ -1554,7 +1547,7 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	endip[i++] = 4;
 
 	for(x = i; x != (route_n * 4); x += 4 ) {
-		unsigned int randip = random();
+		randip = random();
 		memcpy(&endip[x], &randip, 4);
 	}
 

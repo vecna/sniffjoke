@@ -158,14 +158,13 @@ private:
 	void inject_hack_in_queue(struct packetblock *, struct sniffjoke_track *);
 	void enque_ttl_probe( struct packetblock *, struct sniffjoke_track *);
 	void discern_working_ttl( struct packetblock *, struct sniffjoke_track *);
-	unsigned int make_pkt_id( struct iphdr *);
+	unsigned int make_pkt_id( const struct iphdr *);
 	bool analyze_ttl_stats(struct sniffjoke_track *);
 	void mark_real_syn_packets_SEND(unsigned int);
 
 	/* functions for decrete which, and if, inject hacks */
-	bool check_uncommon_tcpopt(struct tcphdr *);
-	struct packetblock *packet_orphanotrophy( struct iphdr *, struct tcphdr *, int);
-	void packets_court( struct iphdr *, struct tcphdr *, struct ttlfocus *, judge_t);
+	bool check_uncommon_tcpopt(const struct tcphdr *);
+	struct packetblock *packet_orphanotrophy( const struct iphdr *, const struct tcphdr *, int);
 	bool percentage(float, int);
 	float logarithm(int);
 
@@ -189,15 +188,15 @@ private:
 	void SjH__inject_tcpopt( struct packetblock *);
 
 	/* functions required in TCP/IP packets forging */
-	unsigned int half_cksum(void *, int);
+	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fix_iptcp_sum(struct iphdr *, struct tcphdr *);
 
 	/* functions for work in queue and lists */
 	struct packetblock *get_free_pblock(int, priority_t, unsigned int);
 	void recompact_pblock_list(int);
-    struct sniffjoke_track *init_sexion(struct packetblock *);    
-	struct sniffjoke_track *find_sexion(struct packetblock *);
+    struct sniffjoke_track *init_sexion(const struct packetblock *);    
+	struct sniffjoke_track *find_sexion(const struct packetblock *);
 	struct sniffjoke_track *get_sexion(unsigned int, unsigned short, unsigned short);
 	void clear_sexion(struct sniffjoke_track *);
 	void recompact_sex_list(int);
@@ -220,7 +219,7 @@ private:
 public:
 	TCPTrack(SjConf *);
 	~TCPTrack();
-	void add_packet_queue(source_t, unsigned char *, int);
+	void add_packet_queue(const source_t, const unsigned char *, int);
 	void analyze_packets_queue();
 	struct packetblock *get_pblock(status_t, source_t, proto_t, unsigned int, int);
 	void clear_pblock(struct packetblock *);
