@@ -75,7 +75,6 @@ void TCPTrack::add_packet_queue(source_t source, unsigned char *buff, int nbyte)
 
 	target->packet_id = packet_id;
 	target->source = source;
-	target->pbuf_size = nbyte + (MAXOPTINJ * 3);
 	target->status = YOUNG;
 	target->wtf = INNOCENT;
 	target->orig_pktlen = nbyte;
@@ -465,6 +464,7 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 				pktsize
 			);
 #endif
+			pblock_list[i].pbuf_size = pktsize;
 			return &pblock_list[i];
 		}
 	}
@@ -489,7 +489,7 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 		free(pblock_list);
 		pblock_list = newlist;
 
-		printf("### recursion in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, paxmax);
+		printf("### memory allocation for pblock_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, paxmax);
 
 		first_free = paxmax / 4;
 	}
@@ -587,21 +587,23 @@ void TCPTrack::recompact_pblock_list(int what)
 						(void *)&pblock_list[0], 
 						sizeof(struct packetblock) * paxmax
 				);
-				pblock_list_count[1] = 0;
-				return;
-
+				break;
 			case 1:
 				memcpy(	(void *)newlist, 
 						(void *)&pblock_list[paxmax], 
 						sizeof(struct packetblock) * paxmax
 				);
 				pblock_list_count[0] = pblock_list_count[1];
-				pblock_list_count[1] = 0;
-				return;
+				break;
 		}
+		
+		pblock_list_count[1] = 0;
 		
 		free(pblock_list);
 		pblock_list = newlist;
+		
+		printf("### memory deallocation for pblock_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, paxmax);
+		
 	}
 }
 
@@ -649,7 +651,7 @@ struct sniffjoke_track * TCPTrack::init_sexion( struct packetblock *pb )
 			(sizeof(struct sniffjoke_track) * sextraxmax / 2)
 		);
 
-		printf("### recursion in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
+		printf("### memory allocation for sex_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
 
 		first_free = sextraxmax / 2;
 	}
@@ -758,15 +760,19 @@ void TCPTrack::recompact_sex_list(int what)
 						(void *)&sex_list[0], 
 						sizeof(struct sniffjoke_track) * sextraxmax
 				);
-				sex_list_count[1] = 0;
+				break;
 			case 1: /* second half */
 				memcpy(	(void *)newlist, 
 						(void *)&sex_list[sextraxmax], 
 						sizeof(struct sniffjoke_track) * sextraxmax
 				);
 				sex_list_count[0] = sex_list_count[1];
-				sex_list_count[1] = 0;
+				break;
 		}
+		
+		sex_list_count[1] = 0;
+		
+		printf("### memory deallocation for sex_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
 
 		free(sex_list);
 		sex_list = newlist;
@@ -1032,7 +1038,6 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 	injpb->proto = TCP;
 	injpb->source = TTLBFORCE;
 	injpb->status = SEND;
-	injpb->pbuf_size = delayed_syn_pkt->pbuf_size;
 
 	/* the copy is done to keep refsyn ORIGINAL */
 	memcpy( injpb->pbuf, delayed_syn_pkt->pbuf, delayed_syn_pkt->pbuf_size);
@@ -1079,7 +1084,7 @@ struct ttlfocus *TCPTrack::init_ttl_focus(int first_free, unsigned int destip)
 				(sizeof(struct ttlfocus) * maxttlfocus / 2)
 			);
 			
-			printf("### recursion in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, maxttlfocus);
+			printf("### memory allocation for ttlfocus_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, maxttlfocus);
 			
 			first_free = maxttlfocus / 2;
 		}
@@ -1307,6 +1312,7 @@ bool TCPTrack::check_uncommon_tcpopt(struct tcphdr *tcp)
 		{
 			case TCPOPT_TIMESTAMP:
 				i += (TCPOLEN_TIMESTAMP +1 );
+				break;
 			case TCPOPT_EOL:
 			case TCPOPT_NOP:
 				break;
@@ -1362,7 +1368,6 @@ TCPTrack::packet_orphanotrophy( struct iphdr *ip, struct tcphdr *tcp, int resize
 	ret->proto = TCP;
 	ret->source = LOCAL;
 	ret->status = SEND;
-	ret->pbuf_size = pbuf_size;
 	ret->orig_pktlen = ntohs(ip->tot_len);
 
 	/* IP header copy */
