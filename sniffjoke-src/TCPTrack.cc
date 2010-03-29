@@ -387,6 +387,7 @@ void TCPTrack::manage_outgoing_packets(struct packetblock *newp)
 
 	/* all outgoing packets, exception for starting SYN, is send immediatly */
 	newp->status = SEND;
+	
 	ct = get_sexion( newp->ip->daddr, newp->tcp->source, newp->tcp->dest);
 
 	if( ct != NULL && ( newp->tcp->rst || newp->tcp->fin ) )
@@ -468,18 +469,7 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 		}
 	}
 
-	if( first_free != -1 ) {
-		memset(&pblock_list[first_free], 0x00, sizeof(struct packetblock));
-		pblock_list[first_free].pbuf_size = pktsize;
-		
-		if ( first_free < paxmax / 2 )
-			pblock_list_count[0]++;
-		else
-			pblock_list_count[1]++;
-			
-		return &pblock_list[first_free];
-	}
-	else {
+	if ( first_free == -1 ) {
 		struct packetblock *newlist;
 
 		paxmax *= 2;
@@ -500,8 +490,18 @@ struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, uns
 		pblock_list = newlist;
 
 		printf("### recursion in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, paxmax);
-		return get_free_pblock(pktsize, prio, packet_id);
+
+		first_free = paxmax / 4;
 	}
+	
+	pblock_list[first_free].pbuf_size = pktsize;
+		
+	if ( first_free < paxmax / 2 )
+		pblock_list_count[0]++;
+	else
+		pblock_list_count[1]++;
+	
+	return &pblock_list[first_free];
 }
 
 struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, proto_t proto, unsigned int pkt_id, int must_continue) 
