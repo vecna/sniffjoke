@@ -63,6 +63,7 @@ typedef int swill_ssl_pwd_getter(char* buf, int maxlen);
 
 /* Control functions */
 
+SWILL_PUBLIC int     swill_set_interface(const char* address);
 SWILL_PUBLIC int     swill_init_ssl(int port, int ssl, const char* tmpdir);
 #define swill_init(port) swill_init_ssl(port, 0, 0)
 SWILL_PUBLIC char   *swill_title(const char *title);
@@ -81,6 +82,7 @@ SWILL_PUBLIC void    swill_deny(const char *ip);
 
 /* Variable and header functions */
 SWILL_PUBLIC char   *swill_getrequest(void);
+SWILL_PUBLIC char   *swill_getpeername(void);
 SWILL_PUBLIC int     swill_getargs(const char *fmt, ...);
 SWILL_PUBLIC char   *swill_getvar(const char *name);
 SWILL_PUBLIC int     swill_getint(const char *name);

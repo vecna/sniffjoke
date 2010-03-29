@@ -1,0 +1,68 @@
+##############################################################
+# Makefile
+#
+# SWILL
+##############################################################
+
+
+prefix     = /usr/local
+exec_prefix= ${prefix}
+
+SHELL = /bin/sh
+INCLUDE_DIR = $(prefix)/include
+LIB_DIR = $(exec_prefix)/lib
+RANLIB  = ranlib
+SRC_DIR = .
+
+# Installer
+
+INSTALL        = $(SRC_DIR)/install-sh -c
+INSTALL_DATA   = ${INSTALL} -m 644
+INSTALL_PROGRAM= ${INSTALL} -m 755
+
+first: all
+
+basic:
+	cd Source/Objects; $(MAKE)
+
+static: basic
+	cd Source/SWILL; $(MAKE) static
+
+shared: basic
+	cd Source/SWILL; $(MAKE) shared
+
+install:
+	@test -d "$(INCLUDE_DIR)" || mkdir -p "$(INCLUDE_DIR)"
+	@test -d "$(INCLUDE_DIR)/swill" || mkdir -p "$(INCLUDE_DIR)/swill"
+	@test -d "$(LIB_DIR)" || mkdir -p "$(LIB_DIR)"
+	@for i in *.so; \
+	   do \
+	     if test -f $$i; then \
+	        echo "Installing $(LIB_DIR)/$$i"; \
+	        $(INSTALL_PROGRAM) $$i $(LIB_DIR)/$$i; \
+             fi; \
+           done;
+	@for i in *.a; \
+	   do \
+	     if test -f $$i; then \
+	     echo "Installing $(LIB_DIR)/$$i"; \
+	     $(INSTALL_DATA) $$i $(LIB_DIR)/$$i; \
+	     $(RANLIB) $(LIB_DIR)/$$i; \
+	     fi; \
+           done;
+	@echo "Installing $(INCLUDE_DIR)/swill/swill.h..."
+	@$(INSTALL_DATA) $(SRC_DIR)/Include/swill/swill.h $(INCLUDE_DIR)/swill/swill.h
+
+all: static shared
+
+localclean:
+	rm -rf *.o *.so libswill*
+
+clean:: localclean
+	cd Source/Objects; $(MAKE) clean
+	cd Source/SWILL; $(MAKE) clean
+
+nuke:: localclean
+	cd Source/Objects; $(MAKE) nuke
+	cd Source/SWILL; $(MAKE) nuke
+	rm -f Makefile *~ #*

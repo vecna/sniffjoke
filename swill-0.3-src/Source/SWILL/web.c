@@ -11,7 +11,7 @@
  * See the file LICENSE for information on usage and redistribution.	
  * ----------------------------------------------------------------------------- */
 
-static char cvsroot[] = "$Header: /cvsroot/swill/SWILL/Source/SWILL/web.c,v 1.16 2007/09/03 20:22:15 gonzalodiethelm Exp $";
+static char cvsroot[] = "$Header: /cvsroot/swill/SWILL/Source/SWILL/web.c,v 1.18 2008/02/26 21:32:18 gonzalodiethelm Exp $";
 
 #if ! defined(GONZO_DEBUG)
 #define GONZO_DEBUG 0
@@ -74,10 +74,20 @@ static void swill_temp_delete(void);
  * Utility functions for setting/getting headers and form vars
  * ----------------------------------------------------------------------------- */
 
+static char *swill_getstr(const char* name)
+{
+   char* str = GetChar(current_request, name);
+   return str;
+}
+
 char *swill_getrequest(void)
 {
-   char* request = GetChar(current_request, "request");
-   return request;
+   return swill_getstr("request");
+}
+
+char *swill_getpeername(void)
+{
+   return swill_getstr("peername");
 }
 
 void swill_setheader(const char *header, const char *value) {
@@ -195,7 +205,11 @@ swill_init_ssl(int port, int ssl, const char* tmpdir) {
    SwillDocroot = 0;
    SwillInit = 1;
    swill_security_init();
+
+#if defined(SWILL_IGNORE_INFO) && (SWILL_IGNORE_INFO > 0)
+#else
    swill_handle("info",SH(SwillListHandlers),0);
+#endif
    
   init_ret:
 #ifdef __USE_MPI
@@ -683,11 +697,15 @@ swill_serve_one(const char* clientaddr, int clientfd)
       whandle = (SwillHandler) Data(Getattr(handler,"handler"));
 
       if (whandle) {
+
+#if defined(SWILL_IGNORE_INFO) && (SWILL_IGNORE_INFO > 0)
+#else
 	 /* Only serve the handler if its the special info page */
 	 if (Cmp(http_uri,"info") == 0) {
 	    (*whandle)(out,Data(Getattr(handler,"clientdata")));
 	    goto handled_request;
 	 }
+#endif
 
 	 /* We actually got a valid request for something that we will 
 	    return to the user.  In this case, we simply return the output object */

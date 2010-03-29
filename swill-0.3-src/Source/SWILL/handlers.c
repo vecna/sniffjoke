@@ -11,7 +11,7 @@
  * See the file LICENSE for information on usage and redistribution.	
  * ----------------------------------------------------------------------------- */
 
-static char cvsroot[] = "$Header: /cvsroot/swill/SWILL/Source/SWILL/handlers.c,v 1.2 2006/12/22 14:37:37 gonzalodiethelm Exp $";
+static char cvsroot[] = "$Header: /cvsroot/swill/SWILL/Source/SWILL/handlers.c,v 1.3 2008/02/26 21:32:17 gonzalodiethelm Exp $";
 
 #include "swillint.h"
 #include <stdarg.h>
@@ -131,13 +131,17 @@ swill_handler_lookup(const String *uri) {
  * Report a file not found error to the client.
  * ----------------------------------------------------------------------------- */
 
-static char *error404msg = "\n\
-<html><head><title>File not found</title></head>\n\
-<body bgcolor=\"#ffffff\">\n\
-<h1>File not found</h1>\n\
-Document '%s' not registered with the server.\n\
-Click <a href=\"/info\">here</a> for a list of available documents.\n\n\
-</body></html>\n";
+static char *error404msg =
+"\n"
+"<html><head><title>File not found</title></head>\n"
+"<body bgcolor=\"#ffffff\">\n"
+"<h1>File not found</h1>\n"
+"Document '%s' not registered with the server.\n"
+#if defined(SWILL_IGNORE_INFO) && (SWILL_IGNORE_INFO > 0)
+#else
+"Click <a href=\"/info\">here</a> for a list of available documents.\n\n"
+#endif
+"</body></html>\n";
 
 int 
 SwillFileNotFound(DOH *out, void *clientdata) {

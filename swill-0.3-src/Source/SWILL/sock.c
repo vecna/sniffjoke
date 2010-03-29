@@ -8,7 +8,7 @@
  * See the file LICENSE for information on usage and redistribution.	
  * ----------------------------------------------------------------------------- */
 
-static char cvsroot[] = "$Header: /cvsroot/swill/SWILL/Source/SWILL/sock.c,v 1.6 2007/09/03 20:22:15 gonzalodiethelm Exp $";
+static char cvsroot[] = "$Header: /cvsroot/swill/SWILL/Source/SWILL/sock.c,v 1.8 2008/04/10 03:55:01 gonzalodiethelm Exp $";
 
 #if defined(WIN32)
 
@@ -43,6 +43,10 @@ static sig_t old_pipe;
 static int set_nonblock(int socket);
 static int restore_block(int socket, int mode);
 
+#if defined(WIN32)
+static int inet_aton(const char* addr,
+		     struct in_addr* ia);
+#endif
 
 void 
 swill_initialize_comm(void)
@@ -76,11 +80,24 @@ swill_terminate_comm(void)
 #endif
 }
 
+static char swill_if[32];
+
+int 
+swill_set_interface(const char* address)
+{
+   if (address == 0 || address[0] == '\0')
+      swill_if[0] = '\0';
+   else
+      strcpy(swill_if, address);
+   return 1;
+}
+
 int 
 swill_create_listening_socket(int port)
 {
    int sock = -1;
    int flag = 1;
+   struct in_addr ia;
    struct sockaddr_in addr;
 
    /* Open up the server socket */
@@ -102,8 +119,19 @@ swill_create_listening_socket(int port)
    memset(&addr, 0, sizeof(addr));
    addr.sin_family = AF_INET;
    addr.sin_port = htons((unsigned short) port);
-   addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    
+
+   if (swill_if[0] != '\0' &&
+       inet_aton(swill_if, &ia))
+   {
+      /* If passed a valid interface, bind only there */
+      addr.sin_addr = ia;
+   }
+   else
+   {
+      /* Bind to all interfaces */
+      addr.sin_addr.s_addr = htonl(INADDR_ANY);
+   }
+
    /* Bind the socket to the port */
    if (bind(sock,
 	    (struct sockaddr *) &addr,
@@ -319,6 +347,18 @@ static int restore_block(int socket, int mode)
 {
    ioctlsocket(socket, FIONBIO, &mode);
    return 0;
+}
+
+static int inet_aton(const char* addr,
+		     struct in_addr* ia)
+{
+   DWORD ip = inet_addr(addr);
+   memset(ia, 0, sizeof(struct in_addr));
+   if (ip == INADDR_NONE)
+      return 0;
+
+   ia->S_un.S_addr = ip;
+   return 1;
 }
 
 #else
