@@ -1,4 +1,4 @@
-SniffJoke 0.3 - 2009.04.02
+SniffJoke 0.3 - 2010.03.30
 
 GPL software by vecna - <vecna@delirandom.net>
 
@@ -7,7 +7,7 @@ It Is implemented in C++, and at the moment tested only under Linux
 environment.
 It uses a local web interface, provided by SWILL (http://swill.sf.net) library
 by David Beazley, Sotiria Lampoudi, Gonzalo Diethelm. Thanks for your
-work. One copy of SWILL 0.2 is distributed in this SniffJoke package.
+work. One copy of SWILL 0.3 is distributed in this SniffJoke package.
 
 HOW TO COMPILE/INSTALL:
 
@@ -32,10 +32,11 @@ Remember:
    only in Italian language.
 
 
-pub   1024D/602EEFA5 2007-08-28 [expires: 2009-08-27]
-      Key fingerprint = B9B6 AE8A F4BC 3261 FD1F  70AF 16F0 9BEA 602E EFA5
-uid                  vecna <vecna@winstonsmith.info>
+pub   1024D/C6765430 2009-08-25 [expires: 2011-08-25]
+      Key fingerprint = 341F 1A8C E2B4 F4F4 174D  7C21 B842 093D C676 5430
 uid                  vecna <vecna@s0ftpj.org>
 uid                  vecna <vecna@delirandom.net>
-sub   2624g/A08D063D 2007-08-28 [expires: 2009-08-27]
+sub   3072g/E8157737 2009-08-25 [expires: 2011-08-25]
 
+git: http://github.com/vecna/sniffjoke
+homepage: http://www.delirandom.net/sniffjoke

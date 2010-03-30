@@ -1,0 +1,10 @@
+This is the sniffjoke package
+
+SniffJoke is a software amied to avoiding sniffing, injecting valid (but unexpected) packets in the connections.
+
+client and server doesn't notify those packets, but a sniffer could read these and screw up in tcp flow reassembly.
+
+official home page: http://www.delirandom.net/sniffjoke
+
+vecna and evilaliv3 are currently developing in order to bring the 0.3 release at an almost stable and useful 0.4/1.0
+
