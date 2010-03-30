@@ -14,7 +14,7 @@
 #include <net/ethernet.h>
 
 #define STRERRLEN	1024
-int check_call_ret(const char *, int, int, char **em =NULL, int *el =NULL);
+int check_call_ret( const char *, int, int, char **em =NULL, int *el =NULL);
 
 struct port_range {
 	unsigned short start;
@@ -44,7 +44,18 @@ struct sj_config {
 	unsigned short max_tracked_ttl;			/* default: 1024 */
 	unsigned char interface[SMALLBUF];		/* default: autodetect */
 	int tun_number;							/* tunnel interface number */
-	int port_range_n;						/* default: 0 */
+
+	bool SjH__shift_ack;					/* default false */
+	bool SjH__fake_data;					/* default true */
+	bool SjH__fake_seq;						/* default true */
+	bool SjH__fake_close;					/* default true */
+	bool SjH__zero_window;					/* default true */
+	bool SjH__valid_rst_fake_seq;			/* default true */
+	bool SjH__fake_syn;						/* default true */
+	bool SjH__half_fake_syn;				/* default false */
+	bool SjH__half_fake_ack;				/* default false */
+	bool SjH__inject_ipopt;					/* default true */
+	bool SjH__inject_tcpopt;				/* default true */
 
 	bool reload_conf;
 	char *error;
@@ -55,11 +66,10 @@ class SjConf {
 private:
 public:
 	struct sj_config *running;
-	struct port_range *pr;
 
-	void dump_config(const char *);
-	void dump_error(char *, int);
-	SjConf(const char *);
+	void dump_config( const char * );
+	void dump_error( char *, int );
+	SjConf( const char * );
 	~SjConf();
 };
 
@@ -148,60 +158,59 @@ enum priority_t { HIGH = 188, LOW = 169 };
 class TCPTrack {
 private:
 	/* main function of packet analysis, called by analyze_packets_queue */
-	void update_pblock_pointers( struct packetblock *); 
-	void analyze_incoming_icmp(struct packetblock *);
-	void analyze_incoming_synack(struct packetblock *);
-	void analyze_incoming_rstfin(struct packetblock *);
-	void manage_outgoing_packets(struct packetblock *);
+	void update_pblock_pointers( struct packetblock * ); 
+	void analyze_incoming_icmp( struct packetblock * );
+	void analyze_incoming_synack( struct packetblock * );
+	void analyze_incoming_rstfin( struct packetblock * );
+	void manage_outgoing_packets( struct packetblock * );
 
 	/* functions forging/mangling packets que, ttl analysis */
-	void inject_hack_in_queue(struct packetblock *, struct sniffjoke_track *);
-	void enque_ttl_probe( struct packetblock *, struct sniffjoke_track *);
-	void discern_working_ttl( struct packetblock *, struct sniffjoke_track *);
-	unsigned int make_pkt_id( const struct iphdr *);
-	bool analyze_ttl_stats(struct sniffjoke_track *);
-	void mark_real_syn_packets_SEND(unsigned int);
+	void inject_hack_in_queue( struct packetblock *, struct sniffjoke_track * );
+	void enque_ttl_probe( struct packetblock *, struct sniffjoke_track * );
+	void discern_working_ttl( struct packetblock *, struct sniffjoke_track * );
+	unsigned int make_pkt_id( const unsigned char* );
+	bool analyze_ttl_stats( struct sniffjoke_track * );
+	void mark_real_syn_packets_SEND( unsigned int );
 
 	/* functions for decrete which, and if, inject hacks */
-	bool check_uncommon_tcpopt(const struct tcphdr *);
-	struct packetblock *packet_orphanotrophy( const struct iphdr *, const struct tcphdr *, int);
-	bool percentage(float, int);
-	float logarithm(int);
+	bool check_uncommon_tcpopt( const struct tcphdr * );
+	struct packetblock *packet_orphanotrophy( const struct packetblock *, int );
+	bool percentage( float, int );
+	float logarithm( int );
 
 	/* the sniffjoke hack apply on the packets */
-	void SjH__fake_data( struct packetblock *);
-	void SjH__fake_seq( struct packetblock *);
-	void SjH__fake_syn( struct packetblock *);
-	void SjH__fake_close( struct packetblock *);
-	void SjH__zero_window( struct packetblock *);
+	void SjH__fake_data( struct packetblock * );
+	void SjH__fake_seq( struct packetblock * );
+	void SjH__fake_syn( struct packetblock * );
+	void SjH__fake_close( struct packetblock * );
+	void SjH__zero_window( struct packetblock * );
 
-#if 1	/* sadly, those hacks require some analysis */
-	void SjH__valid_rst_fake_seq( struct packetblock *);
-	void SjH__half_fake_syn( struct packetblock *);
-	void SjH__half_fake_ack( struct packetblock *);
-	void SjH__shift_ack( struct packetblock *);
-#endif
+	/* sadly, those hacks require some analysis */
+	void SjH__valid_rst_fake_seq( struct packetblock * );
+	void SjH__half_fake_syn( struct packetblock * );
+	void SjH__half_fake_ack( struct packetblock * );
+	void SjH__shift_ack( struct packetblock * );
 
 	/* size of header to fill with wild IP/TCP options */
 #define MAXOPTINJ	12
-	void SjH__inject_ipopt( struct packetblock *);
-	void SjH__inject_tcpopt( struct packetblock *);
+	void SjH__inject_ipopt( struct packetblock * );
+	void SjH__inject_tcpopt( struct packetblock * );
 
 	/* functions required in TCP/IP packets forging */
-	unsigned int half_cksum(const void *, int);
-	unsigned short compute_sum(unsigned int);
-	void fix_iptcp_sum(struct iphdr *, struct tcphdr *);
+	unsigned int half_cksum( const void *, int );
+	unsigned short compute_sum( unsigned int );
+	void fix_iptcp_sum( struct iphdr *, struct tcphdr * );
 
 	/* functions for work in queue and lists */
-	struct packetblock *get_free_pblock(int, priority_t, unsigned int);
-	void recompact_pblock_list(int);
-    struct sniffjoke_track *init_sexion(const struct packetblock *);    
-	struct sniffjoke_track *find_sexion(const struct packetblock *);
-	struct sniffjoke_track *get_sexion(unsigned int, unsigned short, unsigned short);
-	void clear_sexion(struct sniffjoke_track *);
-	void recompact_sex_list(int);
-    struct ttlfocus *init_ttl_focus(int, unsigned int);
-	struct ttlfocus *find_ttl_focus(unsigned int, int);
+	struct packetblock *get_free_pblock( int, priority_t, unsigned int );
+	void recompact_pblock_list( int );
+    struct sniffjoke_track *init_sexion( const struct packetblock * );    
+	struct sniffjoke_track *find_sexion( const struct packetblock * );
+	struct sniffjoke_track *get_sexion( unsigned int, unsigned short, unsigned short );
+	void clear_sexion( struct sniffjoke_track * );
+	void recompact_sex_list( int );
+    struct ttlfocus *init_ttl_focus( int, unsigned int );
+	struct ttlfocus *find_ttl_focus( unsigned int, int );
 
 	int paxmax; 		/* max packet tracked */
 	int sextraxmax; 	/* max tcp session tracked */
@@ -217,13 +226,13 @@ private:
 	/* as usually in those classess */
 	struct sj_config *runcopy;
 public:
-	TCPTrack(SjConf *);
+	TCPTrack( SjConf* );
 	~TCPTrack();
-	void add_packet_queue(const source_t, const unsigned char *, int);
+	void add_packet_queue( const source_t, const unsigned char *, int );
 	void analyze_packets_queue();
-	struct packetblock *get_pblock(status_t, source_t, proto_t, unsigned int, int);
-	void clear_pblock(struct packetblock *);
-	void last_pkt_fix(struct packetblock *);
+	struct packetblock *get_pblock( status_t, source_t, proto_t, unsigned int, int );
+	void clear_pblock( struct packetblock * );
+	void last_pkt_fix( struct packetblock * );
 };
 
 class NetIO {
@@ -243,10 +252,10 @@ public:
 	int error_len;
 	char *error_msg;
 
-	NetIO(SjConf *);
+	NetIO( SjConf * );
 	~NetIO();
-	void network_io(source_t, TCPTrack *);
-	void queue_flush( TCPTrack *);
+	void network_io( source_t, TCPTrack * );
+	void queue_flush( TCPTrack * );
 };
 
 #endif /* SNIFFJOKE_H */

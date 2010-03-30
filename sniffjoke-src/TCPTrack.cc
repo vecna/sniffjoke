@@ -56,10 +56,10 @@ TCPTrack::~TCPTrack() {
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
-void TCPTrack::add_packet_queue(const source_t source, const unsigned char *buff, int nbyte) 
+void TCPTrack::add_packet_queue( const source_t source, const unsigned char *buff, int nbyte )
 {
 	struct packetblock *target;
-	unsigned int packet_id = make_pkt_id( (struct iphdr *)buff );
+	unsigned int packet_id = make_pkt_id( buff );
 
 	/* 
  	 * the packet_id is required because the OS should generate 
@@ -90,10 +90,10 @@ void TCPTrack::update_pblock_pointers( struct packetblock *pb ) {
 
 	if(pb->ip->protocol == IPPROTO_TCP) {
 		pb->proto = TCP;
-		pb->tcp = (struct tcphdr *)(((unsigned char *)pb->ip) + (pb->ip->ihl * 4));
+		pb->tcp = (struct tcphdr *)((pb->ip) + (pb->ip->ihl * 4));
 	} else if (pb->ip->protocol == IPPROTO_ICMP) {
 		pb->proto = ICMP;
-		pb->icmp = (struct icmphdr *)(((unsigned char *)pb->ip) + (pb->ip->ihl * 4));
+		pb->icmp = (struct icmphdr *)((pb->ip) + (pb->ip->ihl * 4));
 	} else {
 		pb->proto = OTHER_IP;
 	}
@@ -189,7 +189,7 @@ void TCPTrack::analyze_packets_queue()
 	newp = get_pblock(KEEP, TUNNEL, TCP, last_packet_id, 0);
 	while ( newp != NULL ) 
 	{
-		last_packet_id = make_pkt_id(newp->ip);
+		last_packet_id = make_pkt_id( newp->pbuf );
 		ct = find_sexion( newp );
 
 		if(ct->tf->status == TTL_BRUTALFORCE) 
@@ -216,15 +216,15 @@ void TCPTrack::analyze_packets_queue()
 	}
 }
 
-void TCPTrack::analyze_incoming_icmp(struct packetblock *timeexc)
+void TCPTrack::analyze_incoming_icmp( struct packetblock *timeexc )
 {
 	struct iphdr *badiph;
 	struct tcphdr *badtcph;
 	struct ttlfocus *tf;
 
-	badiph = (struct iphdr *)(((unsigned char *)timeexc->ip + 
+	badiph = (struct iphdr *)((timeexc->ip + 
 			(timeexc->ip->ihl * 4) + sizeof(struct icmphdr)));
-	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl *4));
+	badtcph = (struct tcphdr *)(badiph + (badiph->ihl *4));
 
 	tf = find_ttl_focus(badiph->daddr, 0);
 
@@ -260,7 +260,7 @@ void TCPTrack::analyze_incoming_icmp(struct packetblock *timeexc)
 	}
 }
 
-void TCPTrack::analyze_incoming_synack(struct packetblock *synack)
+void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 {
 	struct ttlfocus *tf;
 
@@ -328,7 +328,7 @@ void TCPTrack::analyze_incoming_synack(struct packetblock *synack)
 	 */
 }
 
-void TCPTrack::analyze_incoming_rstfin(struct packetblock *rstfin) 
+void TCPTrack::analyze_incoming_rstfin( struct packetblock *rstfin )
 {
 	struct sniffjoke_track *ct;
 
@@ -353,7 +353,7 @@ void TCPTrack::analyze_incoming_rstfin(struct packetblock *rstfin)
 	}
 }
 
-void TCPTrack::manage_outgoing_packets(struct packetblock *newp)
+void TCPTrack::manage_outgoing_packets( struct packetblock *newp )
 {
 	struct sniffjoke_track *ct;
 
@@ -385,35 +385,35 @@ void TCPTrack::manage_outgoing_packets(struct packetblock *newp)
 	
 	ct = get_sexion( newp->ip->daddr, newp->tcp->source, newp->tcp->dest);
 
-	if( ct != NULL && ( newp->tcp->rst || newp->tcp->fin ) )
+	if( ct != NULL)
 	{
+		if (newp->tcp->rst || newp->tcp->fin )
+		{
 #ifdef DEBUG
-		printf("FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)\n",
-			ntohl(newp->tcp->seq),
-			ntohl(newp->tcp->ack_seq),
-			newp->tcp->rst, newp->tcp->fin, 
-			newp->tcp->ack,
-			ntohs(newp->tcp->dest), ntohs(newp->tcp->source)
-		);
+			printf("FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)\n",
+				ntohl(newp->tcp->seq),
+				ntohl(newp->tcp->ack_seq),
+				newp->tcp->rst, newp->tcp->fin, 
+				newp->tcp->ack,
+				ntohs(newp->tcp->dest), ntohs(newp->tcp->source)
+			);
 #endif
-		/* 
-		 * clear_sexion don't remove conntrack immediatly, at the first 
-		 * invoke set "shutdown" variable, at the second clear it 
-		 */
-		clear_sexion(ct);
-	}
-
-	if( ct == NULL)
+			/* 
+			 * clear_sexion don't remove conntrack immediatly, at the first 
+			 * invoke set "shutdown" variable, at the second clear it 
+			 */
+			clear_sexion(ct);
+			
+			/* a closed or shutdown session don't require to be hacked */
+			return;
+		}
+	} else
 		return;
 
 	ct->packet_number++;
 	newp->tf = ct->tf;
 
 	/* update_session_stat( xml_stat_root, ct ); */
-
-	/* a closed or shutdown session don't require to be hacked */
-	if(newp->tcp->fin || newp->tcp->rst)
-		return;
 
 	inject_hack_in_queue( newp, ct );
 }
@@ -424,7 +424,7 @@ void TCPTrack::manage_outgoing_packets(struct packetblock *newp)
  * when the software loop for in get_pblock(status, source, proto) the 
  * forged packet are send before the originals one.
  */
-struct packetblock * TCPTrack::get_free_pblock(int pktsize, priority_t prio, unsigned int packet_id)
+struct packetblock * TCPTrack::get_free_pblock( int pktsize, priority_t prio, unsigned int packet_id )
 {
 	int i, end, first_free = -1;
 
@@ -538,7 +538,7 @@ struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, prot
 	return NULL;
 }
 
-void TCPTrack::clear_pblock(struct packetblock *used_pb)
+void TCPTrack::clear_pblock( struct packetblock *used_pb )
 {
 	int i;
 	int free = 1;
@@ -549,15 +549,15 @@ void TCPTrack::clear_pblock(struct packetblock *used_pb)
 		{
 			memset(used_pb, 0x00, sizeof(struct packetblock));
 			
-			if ( i < paxmax /2 )
+			if ( i < paxmax /2 ) {
 				pblock_list_count[0]--;
-			else
+				if (pblock_list_count[0] == 0)
+					recompact_pblock_list(0);
+			} else {
 				pblock_list_count[1]--;
-			
-			if (pblock_list_count[0] == 0)
-				recompact_pblock_list(0);
-			else if (pblock_list_count[1] == 0)
-				recompact_pblock_list(1);
+				if (pblock_list_count[1] == 0)
+					recompact_pblock_list(1);
+			}
 				
 			return;
 		}
@@ -605,7 +605,7 @@ void TCPTrack::recompact_pblock_list(int what)
 }
 
 /* get_sexion search for the session, if not found, return NULL */
-struct sniffjoke_track * TCPTrack::get_sexion( unsigned int daddr, unsigned short sport, unsigned short dport)
+struct sniffjoke_track * TCPTrack::get_sexion( unsigned int daddr, unsigned short sport, unsigned short dport )
 {
 	int i;
 
@@ -721,6 +721,7 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
 					used_ct->tf->min_working_ttl,
 					used_ct->packet_number
 				);
+				
 				memset( (void *)used_ct, 0x00, sizeof(struct sniffjoke_track ) );
 				
 				if ( i < sextraxmax / 2 ) {
@@ -739,7 +740,7 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
 	}
 }
 
-void TCPTrack::recompact_sex_list(int what)
+void TCPTrack::recompact_sex_list( int what )
 {
 	if (sextraxmax > runcopy->max_session_tracked )
 	{
@@ -821,97 +822,133 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 	} chackpo[MAX_HACKS_N];
 
 	int hpool_len = 0;
-
-#if 0
-	if ( pb->tcp->ack ) 
-	{
-		/* SHIFT ack */
-		if ( percentage ( logarithm ( ct->packet_number ), 15 ) ) 
-		{
-			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__shift_ack;
-			chackpo[hpool_len].prcnt = 0;
-			chackpo[hpool_len].debug_info = "shift ACK";
-			chackpo[hpool_len].resize = UNCHANGED_SIZE;
-			hpool_len++;
-		}
-	}
-#endif 
 	int payload_len = ntohs(pb->ip->tot_len) - ((pb->ip->ihl * 4) + (pb->tcp->doff * 4));
 
-	if ( payload_len ) 
-	{
+	if (runcopy->SjH__shift_ack) {
+		
+		/* SHIFT ack */
+		if ( pb->tcp->ack ) 
+		{
+			if ( percentage ( logarithm ( ct->packet_number ), 15 ) ) 
+			{
+				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__shift_ack;
+				chackpo[hpool_len].prcnt = 0;
+				chackpo[hpool_len].debug_info =  (char *)"shift ACK";
+				chackpo[hpool_len].resize = UNCHANGED_SIZE;
+				
+				hpool_len++;
+				if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
+			}
+		}
+	}
+
+	if (runcopy->SjH__fake_data) {
+
 		/* fake DATA injection in stream */
-		if ( percentage ( logarithm ( ct->packet_number ), 10 ) ) 
+
+		if ( payload_len ) 
 		{
-			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_data;
-			chackpo[hpool_len].prcnt = 98;
-			chackpo[hpool_len].debug_info = (char *)"fake data";
-			chackpo[hpool_len].resize = UNCHANGED_SIZE; 
-			hpool_len++;
+			if ( percentage ( logarithm ( ct->packet_number ), 10 ) ) 
+			{
+				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_data;
+				chackpo[hpool_len].prcnt = 98;
+				chackpo[hpool_len].debug_info = (char *)"fake data";
+				chackpo[hpool_len].resize = UNCHANGED_SIZE; 
+				
+				hpool_len++;
+				if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
+			}
+
 		}
-
 	}
 
-	/* fake SEQ injection */
-	if ( percentage ( logarithm ( ct->packet_number ), 15 ) )
-	{
-		chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_seq;
-		chackpo[hpool_len].prcnt = 98;
-		chackpo[hpool_len].debug_info = (char *)"fake SEQ";
-
-		if(payload_len > 312)
-			chackpo[hpool_len].resize = (random() % 200);
-		else
-			chackpo[hpool_len].resize = UNCHANGED_SIZE;
-
-		hpool_len++;
-	}
-
-	/* fake close (FIN/RST) injection, is required a good ack_seq */
-	if ( pb->tcp->ack ) 
-	{
-		if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
+	if (runcopy->SjH__fake_seq) {
+		
+		/* fake SEQ injection */
+		if ( percentage ( logarithm ( ct->packet_number ), 15 ) )
 		{
-			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_close;
+			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_seq;
 			chackpo[hpool_len].prcnt = 98;
-			chackpo[hpool_len].debug_info = (char *)"fake FIN/RST";
+			chackpo[hpool_len].debug_info = (char *)"fake SEQ";
+
+			if(payload_len > 312)
+				chackpo[hpool_len].resize = (random() % 200);
+			else
+				chackpo[hpool_len].resize = UNCHANGED_SIZE;
+
+			hpool_len++;
+			if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
+		}
+	}
+
+	if (runcopy->SjH__fake_close) {
+		
+		/* fake close (FIN/RST) injection, is required a good ack_seq */
+		if ( pb->tcp->ack ) 
+		{
+			if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
+			{
+				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_close;
+				chackpo[hpool_len].prcnt = 98;
+				chackpo[hpool_len].debug_info = (char *)"fake FIN/RST";
+				chackpo[hpool_len].resize = 0;
+				
+				hpool_len++;
+				if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
+			}
+		}
+	}
+		
+	if (runcopy->SjH__zero_window) {
+		
+		/* zero window, test */
+		if ( percentage ( logarithm ( ct->packet_number ), 3 ) ) 
+		{
+			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__zero_window;
+			chackpo[hpool_len].prcnt = 95;
+			chackpo[hpool_len].debug_info = (char *)"zero window";
 			chackpo[hpool_len].resize = 0;
+			
 			hpool_len++;
+			if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
+		}
+	
+	}
+
+	if (runcopy->SjH__valid_rst_fake_seq) {
+		
+		/* valid RST with invalid SEQ */
+		if ( percentage ( logarithm ( ct->packet_number ), 8 ) ) 
+		{
+			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__valid_rst_fake_seq;
+			chackpo[hpool_len].prcnt = 0;
+			chackpo[hpool_len].debug_info = (char *)"valid RST bad SEQ";
+			chackpo[hpool_len].resize = 0;
+			
+			hpool_len++;
+			if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
 		}
 	}
 
-	/* zero window, test */
-	if ( percentage ( logarithm ( ct->packet_number ), 3 ) ) 
-	{
-		chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__zero_window;
-		chackpo[hpool_len].prcnt = 95;
-		chackpo[hpool_len].debug_info = (char *)"zero window";
-		chackpo[hpool_len].resize = 0;
-		hpool_len++;
+	if (runcopy->SjH__fake_syn) {
+		
+		/* fake SYN */
+		if ( percentage ( logarithm ( ct->packet_number ), 11 ) ) 
+		{
+			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_syn;
+			chackpo[hpool_len].prcnt = 94;
+			chackpo[hpool_len].debug_info = (char *)"fake SYN";
+			chackpo[hpool_len].resize = 0;
+			
+			hpool_len++;
+			if(hpool_len == MAX_HACKS_N) goto sendchosenhacks; 
+		}
 	}
 
-	/* valid RST with invalid SEQ */
-	if ( percentage ( logarithm ( ct->packet_number ), 8 ) ) 
-	{
-		chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__valid_rst_fake_seq;
-		chackpo[hpool_len].prcnt = 0;
-		chackpo[hpool_len].debug_info = (char *)"valid RST bad SEQ";
-		chackpo[hpool_len].resize = 0;
-		hpool_len++;
-	}
-
-	/* fake SYN */
-	if ( percentage ( logarithm ( ct->packet_number ), 11 ) ) 
-	{
-		chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_syn;
-		chackpo[hpool_len].prcnt = 94;
-		chackpo[hpool_len].debug_info = (char *)"fake SYN";
-		chackpo[hpool_len].resize = 0;
-		hpool_len++;
-	}
+sendchosenhacks:
 
 	/* -- FINALLY, SENT THE CHOOSEN PACKET(S) */
-	if(hpool_len) /* hpool_len < than MAX_HACKS_N */
+	if(hpool_len)
 	{
 		judge_t court_word;
 		int i;
@@ -932,7 +969,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
  			 * packet_orphanotropy create the new packet with a length 
  			 * regrow (for supply to fake data and ip/tcp options)
  			 */
-			inj = packet_orphanotrophy( pb->ip, pb->tcp, chackpo[i].resize);
+			inj = packet_orphanotrophy( pb, chackpo[i].resize);
 
 			/* copy ttl focus, required in last_pkt_fix */
 			inj->tf = ct->tf;
@@ -966,7 +1003,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
  * enque_ttl_probe has not the intelligence to understand if TTL bruteforcing 
  * is required or not more. Is called in different section of code
  */
-void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct sniffjoke_track *ct)
+void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct sniffjoke_track *ct )
 {
 	unsigned char tested_ttl;
 	/* 
@@ -1024,7 +1061,7 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 #endif
 }
 
-bool TCPTrack::analyze_ttl_stats(struct sniffjoke_track *ct)
+bool TCPTrack::analyze_ttl_stats( struct sniffjoke_track *ct )
 {
 	if(ct->tf->sent_probe == maxttlprobe) 
 	{
@@ -1062,7 +1099,7 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
 	}
 }
 
-struct ttlfocus *TCPTrack::init_ttl_focus(int first_free, unsigned int destip)
+struct ttlfocus *TCPTrack::init_ttl_focus( int first_free, unsigned int destip )
 {
 		if (first_free == -1) {
 			maxttlfocus *= 2;
@@ -1099,7 +1136,7 @@ struct ttlfocus *TCPTrack::init_ttl_focus(int first_free, unsigned int destip)
  * 
  * in ttlfocus are keep the informations for ttl bruteforcing
  */
-struct ttlfocus *TCPTrack::find_ttl_focus(unsigned int destip, int initialize) 
+struct ttlfocus *TCPTrack::find_ttl_focus( unsigned int destip, int initialize )
 {
 	int i, first_free = -1;
 
@@ -1118,7 +1155,7 @@ struct ttlfocus *TCPTrack::find_ttl_focus(unsigned int destip, int initialize)
 	return init_ttl_focus( first_free, destip );
 }
 
-unsigned int TCPTrack::half_cksum(const void *pointed_data, int len)
+unsigned int TCPTrack::half_cksum( const void *pointed_data, int len )
 {
 	unsigned int sum = 0x00;
 	unsigned short carry = 0x00;
@@ -1148,7 +1185,7 @@ unsigned short TCPTrack::compute_sum(unsigned int sum)
 }
 
 
-void TCPTrack::fix_iptcp_sum(struct iphdr *iph, struct tcphdr *tcph)
+void TCPTrack::fix_iptcp_sum( struct iphdr *iph, struct tcphdr *tcph )
 {
 	unsigned int sum;
 	unsigned int l4len = ntohs(iph->tot_len) - (iph->ihl * 4);
@@ -1163,13 +1200,14 @@ void TCPTrack::fix_iptcp_sum(struct iphdr *iph, struct tcphdr *tcph)
 	tcph->check = compute_sum (sum);
 }
 
-unsigned int TCPTrack::make_pkt_id(const struct iphdr *ip) 
+unsigned int TCPTrack::make_pkt_id( const unsigned char* pbuf )
 {
+	struct iphdr *ip = (struct iphdr *)pbuf;
 	struct tcphdr *tcp;
 
-	if(ip->protocol == IPPROTO_TCP) 
+	if(ip->protocol == IPPROTO_TCP)
 	{
-		tcp = (struct tcphdr *)((unsigned char *)ip + (ip->ihl * 4));
+		tcp = (struct tcphdr *)(ip + (ip->ihl * 4));
 		return tcp->seq;
 	}
 	else
@@ -1181,7 +1219,7 @@ unsigned int TCPTrack::make_pkt_id(const struct iphdr *ip)
  * injection should happens ALWAYS, but give the less possible elements
  * to the attacker for detects sniffjoke working style
  */
-bool TCPTrack::percentage(float math_choosed, int vecna_choosed)
+bool TCPTrack::percentage( float math_choosed, int vecna_choosed )
 {
 	return ( (random() % 100) <= ( (int)(math_choosed * vecna_choosed ) / 100 ) );
 }
@@ -1191,7 +1229,7 @@ bool TCPTrack::percentage(float math_choosed, int vecna_choosed)
  *	the hacks must happens, for the most, in the start of the session (the first 10 packets),
  *	other hacks injection should happen in the randomic mode express in logarithm function.
  */
-float TCPTrack::logarithm(int packet_number)
+float TCPTrack::logarithm( int packet_number )
 {
 	int blah;
 
@@ -1224,10 +1262,9 @@ float TCPTrack::logarithm(int packet_number)
  *
  *   at the moment, no hacks use INNOCENT flag.
  */
-void TCPTrack::last_pkt_fix( struct packetblock *pkt)
+void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 {
 #define STARTING_ARB_TTL 46
-	unsigned char final_ttl;
 	time_t now = time(NULL);
 	int i;
 
@@ -1262,16 +1299,15 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt)
 		if(pkt->wtf == PRESCRIPTION)
 			pkt->wtf = GUILTY;
 
-		final_ttl = STARTING_ARB_TTL + (random() % 20);
+		pkt->ip->ttl = STARTING_ARB_TTL + (random() % 20);
 	}
 	else 
 	{
 		if(pkt->wtf == PRESCRIPTION) 
-			final_ttl = pkt->tf->expiring_ttl; 
+			pkt->ip->ttl = pkt->tf->expiring_ttl; 
 		else 	/* GUILTY or INNOCENT */
-			final_ttl = (pkt->tf->expiring_ttl + (random() % 5) + 1 );
+			pkt->ip->ttl = (pkt->tf->expiring_ttl + (random() % 5) + 1 );
 	}
-	pkt->ip->ttl = final_ttl;
 
 	/* 
 	 * 2nd check: HOW MANY IP/TCP OPTIONS SET TO THE PACKET ?, the pbuf_size is
@@ -1279,13 +1315,18 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt)
  	 * packet_orphanotrophy.
  	 */
 	if (!pkt->tcp->syn) { 
-		if (ntohs(pkt->ip->tot_len) < (MTU - 72) )
-			if( percentage( 1, 100 ) )
-				SjH__inject_ipopt( pkt );
+		
+		if( runcopy->SjH__inject_ipopt ) {
+			if ( ntohs(pkt->ip->tot_len) < (MTU - 72) )
+				if( percentage( 1, 100 ) )
+					SjH__inject_ipopt( pkt );
+		}
 
-		if (!check_uncommon_tcpopt(pkt->tcp) && pkt->wtf != INNOCENT )
-			if( percentage( 25, 100 ) )
-				SjH__inject_tcpopt( pkt );
+		if( runcopy->SjH__inject_tcpopt ) {
+			if ( !check_uncommon_tcpopt(pkt->tcp) && pkt->wtf != INNOCENT )
+				if( percentage( 25, 100 ) )
+					SjH__inject_tcpopt( pkt );
+		}
 	}
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
@@ -1295,7 +1336,7 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt)
 		pkt->tcp->check ^= (0xd34d * (unsigned short)random() +1);
 }
 
-bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp) 
+bool TCPTrack::check_uncommon_tcpopt( const struct tcphdr *tcp )
 {
 	unsigned char check;
 	int i;
@@ -1327,12 +1368,12 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 
 /* packet orphanotrophy, create the oraphans packet and raise them correctly */
 struct packetblock *
-TCPTrack::packet_orphanotrophy( const struct iphdr *ip, const struct tcphdr *tcp, int resize)
+TCPTrack::packet_orphanotrophy( const struct packetblock* pb, int resize )
 {
 	struct packetblock *ret;
 	int pbuf_size = 0;
-	int iplen = ip->ihl * 4;
-	int tcplen = tcp->doff * 4;
+	int iplen = pb->ip->ihl * 4;
+	int tcplen = pb->tcp->doff * 4;
 	int payload_len;
 	int new_tot_len;
 
@@ -1342,9 +1383,9 @@ TCPTrack::packet_orphanotrophy( const struct iphdr *ip, const struct tcphdr *tcp
 	switch(resize) 
 	{
 		case UNCHANGED_SIZE:
-			pbuf_size = ntohs(ip->tot_len) + (MAXOPTINJ * 3);
-			new_tot_len = ntohs(ip->tot_len);
- 			payload_len = ntohs(ip->tot_len) - ( iplen + tcplen );
+			pbuf_size = ntohs(pb->ip->tot_len) + (MAXOPTINJ * 3);
+			new_tot_len = ntohs(pb->ip->tot_len);
+ 			payload_len = ntohs(pb->ip->tot_len) - ( iplen + tcplen );
 			break;
 		case 0:
 			pbuf_size = iplen + tcplen + (MAXOPTINJ * 3);
@@ -1363,19 +1404,12 @@ TCPTrack::packet_orphanotrophy( const struct iphdr *ip, const struct tcphdr *tcp
 	ret->proto = TCP;
 	ret->source = LOCAL;
 	ret->status = SEND;
-	ret->orig_pktlen = ntohs(ip->tot_len);
+	ret->orig_pktlen = ntohs(pb->ip->tot_len);
 
-	/* IP header copy */
-	memcpy(&ret->pbuf[0], (void *)ip, iplen);
-
-	/* TCP header copy */
-	memcpy(&ret->pbuf[iplen], (void *)tcp, tcplen );
+	/* IP header copy , TCP header copy, Payload copy, if preserved */
+	memcpy(ret->pbuf, pb->pbuf, iplen + tcplen + payload_len);
 
 	update_pblock_pointers( ret );
-
-	/* Payload copy, if preserved */
-	if(payload_len) 
-		memcpy(&ret->pbuf[iplen + tcplen], (unsigned char *)ip + (iplen + tcplen), payload_len);
 
 	/* fixing the new length */
 	ret->ip->tot_len = htons(new_tot_len);
@@ -1392,7 +1426,7 @@ TCPTrack::packet_orphanotrophy( const struct iphdr *ip, const struct tcphdr *tcp
  * SjH__ = sniffjoke hack
  *
  */
-void TCPTrack::SjH__fake_data( struct packetblock *hackp)
+void TCPTrack::SjH__fake_data( struct packetblock *hackp )
 {
 	int i, diff;
 	unsigned char *payload;
@@ -1406,7 +1440,7 @@ void TCPTrack::SjH__fake_data( struct packetblock *hackp)
 		*(unsigned int *)(&payload[i]) = random();
 }
 
-void TCPTrack::SjH__fake_seq( struct packetblock *hackp)
+void TCPTrack::SjH__fake_seq( struct packetblock *hackp )
 {
 	int payload = ntohs(hackp->ip->tot_len) - ( (hackp->ip->ihl * 4) + (hackp->tcp->doff * 4) );
 	int what = (random() % 3);
@@ -1437,7 +1471,7 @@ void TCPTrack::SjH__fake_seq( struct packetblock *hackp)
 	SjH__fake_data(hackp);
 }
 
-void TCPTrack::SjH__valid_rst_fake_seq( struct packetblock *hackp)
+void TCPTrack::SjH__valid_rst_fake_seq( struct packetblock *hackp )
 {
 	/* 
  	 * if the session is resetted, the remote box maybe vulnerable to:
@@ -1453,7 +1487,7 @@ void TCPTrack::SjH__valid_rst_fake_seq( struct packetblock *hackp)
 }
 
 /* fake syn, some more or less value, but, fake */
-void TCPTrack::SjH__fake_syn( struct packetblock *hackp)
+void TCPTrack::SjH__fake_syn( struct packetblock *hackp )
 {
 	hackp->tcp->psh = 0;
 	hackp->tcp->syn = 1;
@@ -1485,13 +1519,13 @@ void TCPTrack::SjH__fake_syn( struct packetblock *hackp)
 	}
 }
 
-void TCPTrack::SjH__shift_ack( struct packetblock *hackp)
+void TCPTrack::SjH__shift_ack( struct packetblock *hackp )
 {
 	hackp->tcp->ack_seq = htonl(ntohl(hackp->tcp->ack_seq) + 65535 );
 	hackp->ip->id = htons(ntohs(hackp->ip->id) + (random() % 10));
 }
 
-void TCPTrack::SjH__fake_close( struct packetblock *hackp)
+void TCPTrack::SjH__fake_close( struct packetblock *hackp )
 {
 	int original_size = hackp->orig_pktlen - (hackp->ip->ihl * 4) - (hackp->tcp->doff * 4);
 	hackp->ip->id = htons(ntohs(hackp->ip->id) + (random() % 10));
@@ -1509,7 +1543,7 @@ void TCPTrack::SjH__fake_close( struct packetblock *hackp)
 	hackp->tcp->seq = htonl( ntohl(hackp->tcp->seq) - original_size + 1 );
 }
 
-void TCPTrack::SjH__zero_window( struct packetblock *hackp)
+void TCPTrack::SjH__zero_window( struct packetblock *hackp )
 {
 	hackp->tcp->syn = hackp->tcp->fin = hackp->tcp->rst = 1;
 	hackp->tcp->psh = hackp->tcp->ack = 0;
@@ -1538,8 +1572,8 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 
 	/* 2: shift the tcphdr and the payload byte after the reserved space to IPOPT_RR */
 	memmove(endip + ( (route_n + 1) * 4), endip, l47len);
-	hackp->tcp = (struct tcphdr *)(hackp->pbuf + sizeof(struct iphdr) + ( (route_n + 1) * 4) );
 	hackp->ip = (struct iphdr *)hackp->pbuf;
+	hackp->tcp = (struct tcphdr *)(hackp->pbuf + sizeof(struct iphdr) + ( (route_n + 1) * 4) );
 
 	endip[i++] = IPOPT_NOP;
 	endip[i++] = IPOPT_RR;
@@ -1567,6 +1601,7 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	hackp->ip->ihl = 15; /* 20 byte ip hdr, 40 byte options */
 	hackp->ip->tot_len = htons(60 + l47len);
 }
+
 
 void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp ) 
 {
