@@ -203,7 +203,7 @@ static void print_sniffjoke_page(FILE *out, struct sj_config *runcopy)
 			"<link rel='stylesheet' href='sniffjoke.css' type='text/css'>\n"
 			"</head><body><form name='sjform' method=GET>";
 
-	const char *html_epilogue ="<br><br>ciao e grazie</form></body></html>";
+	const char *html_epilogue ="<br><br>bye</form></body></html>";
 
 	const char *title_open="<div class='titolo'>";
 	const char *title_close="</div>";
