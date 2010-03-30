@@ -10,7 +10,7 @@ using namespace std;
 #include <linux/if_tun.h>
 #include <linux/if_ether.h>
 
-#include "sniffjoke.hh"
+#include "sniffjoke.h"
 
 NetIO::NetIO(SjConf *sjconf) 
 {
@@ -23,8 +23,8 @@ NetIO::NetIO(SjConf *sjconf)
 
 	runcopy = sjconf->running;
 
-	error_msg =NULL;
-	error_len =0;
+	error_msg = NULL;
+	error_len = 0;
 
 	/* pseudo sanity check of received data, sjconf had already make something */
 	if(strlen(runcopy->gw_ip_addr) < 7 || strlen(runcopy->gw_ip_addr) > 17) {
@@ -135,7 +135,7 @@ NetIO::~NetIO()
 
 void NetIO::network_io(source_t sourcetype, TCPTrack *ct) 
 {
-	/* doens't work with MTU 9k, MTU is defined in sniffjoke.hh as 1500 */
+	/* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
 	static unsigned char pktbuf[MTU];
 	int nbyte;
 
@@ -152,58 +152,53 @@ void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
 	ct->add_packet_queue(sourcetype, pktbuf, nbyte);
 }
 
-/* this method send all the packets sets ad "SEND" */
+/* this method send all the packets sets as "SEND" */
 void NetIO::queue_flush( TCPTrack *ct )
 {
 	int wbyt = 0;
-	struct packetblock *packet =NULL;
-
-	/* protocol 0 mean "every protocol" */
-	packet = ct->get_pblock(SEND, NETWORK, ANY_PROTO, 0, 0);
-	while( packet != NULL )
-	{
-		wbyt = write( tunfd, packet->pbuf, packet->pbuf_size );
-		check_call_ret("Writing in tunnel", errno, wbyt);
-
-		ct->clear_pblock(packet);
-		packet = ct->get_pblock(SEND, NETWORK, ANY_PROTO, 0, 1);
-	}
+	struct packetblock *packet = NULL;
 
 	/* 
- 	 * the NETWORK are flushed on the tunnel the other source_t 
- 	 * could be LOCAL or TUNNEL, in both case the packets goes
- 	 * through the network
+ 	 * the NETWORK are flushed on the tunnel.
+ 	 * the other source_t could be LOCAL or TUNNEL;
+ 	 * in both case the packets goes through the network.
  	 */
- 	packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, 0, 0);
+	packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, false);
 	while( packet != NULL )
 	{
-		if(packet->source != TTLBFORCE) 
-		{
-			/* fixing TTL, fixing checksum and IP/TCP options */
-			ct->last_pkt_fix(packet);
+		if(packet->source == NETWORK) {
+			wbyt = write( tunfd, packet->pbuf, packet->pbuf_size );
+			check_call_ret("Writing in tunnel", errno, wbyt);
+		} else {
+			
+			if(packet->source != TTLBFORCE) 
+			{
+				/* fixing TTL, fixing checksum and IP/TCP options */
+				ct->last_pkt_fix(packet);
+			}
+			
+			wbyt = sendto(
+				netfd, 
+				packet->pbuf, 
+				ntohs(packet->ip->tot_len),
+				0x00,
+				(struct sockaddr *)&send_ll,
+				sizeof(send_ll)
+			);
+			check_call_ret("Writing in network", errno, wbyt);
+			
 		}
-
-		wbyt = sendto(
-			netfd, 
-			packet->pbuf, 
-			ntohs(packet->ip->tot_len),
-			0x00,
-			(struct sockaddr *)&send_ll,
-			sizeof(send_ll)
-		);
-		check_call_ret("Writing in network", errno, wbyt);
-
 		ct->clear_pblock(packet);
-		packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, 0, 1);
+		packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, true);
 	}
 
 #if 0
 	/* remove packet marked as DROP */
-	packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, 0, 0);
+	packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, false);
 	while( (packet != NULL )
 	{
 		ct->clear_pblock(packet);
-		packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, 0, 1);	
+		packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, true);
 	}
 #endif
 }

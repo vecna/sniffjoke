@@ -5,7 +5,7 @@ using namespace std;
 #include <stdlib.h>
 #include <string.h>
 
-#include "sniffjoke.hh"
+#include "sniffjoke.h"
 
 void SjConf::dump_config(const char *dumpfname)
 {

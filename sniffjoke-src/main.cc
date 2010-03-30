@@ -9,7 +9,7 @@ using namespace std;
 #include <sys/select.h>
 #include <sys/types.h>
 
-#include "sniffjoke.hh"
+#include "sniffjoke.h"
 
 const char *default_cfg = "/etc/sniffjoke.conf";
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
@@ -223,4 +223,3 @@ restart:
 	}
 	/* nevah here */
 }
-

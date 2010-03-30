@@ -7,7 +7,7 @@ using namespace std;
 
 /* original source http://swill.sourceforge.net/ */
 #include <swill/swill.h>
-#include "sniffjoke.hh"
+#include "sniffjoke.h"
 
 static sj_config *runcopy_static;
 

@@ -1,5 +1,5 @@
 /*
- * sniffjoke.hh, October 2008: 
+ * sniffjoke.h, October 2008: 
  * 
  * "does public key and web of trust could create a trustable peer to peer network ?"
  * "yes."
@@ -14,7 +14,7 @@
 #include <net/ethernet.h>
 
 #define STRERRLEN	1024
-int check_call_ret( const char *, int, int, char **em =NULL, int *el =NULL);
+int check_call_ret( const char *, int, int, char **em = NULL, int *el = NULL);
 
 struct port_range {
 	unsigned short start;
@@ -230,7 +230,7 @@ public:
 	~TCPTrack();
 	void add_packet_queue( const source_t, const unsigned char *, int );
 	void analyze_packets_queue();
-	struct packetblock *get_pblock( status_t, source_t, proto_t, unsigned int, int );
+	struct packetblock *get_pblock( status_t, source_t, proto_t, bool);
 	void clear_pblock( struct packetblock * );
 	void last_pkt_fix( struct packetblock * );
 };

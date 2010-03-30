@@ -163,7 +163,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-sniffjoke_SOURCES = sniffjoke.hh main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc
+sniffjoke_SOURCES = sniffjoke.h main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc
 LDADD = /usr/local/lib/libswill.a
 all: all-am
 
