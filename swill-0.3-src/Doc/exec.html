@@ -1,0 +1,294 @@
+<html>
+<head>
+<title>Why SWILL?</title>
+</head>
+
+<body bgcolor="#ffffff">
+
+<h1>Why SWILL?</h1>
+
+<b>By David "Mr. Swill" Beazley</b><br>
+beazley@cs.uchicago.edu
+
+<p>
+Have you ever written a C/C++ program and later asked yourself, "gee,
+wouldn't it be cool if this had some kind of web interface?"  If not,
+please stop right now and cruise on over to an XML Java Beano site or
+something. Otherwise, please continue...
+
+<p>
+Simply stated, SWILL is a solution to one of those nagging programming
+problems---namely that of making programs easier to use.
+Specifically, SWILL is a library that focuses on the problem of adding
+remote accessibility to an application.
+
+<p>
+To better understand this problem, it might be useful to have a little
+background.  In a past life (well, before joining a CS department), I
+spent most of my time hanging out with computational physicists
+working on scientific simulation sofware.  One of the problems with
+writing scientific software is that a lot of the applications seem to
+run for a very long time (tens to hundreds of hours).  Obviously, this
+type of computing takes a certain amount of patience and faith.  Well,
+faith that your 50 hour batch job is actually going to produce the
+answer that you were expecting.  Needless to say, whenever we ran a
+long program like this, my colleagues and I would almost always try
+and monitor its progress.  For instance, we would periodically check
+on log files or we might FTP a data file to a local machine in order
+to take a look at it (to make sure the simulation hadn't blown up or
+something).  The only problem with this kind of monitoring is that it
+is often clumsy and inconvenient.  For instance, if I'm at home, I'm
+certainly not going to download a big data file over a modem onto my
+PC.  Similarly, if all I want to do is make a quick status check,
+there ought to be a better way to do it than having to log into the
+compute server, search for data files, and inspect their contents
+(okay, so I'm lazy).
+
+<p>
+One solution to the monitoring problem is to add some kind of simple
+remote access feature.  The only catch is that <em>last</em> person
+you want to implement "remote access" has got to be a computer
+scientist.  This is because their "simple" solution to the problem
+will undoubtedly turn into a peta-scalable peer-to-peer collaborative
+virtual immersive problem solving environment involving 12 network
+services, 3 middleware layers, 2 million dollars in special purpose
+hardware (i.e., a "demo lair"), 8 full-time sysadmins, 13 postdocs, 52
+graduate students, and a scruffy cocker-spaniel named "boochie."  Believe me,
+it's not pretty--I know.
+
+<p>
+Perhaps a more attractive solution to this problem would be to modify
+an application so that it can behave like a simple web server.  For
+instance, if a scientific program had a web server embedded in it, you
+could just point your browser at it and get real-time status
+information--including plots and the results of data analysis. Since
+web browsers work everywhere, there would be no need to write
+any kind of special user client program.  Furthermore, since the
+browser would be connecting directly to the application, there would
+be no need for special middleware or a complicated software
+configuration.  Clearly, this kind of approach has its benefits.
+The only problem is where would you find an embeddable server to do this?
+
+<p>
+Well, the answer to that question is SWILL.  SWILL is minimalistic web
+server in the form of a programming library.  Bits and pieces of SWILL
+have actually been floating around for the last 6 years.  An early
+proof of concept is briefly mentioned in an article that appeared in
+Computers in Physics [1].  A few years after that, I had a couple of
+students (Mike Sliczniak and Hasan Baran Kovuk) look at the idea of
+having a more generic C implementation.  Although they have long since
+moved on, I have continued to work on their C implementation and to
+use it in a variety of personal projects.  For example, the bug
+tracking database for <a href="http://systems.cs.uchicago.edu:3737">my
+book</a> was written using SWILL in 1999.  I also used SWILL to write
+the software for reviewing papers in the 8th International Python
+Conference (mostly as a test of the library---little did others know
+that it wasn't written in Python).  SWILL has even been used to
+implement a parse-tree browser for the <a
+href="http://www.swig.org">SWIG</a> project and to implement a hidden
+monitoring tool for the student kernel project in my operating systems
+class.  It is only recently that Terry Lampoudi and I cleaned up the
+library and decided to make a public release.  
+
+<h3>A bare-bones web server</h3>
+
+The problem with most web servers is that their whole execution
+environment is mismatched to the problem of remote application access.
+This is because the server ends up being the primary focus of everything.
+As a result, applications end up being second-class citizens to be 
+controlled using CGI scripts, server plugins, or some other kind of extension
+mechanism. Unfortunately, this doesn't work very well in a lot 
+programs.  For example, I don't have the slightest idea how I would make a
+big simulation code run as a CGI script or a server plugin.  Nor am I inclined
+to spend a lot of time trying to find out.
+
+<p>
+SWILL turns this situation on its head and approaches the problem from
+a slightly different angle---maybe it would be easier to add a web
+server to the application instead.  To do this, SWILL makes it possible
+to activate a web server with about the same simplicity as opening a file.
+For instance, here is a simple "Hello World" example in SWILL:
+
+<blockquote>
+<pre>
+#include &lt;stdio.h&gt;
+#include "swill.h"
+
+void hello(FILE *f) {
+   fprintf(f,"Hello World\n");
+}
+
+int main() {
+    swill_init(8080);                       /* Initialize the server */
+    swill_handle("hello.txt", hello, 0);    /* Add a document */
+    while (1) {
+        swill_serve();                      /* Look for a connection */
+    }
+}
+</pre>
+</blockquote>
+
+Okay, that was simple enough---in fact, so simple that even a novice C
+programmer wouldn't have too much trouble figuring out how to use the
+library to do something.  Naturally, if you run this program, you'll find that
+HTTP requests for the document <tt>"hello.txt"</tt> produce the output that you want.
+
+<p>
+As you can see, there's very little in the way of server
+configuration. Not only that, you don't have to do any special I/O nor
+do you have to mess around with aspects of the underlying network
+protocol. You just write some functions using <tt>fprintf()</tt> and
+it just "works."  This kind of stripped down functionality is the
+primary design objective of SWILL. In fact, the library only contains
+about 25 functions (most of which are simple utility functions).
+Furthermore, the library intentionally omits support for a variety of
+advanced features such as concurrency, threading, Unicode, secure
+sockets, and so forth. 
+
+<p>
+Given that SWILL is so minimal, it's probably not something that you
+would use to write a new internet application.  Therefore, why
+would you want to use it?  The next few sections provide a few examples.
+
+<h3>Remote monitoring and control</h3>
+
+As mentioned, a major motivation for writing SWILL was the problem of monitoring
+long-running scientific applications. Although this is a very specific
+example, there may be a variety of other applications in which a
+remote monitoring facility could be useful.  Examples might include
+hardware emulators, daemons, and so forth.
+
+To add a web interface to these applications, SWILL provides a special
+polling function that can be placed into simulation loops, event
+loops, and other parts of an application.  For instance,
+
+<blockquote>
+<pre>
+void main() {
+    swill_init(8080);
+    swill_handle(...);          /* Register some documents */
+    swill_handle(...);          /* Register some documents */
+    swill_handle(...);          /* Register some documents */
+    ...
+    while (1) {
+       swill_poll();            /* Connection? */
+       ...
+       do other useful work
+       ...
+    }
+}
+</pre>
+</blockquote>
+
+Using such an interface, an application will normally just go about
+its business.  However, if an HTTP request is made, process
+information and other user-definable diagnostics can be obtained.  In
+an advanced setting, you might even be able to get graphical plots or
+alter the execution of the application by supplying
+information from HTML form variables.  The possibilities are really
+only limited by your imagination or deviousness depending on what
+you are trying to accomplish.
+
+<h3>Diagnostics and Debugging</h3>
+
+Another interesting use of SWILL is as a debugging and diagnostics
+tool.  When I write software, I frequently find myself using
+<tt>printf()</tt> as a debugging tool.  For instance, if I need to
+display some internal data structure, I may write a debugging function
+that can be enabled with some special command line option or compiler
+flags.  Although this works acceptably well in simple cases, it can
+actually be quite difficult to get a handle on more complicated data
+structures.  For instance, in the SWIG project, I frequently find
+myself having to examine the contents of parse trees---which may
+contain thousands of nodes and which have a rather complicated
+internal structure.  Trying to examine this data with print statements 
+is possible, but it's also pretty annoying.
+
+<p>
+Using SWILL, you can build a debugging tool that is not substantially
+different than using print statements, but which allows you to have
+obtain diagnostics using a browser.  For instance, various
+debugging functions can simply be registered as web documents.  Then,
+as an optional application feature, you can turn on the web interface
+and use it as a mechanism for accessing application data.
+This turns out to be a very interesting way to examine complex data
+structures like trees and graphs.   For instance, each node in a tree
+might be displayed in its own web page.  On that page, pointers to other
+nodes would simply be represented as hyperlinks.   Then, if you wanted
+to go pointer chasing, you could simply click your way through the data structures
+of an application as a collection of pages.  This is pretty cool.
+
+<p>
+Web based debugging is also an interesting way to detect more
+transient types of programming problems such as memory leaks.  For
+instance, suppose that you instrumented a memory allocator with an
+optional web interface.  Using this, you might be able to monitor free
+memory lists, in use memory blocks, and so forth as a program ran.
+Since such monitoring would be dynamic, you might be able to get a
+much more interesting view of the situation than you would from a
+debugging trace file.
+
+<h3>Security, Reliability, and other Concerns</h3>
+
+Undoubtedly, there are system administrators and others who might
+think that SWILL is nothing more than a huge security hole.  It is
+true that by allowing users to create web servers, applications can be
+remotely accessed and possibly attacked by intruders.  However, it is
+also important to note that SWILL is primarily intended for user-level
+applications.  The server doesn't run in any kind of priviledged mode
+and doesn't enable a user to do anything that they couldn't already
+implement using the socket library or any number of popular scripting
+languages.  That said, SWILL does provide a number of very basic
+security features such as IP filtering and HTTP basic authentication.
+Although such features might not be enough to deter a truly dedicated
+hacker, this is more than sufficient to keep casual script-kiddies
+from poking at your web-enabled fluid dynamics code.
+
+<h3>Bottom line</h3>
+
+SWILL is well-suited for a very specific class of applications.  In
+particular, programs where web access might be useful, but where the
+primary focus is not on creating some bloated "internet application."
+The simplicity of the library also makes it easy to add an internet
+capability to all sorts of one-off customized programs as might be
+written by scientists, engineers, and other do-it-yourself
+programmers.
+
+<h3>References</h3>
+
+<P>
+[1] D.M. Beazley and P.S. Lomdahl, "Controlling the Data Glut in Large-Scale Molecular Dynamics Simulations", Computers in Physics, Vol. 11, No. 3.
+   (1997), p. 230-238. 
+
+<p>
+[2] S. Lampoudi, D.M. Beazley, "SWILL: A Simple Embedded Web Server Library", To appear in the Freenix track of the USENIX technical conference,
+     Monterey, CA, June 13, (2002). 
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

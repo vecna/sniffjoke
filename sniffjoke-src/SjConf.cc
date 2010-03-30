@@ -64,7 +64,7 @@ SjConf::SjConf(const char *confname)
 
 		memset(&readed, 0x00, sizeof(struct sj_config));
 
-		i =fread((void *)&readed, sizeof(struct sj_config), 1, cF);
+		i = fread((void *)&readed, sizeof(struct sj_config), 1, cF);
 		check_call_ret("fread of config file", errno, i - 1);
 
 		if(readed.MAGIC != magic_check) 
@@ -87,15 +87,6 @@ SjConf::SjConf(const char *confname)
 			readed.tun_number
 		);
 
-		/* ports range where apply sniffjoke hacks */
-		if(readed.port_range_n) 
-		{
-			pr = (struct port_range *)calloc(readed.port_range_n, sizeof(struct port_range));
-			check_call_ret("memory allocation", errno, pr == NULL ? -1 : 0 );
-
-			for(i =0; i < readed.port_range_n; i++)
-				fread((void *)&pr[i], sizeof(struct port_range), 1, cF);
-		}
 		fclose(cF);
 
 		memcpy(running, &readed, sizeof(sj_config));
@@ -136,7 +127,7 @@ SjConf::SjConf(const char *confname)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i =0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
+		for(i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
 			running->interface[i] = imp_str[i];
 
 		if(i < 3) {
@@ -157,7 +148,7 @@ SjConf::SjConf(const char *confname)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i =0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++)
+		for(i = 0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++)
 			running->local_ip_addr[i] = imp_str[i];
 
 		printf("  + automatically acquired local ip address [%s]\n", running->local_ip_addr);
@@ -168,7 +159,7 @@ SjConf::SjConf(const char *confname)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i =0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++) 
+		for(i = 0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++) 
 			running->gw_ip_addr[i] = imp_str[i];
 
 		if(strlen(running->gw_ip_addr) < 7) {
@@ -194,7 +185,7 @@ SjConf::SjConf(const char *confname)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i =0; i < strlen(imp_str) && ( isxdigit(imp_str[i]) || imp_str[i] == ':' ); i++)
+		for(i = 0; i < strlen(imp_str) && ( isxdigit(imp_str[i]) || imp_str[i] == ':' ); i++)
 			running->gw_mac_str[i] = imp_str[i];
 
 		if(i != 17) 
@@ -207,8 +198,10 @@ SjConf::SjConf(const char *confname)
 				&running->gw_mac_addr[4], &running->gw_mac_addr[5]
 			);
 		}
-
+		
+		
 endofautodetect:
+
 		/* setting common defaults */
 		running->sj_run = 0;
 		running->max_session_tracked = 20;
@@ -217,7 +210,19 @@ endofautodetect:
 		running->MAGIC = magic_check;
 		running->web_bind_port = 8844;
 		running->max_ttl_probe = 26;
-		running->port_range_n = 0;
+		
+		/* hacks common defaults */
+		running->SjH__shift_ack = false;			/* implemented, need testing */
+		running->SjH__fake_data = true;				/* implemented, enabled */
+		running->SjH__fake_seq = true;				/* implemented, enabled */
+		running->SjH__fake_close = true;			/* implemented, enabled */
+		running->SjH__zero_window = true;			/* implemented, enabled */
+		running->SjH__valid_rst_fake_seq = true;	/* implemented, enabled */
+		running->SjH__fake_syn = true;				/* implemented, enabled */
+		running->SjH__half_fake_syn = false;        /* currently not implemented */
+		running->SjH__half_fake_ack = false;        /* currently not implemented */
+		running->SjH__inject_ipopt = true;			/* implemented, enabled */
+		running->SjH__inject_tcpopt = true;			/* implemented, enabled */
 	}
 
 	running->reload_conf = true;

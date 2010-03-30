@@ -11,7 +11,7 @@ work. One copy of SWILL 0.2 is distributed in this SniffJoke package.
 
 HOW TO COMPILE/INSTALL:
 
-cd swill-0.2-src/
+cd swill-0.3-src/
 ./configure && make && make install
 cd ..
 cd sniffjoke-src/

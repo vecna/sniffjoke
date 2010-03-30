@@ -159,12 +159,14 @@ void NetIO::queue_flush( TCPTrack *ct )
 	struct packetblock *packet =NULL;
 
 	/* protocol 0 mean "every protocol" */
-	while( (packet = ct->get_pblock(SEND, NETWORK, ANY_PROTO, 0)) != NULL )
+	packet = ct->get_pblock(SEND, NETWORK, ANY_PROTO, 0, 0);
+	while( packet != NULL )
 	{
 		wbyt = write( tunfd, packet->pbuf, packet->pbuf_size );
 		check_call_ret("Writing in tunnel", errno, wbyt);
 
 		ct->clear_pblock(packet);
+		packet = ct->get_pblock(SEND, NETWORK, ANY_PROTO, 0, 1);
 	}
 
 	/* 
@@ -172,7 +174,8 @@ void NetIO::queue_flush( TCPTrack *ct )
  	 * could be LOCAL or TUNNEL, in both case the packets goes
  	 * through the network
  	 */
-	while( (packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, 0)) != NULL )
+ 	packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, 0, 0);
+	while( packet != NULL )
 	{
 		if(packet->source != TTLBFORCE) 
 		{
@@ -191,13 +194,16 @@ void NetIO::queue_flush( TCPTrack *ct )
 		check_call_ret("Writing in network", errno, wbyt);
 
 		ct->clear_pblock(packet);
+		packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, 0, 1);
 	}
 
 #if 0
 	/* remove packet marked as DROP */
-	while( (packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, 0)) != NULL )
+	packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, 0, 0);
+	while( (packet != NULL )
 	{
 		ct->clear_pblock(packet);
+		packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, 0, 1);	
 	}
 #endif
 }
