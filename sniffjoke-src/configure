@@ -658,6 +658,7 @@ ac_ct_CXX
 CXXDEPMODE
 am__fastdepCXX_TRUE
 am__fastdepCXX_FALSE
+SWILL_PATH
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -1247,6 +1248,12 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
+
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-swillpath=<path> swill installation path (default /usr/local/)
+
 
 Some influential environment variables:
   CC          C compiler command
@@ -2018,7 +2025,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=sniffjoke
- VERSION=0.1
+ VERSION=0.3
 
 
 cat >>confdefs.h <<_ACEOF
@@ -3805,7 +3812,116 @@ test -z "$INSTALL_SCRIPT" && INSTALL_SCRIPT='${INSTALL}'
 
 test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
-ac_config_files="$ac_config_files Makefile"
+
+##########################################################################
+# Testing the swill installation
+##########################################################################
+
+# save the initial compilation flags
+OLD_CFLAGS=$CFLAGS
+OLD_LDFLAGS=$LDFLAGS
+
+# default installation path
+SWILL_PATH=/usr/local/
+
+
+# Check whether --with-swillpath was given.
+if test "${with-swillpath+set}" = set; then
+  withval=$with-swillpath; SWILLPATHSET=1
+else
+  SWILLPATHSET=0
+fi
+
+
+if test $SWILLPATHSET = 1 ; then
+	# sets the compilation flags for AC_CHECK_LIB
+	CFLAGS="$CFLAGS -I ${with-swillpath}/include"
+	LDFLAGS="$LDFLAGS -L ${with-swillpath}/lib"
+	SWILL_PATH=$with-swillpath
+
+fi
+
+# tests for the library trying to compile a small program with 'swill_init_ssl'
+#
+# REMEMBER: from 'info autoconf2.13 libraries'
+# If ACTION-IF-FOUND is not specified, the default action
+# will add `-lLIBRARY' to `LIBS' and define `HAVE_LIBLIBRARY' (in all capitals).
+
+{ echo "$as_me:$LINENO: checking for swill_init_ssl in -lswill" >&5
+echo $ECHO_N "checking for swill_init_ssl in -lswill... $ECHO_C" >&6; }
+if test "${ac_cv_lib_swill_swill_init_ssl+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lswill  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char swill_init_ssl ();
+int
+main ()
+{
+return swill_init_ssl ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_lib_swill_swill_init_ssl=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_swill_swill_init_ssl=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_swill_swill_init_ssl" >&5
+echo "${ECHO_T}$ac_cv_lib_swill_swill_init_ssl" >&6; }
+if test $ac_cv_lib_swill_swill_init_ssl = yes; then
+  echo -n
+else
+  { { echo "$as_me:$LINENO: error: 'swill not found: use --with-swillpath option'" >&5
+echo "$as_me: error: 'swill not found: use --with-swillpath option'" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+
+# restore the initial compilation flags
+CFLAGS=$OLD_CFLAGS
+LDFLAGS=$OLD_LDFLAGS
+
+ac_config_files="$ac_config_files Makefile doc/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4408,6 +4524,7 @@ do
   case $ac_config_target in
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+    "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
@@ -4550,11 +4667,12 @@ ac_ct_CXX!$ac_ct_CXX$ac_delim
 CXXDEPMODE!$CXXDEPMODE$ac_delim
 am__fastdepCXX_TRUE!$am__fastdepCXX_TRUE$ac_delim
 am__fastdepCXX_FALSE!$am__fastdepCXX_FALSE$ac_delim
+SWILL_PATH!$SWILL_PATH$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 83; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 84; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -5022,3 +5140,15 @@ if test "$no_create" != yes; then
   $ac_cs_success || { (exit 1); exit 1; }
 fi
 
+
+cat <<EOF
+
+
+	Path to swill installation:	$SWILL_PATH
+	(you can change this with
+	 	'$ ./configure --with-swillpath=<path>')
+
+	Now is the 'make && make install' turn
+
+
+EOF

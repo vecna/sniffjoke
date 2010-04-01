@@ -4,16 +4,46 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_INSTALL
 
+##########################################################################
+# Testing the swill installation
+##########################################################################
+
+# save the initial compilation flags
+OLD_CFLAGS=$CFLAGS
+OLD_LDFLAGS=$LDFLAGS
+
+# default installation path
+SWILL_PATH=/usr/local/
+
 AC_ARG_WITH([swillpath],
 	    [AS_HELP_STRING(
 	     [--with-swillpath=<path>],
 	     [swill installation path (default /usr/local/)])
 	    ],
-	    [],
-	    [with_swillpath=/usr/local])
-AC_SUBST(SWILL_PATH,$with_swillpath)
+	    [SWILLPATHSET=1],
+	    [SWILLPATHSET=0])
 
-AC_OUTPUT(Makefile)
+if test $SWILLPATHSET = 1 ; then
+	# sets the compilation flags for AC_CHECK_LIB
+	CFLAGS="$CFLAGS -I ${with_swillpath}/include"
+	LDFLAGS="$LDFLAGS -L ${with_swillpath}/lib"
+	AC_SUBST(SWILL_PATH,$with_swillpath)
+fi
+
+# tests for the library trying to compile a small program with 'swill_init_ssl'
+#
+# REMEMBER: from 'info autoconf2.13 libraries'
+# If ACTION-IF-FOUND is not specified, the default action
+# will add `-lLIBRARY' to `LIBS' and define `HAVE_LIBLIBRARY' (in all capitals).
+AC_CHECK_LIB(swill,swill_init_ssl,
+	     [echo -n ],
+	     AC_MSG_ERROR('swill not found: use --with-swillpath option'))
+
+# restore the initial compilation flags
+CFLAGS=$OLD_CFLAGS
+LDFLAGS=$OLD_LDFLAGS
+
+AC_OUTPUT(Makefile doc/Makefile)
 
 cat <<EOF
 
