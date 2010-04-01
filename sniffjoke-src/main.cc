@@ -6,12 +6,17 @@ using namespace std;
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include <sys/select.h>
 #include <sys/types.h>
 
 #include "sniffjoke.h"
 
 const char *default_cfg = "/etc/sniffjoke.conf";
+const char *default_log = "/tmp/sniffjoke.log";
+const int default_web_bind_port = 8844;
+
+
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
 const char *prog_version = "0.3";
@@ -22,10 +27,18 @@ static WebIO *webio;
 static TCPTrack *conntrack;
 
 static void sniffjoke_help(const char *pname) {
-	printf("%s [config file]\n", pname);
-	printf(" default config file is %s\n", pname);
-	printf("%s -v print sniffjoke version\n", pname);
-	printf("info and example: %s\n", help_url);
+	printf(
+		"%s receive some --options:\n"
+		"--debug [level 1-3]\tenable debug and set the verbosity [default:1]\n"
+		"--logfile [file]\tset a logfile, [default %s]\n"
+		"--cmd\t\t\tsend a cmd to a running sniffjoke without the web gui\n"
+		"--bind-port [port]\tset the port where bind management webserver [default:%d]\n"
+		"--bind-addr [addr]\tset interface where bind management webserver [default:%s]\n"
+		"--conf [file]\t\tconfiguration file [default:%s]\n"
+		"--version\t\tshow sniffjoke version\n"
+		"--help\t\t\tshow this help\n"
+		"\t\t\thttp://www.delirandom.net/sniffjoke\n",
+	pname, default_log, default_web_bind_port, "127.0.0.1", default_cfg);
 }
 
 static void sniffjoke_version(const char *pname) {
@@ -86,26 +99,94 @@ void sniffjoke_sigtrap(int signal)
 	raise(SIGKILL);
 }
 
-int main(int argc, const char **argv) {
-	const char *cfg =NULL;
+int main(int argc, char **argv) {
 	fd_set infd;
-	int x, nfds;
+	int i, x, charopt, nfds;
 	struct timeval timeout;
 	bool refresh_confile = false;
 
-	if(argc != 1) 
+	/* options -- FIXME - must became user option struct */
+	unsigned int debug_level = 0;
+	unsigned short bind_port = default_web_bind_port;
+	char *logfname =NULL, *cfg =NULL, *bind_addr =NULL, *command_input =NULL;
+
+	struct option sj_option[] =
 	{
-		if(strstr(argv[1], "-h") ) {
+		{ "debug", required_argument, NULL, 'd' },
+		{ "cmd", required_argument, NULL, 'c' },
+		{ "bind-port", required_argument, NULL, 'p' },
+		{ "bind-addr", required_argument, NULL, 'a' },
+		{ "help", optional_argument, NULL, 'h' },
+		{ "logfile", required_argument, NULL, 'l' },
+		{ "conf", required_argument, NULL, 'f' },
+		{ "version", optional_argument, NULL, 'v' },
+		{ NULL, 0, NULL, 0 }
+	};
+
+       for(i = 1; i < argc; i++) {
+                if(argv[i][0] == '-' && argv[i][1] != '-') {
+                        printf("options: %s wrong: only --long-options are accepted\n", argv[i]);
 			sniffjoke_help(argv[0]);
 			return -1;
-		}
+                }
+        }
 
-		if(strstr(argv[1], "-v") ) {
-			sniffjoke_version(argv[0]);
-			return 0;
-		}
 
-		cfg = argv[1];
+	while((charopt = getopt_long(argc, argv, "dchlfv", sj_option, NULL)) != -1)
+	{
+		switch(charopt) {
+			case 'd': /* debug level */
+				debug_level = atoi(optarg);
+				break;
+			case 'c':
+				command_input = strdup(optarg);
+				break;
+			case 'p':
+				bind_port = atoi(optarg);
+				break;
+			case 'a':
+				bind_addr = strdup(optarg);
+				break;
+			case 'h':
+				sniffjoke_help(argv[0]);
+				return -1;
+			case 'l':
+				logfname = strdup(optarg);
+				break;
+			case 'f':
+				cfg = strdup(optarg);
+				break;
+			case 'v':
+				sniffjoke_version(argv[0]);
+				return 0;
+			default:
+				sniffjoke_help(argv[0]);
+				return -1;
+
+			argc -= optind;
+			argv += optind;
+		}
+	}
+
+	/* check integrity of the readed options */
+	/* bind port is ok: start set to default, is unsigned short, if overwritte in fine */
+
+	/* checking config file */
+	if(cfg != NULL && access(cfg, W_OK)) {
+		check_call_ret("invalid --config file", errno, -1, NULL, NULL);
+	}
+	else
+		cfg = (char *)default_cfg;
+
+	/* bind addr */
+	if(bind_addr != NULL) {
+		printf("--bind-addr is IGNORED at the moment: %s\n", bind_addr);
+	}
+
+	/* check if sniffjoke is running in background */
+	/* check cmd option */
+	if(command_input != NULL) {
+		printf("--cmd is IGNORED at the moment: %s\n", command_input);
 	}
 
 	if(getuid() || geteuid()) 
@@ -117,7 +198,7 @@ int main(int argc, const char **argv) {
 	signal(SIGTERM, sniffjoke_sigtrap);
 	signal(SIGQUIT, sniffjoke_sigtrap);
 
-	sjconf = new SjConf( cfg ? cfg : default_cfg );
+	sjconf = new SjConf( cfg, /* FIXME sj_useropt */ bind_port );
 	webio = new WebIO( sjconf );
 
 restart:

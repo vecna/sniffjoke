@@ -69,7 +69,7 @@ public:
 
 	void dump_config( const char * );
 	void dump_error( char *, int );
-	SjConf( const char * );
+	SjConf( const char *, /* FIXME struct useopt al posto di: */ unsigned short );
 	~SjConf();
 };
 
@@ -204,12 +204,12 @@ private:
 	/* functions for work in queue and lists */
 	struct packetblock *get_free_pblock( int, priority_t, unsigned int );
 	void recompact_pblock_list( int );
-    struct sniffjoke_track *init_sexion( const struct packetblock * );    
+	struct sniffjoke_track *init_sexion( const struct packetblock * );    
 	struct sniffjoke_track *find_sexion( const struct packetblock * );
 	struct sniffjoke_track *get_sexion( unsigned int, unsigned short, unsigned short );
 	void clear_sexion( struct sniffjoke_track * );
 	void recompact_sex_list( int );
-    struct ttlfocus *init_ttl_focus( int, unsigned int );
+	struct ttlfocus *init_ttl_focus( int, unsigned int );
 	struct ttlfocus *find_ttl_focus( unsigned int, int );
 
 	int paxmax; 		/* max packet tracked */

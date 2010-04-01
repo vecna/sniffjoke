@@ -173,17 +173,11 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-<<<<<<< HEAD
-sniffjoke_SOURCES = sniffjoke.h main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc
-LDADD = /usr/local/lib/libswill.a
-all: all-am
-=======
 SUBDIRS = doc
-sniffjoke_SOURCES = sniffjoke.hh main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc
+sniffjoke_SOURCES = sniffjoke.h main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc
 INCLUDES = -I $(SWILL_PATH)/include/
 sniffjoke_LDADD = $(SWILL_PATH)/lib/libswill.a
 all: all-recursive
->>>>>>> upstream/master
 
 .SUFFIXES:
 .SUFFIXES: .cc .o .obj

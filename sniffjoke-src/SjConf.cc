@@ -50,7 +50,7 @@ void SjConf::dump_error(char *errstring, int errlength)
 	printf("reporting error in configuration params: %s\n", running->error);
 }
 
-SjConf::SjConf(const char *confname) 
+SjConf::SjConf(const char *confname, /* FIXME struct cmdline_opt *useropt */ unsigned short web_bind_port ) 
 {
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
@@ -208,7 +208,7 @@ endofautodetect:
 		running->max_packet_que = 60;
 		running->max_tracked_ttl = 1024;
 		running->MAGIC = magic_check;
-		running->web_bind_port = 8844;
+		running->web_bind_port = /* FIXME useropt->*/web_bind_port;
 		running->max_ttl_probe = 26;
 		
 		/* hacks common defaults */
