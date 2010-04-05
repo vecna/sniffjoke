@@ -124,6 +124,7 @@ struct packetblock {
 	struct iphdr *ip;
 	struct tcphdr *tcp;
 	struct icmphdr *icmp;
+	unsigned char *payload;
 
 	struct ttlfocus *tf;
 };
