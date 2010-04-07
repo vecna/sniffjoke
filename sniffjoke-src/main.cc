@@ -123,13 +123,13 @@ int main(int argc, char **argv) {
 		{ NULL, 0, NULL, 0 }
 	};
 
-       for(i = 1; i < argc; i++) {
-                if(argv[i][0] == '-' && argv[i][1] != '-') {
-                        printf("options: %s wrong: only --long-options are accepted\n", argv[i]);
+	for(i = 1; i < argc; i++) {
+		if(argv[i][0] == '-' && argv[i][1] != '-') {
+			printf("options: %s wrong: only --long-options are accepted\n", argv[i]);
 			sniffjoke_help(argv[0]);
 			return -1;
-                }
-        }
+		}
+	}
 
 
 	while((charopt = getopt_long(argc, argv, "dchlfv", sj_option, NULL)) != -1)

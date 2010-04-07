@@ -1537,21 +1537,24 @@ void TCPTrack::SjH__zero_window( struct packetblock *hackp )
 	hackp->tcp->window = 0;
 }
 
+
+/* ipopt IPOPT_RR inj*/
 void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 {
 	int iplen = hackp->ip->ihl * 4;
 	int tcplen = hackp->tcp->doff * 4;
-	int l47len, i = 0, x = 0;
+	int l47len;
 	int route_n = (random() % 5) + 5; /* 5 - 9 */
 	int fakeipopt = ( (route_n + 1) * 4);
 	unsigned char *endip = hackp->pbuf + sizeof(struct iphdr);
 	int startipopt = iplen - sizeof(struct iphdr);
+	int i;
 
 	/* l47len = length of the frame layer 4 to 7 */
 	l47len = ntohs(hackp->ip->tot_len) - iplen;
 
 	/* 1: strip the original ip options, if present */	
-	if( iplen > sizeof(struct iphdr )) 
+	if( iplen > sizeof(struct iphdr) ) 
 	{
 		memmove(endip, endip + startipopt, l47len);
 
@@ -1562,16 +1565,16 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
 	memmove(endip + fakeipopt, endip, l47len);
 	//hackp->ip = (struct iphdr *)hackp->pbuf; evilaliv3: why recalculate this? REMOVAL TEST!
-	hackp->tcp = (struct tcphdr *)(endip + fakeipopt );
+	hackp->tcp = (struct tcphdr *)(endip + fakeipopt);
 	hackp->payload = (unsigned char *)hackp->tcp + tcplen;
 
-	endip[i++] = IPOPT_NOP;
-	endip[i++] = IPOPT_RR;
-	endip[i++] = (route_n * 4) + 3;
-	endip[i++] = 4;
+	endip[0] = IPOPT_NOP;
+	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
+	endip[2] = (route_n * 4) + 3;	/* IPOPT_OLEN   */
+	endip[3] = 4;			/* IPOPT_OFFSET = IPOPT_MINOFF */
 
-	for(x = i; x != (route_n * 4); x += 4 )
-		*(unsigned int *)(&endip[x]) = random();
+	for(i = 4; i != fakeipopt; i += 4 )
+		*(unsigned int *)(&endip[i]) = random();
 
 #ifdef HACKSDEBUG
 	printf("Inj IpOpt (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}\n",
@@ -1586,16 +1589,16 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 		hackp->tcp->syn, hackp->tcp->ack, hackp->tcp->psh, hackp->tcp->fin, hackp->tcp->rst
 	);
 #endif
-	hackp->ip->ihl = 15; /* 20 byte ip hdr, 40 byte options */
-	hackp->ip->tot_len = htons(60 + l47len);
+	hackp->ip->ihl = 5 + route_n + 1;  /* 20 byte ip hdr, route_n * 4 byte options + 4 byte*/
+	hackp->ip->tot_len = htons((hackp->ip->ihl * 4) + l47len);
 }
 
-
+/* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
 void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp ) 
 {
 	int iplen = hackp->ip->ihl * 4;
 	int tcplen = hackp->tcp->doff * 4;
-	int l57len, i = 0;
+	int l57len;
 	int faketcpopt = 8;
 	unsigned char *endtcp = hackp->pbuf + iplen + sizeof(struct tcphdr);
 	int starttcpopt = tcplen - sizeof(struct tcphdr);
@@ -1609,20 +1612,25 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 		/* 1: strip the original ip options, if present */
 		memmove(endtcp, endtcp + starttcpopt, tcplen);
 		
-		l57len = ntohs(hackp->ip->tot_len) - ( iplen - sizeof(struct tcphdr) );
+		l57len = ntohs(hackp->ip->tot_len) - ( iplen + sizeof(struct tcphdr) );
 		tcplen = sizeof(struct tcphdr);
 	}
 	
 	/* 2: shift the payload after the reserved space to faketcpopt */
 	memmove(endtcp + faketcpopt, endtcp, l57len);
 
-	endtcp[i++] = TCPOPT_NOP;
-	endtcp[i++] = TCPOPT_NOP;
-	endtcp[i++] = TCPOPT_TIMESTAMP;
-	endtcp[i++] = 6; // TCPOLEN_TIMESTAMP; /* 10, but invalid! */
+	endtcp[0] = TCPOPT_NOP;
+	endtcp[1] = TCPOPT_NOP;
+	endtcp[2] = TCPOPT_TIMESTAMP;
+	endtcp[3] = 6;
+
+	/*	6 is an invalid value;
+	 *	from: /usr/include/netinet/tcp.h:
+	 *	# define TCPOLEN_TIMESTAMP      10
+	 */
 
 	/* time_t, 4 byte of time stamp value */
-	memcpy(&endtcp[i], &now, sizeof(time_t));
+	memcpy(&endtcp[4], &now, sizeof(time_t));
 
 #ifdef HACKSDEBUG
 	printf("Fake TcpOpt (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}\n",
