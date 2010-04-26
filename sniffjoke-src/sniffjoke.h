@@ -29,6 +29,15 @@ enum size_buf_t {
 	GARGANTUABUF = 4096 * 4 
 };
 
+struct sj_useropt {
+	unsigned int debug_level;
+	char *logfname;
+	char *cfgfname;
+	char *bind_addr;
+	unsigned short bind_port;
+	char *command_input;
+};
+
 #define MAGICVAL	0xADECADDE
 struct sj_config {
 	char gw_ip_addr[SMALLBUF];				/* default: autodetect */
@@ -69,7 +78,7 @@ public:
 
 	void dump_config( const char * );
 	void dump_error( char *, int );
-	SjConf( const char *, /* FIXME struct useopt al posto di: */ unsigned short );
+	SjConf( struct sj_useropt * );
 	~SjConf();
 };
 
@@ -79,7 +88,7 @@ private:
 	/* static struct sj_config *runcopy, and the other member, due to
  	 * swill integration */
 public:
-	WebIO( SjConf * );
+	WebIO( SjConf* );
 	~WebIO();
 	int web_poll();
 };

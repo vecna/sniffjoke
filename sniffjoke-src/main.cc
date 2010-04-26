@@ -105,10 +105,13 @@ int main(int argc, char **argv) {
 	struct timeval timeout;
 	bool refresh_confile = false;
 
-	/* options -- FIXME - must became user option struct */
-	unsigned int debug_level = 0;
-	unsigned short bind_port = default_web_bind_port;
-	char *logfname =NULL, *cfg =NULL, *bind_addr =NULL, *command_input =NULL;
+    struct sj_useropt user_opt;
+ 	user_opt.debug_level = 0;
+	user_opt.logfname = NULL;
+	user_opt.cfgfname = NULL;
+	user_opt.bind_port = default_web_bind_port;
+	user_opt.bind_addr = NULL;
+	user_opt.command_input = NULL;   
 
 	struct option sj_option[] =
 	{
@@ -132,29 +135,29 @@ int main(int argc, char **argv) {
 	}
 
 
-	while((charopt = getopt_long(argc, argv, "dchlfv", sj_option, NULL)) != -1)
+	while((charopt = getopt_long(argc, argv, "dcpahlfv", sj_option, NULL)) != -1)
 	{
 		switch(charopt) {
-			case 'd': /* debug level */
-				debug_level = atoi(optarg);
+			case 'd':
+			    user_opt.debug_level = atoi(optarg);
 				break;
 			case 'c':
-				command_input = strdup(optarg);
+			    user_opt.command_input = strdup(optarg);
 				break;
 			case 'p':
-				bind_port = atoi(optarg);
+				user_opt.bind_port = atoi(optarg);
 				break;
 			case 'a':
-				bind_addr = strdup(optarg);
+				user_opt.bind_addr = strdup(optarg);
 				break;
 			case 'h':
 				sniffjoke_help(argv[0]);
 				return -1;
 			case 'l':
-				logfname = strdup(optarg);
+				user_opt.logfname = strdup(optarg);
 				break;
 			case 'f':
-				cfg = strdup(optarg);
+				user_opt.cfgfname = strdup(optarg);
 				break;
 			case 'v':
 				sniffjoke_version(argv[0]);
@@ -172,21 +175,23 @@ int main(int argc, char **argv) {
 	/* bind port is ok: start set to default, is unsigned short, if overwritte in fine */
 
 	/* checking config file */
-	if(cfg != NULL && access(cfg, W_OK)) {
+	if(user_opt.cfgfname != NULL && access(user_opt.cfgfname, W_OK)) {
 		check_call_ret("invalid --config file", errno, -1, NULL, NULL);
 	}
 	else
-		cfg = (char *)default_cfg;
+		user_opt.cfgfname = (char *)default_cfg;
 
 	/* bind addr */
-	if(bind_addr != NULL) {
-		printf("--bind-addr is IGNORED at the moment: %s\n", bind_addr);
+	if(user_opt.bind_addr != NULL) {
+		printf("--bind-addr is IGNORED at the moment: %s\n", user_opt.bind_addr);
+		exit(1);
 	}
 
 	/* check if sniffjoke is running in background */
 	/* check cmd option */
-	if(command_input != NULL) {
-		printf("--cmd is IGNORED at the moment: %s\n", command_input);
+	if(user_opt.command_input != NULL) {
+		printf("--cmd is IGNORED at the moment: %s\n", user_opt.command_input);
+		exit(1);
 	}
 
 	if(getuid() || geteuid()) 
@@ -198,7 +203,7 @@ int main(int argc, char **argv) {
 	signal(SIGTERM, sniffjoke_sigtrap);
 	signal(SIGQUIT, sniffjoke_sigtrap);
 
-	sjconf = new SjConf( cfg, /* FIXME sj_useropt */ bind_port );
+	sjconf = new SjConf( &user_opt );
 	webio = new WebIO( sjconf );
 
 restart:
@@ -240,10 +245,10 @@ restart:
 	conntrack = new TCPTrack( sjconf );
 
 	/* we update the config file only if explicitally requested */
-	if(refresh_confile && cfg != NULL) {
-		sjconf->dump_config( cfg );
+	if(refresh_confile && user_opt.cfgfname != NULL) {
+		sjconf->dump_config( user_opt.cfgfname );
 	}
-	else if(cfg == NULL) {
+	else if(user_opt.cfgfname == NULL) {
 		printf("- configuration file is not set as argument\n");
 		printf("- SniffJoke doesn't overwrite the default [%s]\n",
 			default_cfg

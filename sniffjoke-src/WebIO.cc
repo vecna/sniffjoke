@@ -300,7 +300,7 @@ static void sniffjoke_help(FILE *out)
 	fprintf(out, " %s ", default_creat(help, runcopy) );
 }
 
-WebIO::WebIO( SjConf *sjc ) 
+WebIO::WebIO( SjConf *sjc )
 {
 	runcopy_static = sjc->running;
 
