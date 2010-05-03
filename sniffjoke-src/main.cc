@@ -7,8 +7,8 @@ using namespace std;
 #include <signal.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <sys/select.h>
 #include <sys/types.h>
+#include <sys/epoll.h>
 
 #include "sniffjoke.h"
 
@@ -100,9 +100,9 @@ void sniffjoke_sigtrap(int signal)
 }
 
 int main(int argc, char **argv) {
-	fd_set infd;
-	int i, x, charopt, nfds;
-	struct timeval timeout;
+        static struct epoll_event ev1, ev2, events[2];
+	int i, nfds, charopt;
+	int timeout;
 	bool refresh_confile = false;
 
     struct sj_useropt user_opt;
@@ -258,25 +258,29 @@ restart:
 		printf("= configuration unchanged\n");
 	}
 
-	nfds = mitm->tunfd > mitm->netfd ? mitm->tunfd + 1 : mitm->netfd + 1;
+	mitm->epfd = epoll_create(2);
+
+        ev1.events = EPOLLIN | EPOLLPRI | EPOLLET;
+        ev1.data.fd = mitm->tunfd;
+        ev2.events = EPOLLIN | EPOLLPRI | EPOLLET;
+        ev2.data.fd = mitm->netfd;
+
+        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->tunfd, &ev1);
+        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->netfd, &ev2);
+
+	/* epoll_wait wants microseconds, I want 0.2 sec of delay */
+	timeout = (1000 * 1000 / 5);
+
 
 	/* main block */
 	while(1) 
 	{
-		FD_ZERO(&infd);
-		FD_SET( mitm->tunfd, &infd );
-		FD_SET( mitm->netfd, &infd );
+		nfds = epoll_wait(mitm->epfd, events, 2, timeout);
 
-		/* tv_usec keep microseconds, I want 0.2 sec of delay */
-		timeout.tv_usec = (1000 * 1000 / 5);
-		timeout.tv_sec = 0;
-
-		x = select(nfds, &infd, NULL, NULL, &timeout);
-
-		switch(x) 
+		switch(nfds) 
 		{
 		case -1:
-			check_call_ret("error in I/O select", errno, x);
+			check_call_ret("error in epoll_wait", errno, nfds);
 			return -1;
 		case 0:
 			webio->web_poll();
@@ -296,12 +300,13 @@ restart:
 			 * expire and web_poll is not called.
 			 */
 			webio->web_poll();
-			
-			if(FD_ISSET( mitm->tunfd, &infd)) 
-				mitm->network_io( TUNNEL, conntrack );
 
-			if(FD_ISSET( mitm->netfd, &infd)) 
-				mitm->network_io( NETWORK, conntrack );
+			for(int i = 0; i < nfds; i++) {
+				if (events[i].data.fd == mitm->tunfd)
+					mitm->network_io( TUNNEL, conntrack );
+				else /* if (events[i].data.fd == mitm->netfd) */
+					mitm->network_io( NETWORK, conntrack );
+			}
 
 			conntrack->analyze_packets_queue();
 			mitm->queue_flush( conntrack );

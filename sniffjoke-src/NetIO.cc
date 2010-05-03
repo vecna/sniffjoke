@@ -117,6 +117,8 @@ NetIO::~NetIO()
 {
 	char tmpsyscmd[MEDIUMBUF];
 
+	close(epfd);
+
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));
 

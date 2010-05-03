@@ -254,6 +254,10 @@ private:
 	struct sockaddr_ll send_ll;
 	struct sj_config *runcopy;
 public:
+
+	/* epfd: file descriptor for epoll_wait porpouse */
+	int epfd;
+
 	/* tunfd/netfd: file descriptor for I/O purpose */
 	int tunfd;
 	int netfd;
