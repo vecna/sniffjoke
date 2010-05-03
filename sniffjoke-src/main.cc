@@ -260,13 +260,13 @@ restart:
 
 	mitm->epfd = epoll_create(2);
 
-        ev1.events = EPOLLIN | EPOLLPRI | EPOLLET;
-        ev1.data.fd = mitm->tunfd;
-        ev2.events = EPOLLIN | EPOLLPRI | EPOLLET;
-        ev2.data.fd = mitm->netfd;
+	ev1.events = EPOLLIN | EPOLLPRI | EPOLLET;
+	ev1.data.fd = mitm->tunfd;
+	ev2.events = EPOLLIN | EPOLLPRI | EPOLLET;
+	ev2.data.fd = mitm->netfd;
 
-        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->tunfd, &ev1);
-        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->netfd, &ev2);
+	epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->tunfd, &ev1);
+	epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->netfd, &ev2);
 
 	/* epoll_wait wants microseconds, I want 0.2 sec of delay */
 	timeout = (1000 * 1000 / 5);
