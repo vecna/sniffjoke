@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
         static struct epoll_event ev1, ev2, events[2];
 	int i, nfds, charopt;
 	int timeout;
+	time_t next_web_poll;
 	bool refresh_confile = false;
 
     struct sj_useropt user_opt;
@@ -260,17 +261,18 @@ restart:
 
 	mitm->epfd = epoll_create(2);
 
-	ev1.events = EPOLLIN | EPOLLPRI | EPOLLET;
-	ev1.data.fd = mitm->tunfd;
-	ev2.events = EPOLLIN | EPOLLPRI | EPOLLET;
-	ev2.data.fd = mitm->netfd;
+        ev1.events = EPOLLIN | EPOLLPRI;
+        ev1.data.fd = mitm->tunfd;
+        ev2.events = EPOLLIN | EPOLLPRI;
+        ev2.data.fd = mitm->netfd;
 
-	epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->tunfd, &ev1);
-	epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->netfd, &ev2);
+        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->tunfd, &ev1);
+        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->netfd, &ev2);
 
 	/* epoll_wait wants microseconds, I want 0.2 sec of delay */
 	timeout = (1000 * 1000 / 5);
 
+	next_web_poll = time(NULL) + 1;
 
 	/* main block */
 	while(1) 
@@ -283,7 +285,6 @@ restart:
 			check_call_ret("error in epoll_wait", errno, nfds);
 			return -1;
 		case 0:
-			webio->web_poll();
 			if(sjconf->running->reload_conf) 
 			{
 				printf("configuration reload...\n");
@@ -299,7 +300,6 @@ restart:
 			 * this because, if I've always network I/O, timeout never 
 			 * expire and web_poll is not called.
 			 */
-			webio->web_poll();
 
 			for(int i = 0; i < nfds; i++) {
 				if (events[i].data.fd == mitm->tunfd)
@@ -310,6 +310,11 @@ restart:
 
 			conntrack->analyze_packets_queue();
 			mitm->queue_flush( conntrack );
+		}
+
+		if(time(NULL) >= next_web_poll) {
+			webio->web_poll();
+			next_web_poll = time(NULL) + 1;
 		}
 	}
 	/* nevah here */
