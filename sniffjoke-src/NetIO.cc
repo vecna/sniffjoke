@@ -135,23 +135,36 @@ NetIO::~NetIO()
 	system(tmpsyscmd);
 }
 
-void NetIO::network_io(source_t sourcetype, TCPTrack *ct) 
+void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
 {
-	/* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
-	static unsigned char pktbuf[MTU];
-	int nbyte;
+        /* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
+        static unsigned char pktbuf[MTU];
+        int nbyte = 0;
+        int burst = 10;
 
-	if(sourcetype == NETWORK) {
-		nbyte = recv(netfd, pktbuf, MTU, 0); 
-		check_call_ret("Reading from network", errno, nbyte);
-	}
-	else /* sourcetype == TUNNEL */ {
-		nbyte = read(tunfd, pktbuf, MTU);
-		check_call_ret("Reading from tunnel", errno, nbyte);
-	}
-
-	/* add packet in connection tracking queue */
-	ct->add_packet_queue(sourcetype, pktbuf, nbyte);
+        while( burst-- ) {
+                if(sourcetype == NETWORK) {
+                        nbyte = recv(netfd, pktbuf, MTU, 0);
+                        if(nbyte < 0) { 
+				if(errno != EAGAIN)
+					check_call_ret("Reading from network", errno, nbyte);
+				else
+					break;
+			}
+                }
+                else /* sourcetype == TUNNEL */ {
+                        nbyte = read(tunfd, pktbuf, MTU);
+                        if(nbyte < 0) {
+				if(errno != EAGAIN)
+					check_call_ret("Reading from tunnel", errno, nbyte);
+                	        else
+					break;
+			}
+                }
+                              
+                /* add packet in connection tracking queue */
+                ct->add_packet_queue(sourcetype, pktbuf, nbyte);
+        }
 }
 
 /* this method send all the packets sets as "SEND" */

@@ -8,7 +8,7 @@ using namespace std;
 #include <stdlib.h>
 #include <getopt.h>
 #include <sys/types.h>
-#include <sys/epoll.h>
+#include <sys/poll.h>
 
 #include "sniffjoke.h"
 
@@ -100,7 +100,7 @@ void sniffjoke_sigtrap(int signal)
 }
 
 int main(int argc, char **argv) {
-        static struct epoll_event ev1, ev2, events[2];
+        struct pollfd fds[2];
 	int i, nfds, charopt;
 	int timeout;
 	time_t next_web_poll;
@@ -259,15 +259,11 @@ restart:
 		printf("= configuration unchanged\n");
 	}
 
-	mitm->epfd = epoll_create(2);
-
-        ev1.events = EPOLLIN | EPOLLPRI;
-        ev1.data.fd = mitm->tunfd;
-        ev2.events = EPOLLIN | EPOLLPRI;
-        ev2.data.fd = mitm->netfd;
-
-        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->tunfd, &ev1);
-        epoll_ctl(mitm->epfd, EPOLL_CTL_ADD, mitm->netfd, &ev2);
+	/* Open STREAMS device. */
+	fds[0].fd = mitm->tunfd;
+	fds[1].fd = mitm->netfd;
+	fds[0].events = POLLIN | POLLPRI;
+	fds[1].events = POLLIN | POLLPRI;
 
 	/* epoll_wait wants microseconds, I want 0.2 sec of delay */
 	timeout = (1000 * 1000 / 5);
@@ -277,12 +273,12 @@ restart:
 	/* main block */
 	while(1) 
 	{
-		nfds = epoll_wait(mitm->epfd, events, 2, timeout);
+                nfds = poll(fds, 2, timeout);
 
 		switch(nfds) 
 		{
 		case -1:
-			check_call_ret("error in epoll_wait", errno, nfds);
+			check_call_ret("error in poll", errno, nfds);
 			return -1;
 		case 0:
 			if(sjconf->running->reload_conf) 
@@ -301,10 +297,12 @@ restart:
 			 * expire and web_poll is not called.
 			 */
 
-			for(int i = 0; i < nfds; i++) {
-				if (events[i].data.fd == mitm->tunfd)
+			for(int i = 0; i < 2; i++) {
+				if (fds[i].fd == mitm->tunfd
+					&& fds[i].revents & (POLLIN | POLLPRI))
 					mitm->network_io( TUNNEL, conntrack );
-				else /* if (events[i].data.fd == mitm->netfd) */
+				else if ((fds[i].fd == mitm->netfd)
+					&& fds[i].revents & (POLLIN | POLLPRI))
 					mitm->network_io( NETWORK, conntrack );
 			}
 
