@@ -50,7 +50,7 @@ void SjConf::dump_error(char *errstring, int errlength)
 	printf("reporting error in configuration params: %s\n", running->error);
 }
 
-SjConf::SjConf(const char *confname, /* FIXME struct cmdline_opt *useropt */ unsigned short web_bind_port ) 
+SjConf::SjConf(struct sj_useropt *user_opt) 
 {
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
@@ -58,7 +58,7 @@ SjConf::SjConf(const char *confname, /* FIXME struct cmdline_opt *useropt */ uns
 
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 	
-	if((cF = fopen(confname, "r")) != NULL) 
+	if((cF = fopen(user_opt->cfgfname, "r")) != NULL) 
 	{
 		struct sj_config readed;
 
@@ -77,7 +77,7 @@ SjConf::SjConf(const char *confname, /* FIXME struct cmdline_opt *useropt */ uns
 			"  + network interface:\t%s\n"
 			"  + ip address of %s:\t%s\n"
 			"  + tunnel interface:\ttun%d\n",
-			confname,
+			user_opt->cfgfname,
 			readed.sj_run == true ? "TRUE" : "FALSE",
 			readed.gw_mac_str, 
 			readed.gw_ip_addr, 
@@ -90,8 +90,9 @@ SjConf::SjConf(const char *confname, /* FIXME struct cmdline_opt *useropt */ uns
 		fclose(cF);
 
 		memcpy(running, &readed, sizeof(sj_config));
-	}
-	else {
+		
+	} else {
+		
 		unsigned int i;
 		FILE *foca;
 		char imp_str[SMALLBUF];
@@ -102,7 +103,7 @@ SjConf::SjConf(const char *confname, /* FIXME struct cmdline_opt *useropt */ uns
 		const char *cmd3 = "route -n | grep UG | cut -b 17-32";
 		char cmd4[MEDIUMBUF];
 		
-		printf("configuration file [%s] invalid (%s), setting up new\n", confname, strerror(errno));
+		printf("configuration file [%s] invalid (%s), setting up new\n", user_opt->cfgfname, strerror(errno));
 
 		/* set up default before wait the "start sniffjoke" from web panel */
 		memset(running, 0x00, sizeof(sj_config));
@@ -208,21 +209,21 @@ endofautodetect:
 		running->max_packet_que = 60;
 		running->max_tracked_ttl = 1024;
 		running->MAGIC = magic_check;
-		running->web_bind_port = /* FIXME useropt->*/web_bind_port;
+		running->web_bind_port = user_opt->bind_port;
 		running->max_ttl_probe = 26;
 		
 		/* hacks common defaults */
-		running->SjH__shift_ack = false;			/* implemented, need testing */
-		running->SjH__fake_data = true;				/* implemented, enabled */
-		running->SjH__fake_seq = true;				/* implemented, enabled */
-		running->SjH__fake_close = true;			/* implemented, enabled */
-		running->SjH__zero_window = true;			/* implemented, enabled */
+		running->SjH__shift_ack = false;		/* implemented, need testing */
+		running->SjH__fake_data = true;			/* implemented, enabled */
+		running->SjH__fake_seq = true;			/* implemented, enabled */
+		running->SjH__fake_close = true;		/* implemented, enabled */
+		running->SjH__zero_window = true;		/* implemented, enabled */
 		running->SjH__valid_rst_fake_seq = true;	/* implemented, enabled */
-		running->SjH__fake_syn = true;				/* implemented, enabled */
-		running->SjH__half_fake_syn = false;        /* currently not implemented */
-		running->SjH__half_fake_ack = false;        /* currently not implemented */
-		running->SjH__inject_ipopt = true;			/* implemented, enabled */
-		running->SjH__inject_tcpopt = true;			/* implemented, enabled */
+		running->SjH__fake_syn = true;			/* implemented, enabled */
+		running->SjH__half_fake_syn = false;		/* currently not implemented */
+		running->SjH__half_fake_ack = false;		/* currently not implemented */
+		running->SjH__inject_ipopt = true;		/* implemented, enabled */
+		running->SjH__inject_tcpopt = true;		/* implemented, enabled */
 	}
 
 	running->reload_conf = true;

@@ -25,8 +25,8 @@ static char *default_creat(const char *tb, struct sj_config *runcopy)
  	 */
 	static char ret[GARGANTUABUF];
 	const char *tm="SJK";
-	const char *ok ="Sniffjoke <b>IS RUNNING</b>: <br><br><img src='images/full_img_sj_on.jpg' />";
-	const char *ko ="Sniffjoke <b>IS NOT</b> running: <br><br><img src='images/full_img_sj_off.jpg' />";
+	const char *ok ="Sniffjoke <b>IS RUNNING</b>: <br><br><img src='doc/images/full_img_sj_on.jpg' />";
+	const char *ko ="Sniffjoke <b>IS NOT</b> running: <br><br><img src='doc/images/full_img_sj_off.jpg' />";
 	int i, x =0;
 
 	for(i =0; i < (int)strlen(tb); i++) 
@@ -200,7 +200,7 @@ static void import_get_vars(
 static void print_sniffjoke_page(FILE *out, struct sj_config *runcopy)
 {
 	const char *html_head="<html><head><title>Sniffjoke Configuration page</title>\n"
-			"<link rel='stylesheet' href='sniffjoke.css' type='text/css'>\n"
+			"<link rel='stylesheet' href='doc/sniffjoke.css' type='text/css'>\n"
 			"</head><body><form name='sjform' method=GET>";
 
 	const char *html_epilogue ="<br><br>bye</form></body></html>";
@@ -244,7 +244,7 @@ static void print_sniffjoke_page(FILE *out, struct sj_config *runcopy)
 	/* link to documentation and discussions about sniffjoke */
 "<center>No statistics implemented at the moment</center>"
 "Sniffjoke web page <a href='http://www.delirandom.net/sniffjoke'>here (delirandom.net)</a><br>"
-"Sniffjoke local documentation <a href='sniffjoke_info.html'>here</a>"
+"Sniffjoke local documentation <a href='doc/sniffjoke_info.html'>here</a>"
 	};
 
 	fprintf(out, "%s\n", html_head);
@@ -300,7 +300,7 @@ static void sniffjoke_help(FILE *out)
 	fprintf(out, " %s ", default_creat(help, runcopy) );
 }
 
-WebIO::WebIO( SjConf *sjc ) 
+WebIO::WebIO( SjConf *sjc )
 {
 	runcopy_static = sjc->running;
 
@@ -312,15 +312,15 @@ WebIO::WebIO( SjConf *sjc )
 	swill_handle("sniffjoke.html", sniffjoke_handler, NULL );
 	swill_handle("index.html", sniffjoke_help, NULL );
 
-	swill_file("sniffjoke.css", 0);
-	swill_file("sniffjoke_info.html", 0);
-	swill_file("images/full_img_sj_on.jpg", 0);
-	swill_file("images/full_img_sj_off.jpg", 0);
-	swill_file("images/alice_sj.jpg", 0);
-	swill_file("images/bob_sj.jpg", 0);
-	swill_file("images/hero_sj.jpg", 0);
-	swill_file("images/eve_sj.jpg", 0);
-	swill_file("images/visualroute.gif", 0);
+	swill_file("doc/sniffjoke.css", 0);
+	swill_file("doc/sniffjoke_info.html", 0);
+	swill_file("doc/images/full_img_sj_on.jpg", 0);
+	swill_file("doc/images/full_img_sj_off.jpg", 0);
+	swill_file("doc/images/alice_sj.jpg", 0);
+	swill_file("doc/images/bob_sj.jpg", 0);
+	swill_file("doc/images/hero_sj.jpg", 0);
+	swill_file("doc/images/eve_sj.jpg", 0);
+	swill_file("doc/images/visualroute.gif", 0);
 }
 
 WebIO::~WebIO() {

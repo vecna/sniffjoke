@@ -14,7 +14,6 @@
 #include <net/ethernet.h>
 
 #define STRERRLEN	1024
-int check_call_ret( const char *, int, int, char **em = NULL, int *el = NULL);
 
 struct port_range {
 	unsigned short start;
@@ -28,6 +27,27 @@ enum size_buf_t {
 	HUGEBUF = 4096, 
 	GARGANTUABUF = 4096 * 4 
 };
+
+/* main.cc global functions */
+int check_call_ret( const char *, int, int, char **em = NULL, int *el = NULL);
+void internal_log(FILE *, int, const char *, ...);
+#define PIDFILE "/tmp/sniffjoke_pid.pid.tmp" // FIXME - /var/run/sniffjoke.pid - verificare se ci sono altri path al posto di /var/run
+struct sj_useropt {
+	unsigned int debug_level;
+	const char *logfname;
+	FILE *logstream;
+	const char *cfgfname;
+	char *bind_addr;
+	bool go_foreground;
+	bool force_restart;
+	unsigned short bind_port;
+	char *command_input;
+};
+/* loglevels */
+#define ALL_LEVEL       0
+#define VERBOSE_LEVEL   1
+#define DEBUG_LEVEL     2
+
 
 #define MAGICVAL	0xADECADDE
 struct sj_config {
@@ -69,7 +89,7 @@ public:
 
 	void dump_config( const char * );
 	void dump_error( char *, int );
-	SjConf( const char *, /* FIXME struct useopt al posto di: */ unsigned short );
+	SjConf( struct sj_useropt * );
 	~SjConf();
 };
 
@@ -79,7 +99,7 @@ private:
 	/* static struct sj_config *runcopy, and the other member, due to
  	 * swill integration */
 public:
-	WebIO( SjConf * );
+	WebIO( SjConf* );
 	~WebIO();
 	int web_poll();
 };
@@ -124,6 +144,7 @@ struct packetblock {
 	struct iphdr *ip;
 	struct tcphdr *tcp;
 	struct icmphdr *icmp;
+	unsigned char *payload;
 
 	struct ttlfocus *tf;
 };
@@ -244,6 +265,10 @@ private:
 	struct sockaddr_ll send_ll;
 	struct sj_config *runcopy;
 public:
+
+	/* epfd: file descriptor for epoll_wait porpouse */
+	int epfd;
+
 	/* tunfd/netfd: file descriptor for I/O purpose */
 	int tunfd;
 	int netfd;
