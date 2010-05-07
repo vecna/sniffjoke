@@ -2,13 +2,19 @@
 #include <cerrno>
 using namespace std;
 #include <string.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <getopt.h>
+
+#include <netinet/in.h>
+
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/poll.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include "sniffjoke.h"
 
@@ -33,11 +39,12 @@ static TCPTrack *conntrack;
 static struct sj_useropt useropt;
 
 static void sniffjoke_help(const char *pname) {
-	internal_log(stdout, ALL_LEVEL,
+	printf(
 		"%s receive some --options:\n"
 		"--debug [level 1-3]\tenable debug and set the verbosity [default:1]\n"
 		"--logfile [file]\tset a logfile, [default %s]\n"
-		"--cmd\t\t\tsend a cmd to a running sniffjoke without the web gui\n"
+		"--cmd\t\t\tsend a cmd to the running sniffjoke, commands available:\n"
+		"\tstart|stop|stat|portrange startport:endport paranoy <1-100>|clear startport:endport\n"
 		"--bind-port [port]\tset the port where bind management webserver [default:%d]\n"
 		"--bind-addr [addr]\tset interface where bind management webserver [default:%s]\n"
 		"--conf [file]\t\tconfiguration file [default:%s]\n"
@@ -53,6 +60,12 @@ static void sniffjoke_version(const char *pname) {
 	printf("%s %s\n", prog_name, prog_version);
 }
 
+/* used in clean closing */
+static void clean_pidfile(void) {
+	internal_log(NULL, ALL_LEVEL, "sniffjoke process %d unlinking pidfile %s", getpid(), PIDFILE);
+	unlink(PIDFILE);
+}
+
 int check_call_ret(const char *umsg, int objerrno, int ret, char **em, int *el) {
 
 	int my_ret = 0;
@@ -64,12 +77,13 @@ int check_call_ret(const char *umsg, int objerrno, int ret, char **em, int *el) 
 	if(em == NULL) 
 	{
 		if(objerrno)
-			printf("%s: %s (%d)\n", umsg, strerror(objerrno), objerrno);
+			internal_log(NULL, ALL_LEVEL, "%s: %s -- quitting", umsg, strerror(objerrno));
 		else
-			printf("%s\n", umsg);
+			internal_log(NULL, ALL_LEVEL, "%s -- quitting", umsg);
 
 		/* close application in fatal error */
-		exit(0);
+		clean_pidfile();
+		exit(1);
 	}
 
 	/* else, ret == -1 and em != NULL */
@@ -139,6 +153,29 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
 
 static int sniffjoke_background(void) 
 {
+	const char *sniffjoke_socket_path ="/tmp/sniffjoke_srv";
+	struct sockaddr_un sjsrv;
+	int sock;
+
+	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
+		internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open unix socket: %s", strerror(errno));
+		exit(1);
+	}
+
+	memset(&sjsrv, 0x00, sizeof(sjsrv));
+	sjsrv.sun_family = AF_UNIX;
+	memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
+
+	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) < 0) {
+		close(sock);
+		internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
+			sniffjoke_socket_path, strerror(errno)
+		);
+		exit(1);
+	}        
+
+	internal_log(stdout, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
+
 	if(useropt.go_foreground) {
 		useropt.logstream = stdout;
                 internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
@@ -162,9 +199,9 @@ static int sniffjoke_background(void)
                         fclose(pidfile);
                 }
         }
-	/* FIXME - open unix socket - record in useropt */
+	return sock;
 }
-
+        
 static pid_t sniffjoke_is_running(void)
 {
         FILE *pidf = fopen(PIDFILE, "r");
@@ -183,6 +220,7 @@ static pid_t sniffjoke_is_running(void)
 
 
 static void send_command(char *cmdstring) {
+	printf("todo: inviare il comando %s\n", cmdstring);
 }
 
 int main(int argc, char **argv) {
@@ -218,7 +256,7 @@ int main(int argc, char **argv) {
 
 	for(i = 1; i < argc; i++) {
 		if(argv[i][0] == '-' && argv[i][1] != '-') {
-			printf("options: %s wrong: only --long-options are accepted\n", argv[i]);
+			internal_log(stdout, ALL_LEVEL, "options: %s wrong: only --long-options are accepted", argv[i]);
 			sniffjoke_help(argv[0]);
 			return -1;
 		}
@@ -275,6 +313,7 @@ int main(int argc, char **argv) {
 
 	/* bind addr */
 	if(useropt.bind_addr != NULL) {
+		// FIXME
 		printf("warning: --bind-addr is IGNORED at the moment: %s\n", useropt.bind_addr);
 	}
 
@@ -283,7 +322,7 @@ int main(int argc, char **argv) {
 	pid_t sniffjoke_srv = sniffjoke_is_running();
 
 	if(sniffjoke_srv) {
-		printf("sniffjoke is already running in background: pid %d\n", sniffjoke_srv);
+		internal_log(stdout, ALL_LEVEL, "sniffjoke is already running in background: pid %d", sniffjoke_srv);
 	}
 
 	if(useropt.command_input != NULL) 
@@ -292,20 +331,20 @@ int main(int argc, char **argv) {
 
 		if(sniffjoke_srv) 
 		{
-			printf("sending command: [%s] to sniffjoke service\n", useropt.command_input);
+			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
 
 			send_command(useropt.command_input);
 			exit(1);
 		}
 		else {
-			printf("warning: sniffjoke is not running, --cmd %s ignored\n",
+			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, --cmd %s ignored",
 				useropt.command_input);
 			/* the running proceeding */
 		}
 
 	} else {
 		if(sniffjoke_srv && !useropt.force_restart) {
-			printf("sniffjoke is running and force restart is not request, quitting\n");
+			internal_log(stdout, ALL_LEVEL, "sniffjoke is running and force restart is not request, quitting");
 			exit(1);
 		}
 	}
@@ -325,23 +364,16 @@ int main(int argc, char **argv) {
 	sjconf = new SjConf( &useropt );
 	webio = new WebIO( sjconf );
 
+	if(sjconf->running->sj_run == 0) {
+		printf("sniffjoke is not running: use \"sniffjoke --cmd start\" or http://127.0.0.1:%d/sniffjoke.html\n",
+                        sjconf->running->web_bind_port
+		);
+	}
 	/* setting logfile, debug level, background running and unix socket */
 	sniffjoke_background();
-	/* below, all the printf must became internal_log -- FIXME */
 
 	/* this jump happen when sniffjoke is stopped */
 restart:
-	if(sjconf->running->sj_run == 0)
-		printf("sniffjoke is NOT running, you could start it with 'SniffJoke Start' in: "
-		       "http://127.0.0.1:%d/sniffjoke.html\n",
-			sjconf->running->web_bind_port
-		);
-	else
-		printf("sniffjoke is running, you could stop it with 'SniffJoke Stop' in: "
-		       "http://127.0.0.1:%d/sniffjoke.html\n",
-			sjconf->running->web_bind_port
-		);
-
 	/* loop until sj_run is TRUE */
 	while(sjconf->running->sj_run == 0) 
 	{
@@ -397,7 +429,7 @@ restart:
 		switch(nfds) 
 		{
 		case -1:
-			check_call_ret("error in poll", errno, nfds);
+			check_call_ret("error in poll", errno, nfds, NULL, NULL);
 			return -1;
 		case 0:
 			if(sjconf->running->reload_conf) 
