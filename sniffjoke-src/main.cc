@@ -33,7 +33,7 @@ static TCPTrack *conntrack;
 static struct sj_useropt useropt;
 
 static void sniffjoke_help(const char *pname) {
-	printf(
+	internal_log(stdout, ALL_LEVEL,
 		"%s receive some --options:\n"
 		"--debug [level 1-3]\tenable debug and set the verbosity [default:1]\n"
 		"--logfile [file]\tset a logfile, [default %s]\n"
