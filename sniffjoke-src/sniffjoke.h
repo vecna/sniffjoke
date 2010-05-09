@@ -14,7 +14,6 @@
 #include <net/ethernet.h>
 
 #define STRERRLEN	1024
-int check_call_ret( const char *, int, int, char **em = NULL, int *el = NULL);
 
 struct port_range {
 	unsigned short start;
@@ -29,14 +28,26 @@ enum size_buf_t {
 	GARGANTUABUF = 4096 * 4 
 };
 
+/* main.cc global functions */
+int check_call_ret( const char *, int, int, char **em = NULL, int *el = NULL);
+void internal_log(FILE *, int, const char *, ...);
+#define PIDFILE "/tmp/sniffjoke_pid.pid.tmp" // FIXME - /var/run/sniffjoke.pid - verificare se ci sono altri path al posto di /var/run
 struct sj_useropt {
 	unsigned int debug_level;
-	char *logfname;
-	char *cfgfname;
+	const char *logfname;
+	FILE *logstream;
+	const char *cfgfname;
 	char *bind_addr;
+	bool go_foreground;
+	bool force_restart;
 	unsigned short bind_port;
 	char *command_input;
 };
+/* loglevels */
+#define ALL_LEVEL       0
+#define VERBOSE_LEVEL   1
+#define DEBUG_LEVEL     2
+
 
 #define MAGICVAL	0xADECADDE
 struct sj_config {

@@ -116,10 +116,18 @@ SniffJoke is not a Sniffer Evasion tool, but a 'connection scrambler', in fact t
 	<b>(&lambda;)</b> A professional/huge sniffer used to intercept the victim, if not located on the source/destination LAN, must be able to analyze large amounts of traffic. This performance requirement means that the sniffer could not implement a full compatible TCP stack. However even in the case a full compatible TCP stack could be implemented, then internal coherence could not be checked run-time. I have never tested SniffJoke against something like <a href='http://en.wikipedia.org/wiki/Narus'>Narus</a>, but theory supports me.<br>
 	<b>(&mu;)</b> I do not care about, not even think, SniffJoke could have some impact in IDS and attack detection engines. In fact those system, implemented near the protected LAN, are able to analyze the meaning of the packets without the requirement of connection reassembly. Remember: SniffJoke is not a sniffer evasion tool, it is better described as a <b>connection scrambler</b>.<br>
 	<b>(&nu;)</b> I am trying to attack the 'fake sense of security' given by the undiscriminated communication control. In a world with cross countries laws and open source technology, the control of Internet communications brings to control only the innocent and common people, while anybody else could protect himself also extending his privacy right. This motivation alone is enough for SniffJoke to exist. In a closed technology network owned by the state, the citizen could not protect himself but neither he should feel any fear, because in so-called-democracy the citizen is the state. Internet is global and some networks could be run by unethical ISPs and corrupted managers, so SniffJoke impacts is like the one of the cryptography: it is a demonstration of a technology that provides freedom in our communications (sometimes this freedom is achieved by using RSA, other times doing TCP injection :).<br><br>
+	</div>
+</div>  
+
+<div class='titolo'> Development and installation:</div>  
+<div class='testo2'>
+
+<div class='segment'>
 	<center>
-	Download <a href='http://www.delirandom.net/sniffjoke/sniffjoke-0.3.zip'>SniffJoke</a> 0.3<br>
-	<a href='http://www.delirandom.net/sniffjoke/sniffjoke-0.3/README-REALLY-NOW'>README</a> <a href='http://www.delirandom.net/sniffjoke/sniffjoke-0.3/sniffjoke-src/COPYING'>COPYING</a> (GPL)<br>
+	Download <a href='http://www.delirandom.net/sniffjoke/sniffjoke-0.3.zip'>SniffJoke</a> 0.3, Development <b>unstable</b> branch: <a href="http://github.com/vecna/sniffjoke/archives/master">sniffjoke@github</a>.<br>
+	<a href='http://www.delirandom.net/sniffjoke/sniffjoke-0.3/README-REALLY-NOW'>README</a> <a href='http://www.delirandom.net/sniffjoke/sniffjoke-0.3/sniffjoke-src/COPYING'>COPYING</a> (GPL)<br><br>
 	</center>
+	At the moment (offspring 2010) you could follow on github the developing process in transaction, between the 0.3 version and the 0.4: <a href="http://github.com/vecna/sniffjoke">vecna/sniffjoke</a> and the main supporter branch: <a href="http://github.com/evilaliv3/sniffjoke">evilaliv3/sniffjoke</a>. Features provided in the 0.4 are: bugfix, bugfix, bugfix :) upgrade of swill-0.2 to 0.3, make swill and the web gui not required, but optional, and the sniffjoke service able to receive CLI command with a socket unix. Improvement of the performance with epoll, possible FreeBSD support.<br>
 	<pre>
 HOW TO COMPILE/INSTALL:
 
@@ -131,6 +139,11 @@ cd sniffjoke-src/
 ./sniffjoke 
 	</pre>
 </div>
+
+</div>  
+
+<div class='titolo'> The impact:</div>  
+<div class='testo2'>
 
 <div class='segment'>
 	<div class="safari_die_shit">
@@ -184,8 +197,70 @@ cd sniffjoke-src/
 		</tr>
 		<tr>
 			<td> 
+				unsniff (setup_unsniff_R_1_0_1_1234.msi)
+			</td>
+			<td> 
+				no proof available
+			</td>
+
+			<td>
+				<a href="http://www.unleashnetworks.com/unsniff/unsniff.html">unsniff</a>
+			</td>
+			<td>
+				Gianluca Costa
+			</td>
+		</tr>
+		<tr>
+			<td> 
+				NetIntercept
+			</td>
+
+			<td> 
+				no proof available
+			</td>
+			<td>
+				<a href="http://www.sandstorm.net/products/netintercept/">NetIntercept</a>
+			</td>
+			<td>
+				Gianluca Costa
+			</td>
+		</tr>
+
+		<tr>
+			<td> 
+				networkminer
+			</td>
+			<td> 
+				no proof available
+			</td>
+			<td>
+				<a href="http://networkminer.sourceforge.net/">networkminer</a>
+			</td>
+
+			<td>
+				Gianluca Costa
+			</td>
+		</tr>
+		<tr>
+			<td> 
+				justsniffer
+			</td>
+			<td> 
+				no proof available
+			</td>
+
+			<td>
+				<a href="http://justniffer.sourceforge.net/">justsniffer</a>
+			</td>
+			<td>
+				Gianluca Costa
+			</td>
+		</tr>
+		<tr>
+			<td> 
 				...
 			</td>
+
 			<td> 
 				...
 			</td>

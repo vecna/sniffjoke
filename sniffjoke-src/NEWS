@@ -1,5 +1,6 @@
-News ? 
-This 0.3 release is the first version of the new implementation.
+News:
+The 0.4 release solve some problems and implement the webguiless usage.
+The 0.3 release is the first version of the new implementation.
 
 The old release, 0.1 and 0.2, uses iptables and ulogd stuff.
 
