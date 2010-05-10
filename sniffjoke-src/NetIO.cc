@@ -183,25 +183,33 @@ void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
 
         while( burst-- ) 
 	{
-                if(sourcetype == NETWORK) {
-			if(((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1) && errno != EAGAIN) {
+                if(sourcetype == NETWORK) 
+		{
+			nbyte = recv(netfd, pktbuf, MTU, 0);
+			if( nbyte  == -1 && errno != EAGAIN) {
 				internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
 				check_call_ret("Reading from network", errno, nbyte, false);
+				break;
+			} else if(errno == EAGAIN) {
+				break;
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
-				continue;
 			}
 		}
-                else /* sourcetype == TUNNEL */ {
-			if(((nbyte = read(tunfd, pktbuf, MTU)) == -1) && errno != EAGAIN) {
+                else /* sourcetype == TUNNEL */ 
+		{
+			nbyte = read(tunfd, pktbuf, MTU);
+			if( nbyte == -1  && errno != EAGAIN) {
 				internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
 				check_call_ret("Reading from tunnel", errno, nbyte, false);
+				break;
+			} else if(errno == EAGAIN) {
+				break;
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
-				continue;
 			}
 		}
-                              
+
 		/* add packet in connection tracking queue */
 		ct->add_packet_queue(sourcetype, pktbuf, nbyte);
 	}
