@@ -17,6 +17,12 @@ using namespace std;
 // define HACKSDEBUG enable dump about packet injected
 #define HACKSDEBUG
 
+// #define DATADEBUG
+#ifdef DATADEBUG
+#include "Optional_DataDebug.h"
+static DataDebug *dd;
+#endif
+
 TCPTrack::TCPTrack(SjConf *sjconf) 
 {
 	int i;
@@ -42,17 +48,33 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	pblock_list_count[0] = 0;
 	pblock_list_count[1] = 0;
 
-	for( i = 0; i < (random() % 40) ; i++ ) 
+	/* random pool initialization */
+	for( i = 0; i < ( (random() % 40) + 3 ); i++ ) 
 		srandom( (unsigned int)time(NULL) ^ random() );
+
+#ifdef DATADEBUG
+	dd = new DataDebug( runcopy->max_session_tracked, runcopy->max_packet_que, runcopy->max_tracked_ttl );
+	dd.session_tracked = runcopy->max_session_tracked;
+	dd.packet_queue = runcopy->max_packet_que;
+	dd.tracked_ttl = runcopy->max_tracked_ttl;
+	dd.Session = sex_list;
+	dd.Packet = pblock_list;
+	dd.TTL = ttlfocus_list;
+#endif
 }
 
-TCPTrack::~TCPTrack() {
+TCPTrack::~TCPTrack() 
+{
 	internal_log(NULL, ALL_LEVEL, "~TCPTrack: freeing %d session list, %d packet queue, %d tracked ttl",
 		sextraxmax, paxmax, maxttlfocus
 	);
 	free(sex_list);
 	free(pblock_list);
 	free(ttlfocus_list);
+
+#ifdef DATADEBUG
+	delete dd;
+#endif
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
@@ -71,6 +93,9 @@ void TCPTrack::add_packet_queue( const source_t source, const unsigned char *buf
  	 * the nbyte is added with the max ip/tcp option injection because
  	 * the packets options could be modified by last_pkt_fix
  	 */
+#ifdef DATADEBUG
+	dd.InfoMsg("Packet", "add_packet_queue: Requested LOW packet: Sj_packet_id %08x (length %d byte)", packet_id, nbyte);
+#endif
 	target = get_free_pblock( nbyte + (MAXOPTINJ * 3), LOW, packet_id );
 
 	target->packet_id = packet_id;
@@ -123,6 +148,11 @@ void TCPTrack::analyze_packets_queue()
 {
 	struct packetblock *newp;
 	struct sniffjoke_track *ct;
+
+#ifdef DATADEBUG
+	dd.InfoMsg("Packet", "analyze_packets_queue");
+	dd.Dump_Packet( );
+#endif
 
 	newp = get_pblock(YOUNG, NETWORK, ICMP, false);
 	while ( newp != NULL )
@@ -229,6 +259,10 @@ void TCPTrack::analyze_incoming_icmp( struct packetblock *timeexc )
 	badiph = (struct iphdr *)((unsigned char *)timeexc->icmp + sizeof(struct icmphdr));
 	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl * 4));
 
+#ifdef DATADEBUG
+	dd.InfoMsg("TTL", "analyze_incoming_icmp");
+	dd.Dump_TTL( );
+#endif
 	tf = find_ttl_focus(badiph->daddr, 0);
 
 	if(tf != NULL && badiph->protocol == IPPROTO_TCP) 
