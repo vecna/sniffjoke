@@ -185,12 +185,13 @@ void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
 	{
                 if(sourcetype == NETWORK) 
 		{
-			nbyte = recv(netfd, pktbuf, MTU, 0);
-			if( nbyte  == -1 && errno != EAGAIN) {
-				internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
-				check_call_ret("Reading from network", errno, nbyte, false);
-				break;
-			} else if(errno == EAGAIN) {
+			if((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1)
+			{
+				if( errno != EAGAIN) {
+					internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
+					check_call_ret("Reading from network", errno, nbyte, false);
+				}
+				/* both, EAGAIN or wrost errors */
 				break;
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
@@ -198,12 +199,13 @@ void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
 		}
                 else /* sourcetype == TUNNEL */ 
 		{
-			nbyte = read(tunfd, pktbuf, MTU);
-			if( nbyte == -1  && errno != EAGAIN) {
-				internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
-				check_call_ret("Reading from tunnel", errno, nbyte, false);
-				break;
-			} else if(errno == EAGAIN) {
+			if((nbyte = read(tunfd, pktbuf, MTU)) == -1)
+			{
+				if( errno != EAGAIN) {
+					internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+					check_call_ret("Reading from tunnel", errno, nbyte, false);
+				}
+				/* both, EAGAIN or wrost errors */
 				break;
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
