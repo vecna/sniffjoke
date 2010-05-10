@@ -304,8 +304,10 @@ WebIO::WebIO( SjConf *sjc )
 {
 	runcopy_static = sjc->running;
 
-	if(swill_init(runcopy_static->web_bind_port) != runcopy_static->web_bind_port) 
-		check_call_ret("Unable to bind webserver", errno, -1);
+	if(swill_init(runcopy_static->web_bind_port) != runcopy_static->web_bind_port) {
+		internal_log(NULL, ALL_LEVEL, "unable to bind %d port with http libswill service", runcopy_static->web_bind_port);
+		check_call_ret("Unable to bind webserver", errno, -1, true);
+	}
 
 	swill_allow("127.0.0.1");
 

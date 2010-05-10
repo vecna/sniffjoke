@@ -29,13 +29,13 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	maxttlprobe = runcopy->max_ttl_probe;
 
 	sex_list = (struct sniffjoke_track *)calloc( sextraxmax, sizeof(struct sniffjoke_track) );
-	check_call_ret("memory allocation", errno, sex_list == NULL ? -1 : 0 );
+	check_call_ret("memory allocation", errno, (sex_list == NULL ? -1 : 0), true);
 
 	pblock_list = (struct packetblock *)calloc( paxmax, sizeof(struct packetblock) );
-	check_call_ret("memory allocation", errno, pblock_list == NULL ? -1 : 0 );
+	check_call_ret("memory allocation", errno, (pblock_list == NULL ? -1 : 0), true);
    
 	ttlfocus_list = (struct ttlfocus *)calloc( maxttlfocus, sizeof(struct ttlfocus) );
-	check_call_ret("memory allocation", errno, ttlfocus_list == NULL ? -1 : 0 );
+	check_call_ret("memory allocation", errno, (ttlfocus_list == NULL ? -1 : 0), true);
 
 	sex_list_count[0] = 0;
 	sex_list_count[1] = 0;
@@ -47,7 +47,7 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 }
 
 TCPTrack::~TCPTrack() {
-	printf("TCPTrack: freeing %d session list, %d packet queue, %d tracked ttl\n",
+	internal_log(NULL, ALL_LEVEL, "~TCPTrack: freeing %d session list, %d packet queue, %d tracked ttl",
 		sextraxmax, paxmax, maxttlfocus
 	);
 	free(sex_list);
@@ -474,7 +474,7 @@ struct packetblock * TCPTrack::get_free_pblock( int pktsize, priority_t prio, un
 		paxmax *= 2;
 
 		newlist = (struct packetblock *)calloc( paxmax, sizeof( struct packetblock) );
-		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0 );
+		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0, true );
 
 		memcpy(	(void *)&newlist[0], 
 			(void *)pblock_list, 
@@ -557,7 +557,7 @@ void TCPTrack::clear_pblock( struct packetblock *used_pb )
 		}
 	}
 		
-	check_call_ret("unforeseen bug: TCPTrack.cc, function clear_pblock", 0, -1);
+	check_call_ret("unforeseen bug: TCPTrack.cc, contact the sofware manteiner, sorry. function clear_pblock", 0, -1, true);
 }
 
 void TCPTrack::recompact_pblock_list(int what)
@@ -569,7 +569,7 @@ void TCPTrack::recompact_pblock_list(int what)
 		paxmax /= 2;
 
 		newlist = (struct packetblock *)calloc( paxmax, sizeof( struct packetblock) );
-		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0 );
+		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0, true );
 
 		switch( what )
 		{
@@ -637,7 +637,7 @@ struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb )
 			(void *)sex_list,
 			sizeof(struct sniffjoke_track) * sextraxmax
 		);
-		check_call_ret("memory allocation", errno, sex_list == NULL ? -1 : 0 );
+		check_call_ret("memory allocation", errno, sex_list == NULL ? -1 : 0, true );
 
 		memset(	(void *)&sex_list[sextraxmax / 2], 
 			0x00, 
@@ -735,7 +735,7 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
 		}
 	}
 	
-	check_call_ret("unforeseen bug: TCPTrack.cc, function clear_sexion", 0, -1);
+	check_call_ret("unforeseen bug: TCPTrack.cc, contact the package mantainer, sorry. function clear_sexion", 0, -1, true);
 }
 
 void TCPTrack::recompact_sex_list( int what )
@@ -747,7 +747,7 @@ void TCPTrack::recompact_sex_list( int what )
 		sextraxmax /= 2;
 
 		newlist = (struct sniffjoke_track *)calloc( sextraxmax, sizeof( struct sniffjoke_track ) );
-		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0 );
+		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0, true );
 
 		switch( what )
 		{
@@ -1098,7 +1098,7 @@ struct ttlfocus *TCPTrack::init_ttl_focus( int first_free, unsigned int destip )
 				sizeof(struct ttlfocus) * maxttlfocus 
 			);
 			
-			check_call_ret("memory allocation", errno, ttlfocus_list == NULL ? -1 : 0 );
+			check_call_ret("memory allocation", errno, ttlfocus_list == NULL ? -1 : 0, true );
 			
 			memset(	(void *)&ttlfocus_list[maxttlfocus / 2], 
 				0x00, 

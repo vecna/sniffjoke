@@ -62,49 +62,57 @@ static void sniffjoke_version(const char *pname) {
 
 /* used in clean closing */
 static void clean_pidfile(void) {
-	internal_log(NULL, ALL_LEVEL, "sniffjoke process %d unlinking pidfile %s", getpid(), PIDFILE);
-	unlink(PIDFILE);
+
+	if(access(PIDFILE, R_OK)) {
+		FILE *oldpidf = fopen(PIDFILE, "r");
+		char oldpid[6];
+
+                fgets(oldpid, 6, oldpidf);
+                fclose(oldpidf);
+
+		internal_log(NULL, ALL_LEVEL, "old pidfile %s had pid %d inside, sending sigterm...", PIDFILE, atoi(oldpid));
+		kill(atoi(oldpid), SIGTERM);
+		/* usleep read microseconds, I need three milliseconds for permit a good cleaning of previous instance */
+		usleep(1000 * 3);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "unable to read %s file, request for unlinking from process %d", PIDFILE, getpid());
+	}
+
+	if(unlink(PIDFILE)) {
+		internal_log(NULL, DEBUG_LEVEL, "unlinked %s as requested", PIDFILE);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", PIDFILE, strerror(errno));
+		/* and ... ? */
+	}
 }
 
-int check_call_ret(const char *umsg, int objerrno, int ret, char **em, int *el) {
-
+void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
+{
+	char errbuf[STRERRLEN];
 	int my_ret = 0;
 
-	if(ret != -1) {
-		return my_ret;
-	}
+	internal_log(NULL, DEBUG_LEVEL, "checking errno %d message of [%s], return value: %d fatal %d", objerrno, umsg, ret, fatal);
 
-	if(em == NULL) 
-	{
-		if(objerrno)
-			internal_log(NULL, ALL_LEVEL, "%s: %s -- quitting", umsg, strerror(objerrno));
-		else
-			internal_log(NULL, ALL_LEVEL, "%s -- quitting", umsg);
+	if(ret != -1) 
+		return;
 
-		/* close application in fatal error */
+	if(objerrno)
+		snprintf(errbuf, STRERRLEN, "%s: %s", umsg, strerror(objerrno));
+	else
+		snprintf(errbuf, STRERRLEN, "%s ", umsg);
+
+	if(fatal) {
+		internal_log(NULL, ALL_LEVEL, "fatal error: %s", errbuf);
 		clean_pidfile();
 		exit(1);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "error: %s", errbuf);
 	}
-
-	/* else, ret == -1 and em != NULL */
-	char errbuf[STRERRLEN];
-	int len;
-
-	len = snprintf(errbuf, STRERRLEN, "error %d %s:%s\n",
-		objerrno, umsg, strerror(objerrno) 
-	);
-	*em = (char *)calloc(len + 1, sizeof(char) );
-	*el = len;
-
-	/* the last byte, the len +1, is set to 0 by calloc */
-	memcpy(*em, errbuf, *el);
-
-	return -1;
 }
 
 void sniffjoke_sigtrap(int signal) 
 {
-	printf("\nreceived signal %d, cleaning sniffjoke objects...\n", signal);
+	internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
 
 	if(sjconf != NULL) 
 		delete sjconf;
@@ -127,6 +135,9 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
         va_list arguments;
         time_t now = time(NULL);
         FILE *output_flow;
+
+	if(useropt.logstream == NULL)
+		forceflow = stderr;
 
         if(forceflow != NULL)
                 output_flow = forceflow;
@@ -306,7 +317,10 @@ int main(int argc, char **argv) {
 
 	/* checking config file */
 	if(useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
-		check_call_ret("invalid --config file", errno, -1, NULL, NULL);
+		internal_log(stdout, ALL_LEVEL, "unable to access %s, running default conf and autodetect if not available", 
+			useropt.cfgfname
+		);
+		check_call_ret("invalid --config file", errno, -1, false);
 	}
 	else
 		useropt.cfgfname = (char *)default_cfg;
@@ -314,7 +328,7 @@ int main(int argc, char **argv) {
 	/* bind addr */
 	if(useropt.bind_addr != NULL) {
 		// FIXME
-		printf("warning: --bind-addr is IGNORED at the moment: %s\n", useropt.bind_addr);
+		internal_log(stdout, ALL_LEVEL, "warning: --bind-addr is IGNORED at the moment: %s\n", useropt.bind_addr);
 	}
 
 	/* check if sniffjoke is running in background */
@@ -349,8 +363,11 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	if(useropt.force_restart)
+		clean_pidfile();
+
 	if(getuid() || geteuid()) 
-		check_call_ret("required root privileges", EPERM, -1, NULL, NULL);
+		check_call_ret("required root privileges", EPERM, -1, true);
 
 	/* after the privilege checking */
 	if(sniffjoke_srv && useropt.force_restart)
@@ -365,7 +382,8 @@ int main(int argc, char **argv) {
 	webio = new WebIO( sjconf );
 
 	if(sjconf->running->sj_run == 0) {
-		printf("sniffjoke is not running: use \"sniffjoke --cmd start\" or http://127.0.0.1:%d/sniffjoke.html\n",
+		internal_log(NULL, ALL_LEVEL,
+			"sniffjoke is not running: use \"sniffjoke --cmd start\" or http://127.0.0.1:%d/sniffjoke.html\n",
                         sjconf->running->web_bind_port
 		);
 	}
@@ -385,9 +403,9 @@ restart:
 	/* if code flow reach here, SniffJoke is running */
 	mitm = new NetIO( sjconf );
 
-	if(mitm->error_msg != NULL) 
+	if(mitm->networkdown_condition)
 	{
-		sjconf->dump_error(mitm->error_msg, mitm->error_len);
+		internal_log(NULL, ALL_LEVEL, "Fatal error in NetIO constructor: stopping sniffjoke");
 		sjconf->running->sj_run = 0;
 		delete mitm;
 		goto restart;
@@ -403,11 +421,10 @@ restart:
 		sjconf->dump_config( useropt.cfgfname );
 	}
 	else if(useropt.cfgfname == NULL) {
-		printf("- configuration file is not set as argument\n");
-		printf("- SniffJoke doesn't overwrite the default [%s]\n", default_cfg);
+		internal_log(NULL, ALL_LEVEL, "configuration file is not set as argument, sniffjoke not overwrite the default %s", default_cfg);
 	}
 	else {
-		printf("= configuration unchanged\n");
+		internal_log(NULL, ALL_LEVEL, "configuration unchanged");
 	}
 
 	/* Open STREAMS device. */
@@ -429,13 +446,19 @@ restart:
 		switch(nfds) 
 		{
 		case -1:
-			check_call_ret("error in poll", errno, nfds, NULL, NULL);
+			check_call_ret("error in poll", errno, nfds, true);
 			return -1;
 		case 0:
-			if(sjconf->running->reload_conf) 
-			{
-				printf("configuration reload...\n");
+			if(sjconf->running->reload_conf) {
+				internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
 				refresh_confile = true;
+
+				delete mitm;
+				delete conntrack;
+				goto restart;
+			}
+			if(mitm->networkdown_condition) {
+				internal_log(NULL, ALL_LEVEL, "Network is down, interrumpting sniffjoke");
 
 				delete mitm;
 				delete conntrack;

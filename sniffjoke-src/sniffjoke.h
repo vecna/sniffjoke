@@ -29,7 +29,7 @@ enum size_buf_t {
 };
 
 /* main.cc global functions */
-int check_call_ret( const char *, int, int, char **em = NULL, int *el = NULL);
+void check_call_ret( const char *, int, int, bool);
 void internal_log(FILE *, int, const char *, ...);
 #define PIDFILE "/tmp/sniffjoke_pid.pid.tmp" // FIXME - /var/run/sniffjoke.pid - verificare se ci sono altri path al posto di /var/run
 struct sj_useropt {
@@ -88,7 +88,6 @@ public:
 	struct sj_config *running;
 
 	void dump_config( const char * );
-	void dump_error( char *, int );
 	SjConf( struct sj_useropt * );
 	~SjConf();
 };
@@ -273,9 +272,10 @@ public:
 	int tunfd;
 	int netfd;
 
-	/* error msg */
-	int error_len;
-	char *error_msg;
+	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
+ * 	 --- but not killed!
+ * 	 */
+	bool networkdown_condition;
 
 	NetIO( SjConf * );
 	~NetIO();

@@ -16,38 +16,21 @@ void SjConf::dump_config(const char *dumpfname)
 	running->MAGIC = magic_value;
 
 	dumpfd = fopen(dumpfname, "w+");
-	check_call_ret("open config file in writing", errno, dumpfd == NULL ? -1 : 0);
+	check_call_ret("open config file in writing", errno, dumpfd == NULL ? -1 : 0, false);
 
-	printf(	"* saving configuration settings in file [%s]:\n"
-		"  + sniffjoke running:\t%s\n"
-		"  + gateway mac addr:\t%s\n"
-		"  + gateway ip addr:\t%s\n"
-		"  + network interface:\t%s\n"
-		"  + ip address of %s:\t%s\n"
-		"  + tunnel interface:\ttun%d\n",
-		dumpfname,
-		running->sj_run == true ? "TRUE" : "FALSE",
-		running->gw_mac_str, 
-		running->gw_ip_addr, 
-		running->interface,
-		running->interface,
-		running->local_ip_addr,
-		running->tun_number
-	);
+	internal_log(NULL, ALL_LEVEL, "saving configuration settings in %s", dumpfname);
+	internal_log(NULL, ALL_LEVEL, "-- sniffjoke running: %s", running->sj_run == true ? "TRUE" : "FALSE");
+	internal_log(NULL, ALL_LEVEL, "-- sniffjoke gateway mac address: %s", running->gw_mac_str);
+	internal_log(NULL, ALL_LEVEL, "-- sniffjoke gateway ip address: %s", running->gw_ip_addr);
+	internal_log(NULL, ALL_LEVEL, "-- sniffjoke local interface: %s, %s address", running->interface, running->local_ip_addr);
+	internal_log(NULL, ALL_LEVEL, "-- sniffjoke dynamic tunnel interface: tun%d", running->tun_number);
 
 	ret = fwrite(running, sizeof(struct sj_config), 1, dumpfd);
 	/* ret - 1 because fwrite return the number of written item */
-	check_call_ret("writing config file", errno, ret - 1);
+	check_call_ret("writing config file", errno, (ret - 1), false);
 
 	fclose(dumpfd);
-}
-
-void SjConf::dump_error(char *errstring, int errlength)
-{
-	running->error =(char *)malloc(errlength +1);
-	memcpy(running->error, errstring, errlength);
-	running->error[errlength] = 0x00;
-	printf("reporting error in configuration params: %s\n", running->error);
+	check_call_ret("closing config file", errno, (ret - 1), false);
 }
 
 SjConf::SjConf(struct sj_useropt *user_opt) 
@@ -58,6 +41,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 	
+	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", user_opt->cfgfname);
 	if((cF = fopen(user_opt->cfgfname, "r")) != NULL) 
 	{
 		struct sj_config readed;
@@ -65,27 +49,22 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		memset(&readed, 0x00, sizeof(struct sj_config));
 
 		i = fread((void *)&readed, sizeof(struct sj_config), 1, cF);
-		check_call_ret("fread of config file", errno, i - 1);
+		check_call_ret("fread of config file", errno, (i - 1), false);
+		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", user_opt->cfgfname, i * sizeof(struct sj_config));
 
-		if(readed.MAGIC != magic_check) 
-			check_call_ret("invalid checksum of config file", 0, -1);
+		if(readed.MAGIC != magic_check) {
+			internal_log(NULL, ALL_LEVEL, "magic number of sniffjoke cfg: %s file seem to be corrupted -- delete them", 
+				user_opt->cfgfname
+			);
+			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
+		}
 
-		printf(	"readed configuration settings from file [%s] with parameters:\n"
-			"  + sniffjoke running:\t%s\n"
-			"  + gateway mac addr:\t%s\n"
-			"  + gateway ip addr:\t%s\n"
-			"  + network interface:\t%s\n"
-			"  + ip address of %s:\t%s\n"
-			"  + tunnel interface:\ttun%d\n",
-			user_opt->cfgfname,
-			readed.sj_run == true ? "TRUE" : "FALSE",
-			readed.gw_mac_str, 
-			readed.gw_ip_addr, 
-			readed.interface,
-			readed.interface,
-			readed.local_ip_addr,
-			readed.tun_number
-		);
+		internal_log(NULL, ALL_LEVEL, "readed configuration settings in %s", user_opt->cfgfname);
+		internal_log(NULL, ALL_LEVEL, "-- sniffjoke running: %s", readed.sj_run == true ? "TRUE" : "FALSE");
+		internal_log(NULL, ALL_LEVEL, "-- sniffjoke gateway mac address: %s", readed.gw_mac_str);
+		internal_log(NULL, ALL_LEVEL, "-- sniffjoke gateway ip address: %s", readed.gw_ip_addr);
+		internal_log(NULL, ALL_LEVEL, "-- sniffjoke local interface: %s, %s address", readed.interface, readed.local_ip_addr);
+		internal_log(NULL, ALL_LEVEL, "-- sniffjoke dynamic tunnel interface: tun%d", readed.tun_number);
 
 		fclose(cF);
 
@@ -102,14 +81,16 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		char cmd2[MEDIUMBUF];
 		const char *cmd3 = "route -n | grep UG | cut -b 17-32";
 		char cmd4[MEDIUMBUF];
-		
-		printf("configuration file [%s] invalid (%s), setting up new\n", user_opt->cfgfname, strerror(errno));
+	
+		internal_log(NULL, ALL_LEVEL, "configuration file %s invalid (%s), creating new configuration...", 
+			user_opt->cfgfname, strerror(errno)
+		);
 
 		/* set up default before wait the "start sniffjoke" from web panel */
 		memset(running, 0x00, sizeof(sj_config));
 
 		/* autodetecting first tunnel device free */
-		printf("* detecting first free tunnel device with [%s]\n", cmd0);
+		internal_log(NULL, ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd0);
 		foca = popen(cmd0, "r");
 		for(running->tun_number = 0; ; running->tun_number++)
 		{
@@ -120,10 +101,10 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 				break;
 		}
 		pclose(foca);
-		printf("  + detected %d as first free tunnel device\n", running->tun_number);
+		internal_log(NULL, ALL_LEVEL, "== detected %d as first unused tunnel device", running->tun_number);
 
 		/* autodetecting interface */
-		printf("* detecting external gateway interface with [%s]\n", cmd1);
+		internal_log(NULL, ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd1);
 		foca = popen(cmd1, "r");
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
@@ -132,19 +113,19 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			running->interface[i] = imp_str[i];
 
 		if(i < 3) {
-			printf("  - unable to acquire external interface with a default gw, set up manually\n");
+			internal_log(NULL, ALL_LEVEL, "unable to detect external default gw: set up manually");
 			goto endofautodetect;
 		}
-		else 
-			printf("  + automatically acquired interface [%s]\n", running->interface);
+		else {
+			internal_log(NULL, ALL_LEVEL, "== detected external interface with default gateway: %s", running->interface);
+		}
 		
 		/* autodetecting interface local ip address */
 		snprintf(cmd2, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
 			running->interface
 		);
-		printf("* detecting interface %s ip address with [%s]\n",
-			running->interface, cmd2
-		);
+		internal_log(NULL, ALL_LEVEL, "++ detecting interface %s ip address with [%s]", running->interface, cmd2);
+
 		foca = popen(cmd2, "r");
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
@@ -152,10 +133,10 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		for(i = 0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++)
 			running->local_ip_addr[i] = imp_str[i];
 
-		printf("  + automatically acquired local ip address [%s]\n", running->local_ip_addr);
+		internal_log(NULL, ALL_LEVEL, "== acquired local ip address: %s", running->local_ip_addr);
 
 		/* autodetecting gw ip addr */
-		printf("* detecting gateway ip address with [%s]\n", cmd3);
+		internal_log(NULL, ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd3);
 		foca = popen(cmd3, "r");
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
@@ -164,24 +145,21 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			running->gw_ip_addr[i] = imp_str[i];
 
 		if(strlen(running->gw_ip_addr) < 7) {
-			printf("  - unable to autodetect gateway ip address, set up manually\n");
+			internal_log(NULL, ALL_LEVEL, "-- unable to autodetect gateway ip address, set up manually");
 			goto endofautodetect;
 		}
 		else 
-			printf("  + automatically acquired gateway ip address [%s]\n", running->gw_ip_addr);
+			internal_log(NULL, ALL_LEVEL, "== automatically acquired gateway ip address: %s", running->gw_ip_addr);
 
 		/* autodetecting mac address */
 		snprintf(cmd4, MEDIUMBUF, "ping -W 1 -c 1 %s", running->gw_ip_addr);
-		printf("* pinging %s for make sure ARP presence with [%s]\n", 
-			running->gw_ip_addr,
-			cmd4
-		);
+		internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running->gw_ip_addr, cmd4);
 		system(cmd4);
 		usleep(50000);
 		memset(cmd4, 0x00, MEDIUMBUF);
 
 		snprintf(cmd4, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running->gw_ip_addr);
-		printf("* detecting mac address of gateway with [%s]\n", cmd4);
+		internal_log(NULL, ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd4);
 		foca = popen(cmd4, "r");
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
@@ -190,9 +168,9 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			running->gw_mac_str[i] = imp_str[i];
 
 		if(i != 17) 
-			printf("  - unable to autodetect gateway mac address\n");
+			internal_log(NULL, ALL_LEVEL, "-- unable to autodetect gateway mac address");
 		else {
-			printf("  + automatically acquired mac address [%s]\n\n", running->gw_mac_str);
+			internal_log(NULL, ALL_LEVEL, "== automatically acquired mac address: %s", running->gw_mac_str);
 			sscanf( running->gw_mac_str, "%hX:%hX:%hX:%hX:%hX:%hX",
 				&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
 				&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
