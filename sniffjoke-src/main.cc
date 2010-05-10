@@ -237,7 +237,6 @@ static void send_command(char *cmdstring) {
 int main(int argc, char **argv) {
 	struct pollfd fds[2];
 	int i, nfds, charopt;
-	int timeout;
 	time_t next_web_poll;
 	bool refresh_confile = false;
 
@@ -429,19 +428,17 @@ restart:
 
 	/* Open STREAMS device. */
 	fds[0].fd = mitm->tunfd;
-	fds[1].fd = mitm->netfd;
-	fds[0].events = POLLIN | POLLPRI;
-	fds[1].events = POLLIN | POLLPRI;
-
-	/* epoll_wait wants milliseconds, I want 0.2 sec of delay */
-	timeout = (1000 * 1000 / 5); // WARNING - poll = microsecond, epoll = milliseconds
+	fds[0].events = POLLIN;
+        fds[1].fd = mitm->netfd;
+	fds[1].events = POLLIN;
 
 	next_web_poll = time(NULL) + 1;
 
 	/* main block */
 	while(1) 
 	{
-		nfds = poll(fds, 2, timeout);
+		/* poll wants milliseconds, I want 0.2 sec of delay */
+		nfds = poll(fds, 2, 200);
 
 		switch(nfds) 
 		{
@@ -466,17 +463,12 @@ restart:
 			}
 			break;
 		default:
-			/* 
-			 * this because, if I've always network I/O, timeout never 
-			 * expire and web_poll is not called.
-			 */
-			for(int i = 0; i < 2; i++) 
-			{
-				if (fds[i].fd == mitm->tunfd && fds[i].revents & (POLLIN | POLLPRI))
-					mitm->network_io( TUNNEL, conntrack );
-				else if ((fds[i].fd == mitm->netfd) && fds[i].revents & (POLLIN | POLLPRI))
-					mitm->network_io( NETWORK, conntrack );
-			}
+
+			if (fds[0].revents & POLLIN)
+				mitm->network_io( TUNNEL, conntrack );
+
+			if (fds[1].revents & POLLIN)
+				mitm->network_io( NETWORK, conntrack );
 
 			conntrack->analyze_packets_queue();
 			mitm->queue_flush( conntrack );

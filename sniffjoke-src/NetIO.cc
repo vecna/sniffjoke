@@ -174,31 +174,37 @@ NetIO::~NetIO()
 	system(tmpsyscmd);
 }
 
-void NetIO::network_io(source_t sourcetype, TCPTrack *ct) 
+void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
 {
-	/* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
-	static unsigned char pktbuf[MTU];
-	int nbyte;
+        /* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
+        static unsigned char pktbuf[MTU];
+        int nbyte = 0;
+        int burst = 10;
 
-	if(sourcetype == NETWORK) {
-		if((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1) {
-			internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
-			check_call_ret("Reading from network", errno, nbyte, false);
-		} else {
-			internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
+        while( burst-- ) 
+	{
+                if(sourcetype == NETWORK) {
+			if(((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1) && errno != EAGAIN) {
+				internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
+				check_call_ret("Reading from network", errno, nbyte, false);
+			} else {
+				internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
+				continue;
+			}
 		}
-	}
-	else /* sourcetype == TUNNEL */ {
-		if((nbyte = read(tunfd, pktbuf, MTU)) == -1) {
-			internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
-			check_call_ret("Reading from tunnel", errno, nbyte, false);
-		} else {
-			internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
+                else /* sourcetype == TUNNEL */ {
+			if(((nbyte = read(tunfd, pktbuf, MTU)) == -1) && errno != EAGAIN) {
+				internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+				check_call_ret("Reading from tunnel", errno, nbyte, false);
+			} else {
+				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
+				continue;
+			}
 		}
+                              
+		/* add packet in connection tracking queue */
+		ct->add_packet_queue(sourcetype, pktbuf, nbyte);
 	}
-
-	/* add packet in connection tracking queue */
-	ct->add_packet_queue(sourcetype, pktbuf, nbyte);
 }
 
 /* this method send all the packets sets as "SEND" */
