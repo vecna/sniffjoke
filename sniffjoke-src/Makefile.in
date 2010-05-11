@@ -47,7 +47,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_sniffjoke_OBJECTS = main.$(OBJEXT) NetIO.$(OBJEXT) SjConf.$(OBJEXT) \
-	TCPTrack.$(OBJEXT) WebIO.$(OBJEXT)
+	TCPTrack.$(OBJEXT) WebIO.$(OBJEXT) \
+	Optional_DataDebug.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_DEPENDENCIES = $(SWILL_PATH)/lib/libswill.a
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -174,7 +175,7 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = doc
-sniffjoke_SOURCES = sniffjoke.h main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc
+sniffjoke_SOURCES = sniffjoke.h main.cc NetIO.cc SjConf.cc TCPTrack.cc WebIO.cc Optional_DataDebug.h Optional_DataDebug.cc
 INCLUDES = -I $(SWILL_PATH)/include/
 sniffjoke_LDADD = $(SWILL_PATH)/lib/libswill.a
 all: all-recursive
@@ -248,6 +249,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NetIO.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Optional_DataDebug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjConf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCPTrack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/WebIO.Po@am__quote@
