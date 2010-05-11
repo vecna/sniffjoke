@@ -11,7 +11,6 @@ using namespace std;
 
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -33,8 +32,6 @@ static SjConf *sjconf;
 static NetIO *mitm;
 /* WebIO, not required but usefull, implemented with libswill libraries */
 static WebIO *webio;
-/* connection tracking class and functions */
-static TCPTrack *conntrack;
 /* process configuration, data struct defined in sniffjoke.h */
 static struct sj_useropt useropt;
 
@@ -122,9 +119,6 @@ void sniffjoke_sigtrap(int signal)
 
 	if(mitm != NULL)
 		delete mitm;
-
-	if(conntrack != NULL)
-		delete conntrack;
 
 	raise(SIGKILL);
 }
@@ -235,8 +229,7 @@ static void send_command(char *cmdstring) {
 }
 
 int main(int argc, char **argv) {
-	struct pollfd fds[2];
-	int i, nfds, charopt;
+	int i, charopt;
 	time_t next_web_poll;
 	bool refresh_confile = false;
 
@@ -376,7 +369,6 @@ int main(int argc, char **argv) {
 	signal(SIGABRT, sniffjoke_sigtrap);
 	signal(SIGTERM, sniffjoke_sigtrap);
 	signal(SIGQUIT, sniffjoke_sigtrap);
-
 	sjconf = new SjConf( &useropt );
 	webio = new WebIO( sjconf );
 
@@ -413,8 +405,6 @@ restart:
 	/* this variable is used in the main loop, for raise the new configuration */
 	sjconf->running->reload_conf = false;
 
-	conntrack = new TCPTrack( sjconf );
-
 	/* we update the config file only if explicitally requested */
 	if(refresh_confile && useropt.cfgfname != NULL) {
 		sjconf->dump_config( useropt.cfgfname );
@@ -426,53 +416,27 @@ restart:
 		internal_log(NULL, ALL_LEVEL, "configuration unchanged");
 	}
 
-	/* Open STREAMS device. */
-	fds[0].fd = mitm->tunfd;
-	fds[0].events = POLLIN;
-        fds[1].fd = mitm->netfd;
-	fds[1].events = POLLIN;
-
 	next_web_poll = time(NULL) + 1;
 
 	/* main block */
 	while(1) 
 	{
-		/* poll wants milliseconds, I want 0.2 sec of delay */
-		nfds = poll(fds, 2, 200);
-
-		switch(nfds) 
-		{
-		case -1:
-			check_call_ret("error in poll", errno, nfds, true);
-			return -1;
-		case 0:
-			if(sjconf->running->reload_conf) {
-				internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
-				refresh_confile = true;
-
-				delete mitm;
-				delete conntrack;
-				goto restart;
-			}
-			if(mitm->networkdown_condition) {
-				internal_log(NULL, ALL_LEVEL, "Network is down, interrumpting sniffjoke");
-
-				delete mitm;
-				delete conntrack;
-				goto restart;
-			}
-			break;
-		default:
-
-			if (fds[0].revents & POLLIN)
-				mitm->network_io( TUNNEL, conntrack );
-
-			if (fds[1].revents & POLLIN)
-				mitm->network_io( NETWORK, conntrack );
-
-			conntrack->analyze_packets_queue();
-			mitm->queue_flush( conntrack );
+		if(sjconf->running->reload_conf) {
+			internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
+			refresh_confile = true;
+			delete mitm;
+			goto restart;
 		}
+
+		if(mitm->networkdown_condition) {
+			internal_log(NULL, ALL_LEVEL, "Network is down, interrumpting sniffjoke");
+			delete mitm;
+			goto restart;
+		}
+
+		mitm->network_io();
+
+		mitm->queue_flush();
 
 		if(time(NULL) >= next_web_poll) {
 			webio->web_poll();

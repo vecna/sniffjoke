@@ -25,6 +25,8 @@ NetIO::NetIO(SjConf *sjconf)
 
 	networkdown_condition = false;
 
+        conntrack = new TCPTrack( sjconf );
+
 	/* pseudo sanity check of received data, sjconf had already make something */
 	if(strlen(runcopy->gw_ip_addr) < 7 || strlen(runcopy->gw_ip_addr) > 17) {
 		internal_log(NULL, ALL_LEVEL, "invalid ip address [%s] is not an IPv4, check the config", runcopy->gw_ip_addr);
@@ -150,13 +152,19 @@ NetIO::NetIO(SjConf *sjconf)
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "setting network socket to non blocking mode successfull");
 	}
+
+        fds[0].fd = netfd;
+        fds[0].events = POLLIN;
+        fds[1].fd = tunfd;
+        fds[1].events = POLLIN;
 }
 
 NetIO::~NetIO() 
 {
 	char tmpsyscmd[MEDIUMBUF];
 
-	close(epfd);
+        if(conntrack != NULL)
+		delete conntrack;
 
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));
@@ -174,51 +182,74 @@ NetIO::~NetIO()
 	system(tmpsyscmd);
 }
 
-void NetIO::network_io(source_t sourcetype, TCPTrack *ct)
+void NetIO::network_io()
 {
         /* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
         static unsigned char pktbuf[MTU];
+	bool io_happened = false;
         int nbyte = 0;
         int burst = 10;
+	int nfds;
 
-        while( burst-- ) 
+	while( burst-- )
 	{
-                if(sourcetype == NETWORK) 
-		{
-			if((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1)
-			{
-				if( errno != EAGAIN) {
-					internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
-					check_call_ret("Reading from network", errno, nbyte, false);
-				}
-				/* both, EAGAIN or wrost errors */
-				break;
-			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
-			}
-		}
-                else /* sourcetype == TUNNEL */ 
-		{
-			if((nbyte = read(tunfd, pktbuf, MTU)) == -1)
-			{
-				if( errno != EAGAIN) {
-					internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
-					check_call_ret("Reading from tunnel", errno, nbyte, false);
-				}
-				/* both, EAGAIN or wrost errors */
-				break;
-			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
-			}
-		}
+		/* poll wants milliseconds, I want 0.2 sec of delay */
+		nfds = poll(fds, 2, 200);
 
-		/* add packet in connection tracking queue */
-		ct->add_packet_queue(sourcetype, pktbuf, nbyte);
+		switch(nfds)
+		{
+			case -1:
+				check_call_ret("error in poll", errno, nfds, true);
+				break;
+
+			case 0:
+				break;
+			default:
+				if(fds[0].revents & POLLIN)
+				{
+					if((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1)
+					{
+						if( (errno != EAGAIN) && (errno != EWOULDBLOCK))
+						{
+							internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
+							check_call_ret("Reading from network", errno, nbyte, false);
+							break;
+						}
+					} else {
+						internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
+		
+						/* add packet in connection tracking queue */
+						conntrack->add_packet_queue(NETWORK, pktbuf, nbyte);
+						io_happened = true;
+					}
+				}
+
+				if(fds[1].revents & POLLIN)
+				{
+					if((nbyte = read(tunfd, pktbuf, MTU)) == -1)
+					{
+						if( (errno != EAGAIN) && (errno != EWOULDBLOCK) ) {
+							internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+							check_call_ret("Reading from tunnel", errno, nbyte, false);
+							break;
+						}
+					} else {
+						internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
+
+						/* add packet in connection tracking queue */
+						conntrack->add_packet_queue(TUNNEL, pktbuf, nbyte);
+						io_happened = true;
+					}
+				}
+		}
 	}
+
+	if(io_happened)
+		conntrack->analyze_packets_queue();
 }
 
 /* this method send all the packets sets as "SEND" */
-void NetIO::queue_flush( TCPTrack *ct )
+void NetIO::queue_flush()
 {
 	int wbyt = 0;
 	struct packetblock *packet = NULL;
@@ -228,7 +259,7 @@ void NetIO::queue_flush( TCPTrack *ct )
  	 * the other source_t could be LOCAL or TUNNEL;
  	 * in both case the packets goes through the network.
  	 */
-	packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, false);
+	packet = conntrack->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, false);
 	while( packet != NULL )
 	{
 		if(packet->source == NETWORK) 
@@ -246,7 +277,7 @@ void NetIO::queue_flush( TCPTrack *ct )
 			if(packet->source != TTLBFORCE) 
 			{
 				/* fixing TTL, fixing checksum and IP/TCP options */
-				ct->last_pkt_fix(packet);
+				conntrack->last_pkt_fix(packet);
 			}
 			
 			if((wbyt = sendto( netfd, packet->pbuf, 
@@ -260,17 +291,17 @@ void NetIO::queue_flush( TCPTrack *ct )
 			}
 			
 		}
-		ct->clear_pblock(packet);
-		packet = ct->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, true);
+		conntrack->clear_pblock(packet);
+		packet = conntrack->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, true);
 	}
 
 #if 0
 	/* remove packet marked as DROP */
-	packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, false);
+	packet = conntrack->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, false);
 	while( (packet != NULL )
 	{
-		ct->clear_pblock(packet);
-		packet = ct->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, true);
+		conntrack->clear_pblock(packet);
+		packet = conntrack->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, true);
 	}
 #endif
 }

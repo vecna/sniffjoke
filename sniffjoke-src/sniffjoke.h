@@ -116,6 +116,7 @@ public:
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
+#include <sys/poll.h>
 
 /* Maximum Transfert Unit */
 #define MTU	1500
@@ -263,14 +264,15 @@ private:
 	 */
 	struct sockaddr_ll send_ll;
 	struct sj_config *runcopy;
+	TCPTrack *conntrack;
 public:
-
-	/* epfd: file descriptor for epoll_wait porpouse */
-	int epfd;
 
 	/* tunfd/netfd: file descriptor for I/O purpose */
 	int tunfd;
 	int netfd;
+
+	/* poll variables */
+	struct pollfd fds[];
 
 	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
  * 	 --- but not killed!
@@ -279,8 +281,8 @@ public:
 
 	NetIO( SjConf * );
 	~NetIO();
-	void network_io( source_t, TCPTrack * );
-	void queue_flush( TCPTrack * );
+	void network_io();
+	void queue_flush();
 };
 
 #endif /* SNIFFJOKE_H */
