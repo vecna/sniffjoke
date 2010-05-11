@@ -58,11 +58,16 @@ static void sniffjoke_version(const char *pname) {
 }
 
 /* used in clean closing */
-static void clean_pidfile(void) {
+static void clean_pidfile_exit(bool exit_request) {
 
 	if(access(PIDFILE, R_OK)) {
 		FILE *oldpidf = fopen(PIDFILE, "r");
 		char oldpid[6];
+
+		if(oldpidf == NULL) {
+			internal_log(NULL, ALL_LEVEL, "unable to open %s: %s", PIDFILE, strerror(errno));
+			return;
+		}
 
                 fgets(oldpid, 6, oldpidf);
                 fclose(oldpidf);
@@ -72,7 +77,7 @@ static void clean_pidfile(void) {
 		/* usleep read microseconds, I need three milliseconds for permit a good cleaning of previous instance */
 		usleep(1000 * 3);
 	} else {
-		internal_log(NULL, ALL_LEVEL, "unable to read %s file, request for unlinking from process %d", PIDFILE, getpid());
+		internal_log(NULL, ALL_LEVEL, "unable to access %s file, request for unlinking from process %d", PIDFILE, getpid());
 	}
 
 	if(unlink(PIDFILE)) {
@@ -81,6 +86,9 @@ static void clean_pidfile(void) {
 		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", PIDFILE, strerror(errno));
 		/* and ... ? */
 	}
+
+	if(exit_request)
+		exit(1);
 }
 
 void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
@@ -100,8 +108,7 @@ void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal)
 
 	if(fatal) {
 		internal_log(NULL, ALL_LEVEL, "fatal error: %s", errbuf);
-		clean_pidfile();
-		exit(1);
+		clean_pidfile_exit(true);
 	} else {
 		internal_log(NULL, ALL_LEVEL, "error: %s", errbuf);
 	}
@@ -164,7 +171,7 @@ static int sniffjoke_background(void)
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
 		internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open unix socket: %s", strerror(errno));
-		exit(1);
+		clean_pidfile_exit(true);
 	}
 
 	memset(&sjsrv, 0x00, sizeof(sjsrv));
@@ -176,7 +183,7 @@ static int sniffjoke_background(void)
 		internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
 			sniffjoke_socket_path, strerror(errno)
 		);
-		exit(1);
+		clean_pidfile_exit(true);
 	}        
 
 	internal_log(stdout, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
@@ -191,14 +198,14 @@ static int sniffjoke_background(void)
 
                 if((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
                         internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
-                        exit(errno);
+                        clean_pidfile_exit(true);
                 }
                 internal_log(NULL, ALL_LEVEL, "new running instance of packet duplicator with pid: %d", getpid());
 
                 FILE *pidfile =fopen(PIDFILE, "w+");
                 if(pidfile == NULL) {
                         internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to write %s: %s", PIDFILE, strerror(errno));
-                        exit(errno);
+			clean_pidfile_exit(true);
                 } else {
                         fprintf(pidfile, "%d", getpid());
                         fclose(pidfile);
@@ -340,7 +347,7 @@ int main(int argc, char **argv) {
 			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
 
 			send_command(useropt.command_input);
-			exit(1);
+			clean_pidfile_exit(true);
 		}
 		else {
 			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, --cmd %s ignored",
@@ -351,12 +358,12 @@ int main(int argc, char **argv) {
 	} else {
 		if(sniffjoke_srv && !useropt.force_restart) {
 			internal_log(stdout, ALL_LEVEL, "sniffjoke is running and force restart is not request, quitting");
-			exit(1);
+			clean_pidfile_exit(true);
 		}
 	}
 
 	if(useropt.force_restart)
-		clean_pidfile();
+		clean_pidfile_exit(false);
 
 	if(getuid() || geteuid()) 
 		check_call_ret("required root privileges", EPERM, -1, true);

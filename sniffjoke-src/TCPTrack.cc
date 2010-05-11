@@ -17,7 +17,7 @@ using namespace std;
 // define HACKSDEBUG enable dump about packet injected
 #define HACKSDEBUG
 
-// #define DATADEBUG
+#define DATADEBUG // WARNING: if you #define DATADEBUG, you need to mkdir /tmp/datadump/
 #ifdef DATADEBUG
 #include "Optional_DataDebug.h"
 static DataDebug *dd;
@@ -53,13 +53,13 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 		srandom( (unsigned int)time(NULL) ^ random() );
 
 #ifdef DATADEBUG
-	dd = new DataDebug( runcopy->max_session_tracked, runcopy->max_packet_que, runcopy->max_tracked_ttl );
-	dd.session_tracked = runcopy->max_session_tracked;
-	dd.packet_queue = runcopy->max_packet_que;
-	dd.tracked_ttl = runcopy->max_tracked_ttl;
-	dd.Session = sex_list;
-	dd.Packet = pblock_list;
-	dd.TTL = ttlfocus_list;
+	dd = new DataDebug( );
+	dd->session_tracked = runcopy->max_session_tracked;
+	dd->packet_queue = runcopy->max_packet_que;
+	dd->tracked_ttl = runcopy->max_tracked_ttl;
+	dd->Session = sex_list;
+	dd->Packet = pblock_list;
+	dd->TTL = ttlfocus_list;
 #endif
 }
 
@@ -94,7 +94,7 @@ void TCPTrack::add_packet_queue( const source_t source, const unsigned char *buf
  	 * the packets options could be modified by last_pkt_fix
  	 */
 #ifdef DATADEBUG
-	dd.InfoMsg("Packet", "add_packet_queue: Requested LOW packet: Sj_packet_id %08x (length %d byte)", packet_id, nbyte);
+	dd->InfoMsg("Packet", "add_packet_queue: Requested LOW packet: Sj_packet_id %8x (length %d byte)", packet_id, nbyte);
 #endif
 	target = get_free_pblock( nbyte + (MAXOPTINJ * 3), LOW, packet_id );
 
@@ -150,8 +150,8 @@ void TCPTrack::analyze_packets_queue()
 	struct sniffjoke_track *ct;
 
 #ifdef DATADEBUG
-	dd.InfoMsg("Packet", "analyze_packets_queue");
-	dd.Dump_Packet( );
+	dd->InfoMsg("Packet", "analyze_packets_queue");
+	dd->Dump_Packet( paxmax );
 #endif
 
 	newp = get_pblock(YOUNG, NETWORK, ICMP, false);
@@ -260,8 +260,8 @@ void TCPTrack::analyze_incoming_icmp( struct packetblock *timeexc )
 	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl * 4));
 
 #ifdef DATADEBUG
-	dd.InfoMsg("TTL", "analyze_incoming_icmp");
-	dd.Dump_TTL( );
+	dd->InfoMsg("TTL", "analyze_incoming_icmp");
+	dd->Dump_TTL( maxttlfocus );
 #endif
 	tf = find_ttl_focus(badiph->daddr, 0);
 
@@ -300,6 +300,11 @@ void TCPTrack::analyze_incoming_icmp( struct packetblock *timeexc )
 void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 {
 	struct ttlfocus *tf;
+
+#ifdef DATADEBUG
+	dd->InfoMsg("Session", "analyzie_incoming_synack, from: %s", inet_ntoa( *((struct in_addr *)&synack->ip->saddr) ));
+	dd->Dump_Session ( sextraxmax );
+#endif
 
 	/* NETWORK is src: dest port and source port inverted and saddr are used, 
  	 * source is put as last argument (puppet port)

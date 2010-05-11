@@ -79,7 +79,13 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		const char *cmd0 = "ifconfig -a | grep tun | cut -b -7";
 		const char *cmd1 = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
 		char cmd2[MEDIUMBUF];
-		const char *cmd3 = "route -n | grep UG | cut -b 17-32";
+		const char *cmd3 = "route -n | grep UG | grep eth | cut -b 17-32"; // FIXME ?
+		// eth was required because if you use an openvpn, your gateway appear:
+		// root@caturday:~/Desktop/sniffjoke-project/sniffjoke/sniffjoke-src# route -n | grep UG 
+		// 10.10.100.1     10.10.100.5     255.255.255.255 UGH   0      0        0 tun0
+		// 10.10.101.0     10.10.100.5     255.255.255.0   UG    0      0        0 tun0
+		// 0.0.0.0         172.16.1.1      0.0.0.0         UG    100    0        0 eth0
+		// in the route/UG
 		char cmd4[MEDIUMBUF];
 	
 		internal_log(NULL, ALL_LEVEL, "configuration file %s invalid (%s), creating new configuration...", 
