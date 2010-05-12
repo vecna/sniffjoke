@@ -33,13 +33,13 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	paxmax = runcopy->max_packet_que;
 	maxttlfocus = runcopy->max_tracked_ttl;
 	maxttlprobe = runcopy->max_ttl_probe;
-
+	
 	sex_list = (struct sniffjoke_track *)calloc( sextraxmax, sizeof(struct sniffjoke_track) );
 	check_call_ret("memory allocation", errno, (sex_list == NULL ? -1 : 0), true);
 
 	pblock_list = (struct packetblock *)calloc( paxmax, sizeof(struct packetblock) );
 	check_call_ret("memory allocation", errno, (pblock_list == NULL ? -1 : 0), true);
-   
+
 	ttlfocus_list = (struct ttlfocus *)calloc( maxttlfocus, sizeof(struct ttlfocus) );
 	check_call_ret("memory allocation", errno, (ttlfocus_list == NULL ? -1 : 0), true);
 
