@@ -369,14 +369,14 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if(useropt.force_restart)
-		clean_pidfile_exit(false);
-
 	if(getuid() || geteuid()) 
 		check_call_ret("required root privileges", EPERM, -1, true);
 
 	/* after the privilege checking */
-	if(sniffjoke_srv && useropt.force_restart)
+	if(sniffjoke_srv && useropt.force_restart) {
+		kill(sniffjoke_srv, SIGTERM);
+		clean_pidfile_exit(false);
+	}
 
 	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
 	signal(SIGINT, sniffjoke_sigtrap);
