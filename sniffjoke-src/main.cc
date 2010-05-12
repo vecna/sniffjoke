@@ -168,7 +168,7 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
 
 static int sniffjoke_background(void) 
 {
-	const char *sniffjoke_socket_path ="/tmp/sniffjoke_srv";
+	const char *sniffjoke_socket_path = SNIFFJOKE_SRV_US;
 	struct sockaddr_un sjsrv;
 	int sock;
 
@@ -260,8 +260,54 @@ static pid_t sniffjoke_is_running(void)
 }
 
 
-static void send_command(char *cmdstring) {
-	printf("todo: inviare il comando %s\n", cmdstring);
+static void send_command(char *cmdstring) 
+{
+	int sock;
+	char received_buf[HUGEBUF];
+	struct sockaddr_un servaddr;/* address of server */
+	struct sockaddr_un clntaddr;/* address of client */
+	struct sockaddr_un from;
+	int fromlen, rlen;
+       
+        /* Create a UNIX datagram socket for client */
+	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
+		internal_log(stdout, ALL_LEVEL, "unable to open UNIX socket for connect to sniffjoke server: %s", strerror(errno));
+		exit(0);
+	}
+        
+	/* Client will bind to an address so the server will get an address in its recvfrom call and use it to
+	 * send data back to the client.  
+	 */
+	memset(&clntaddr, 0x00, sizeof(clntaddr));
+	clntaddr.sun_family = AF_UNIX;
+	strcpy(clntaddr.sun_path, SNIFFJOKE_CLI_US);
+
+	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
+		internal_log(stdout, ALL_LEVEL, "unable to bind client to %s: %s", SNIFFJOKE_CLI_US, strerror(errno));
+		exit(0);
+	}
+       
+        /* Set up address structure for server socket */
+	memset(&servaddr, 0x00, sizeof(servaddr));
+	servaddr.sun_family = AF_UNIX;
+	strcpy(servaddr.sun_path, SNIFFJOKE_SRV_US);
+
+	if(sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
+		internal_log(stdout, ALL_LEVEL, "unable to send message [%s]: %s", cmdstring, strerror(errno));
+		exit(0);
+	}
+
+	fromlen = sizeof(from);
+	if((rlen = recvfrom(sock, received_buf, HUGEBUF, 0, (struct sockaddr *)&from, (socklen_t *)&fromlen)) == -1) {
+		internal_log(stdout, ALL_LEVEL, "unable to receive from sniffjoke service: %s", strerror(errno));
+		exit(0);
+	}
+
+	/* because the answer is used in non background application */
+	printf("%s\n", received_buf);
+
+        unlink(SNIFFJOKE_CLI_US);
+        close(sock);
 }
 
 int main(int argc, char **argv) {
@@ -367,9 +413,6 @@ int main(int argc, char **argv) {
 	/* check cmd option */
 	pid_t sniffjoke_srv = sniffjoke_is_running();
 
-	if(sniffjoke_srv) {
-		internal_log(stdout, ALL_LEVEL, "sniffjoke is already running in background: pid %d", sniffjoke_srv);
-	}
 
 	if(useropt.command_input != NULL) 
 	{
@@ -377,10 +420,12 @@ int main(int argc, char **argv) {
 
 		if(sniffjoke_srv) 
 		{
-			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
+			internal_log(stdout, VERBOSE_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
 
 			send_command(useropt.command_input);
-			clean_pidfile_exit(true);
+			/* KKK: not clean_pidfile because the other process must continue to run, and not _sigtrap because there
+			 * are not obj instanced */
+			exit(0);
 		}
 		else {
 			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, --cmd %s ignored",
@@ -390,8 +435,9 @@ int main(int argc, char **argv) {
 
 	} else {
 		if(sniffjoke_srv && !useropt.force_restart) {
-			internal_log(stdout, ALL_LEVEL, "sniffjoke is running and force restart is not request, quitting");
-			clean_pidfile_exit(true);
+			internal_log(stdout, ALL_LEVEL, "sniffjoke is already running (pid %d), use --force or check --help", sniffjoke_srv);
+			/* same reason of KKK before */
+			exit(0);
 		}
 	}
 

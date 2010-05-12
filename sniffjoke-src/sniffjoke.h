@@ -32,6 +32,8 @@ enum size_buf_t {
 void check_call_ret( const char *, int, int, bool);
 void internal_log(FILE *, int, const char *, ...);
 #define PIDFILE "/tmp/sniffjoke.pid" // FIXME - /var/run/sniffjoke.pid - verificare se ci sono altri path al posto di /var/run
+#define SNIFFJOKE_SRV_US "/tmp/sniffjoke_srv"
+#define SNIFFJOKE_CLI_US "/tmp/sniffjoke_cli"
 struct sj_useropt {
 	unsigned int debug_level;
 	const char *logfname;
