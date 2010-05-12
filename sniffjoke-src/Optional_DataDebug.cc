@@ -3,6 +3,7 @@
 #include <netinet/ip.h>
 #include <time.h>
 #include <string.h>
+#include <sys/signal.h>
 #include <stdlib.h>
 
 #include "Optional_DataDebug.h"
@@ -13,6 +14,13 @@ DataDebug::DataDebug()
 	Session_f = fopen(SESSION_FILE_DEBUG, "a+");
 	Packet_f = fopen(PACKET_FILE_DEBUG, "a+");
 	TTL_f = fopen(TTL_FILE_DEBUG, "a+");
+
+	if(Session_f == NULL || Packet_f == NULL || TTL_f == NULL) {
+		fprintf(stderr, "unable to open file(s) %s %s %s - check your system or remove #define DATADEBUG\n",
+			SESSION_FILE_DEBUG, PACKET_FILE_DEBUG, TTL_FILE_DEBUG
+		);
+		raise(SIGTERM);
+	}
 
 	Session = NULL;
 	Packet = NULL;

@@ -33,20 +33,19 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	paxmax = runcopy->max_packet_que;
 	maxttlfocus = runcopy->max_tracked_ttl;
 	maxttlprobe = runcopy->max_ttl_probe;
-	
+
 	sex_list = (struct sniffjoke_track *)calloc( sextraxmax, sizeof(struct sniffjoke_track) );
-	check_call_ret("memory allocation", errno, (sex_list == NULL ? -1 : 0), true);
-
 	pblock_list = (struct packetblock *)calloc( paxmax, sizeof(struct packetblock) );
-	check_call_ret("memory allocation", errno, (pblock_list == NULL ? -1 : 0), true);
-
 	ttlfocus_list = (struct ttlfocus *)calloc( maxttlfocus, sizeof(struct ttlfocus) );
-	check_call_ret("memory allocation", errno, (ttlfocus_list == NULL ? -1 : 0), true);
 
-	sex_list_count[0] = 0;
-	sex_list_count[1] = 0;
-	pblock_list_count[0] = 0;
-	pblock_list_count[1] = 0;
+	if(sex_list == NULL || pblock_list == NULL || ttlfocus_list == NULL) {
+		internal_log(NULL, ALL_LEVEL, "unable to alloc TCPTrack.cc constructor lists");
+		check_call_ret("memory allocation", errno, -1, true);
+	}
+
+	/* init the counter to 0 */
+	sex_list_count[0] = sex_list_count[1] = 0;
+	pblock_list_count[0] = pblock_list_count[1] = 0;
 
 	/* random pool initialization */
 	for( i = 0; i < ( (random() % 40) + 3 ); i++ ) 
@@ -61,6 +60,8 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	dd->Packet = pblock_list;
 	dd->TTL = ttlfocus_list;
 #endif
+
+	internal_log(NULL, DEBUG_LEVEL, "TCPTrack.cc initialized object: list %d packets %d ttl %d", sextraxmax, paxmax, maxttlfocus);
 }
 
 TCPTrack::~TCPTrack() 
@@ -68,12 +69,21 @@ TCPTrack::~TCPTrack()
 	internal_log(NULL, ALL_LEVEL, "~TCPTrack: freeing %d session list, %d packet queue, %d tracked ttl",
 		sextraxmax, paxmax, maxttlfocus
 	);
-	free(sex_list);
-	free(pblock_list);
-	free(ttlfocus_list);
+
+	if(sex_list != NULL)
+		free(sex_list);
+
+	if(pblock_list != NULL)
+		free(pblock_list);
+
+	if(ttlfocus_list != NULL)
+		free(ttlfocus_list);
 
 #ifdef DATADEBUG
-	delete dd;
+	if(dd != NULL) {
+		delete dd;
+		dd = NULL;
+	}
 #endif
 }
 
@@ -584,12 +594,12 @@ void TCPTrack::clear_pblock( struct packetblock *used_pb )
 			
 			if ( i < paxmax /2 ) {
 				pblock_list_count[0]--;
-				if (pblock_list_count[0] == 0)
-					recompact_pblock_list(0);
+//				if (pblock_list_count[0] == 0)
+//					recompact_pblock_list(0);
 			} else {
 				pblock_list_count[1]--;
-				if (pblock_list_count[1] == 0)
-					recompact_pblock_list(1);
+//				if (pblock_list_count[1] == 0)
+//					recompact_pblock_list(1);
 			}
 				
 			return;
