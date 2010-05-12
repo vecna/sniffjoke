@@ -163,8 +163,10 @@ NetIO::~NetIO()
 {
 	char tmpsyscmd[MEDIUMBUF];
 
-        if(conntrack != NULL)
+        if(conntrack != NULL) {
 		delete conntrack;
+		conntrack = NULL;
+	}
 
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));

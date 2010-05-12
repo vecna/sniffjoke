@@ -57,10 +57,28 @@ static void sniffjoke_version(const char *pname) {
 	printf("%s %s\n", prog_name, prog_version);
 }
 
+static void sniffjoke_sigtrap(int signal) 
+{
+	if(signal)
+		internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
+	/* else, is the clean way used for sniffjoke to clean object */
+
+	if(sjconf != NULL) 
+		delete sjconf;
+
+	if(webio != NULL) 
+		delete webio;
+
+	if(mitm != NULL)
+		delete mitm;
+
+	raise(SIGKILL);
+}
+
 /* used in clean closing */
 static void clean_pidfile_exit(bool exit_request) {
 
-	if(access(PIDFILE, R_OK)) {
+	if(!access(PIDFILE, R_OK)) {
 		FILE *oldpidf = fopen(PIDFILE, "r");
 		char oldpid[6];
 
@@ -77,18 +95,19 @@ static void clean_pidfile_exit(bool exit_request) {
 		/* usleep read microseconds, I need three milliseconds for permit a good cleaning of previous instance */
 		usleep(1000 * 3);
 	} else {
-		internal_log(NULL, ALL_LEVEL, "unable to access %s file, request for unlinking from process %d", PIDFILE, getpid());
+		internal_log(NULL, ALL_LEVEL, "unable to access %s file, request for unlinking from process %d: %s", PIDFILE, getpid(), strerror(errno));
 	}
 
-	if(unlink(PIDFILE)) {
+	if(!unlink(PIDFILE)) {
 		internal_log(NULL, DEBUG_LEVEL, "unlinked %s as requested", PIDFILE);
 	} else {
 		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", PIDFILE, strerror(errno));
 		/* and ... ? */
 	}
 
+	/* this is the clean way for exit, because sniffjoke_sigtrap delete the instance c++ obj */
 	if(exit_request)
-		exit(1);
+		sniffjoke_sigtrap(0);
 }
 
 void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
@@ -112,22 +131,6 @@ void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal)
 	} else {
 		internal_log(NULL, ALL_LEVEL, "error: %s", errbuf);
 	}
-}
-
-void sniffjoke_sigtrap(int signal) 
-{
-	internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
-
-	if(sjconf != NULL) 
-		delete sjconf;
-
-	if(webio != NULL) 
-		delete webio;
-
-	if(mitm != NULL)
-		delete mitm;
-
-	raise(SIGKILL);
 }
 
 /* forceflow is almost useless, use NULL in the normal logging options */
@@ -170,7 +173,7 @@ static int sniffjoke_background(void)
 	int sock;
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-		internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open unix socket: %s", strerror(errno));
+		internal_log(stdout, ALL_LEVEL, "fatal: unable to open unix socket: %s", strerror(errno));
 		clean_pidfile_exit(true);
 	}
 
@@ -178,9 +181,17 @@ static int sniffjoke_background(void)
 	sjsrv.sun_family = AF_UNIX;
 	memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
 
+	if(!access(sniffjoke_socket_path, F_OK))
+		if(unlink(sniffjoke_socket_path)) {
+			internal_log(stdout, ALL_LEVEL, "fatal: unable to unlink previous instance of %s: %s", 
+				sniffjoke_socket_path, strerror(errno));
+			clean_pidfile_exit(true);
+		}
+			
+
 	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) < 0) {
 		close(sock);
-		internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
+		internal_log(stdout, ALL_LEVEL, "fatal: unable to bind unix socket %s: %s", 
 			sniffjoke_socket_path, strerror(errno)
 		);
 		clean_pidfile_exit(true);
@@ -217,6 +228,8 @@ static int sniffjoke_background(void)
 static pid_t sniffjoke_is_running(void)
 {
         FILE *pidf = fopen(PIDFILE, "r");
+	pid_t potenctial_pid;
+	int killret;
 
         if(pidf != NULL) {
                 char tmpstr[6];
@@ -224,10 +237,26 @@ static pid_t sniffjoke_is_running(void)
                 fgets(tmpstr, 6, pidf);
                 fclose(pidf);
 
-                return atoi(tmpstr);
+		potenctial_pid = atoi(tmpstr);
         }
 	else
 		return 0;
+
+	/* test if the pid is running again */
+	killret = kill(potenctial_pid, SIGUSR1);
+	if(!killret)
+		return potenctial_pid;
+	else {
+		if(errno == EPERM) {
+			internal_log(NULL, ALL_LEVEL, "you have not privileges to kill previous sniffjoke, running on %d", potenctial_pid);
+			exit(0);
+		}
+		else /* (errno == ESRCH) */ {
+			internal_log(NULL, ALL_LEVEL, "the pidfile contains information about a dead process (%d)", potenctial_pid);
+			clean_pidfile_exit(false);
+			return 0;
+		}
+	}
 }
 
 
@@ -261,6 +290,7 @@ int main(int argc, char **argv) {
 		{ "conf", required_argument, NULL, 'f' },
 		{ "force", optional_argument, NULL, 'r' },
 		{ "version", optional_argument, NULL, 'v' },
+		{ "foreground", optional_argument, NULL, 'x' },
 		{ NULL, 0, NULL, 0 }
 	};
 
@@ -272,9 +302,12 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	while((charopt = getopt_long(argc, argv, "dcpahlfvr", sj_option, NULL)) != -1)
+	while((charopt = getopt_long(argc, argv, "dcpahlfvrx", sj_option, NULL)) != -1)
 	{
 		switch(charopt) {
+			case 'x':
+				useropt.go_foreground = true;
+				break;
 			case 'd':
 				useropt.debug_level = atoi(optarg);
 				break;
@@ -369,6 +402,7 @@ int main(int argc, char **argv) {
 	if(sniffjoke_srv && useropt.force_restart) {
 		kill(sniffjoke_srv, SIGTERM);
 		clean_pidfile_exit(false);
+		internal_log(stdout, ALL_LEVEL, "sniffjoke remove previous pidfile and killed %d process...", sniffjoke_srv);
 	}
 
 	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
@@ -376,6 +410,8 @@ int main(int argc, char **argv) {
 	signal(SIGABRT, sniffjoke_sigtrap);
 	signal(SIGTERM, sniffjoke_sigtrap);
 	signal(SIGQUIT, sniffjoke_sigtrap);
+
+	/* initialiting object configuration and web interface */
 	sjconf = new SjConf( &useropt );
 	webio = new WebIO( sjconf );
 
@@ -386,7 +422,10 @@ int main(int argc, char **argv) {
 		);
 	}
 	/* setting logfile, debug level, background running and unix socket */
-	sniffjoke_background();
+	if(!useropt.go_foreground)
+		sniffjoke_background();
+	else
+		internal_log(NULL, ALL_LEVEL, "remind: using foreground running disable the --cmd command sending");
 
 	/* this jump happen when sniffjoke is stopped */
 restart:
@@ -403,9 +442,10 @@ restart:
 
 	if(mitm->networkdown_condition)
 	{
-		internal_log(NULL, ALL_LEVEL, "Fatal error in NetIO constructor: stopping sniffjoke");
+		internal_log(NULL, ALL_LEVEL, "detected error in NetIO constructor: stopping sniffjoke");
 		sjconf->running->sj_run = 0;
 		delete mitm;
+		mitm = NULL;
 		goto restart;
 	}
 
@@ -432,12 +472,14 @@ restart:
 			internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
 			refresh_confile = true;
 			delete mitm;
+			mitm = NULL;
 			goto restart;
 		}
 
 		if(mitm->networkdown_condition) {
 			internal_log(NULL, ALL_LEVEL, "Network is down, interrumpting sniffjoke");
 			delete mitm;
+			mitm = NULL;
 			goto restart;
 		}
 

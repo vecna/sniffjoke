@@ -271,8 +271,8 @@ public:
 	int tunfd;
 	int netfd;
 
-	/* poll variables */
-	struct pollfd fds[];
+	/* poll variables, two file descriptors */
+	struct pollfd fds[2];
 
 	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
  * 	 --- but not killed!
