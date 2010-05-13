@@ -195,8 +195,8 @@ void NetIO::network_io()
 
 	while( burst-- )
 	{
-		/* poll wants milliseconds, I want 0.2 sec of delay */
-		nfds = poll(fds, 2, 200);
+		/* poll wants milliseconds, I want 0.050 sec of delay */
+		nfds = poll(fds, 2, 50);
 
 		switch(nfds)
 		{
