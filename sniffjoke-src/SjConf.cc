@@ -79,7 +79,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		const char *cmd0 = "ifconfig -a | grep tun | cut -b -7";
 		const char *cmd1 = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
 		char cmd2[MEDIUMBUF];
-		const char *cmd3 = "route -n | grep ^0.0.0.0 | cut -b 17-32"; 
+		const char *cmd3 = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
 		char cmd4[MEDIUMBUF];
 	
 		internal_log(NULL, ALL_LEVEL, "configuration file %s invalid (%s), creating new configuration...", 
