@@ -499,7 +499,7 @@ struct packetblock * TCPTrack::get_free_pblock( int pktsize, priority_t prio, un
  		 * put an hack packet inside the stream 
  		 *
  		 * otherwise, packet_id is returned by make_pkt_id and
- 		 * is the sequence number. a RETRANSMISSION had the some
+ 		 * is the sequence number. a RETRANSMISSION had the same
  		 * sequence number, for this reason I could drop duplicated
  		 * SYN
  		 */
@@ -1170,8 +1170,8 @@ struct ttlfocus *TCPTrack::init_ttl_focus( int first_free, unsigned int destip )
 
 /* 
  * find_ttl_focus is used whenever you need a ttlfocus struct, this struct is used
- * as reference for each conntrack with the some distination address. every session
- * had access in the some ttlfocus.
+ * as reference for each conntrack with the same distination address. every session
+ * had access in the same ttlfocus.
  * 
  * in ttlfocus are keep the informations for ttl bruteforcing
  */
@@ -1297,7 +1297,7 @@ float TCPTrack::logarithm( int packet_number )
  *   INNOCENT pkt, valid packet that reach destination address
  *
  *   otherwise, the should be the packet received from the tunnel. They 
- *   use the some treatmen of INNOCENT packets.
+ *   use the same treatment as INNOCENT packets.
  *
  *   at the moment, no hacks use INNOCENT flag.
  */
@@ -1522,7 +1522,7 @@ void TCPTrack::SjH__valid_rst_fake_seq( struct packetblock *hackp )
 	hackp->tcp->fin = hackp->tcp->psh = hackp->tcp->syn = 0;
 }
 
-/* fake syn, some more or less value, but, fake */
+/* fake syn, same more or less value, but, fake */
 void TCPTrack::SjH__fake_syn( struct packetblock *hackp )
 {
 	hackp->tcp->psh = 0;
@@ -1613,7 +1613,6 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 
 	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
 	memmove(endip + fakeipopt, endip, l47len);
-	//hackp->ip = (struct iphdr *)hackp->pbuf; evilaliv3: why recalculate this? REMOVAL TEST!
 	hackp->tcp = (struct tcphdr *)(endip + fakeipopt);
 	hackp->payload = (unsigned char *)hackp->tcp + tcplen;
 
@@ -1638,7 +1637,7 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 		hackp->tcp->syn, hackp->tcp->ack, hackp->tcp->psh, hackp->tcp->fin, hackp->tcp->rst
 	);
 #endif
-	hackp->ip->ihl = 5 + route_n + 1;  /* 20 byte ip hdr, route_n * 4 byte options + 4 byte*/
+	hackp->ip->ihl = 5 + route_n + 1;  /* 20 byte ip hdr, route_n * 4 byte options + 4 byte */
 	hackp->ip->tot_len = htons((hackp->ip->ihl * 4) + l47len);
 }
 
