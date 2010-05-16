@@ -594,12 +594,12 @@ void TCPTrack::clear_pblock( struct packetblock *used_pb )
 			
 			if ( i < paxmax /2 ) {
 				pblock_list_count[0]--;
-//				if (pblock_list_count[0] == 0)
-//					recompact_pblock_list(0);
+				if (pblock_list_count[0] == 0)
+					recompact_pblock_list(0);
 			} else {
 				pblock_list_count[1]--;
-//				if (pblock_list_count[1] == 0)
-//					recompact_pblock_list(1);
+				if (pblock_list_count[1] == 0)
+					recompact_pblock_list(1);
 			}
 				
 			return;
