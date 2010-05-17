@@ -33,6 +33,41 @@ void SjConf::dump_config(const char *dumpfname)
 	check_call_ret("closing config file", errno, (ret - 1), false);
 }
 
+char *SjConf::handle_stat_command(void) 
+{
+	internal_log(NULL, VERBOSE_LEVEL, "stat requested");
+	snprintf(io_buf, HUGEBUF, 
+		"sniffjoke running:\t\t%s\n" \
+		"gateway mac address:\t\t%s\n" \
+		"gateway ip address:\t\t%s\n" \
+		"local interface:\t\t%s, %s address\n" \
+		"dynamic tunnel interface:\ttun%d\n",
+		running->sj_run == true ? "TRUE" : "FALSE",
+		running->gw_mac_str,
+		running->gw_ip_addr,
+		running->interface, running->local_ip_addr,
+		running->tun_number
+	);
+	return &io_buf[0];
+}
+
+char *SjConf::handle_stop_command(void)
+{
+	internal_log(NULL, VERBOSE_LEVEL, "stop command requested");
+	running->sj_run = false;
+	snprintf(io_buf, HUGEBUF, "%s:%d stopped sniffjoke as requested!\n", __FILE__, __LINE__);
+	return &io_buf[0];
+	
+}
+
+char *SjConf::handle_start_command(void)
+{
+	internal_log(NULL, VERBOSE_LEVEL, "start command requested");
+	running->sj_run = true;
+	snprintf(io_buf, HUGEBUF, "%s:%d started sniffjoke as requested!\n", __FILE__, __LINE__);
+	return &io_buf[0];
+}
+
 SjConf::SjConf(struct sj_useropt *user_opt) 
 {
 	float magic_check = (MAGICVAL * 28.26);
@@ -79,7 +114,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		const char *cmd0 = "ifconfig -a | grep tun | cut -b -7";
 		const char *cmd1 = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
 		char cmd2[MEDIUMBUF];
-		const char *cmd3 = "route -n | grep ^0.0.0.0 | cut -b 17-32"; 
+		const char *cmd3 = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
 		char cmd4[MEDIUMBUF];
 	
 		internal_log(NULL, ALL_LEVEL, "configuration file %s invalid (%s), creating new configuration...", 

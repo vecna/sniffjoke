@@ -213,7 +213,7 @@ void NetIO::network_io()
 					{
 						if( (errno != EAGAIN) && (errno != EWOULDBLOCK))
 						{
-							internal_log(NULL, VERBOSE_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
+							internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
 							check_call_ret("Reading from network", errno, nbyte, false);
 							break;
 						}
@@ -233,7 +233,7 @@ void NetIO::network_io()
 					if((nbyte = read(tunfd, pktbuf, MTU)) == -1)
 					{
 						if( (errno != EAGAIN) && (errno != EWOULDBLOCK) ) {
-							internal_log(NULL, VERBOSE_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+							internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
 							check_call_ret("Reading from tunnel", errno, nbyte, false);
 							break;
 						}
@@ -271,7 +271,7 @@ void NetIO::queue_flush()
 		if(packet->source == NETWORK) 
 		{
 			if((wbyt = write( tunfd, packet->pbuf, packet->pbuf_size )) == -1) {
-				internal_log(NULL, VERBOSE_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
+				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, wbyt, false);
 			} else {
@@ -289,7 +289,7 @@ void NetIO::queue_flush()
 			if((wbyt = sendto( netfd, packet->pbuf, 
 				ntohs(packet->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
-				internal_log(NULL, VERBOSE_LEVEL, "network_io/write in network error: %s", strerror(errno));
+				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network error: %s", strerror(errno));
 				networkdown_condition = true;
 				check_call_ret("Writing in network", errno, wbyt, false);
 			} else {

@@ -6,6 +6,7 @@ using namespace std;
 #include <signal.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <fcntl.h>
 
 #include <netinet/in.h>
 
@@ -172,7 +173,7 @@ static int sniffjoke_background(void)
 	struct sockaddr_un sjsrv;
 	int sock;
 
-	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
+	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
 		internal_log(stdout, ALL_LEVEL, "fatal: unable to open unix socket: %s", strerror(errno));
 		clean_pidfile_exit(true);
 	}
@@ -189,13 +190,21 @@ static int sniffjoke_background(void)
 		}
 			
 
-	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) < 0) {
+	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
 		close(sock);
 		internal_log(stdout, ALL_LEVEL, "fatal: unable to bind unix socket %s: %s", 
 			sniffjoke_socket_path, strerror(errno)
 		);
 		clean_pidfile_exit(true);
-	}        
+	}
+
+	if(fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
+		close(sock);
+		internal_log(stdout, ALL_LEVEL, "fatal: unable to set non blocking unix socket %s: %s",
+			sniffjoke_socket_path, strerror(errno)
+		);
+		clean_pidfile_exit(true);
+	}
 
 	internal_log(stdout, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
 
@@ -259,6 +268,22 @@ static pid_t sniffjoke_is_running(void)
 	}
 }
 
+/* internal routine called in send_command and check_local_unixserv */
+static int receive_unix_data(int _sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
+{
+	int fromlen =sizeof(struct sockaddr_un), ret;
+
+	if((ret = recvfrom(_sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
+	{
+		if(errno == EAGAIN || errno == EWOULDBLOCK) {
+			return 0;
+		}
+
+		internal_log(error_flow, ALL_LEVEL, "unable to receive local socket: %s: %s", usermsg, strerror(errno));
+	}
+
+	return ret;
+}
 
 static void send_command(char *cmdstring) 
 {
@@ -266,8 +291,8 @@ static void send_command(char *cmdstring)
 	char received_buf[HUGEBUF];
 	struct sockaddr_un servaddr;/* address of server */
 	struct sockaddr_un clntaddr;/* address of client */
-	struct sockaddr_un from;
-	int fromlen, rlen;
+	struct sockaddr_un from; /* address used for receiving data */
+	int rlen;
        
         /* Create a UNIX datagram socket for client */
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
@@ -275,6 +300,7 @@ static void send_command(char *cmdstring)
 		exit(0);
 	}
         
+	unlink(SNIFFJOKE_CLI_US);
 	/* Client will bind to an address so the server will get an address in its recvfrom call and use it to
 	 * send data back to the client.  
 	 */
@@ -297,21 +323,55 @@ static void send_command(char *cmdstring)
 		exit(0);
 	}
 
-	fromlen = sizeof(from);
-	if((rlen = recvfrom(sock, received_buf, HUGEBUF, 0, (struct sockaddr *)&from, (socklen_t *)&fromlen)) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to receive from sniffjoke service: %s", strerror(errno));
-		exit(0);
-	}
+	if((rlen =receive_unix_data(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1) 
+		exit(0); // the error message has been delivered 
 
-	/* because the answer is used in non background application */
-	printf("%s\n", received_buf);
-
+	if(rlen == 0)
+		internal_log(stdout, ALL_LEVEL, "unreceived responde from command [%s]", cmdstring);
+	else	/* the output */
+		printf("%s", received_buf);
+	
         unlink(SNIFFJOKE_CLI_US);
         close(sock);
 }
 
+/* function used in sostitution/or with, the web interface, in order to receive command and modify
+ * the running conf, display stats and so on 
+ */
+static void check_local_unixserv(int srvsock, SjConf *confobj)
+{
+	char received_command[MEDIUMBUF], *output =NULL;
+	int i, rlen, cmdlen;
+	struct sockaddr_un fromaddr;
+
+	memset(received_command, 0x00, MEDIUMBUF);
+	if((rlen =receive_unix_data(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
+		clean_pidfile_exit(true);
+
+	if(!rlen)
+		return;
+
+	internal_log(NULL, VERBOSE_LEVEL, "received command from the client: %s", received_command);
+
+	/* FIXME - sanity check del comando ricevuto */
+	if(!memcmp(received_command, "stat", strlen("stat") )) {
+		output = sjconf->handle_stat_command();
+	} else if(!memcmp(received_command, "start", strlen("start") )) {
+		output = sjconf->handle_start_command();
+	} else if(!memcmp(received_command, "stop", strlen("stop") )) {
+		output = sjconf->handle_stop_command();
+	} else {
+		internal_log(NULL, ALL_LEVEL, "wrong command %s", received_command);
+	}
+
+	/* send the answer message to the client */
+	if(output != NULL) {
+		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
+	}
+}
+
 int main(int argc, char **argv) {
-	int i, charopt;
+	int i, charopt, local_input = 0;
 	time_t next_web_poll;
 	bool refresh_confile = false;
 
@@ -413,14 +473,13 @@ int main(int argc, char **argv) {
 	/* check cmd option */
 	pid_t sniffjoke_srv = sniffjoke_is_running();
 
-
 	if(useropt.command_input != NULL) 
 	{
 		pid_t sniffjoke_srv = sniffjoke_is_running();
 
 		if(sniffjoke_srv) 
 		{
-			internal_log(stdout, VERBOSE_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
+			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
 
 			send_command(useropt.command_input);
 			/* KKK: not clean_pidfile because the other process must continue to run, and not _sigtrap because there
@@ -430,7 +489,9 @@ int main(int argc, char **argv) {
 		else {
 			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, --cmd %s ignored",
 				useropt.command_input);
+			exit(0); // or:
 			/* the running proceeding */
+				// ?
 		}
 
 	} else {
@@ -456,6 +517,7 @@ int main(int argc, char **argv) {
 	signal(SIGABRT, sniffjoke_sigtrap);
 	signal(SIGTERM, sniffjoke_sigtrap);
 	signal(SIGQUIT, sniffjoke_sigtrap);
+	signal(SIGUSR1, SIG_IGN);
 
 	/* initialiting object configuration and web interface */
 	sjconf = new SjConf( &useropt );
@@ -469,7 +531,7 @@ int main(int argc, char **argv) {
 	}
 	/* setting logfile, debug level, background running and unix socket */
 	if(!useropt.go_foreground)
-		sniffjoke_background();
+		local_input = sniffjoke_background();
 	else
 		internal_log(NULL, ALL_LEVEL, "remind: using foreground running disable the --cmd command sending");
 
@@ -480,7 +542,11 @@ restart:
 	{
 		refresh_confile = true;
 		webio->web_poll();
-		usleep(50000);
+
+		if(!useropt.go_foreground)
+			check_local_unixserv(local_input, sjconf);
+
+		usleep(1000 * 50); // usleep receive in input microseconds; 1000 * 50 = 50 millisec */
 	}
 
 	/* if code flow reach here, SniffJoke is running */
@@ -514,27 +580,32 @@ restart:
 	/* main block */
 	while(1) 
 	{
-		if(sjconf->running->reload_conf) {
-			internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
-			refresh_confile = true;
-			delete mitm;
-			mitm = NULL;
-			goto restart;
-		}
+		if(sjconf->running->reload_conf || mitm->networkdown_condition || sjconf->running->sj_run == false) 
+		{
+			if(sjconf->running->reload_conf) {
+				internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
+				refresh_confile = true;
+			} 
+			if(mitm->networkdown_condition)
+				internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
+			if(sjconf->running->sj_run == false) 
+				internal_log(NULL, ALL_LEVEL, "Interrupted sniffjoke as requested");
 
-		if(mitm->networkdown_condition) {
-			internal_log(NULL, ALL_LEVEL, "Network is down, interrumpting sniffjoke");
 			delete mitm;
 			mitm = NULL;
 			goto restart;
 		}
 
 		mitm->network_io();
-
 		mitm->queue_flush();
 
-		if(time(NULL) >= next_web_poll) {
+		if(time(NULL) >= next_web_poll) 
+		{
 			webio->web_poll();
+
+			if(!useropt.go_foreground)
+				check_local_unixserv(local_input, sjconf);
+
 			next_web_poll = time(NULL) + 1;
 		}
 	}

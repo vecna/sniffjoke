@@ -86,10 +86,16 @@ struct sj_config {
 
 class SjConf {
 private:
+	char io_buf[HUGEBUF];
 public:
 	struct sj_config *running;
 
 	void dump_config( const char * );
+
+	char *handle_stat_command(void);
+	char *handle_stop_command(void);
+	char *handle_start_command(void);
+
 	SjConf( struct sj_useropt * );
 	~SjConf();
 };
