@@ -221,7 +221,7 @@ void NetIO::network_io()
 						internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
 		
 						/* add packet in connection tracking queue */
-			i			if( check_evil_packet(pktbuf, nbyte) ) {
+						if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
 							conntrack->add_packet_queue(NETWORK, pktbuf, nbyte);
 							io_happened = true;
 						}
@@ -241,7 +241,7 @@ void NetIO::network_io()
 						internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
 
 						/* add packet in connection tracking queue */
-						if( check_evil_packet(pktbuf, nbyte) ) {
+						if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
 							conntrack->add_packet_queue(TUNNEL, pktbuf, nbyte);
 							io_happened = true;
 						}

@@ -95,7 +95,7 @@ bool TCPTrack::check_evil_packet( const unsigned char * buff, int nbyte)
  
 	if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) ) {
 #ifdef DATADEBUG
-		dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) )");
+		dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) )");
 #endif
 		return false;
 	}
@@ -107,9 +107,9 @@ bool TCPTrack::check_evil_packet( const unsigned char * buff, int nbyte)
 
 		iphlen = ip->ihl * 4;
 
-		if(nbyte < iphlen + sizeof(struct tcphdr)) {
+		if(nbyte < iphlen + sizeof(struct tcphdr) ) {
 #ifdef DATADEBUG
-			dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) )");
+			dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < iphlen + sizeof(struct tcphdr) )");
 #endif
 			return false;
 		}
@@ -117,9 +117,9 @@ bool TCPTrack::check_evil_packet( const unsigned char * buff, int nbyte)
 		tcp = (struct tcphdr *)((unsigned char *)ip + iphlen);
 		tcphlen = tcp->doff * 4;
 		
-		if( ntohs(ip->tot_len) < iphlen + tcphlen) {
+		if( ntohs(ip->tot_len) < iphlen + tcphlen ) {
  #ifdef DATADEBUG
-			dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) )");
+			dd->InfoMsg("Packet", "check_evil_packet: if( ntohs(ip->tot_len) < iphlen + tcphlen )");
 #endif
 			return false;
 		}
