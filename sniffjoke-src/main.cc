@@ -22,7 +22,6 @@ const char *default_cfg = "/etc/sniffjoke.conf";
 const char *default_log = "/tmp/sniffjoke.log";
 const int default_web_bind_port = 8844;
 
-
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
 const char *prog_version = "0.3";
@@ -149,22 +148,29 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
         else
                 output_flow = useropt.logstream;
 
-        va_start(arguments, msg);
+	if(errorlevel == PACKETS_DEBUG) 
+		if(useropt.packet_logstream != NULL)
+			output_flow = useropt.packet_logstream;
+
+	if(errorlevel == HACKS_DEBUG)
+		if(useropt.hacks_logstream != NULL)
+			output_flow = useropt.hacks_logstream;
 
         if(errorlevel <= useropt.debug_level)
         {
                 char *time = strdup(asctime(localtime(&now)));
 
+		va_start(arguments, msg);
                 time[strlen(time) -1] = ' ';
                 fprintf(output_flow, "%s ", time);
                 vfprintf(output_flow, msg, arguments);
                 fprintf(output_flow, "\n");
                 fflush(output_flow);
+		va_end(arguments);
 
                 free(time);
         }
 
-        va_end(arguments);
 }
 
 static int sniffjoke_background(void) 
@@ -216,11 +222,30 @@ static int sniffjoke_background(void)
 		if(fork())
 			exit(0);
 
-                if((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
-                        internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
-                        clean_pidfile_exit(true);
-                }
-                internal_log(NULL, ALL_LEVEL, "new running instance of packet duplicator with pid: %d", getpid());
+		if((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
+			internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
+			clean_pidfile_exit(true);
+		}
+
+		if(useropt.debug_level >= PACKETS_DEBUG) {
+			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
+			sprintf(tmpfname, "%s.packets", useropt.logfname);
+			if((useropt.packet_logstream = fopen(useropt.logfname, "a+")) == NULL) {
+				internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				clean_pidfile_exit(true);
+			} 
+			internal_log(stdout, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
+		}
+
+		if(useropt.debug_level >= HACKS_DEBUG) {
+			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
+			sprintf(tmpfname, "%s.hacks", useropt.logfname);
+			if((useropt.hacks_logstream = fopen(useropt.logfname, "a+")) == NULL) {
+				internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				clean_pidfile_exit(true);
+			}
+			internal_log(stdout, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
+		}
 
                 FILE *pidfile =fopen(PIDFILE, "w+");
                 if(pidfile == NULL) {

@@ -12,8 +12,8 @@ using namespace std;
 
 #include "sniffjoke.h"
 
-// define DEBUG enable session debug, ttl bruteforce 
-#define DEBUG 
+// define PACKETDEBUG enable session debug, ttl bruteforce 
+#define PACKETDEBUG 
 // define HACKSDEBUG enable dump about packet injected
 #define HACKSDEBUG
 
@@ -118,7 +118,7 @@ bool TCPTrack::check_evil_packet( const unsigned char * buff, int nbyte)
 		tcphlen = tcp->doff * 4;
 		
 		if( ntohs(ip->tot_len) < iphlen + tcphlen ) {
- #ifdef DATADEBUG
+#ifdef DATADEBUG
 			dd->InfoMsg("Packet", "check_evil_packet: if( ntohs(ip->tot_len) < iphlen + tcphlen )");
 #endif
 			return false;
@@ -279,8 +279,8 @@ void TCPTrack::analyze_packets_queue()
 
 		if(ct->tf->status == TTL_BRUTALFORCE) 
 		{
-#ifdef DEBUG
-			printf("status BRUTALFORCE for %s: %d %d pkt is KEEP (%d), send probe %d rcvd %d probe\n",
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG, "status BRUTALFORCE for %s: %d %d pkt is KEEP (%d), send probe %d rcvd %d probe",
 				inet_ntoa( *((struct in_addr *)&ct->tf->daddr) ) ,
 				ntohs(newp->tcp->source), 
 				ntohs(newp->tcp->dest),
@@ -326,17 +326,17 @@ void TCPTrack::analyze_incoming_icmp( struct packetblock *timeexc )
 			tf->received_probe++;
 
 			if( expired_ttl > tf->expiring_ttl) {
-#ifdef DEBUG
-				printf("TTL OK: (sent %d recvd %d) previous %d now %d\n", 
+#ifdef PACKETDEBUG
+				internal_log(NULL, PACKETS_DEBUG, "TTL OK: (sent %d recvd %d) previous %d now %d", 
 					tf->sent_probe, tf->received_probe,
 					tf->expiring_ttl, expired_ttl
 				);
 #endif
 				tf->expiring_ttl = expired_ttl;
 			}
-#ifdef DEBUG
+#ifdef PACKETDEBUG
 			else {
-				printf("TTL BAD: (sent %d recvd %d) previous %d now %d\n", 
+				internal_log(NULL, PACKETS_DEBUG, "TTL BAD: (sent %d recvd %d) previous %d now %d",
 					tf->sent_probe, tf->received_probe,
 					tf->expiring_ttl, expired_ttl
 				);
@@ -363,8 +363,8 @@ void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 	if((tf = find_ttl_focus( synack->ip->saddr, 0)) == NULL) 
 		return;
 
-#ifdef DEBUG 
-	printf("SYN/ACK (saddr %u) seq %08x seq_ack %08x - dport %d sport %d puppet %d\n",
+#ifdef PACKETDEBUG
+	internal_log(NULL, PACKETS_DEBUG, "SYN/ACK (saddr %u) seq %08x seq_ack %08x - dport %d sport %d puppet %d",
 		synack->ip->saddr,
 		ntohl(synack->tcp->seq),
 		ntohl(synack->tcp->ack_seq),
@@ -382,8 +382,9 @@ void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 		discern_ttl =  ntohl(synack->tcp->ack_seq) - tf->rand_key -1;
 		tf->status = TTL_KNOW;
 
-#ifdef DEBUG
-		printf("discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d\n", 
+#ifdef PACKETDEBUG
+		internal_log(NULL, PACKETS_DEBUG,
+			"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
 			discern_ttl,
 			tf->min_working_ttl,
 			tf->expiring_ttl,
@@ -425,8 +426,9 @@ void TCPTrack::analyze_incoming_rstfin( struct packetblock *rstfin )
 {
 	struct sniffjoke_track *ct;
 
-#ifdef DEBUG
-	printf("RST/FIN received (NET): ack_seq %08x, sport %d dport %d saddr %u\n",
+#ifdef PACKETDEBUG
+	internal_log(NULL, PACKETS_DEBUG,
+		"RST/FIN received (NET): ack_seq %08x, sport %d dport %d saddr %u",
 		rstfin->tcp->ack_seq, 
 		ntohs(rstfin->tcp->source),
 		ntohs(rstfin->tcp->dest),
@@ -457,8 +459,9 @@ void TCPTrack::manage_outgoing_packets( struct packetblock *newp )
 	if(newp->tcp->syn) 
 	{
 		ct = find_sexion( newp );
-#ifdef DEBUG
-		printf("SYN from TUNNEL:%d %s:%d\n",
+#ifdef PACKETDEBUG
+		internal_log(NULL, PACKETS_DEBUG,
+			"SYN from TUNNEL:%d %s:%d",
 			ntohs(newp->tcp->source),
 			inet_ntoa( *((struct in_addr *)&newp->ip->daddr) ),
 			ntohs(newp->tcp->dest) 
@@ -467,9 +470,9 @@ void TCPTrack::manage_outgoing_packets( struct packetblock *newp )
 		/* if sniffjoke had not yet the minimum working ttl, continue the starting probe */
 		if(ct->tf->status == TTL_BRUTALFORCE) 
 		{
-#ifdef DEBUG
-			printf("SYN retransmission - DROPPED\n");
-#endif	
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG, "SYN retransmission - DROPPED");
+#endif
 			enque_ttl_probe( newp, ct );
 			newp->status = KEEP; 
 			return;
@@ -482,8 +485,9 @@ void TCPTrack::manage_outgoing_packets( struct packetblock *newp )
 	{
 		if (newp->tcp->rst || newp->tcp->fin )
 		{
-#ifdef DEBUG
-			printf("FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)\n",
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG,
+				"FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)",
 				ntohl(newp->tcp->seq),
 				ntohl(newp->tcp->ack_seq),
 				newp->tcp->rst, newp->tcp->fin, 
@@ -546,8 +550,9 @@ struct packetblock * TCPTrack::get_free_pblock( int pktsize, priority_t prio, un
  		 */
 		if(packet_id && pblock_list[i].packet_id == packet_id) 
 		{
-#ifdef DEBUG
-			printf("DUP: sequence number already present: (%08x) size: %d new size: %d\n", 
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG,
+				"DUP: sequence number already present: (%08x) size: %d new size: %d",
 				packet_id, 
 				pblock_list[i].pbuf_size,
 				pktsize
@@ -579,7 +584,10 @@ struct packetblock * TCPTrack::get_free_pblock( int pktsize, priority_t prio, un
 		free(pblock_list);
 		pblock_list = newlist;
 
-		printf("### memory allocation for pblock_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, paxmax);
+		internal_log(NULL, DEBUG_LEVEL, 
+			"### memory allocation for pblock_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
+			paxmax
+		);
 
 		first_free = paxmax / 4;
 	}
@@ -683,8 +691,10 @@ void TCPTrack::recompact_pblock_list(int what)
 		free(pblock_list);
 		pblock_list = newlist;
 		
-		printf("### memory deallocation for pblock_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, paxmax);
-		
+		internal_log(NULL, DEBUG_LEVEL,
+			"### memory deallocation for pblock_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
+			paxmax
+		);
 	}
 }
 
@@ -734,7 +744,10 @@ struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb )
 			(sizeof(struct sniffjoke_track) * sextraxmax / 2)
 		);
 
-		printf("### memory allocation for sex_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
+		internal_log(NULL, DEBUG_LEVEL,
+			"### memory allocation for sex_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
+			sextraxmax
+		);
 
 		first_free = sextraxmax / 2;
 	}
@@ -748,8 +761,10 @@ struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb )
 
 	/* pb is the refsyn, SYN packet reference for starting ttl bruteforce */
 	sex_list[first_free].tf = find_ttl_focus(pb->ip->daddr, 1);
-	
-	printf("Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d \n", 
+
+#ifdef PACKETDEBUG
+	internal_log(NULL, PACKETS_DEBUG,
+			"Session[%d]: local:%d -> %s:%d (ISN %08x) puppet %d TTL exp %d wrk %d", 
 			first_free, ntohs(sex_list[first_free].sport), 
 			inet_ntoa( *((struct in_addr *)&sex_list[first_free].daddr) ) ,
 			ntohs(sex_list[first_free].dport),
@@ -758,6 +773,7 @@ struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb )
 			sex_list[first_free].tf->expiring_ttl,
 			sex_list[first_free].tf->min_working_ttl
 	);
+#endif
 
 	if ( first_free < sextraxmax / 2 )
 		sex_list_count[0]++;
@@ -790,16 +806,17 @@ void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct )
 	{
 		if( &(sex_list[i]) == used_ct )
 		{
-			if(used_ct->shutdown == false) {
-#ifdef DEBUG
-				printf("SHUTDOWN sexion [%d] sport %d dport %d daddr %u\n",
+			if(used_ct->shutdown == false) 
+			{
+				internal_log(NULL, DEBUG_LEVEL,
+					"SHUTDOWN sexion [%d] sport %d dport %d daddr %u",
 					i, ntohs(used_ct->sport), ntohs(used_ct->dport), used_ct->daddr
 				);
-#endif
 				used_ct->shutdown = true;
 			}
 			else {
-				printf("Removing session[%d]: local:%d -> %s:%d TTL exp %d wrk %d #%d\n", 
+				internal_log(NULL, DEBUG_LEVEL,
+					"Removing session[%d]: local:%d -> %s:%d TTL exp %d wrk %d #%d", 
 					i, ntohs(sex_list[i].sport), 
 					inet_ntoa( *((struct in_addr *)&used_ct->daddr) ) ,
 					ntohs(used_ct->dport),
@@ -861,7 +878,10 @@ void TCPTrack::recompact_sex_list( int what )
 		free(sex_list);
 		sex_list = newlist;
 		
-		printf("### memory deallocation for sex_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, sextraxmax);
+		internal_log(NULL, DEBUG_LEVEL,
+			"### memory deallocation for sex_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
+			sextraxmax
+		);
 	}
 }
 
@@ -1068,7 +1088,8 @@ sendchosenhacks:
 			/* calling finally the first kind of hack in the packet injected */
 			(*this.*(chackpo[i].choosen_hack))( inj );
 #ifdef HACKSDEBUG
-			printf("** [%s] (lo:%d %s:%d #%d) id %u exp:%d wrk:%d len %d-%d[%d] data %d {%d%d%d%d%d}\n",
+			internal_log(NULL, HACKS_DEBUG,
+				"** [%s] (lo:%d %s:%d #%d) id %u exp:%d wrk:%d len %d-%d[%d] data %d {%d%d%d%d%d}",
 				chackpo[i].debug_info,
 				ntohs(inj->tcp->source), 
 				inet_ntoa( *((struct in_addr *)&inj->ip->daddr) ) ,
@@ -1138,8 +1159,10 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 	injpb->ip->id = (ct->tf->rand_key % 64) + tested_ttl;
 
 	fix_iptcp_sum(injpb->ip, injpb->tcp);
-#ifdef DEBUG
-	printf("Injecting probe %d, tested_ttl %d [exp %d min work %d], (dport %d sport %d) daddr %u\n", 
+
+#ifdef PACKETDEBUG
+	internal_log(NULL, PACKETS_DEBUG,
+		"Injecting probe %d, tested_ttl %d [exp %d min work %d], (dport %d sport %d) daddr %u",
 		ct->tf->sent_probe,
 		tested_ttl, 
 		ct->tf->expiring_ttl, ct->tf->min_working_ttl, 
@@ -1168,9 +1191,9 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
 	{
 		if(packet->tcp->syn && packet->ip->daddr == daddr )
 		{
-			#ifdef DEBUG
-				printf("The REAL SYN change status from KEEP to SEND\n");
-			#endif
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG, "The REAL SYN change status from KEEP to SEND");
+#endif
 
 			packet->status = SEND;
 		}
@@ -1195,7 +1218,10 @@ struct ttlfocus *TCPTrack::init_ttl_focus( int first_free, unsigned int destip )
 				(sizeof(struct ttlfocus) * maxttlfocus / 2)
 			);
 			
-			printf("### memory allocation for ttlfocus_list in %s:%d:%s() new size: %d\n", __FILE__, __LINE__, __func__, maxttlfocus);
+			internal_log(NULL, DEBUG_LEVEL,
+				"### memory allocation for ttlfocus_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
+				maxttlfocus
+			);
 			
 			first_free = maxttlfocus / 2;
 		}
@@ -1352,9 +1378,10 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 	 * packets different from TCP, and packets without ttl focus struct are
 	 * send immediatly
 	 */ 
-#ifdef DEBUG
+#ifdef PACKETDEBUG
 	if(pkt->proto == TCP) 
-		printf("last_pkt_fix (TCP) : id %u (lo:%d %s:%d) proto %d source %d \n", 
+		internal_log(NULL, PACKETS_DEBUG,
+			"last_pkt_fix (TCP) : id %u (lo:%d %s:%d) proto %d source %d", 
 			ntohs(pkt->ip->id), 
 			ntohs(pkt->tcp->source),
 			inet_ntoa( *((struct in_addr *)&pkt->ip->daddr) ) ,
@@ -1363,7 +1390,8 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 			pkt->source
 		);
 	else 
-		printf("last_pkt_fix (!TCP): id %u proto %d source %d \n", 
+		internal_log(NULL, PACKETS_DEBUG,
+			"last_pkt_fix (!TCP): id %u proto %d source %d", 
 			ntohs(pkt->ip->id), 
 			pkt->ip->protocol, 
 			pkt->source
@@ -1666,7 +1694,8 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 		*(unsigned int *)(&endip[i]) = random();
 
 #ifdef HACKSDEBUG
-	printf("Inj IpOpt (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}\n",
+	internal_log(NULL, HACKS_DEBUG,
+		"Inj IpOpt (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}",
 		ntohs(hackp->tcp->source), 
 		inet_ntoa( *((struct in_addr *)&hackp->ip->daddr) ) ,
 		ntohs(hackp->tcp->dest), 
@@ -1722,7 +1751,8 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 	memcpy(&endtcp[4], &now, sizeof(time_t));
 
 #ifdef HACKSDEBUG
-	printf("Fake TcpOpt (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}\n",
+	internal_log(NULL, HACKS_DEBUG,
+		"Fake TcpOpt (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
 		ntohs(hackp->tcp->source), 
 		inet_ntoa( *((struct in_addr *)&hackp->ip->daddr) ) ,
 		ntohs(hackp->tcp->dest), 
