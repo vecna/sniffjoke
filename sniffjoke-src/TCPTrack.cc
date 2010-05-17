@@ -13,7 +13,7 @@ using namespace std;
 #include "sniffjoke.h"
 
 // define DEBUG enable session debug, ttl bruteforce 
-#define DEBUG 
+// #define DEBUG 
 // define HACKSDEBUG enable dump about packet injected
 #define HACKSDEBUG
 
