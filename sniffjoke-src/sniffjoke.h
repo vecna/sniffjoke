@@ -251,6 +251,7 @@ private:
 public:
 	TCPTrack( SjConf* );
 	~TCPTrack();
+	bool check_evil_packet( const unsigned char * buff, int nbyte);
 	void add_packet_queue( const source_t, const unsigned char *, int );
 	void analyze_packets_queue();
 	struct packetblock *get_pblock( status_t, source_t, proto_t, bool);

@@ -87,6 +87,47 @@ TCPTrack::~TCPTrack()
 #endif
 }
 
+bool TCPTrack::check_evil_packet( const unsigned char * buff, int nbyte)
+{
+	struct iphdr *ip;
+		
+	ip = (struct iphdr *)buff;
+ 
+	if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) ) {
+#ifdef DATADEBUG
+		dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) )");
+#endif
+		return false;
+	}
+
+	if(ip->protocol == IPPROTO_TCP) {
+		struct tcphdr *tcp;
+		int iphlen;
+		int tcphlen;
+
+		iphlen = ip->ihl * 4;
+
+		if(nbyte < iphlen + sizeof(struct tcphdr)) {
+#ifdef DATADEBUG
+			dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) )");
+#endif
+			return false;
+		}
+
+		tcp = (struct tcphdr *)((unsigned char *)ip + iphlen);
+		tcphlen = tcp->doff * 4;
+		
+		if( ntohs(ip->tot_len) < iphlen + tcphlen) {
+ #ifdef DATADEBUG
+			dd->InfoMsg("Packet", "check_evil_packet: if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) )");
+#endif
+			return false;
+		}
+	}
+	
+	return true;
+}
+
 /* the packet is add in the packet queue for be analyzed in a second time */
 void TCPTrack::add_packet_queue( const source_t source, const unsigned char *buff, int nbyte )
 {
