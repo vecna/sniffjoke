@@ -87,7 +87,6 @@ struct sj_config {
 	bool SjH__inject_ipopt;					/* default true */
 	bool SjH__inject_tcpopt;				/* default true */
 
-	bool reload_conf;
 	char *error;
 };
 
@@ -271,6 +270,9 @@ public:
 	struct packetblock *get_pblock( status_t, source_t, proto_t, bool);
 	void clear_pblock( struct packetblock * );
 	void last_pkt_fix( struct packetblock * );
+
+	/* force all packets sendable, used from NetIO for avoid Sn mangling */
+	void force_send(void);
 };
 
 class NetIO {

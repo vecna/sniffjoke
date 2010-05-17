@@ -238,8 +238,6 @@ endofautodetect:
 		running->SjH__inject_ipopt = true;		/* implemented, enabled */
 		running->SjH__inject_tcpopt = true;		/* implemented, enabled */
 	}
-
-	running->reload_conf = true;
 }
 
 SjConf::~SjConf() {

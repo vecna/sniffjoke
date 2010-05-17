@@ -396,7 +396,7 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 int main(int argc, char **argv) {
 	int i, charopt, local_input = 0;
 	time_t next_web_poll;
-	bool refresh_confile = false;
+	bool restart_on_restore = false;
 
 	/* set the default vaule in the configuration struct */
 	useropt.force_restart = false;
@@ -558,69 +558,38 @@ int main(int argc, char **argv) {
 	else
 		internal_log(NULL, ALL_LEVEL, "remind: using foreground running disable the --cmd command sending");
 
-	/* this jump happen when sniffjoke is stopped */
-restart:
-	/* loop until sj_run is TRUE */
-	while(sjconf->running->sj_run == 0) 
-	{
-		refresh_confile = true;
-		webio->web_poll();
-
-		if(!useropt.go_foreground)
-			check_local_unixserv(local_input, sjconf);
-
-		usleep(1000 * 50); // usleep receive in input microseconds; 1000 * 50 = 50 millisec */
-	}
-
-	/* if code flow reach here, SniffJoke is running */
+	/* the code flow reach here, SniffJoke is ready to instance network environment,
+ 	 * create the restoration process and loose privileges */
 	mitm = new NetIO( sjconf );
 
 	if(mitm->networkdown_condition)
 	{
-		internal_log(NULL, ALL_LEVEL, "detected error in NetIO constructor: stopping sniffjoke");
-		sjconf->running->sj_run = 0;
-		delete mitm;
-		mitm = NULL;
-		goto restart;
+		internal_log(NULL, ALL_LEVEL, "detected network error in NetIO constructor: unable to start sniffjoke");
+		clean_pidfile_exit(true);
 	}
 
-	/* this variable is used in the main loop, for raise the new configuration */
-	sjconf->running->reload_conf = false;
-
-	/* we update the config file only if explicitally requested */
-	if(refresh_confile && useropt.cfgfname != NULL) {
-		sjconf->dump_config( useropt.cfgfname );
-	}
-	else if(useropt.cfgfname == NULL) {
-		internal_log(NULL, ALL_LEVEL, "configuration file is not set as argument, sniffjoke not overwrite the default %s", default_cfg);
-	}
-	else {
-		internal_log(NULL, ALL_LEVEL, "configuration unchanged");
-	}
+	/* TODO FIXME: instance the recovery process */
+	/* TODO FIXME: loose root privileges */
 
 	next_web_poll = time(NULL) + 1;
 
 	/* main block */
 	while(1) 
 	{
-		if(sjconf->running->reload_conf || mitm->networkdown_condition || sjconf->running->sj_run == false) 
-		{
-			if(sjconf->running->reload_conf) {
-				internal_log(NULL, ALL_LEVEL, "requested configuration reloading, restarting sniffjoke");
-				refresh_confile = true;
-			} 
-			if(mitm->networkdown_condition)
-				internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
-			if(sjconf->running->sj_run == false) 
-				internal_log(NULL, ALL_LEVEL, "Interrupted sniffjoke as requested");
-
-			delete mitm;
-			mitm = NULL;
-			goto restart;
-		}
-
 		mitm->network_io();
 		mitm->queue_flush();
+
+		if(mitm->networkdown_condition == true && sjconf->running->sj_run == true) {
+			internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
+			sjconf->running->sj_run = false;
+			restart_on_restore = true;
+		}
+
+		if(mitm->networkdown_condition == false && restart_on_restore == true) {
+			internal_log(NULL, ALL_LEVEL, "Network restored, restarting sniffjoke");
+			sjconf->running->sj_run = true;
+			restart_on_restore = false;
+		}
 
 		if(time(NULL) >= next_web_poll) 
 		{

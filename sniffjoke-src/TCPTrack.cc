@@ -182,6 +182,31 @@ void TCPTrack::update_pblock_pointers( struct packetblock *pb ) {
 	}
 }
 
+/*
+ * this function set SEND stats to all packets, is used when sniffjoke must not 
+ * mangle the packets 
+ */
+void TCPTrack::force_send()
+{
+	int i;
+
+#ifdef PACKETDEBUG
+	int counter =0;
+#endif
+
+	for(i = 0; i < paxmax; i++) {
+		if(pblock_list[i].pbuf_size) {
+#ifdef PACKETDEBUG
+			counter++;
+#endif
+			pblock_list[i].status = SEND;
+		}
+	}
+#ifdef PACKETDEBUG
+	internal_log(NULL, PACKETS_DEBUG, "force_send had converted %d packets to SEND status", counter);
+#endif
+}
+
 /* 
  * this is the "second time", the received packet are assigned in a tracked TCP session,
  * for understand which kind of mangling should be apply. maybe not all packets is sent 

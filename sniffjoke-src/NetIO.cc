@@ -198,60 +198,69 @@ void NetIO::network_io()
 		/* poll wants milliseconds, I want 0.050 sec of delay */
 		nfds = poll(fds, 2, 50);
 
-		switch(nfds)
+		if(nfds == -1) {
+			internal_log(NULL, ALL_LEVEL, "Strange and dangerous error in poll: %s", strerror(errno));
+			check_call_ret("error in poll", errno, nfds, true);
+		}
+
+		if(!nfds)
+			break;
+
+		if(fds[0].revents & POLLIN)
 		{
-			case -1:
-				check_call_ret("error in poll", errno, nfds, true);
-				break;
-
-			case 0:
-				break;
-			default:
-				if(fds[0].revents & POLLIN)
+			if((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1)
+			{
+				if( (errno != EAGAIN) && (errno != EWOULDBLOCK))
 				{
-					if((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1)
-					{
-						if( (errno != EAGAIN) && (errno != EWOULDBLOCK))
-						{
-							internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
-							check_call_ret("Reading from network", errno, nbyte, false);
-							break;
-						}
-					} else {
-						internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
-		
-						/* add packet in connection tracking queue */
-						if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
-							conntrack->add_packet_queue(NETWORK, pktbuf, nbyte);
-							io_happened = true;
-						}
-					}
+					internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
+					check_call_ret("Reading from network", errno, nbyte, false);
+					break;
 				}
+			} else {
+				internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
 
-				if(fds[1].revents & POLLIN)
-				{
-					if((nbyte = read(tunfd, pktbuf, MTU)) == -1)
-					{
-						if( (errno != EAGAIN) && (errno != EWOULDBLOCK) ) {
-							internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
-							check_call_ret("Reading from tunnel", errno, nbyte, false);
-							break;
-						}
-					} else {
-						internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
-
-						/* add packet in connection tracking queue */
-						if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
-							conntrack->add_packet_queue(TUNNEL, pktbuf, nbyte);
-							io_happened = true;
-						}
-					}
+				/* add packet in connection tracking queue */
+				if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
+					conntrack->add_packet_queue(NETWORK, pktbuf, nbyte);
+					io_happened = true;
 				}
+			}
+		}
+
+		if(fds[1].revents & POLLIN)
+		{
+			if((nbyte = read(tunfd, pktbuf, MTU)) == -1)
+			{
+				if( (errno != EAGAIN) && (errno != EWOULDBLOCK) ) {
+					internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+					check_call_ret("Reading from tunnel", errno, nbyte, false);
+					break;
+				}
+			} 
+			else {
+				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
+
+				/* add packet in connection tracking queue */
+				if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
+					conntrack->add_packet_queue(TUNNEL, pktbuf, nbyte);
+					io_happened = true;
+				}
+			}
 		}
 	}
 
-	if(io_happened)
-		conntrack->analyze_packets_queue();
+	if(io_happened) 
+	{
+		if(runcopy->sj_run == true) {
+			/* when sniffjoke is running the packet are analyzed and mangled */
+			conntrack->analyze_packets_queue();
+		} 
+		else /* running->sj_run == false */ {
+			/* all packets must be marked as SEND */
+			conntrack->force_send();
+		}
+	}
+	/* returning network_io in main.cc is called the below queue_flush */
 }
 
 /* this method send all the packets sets as "SEND" */
@@ -278,8 +287,8 @@ void NetIO::queue_flush()
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull: %d", wbyt);
 			}
 
-		} else {
-			
+		} 
+		else {
 			if(packet->source != TTLBFORCE) 
 			{
 				/* fixing TTL, fixing checksum and IP/TCP options */
