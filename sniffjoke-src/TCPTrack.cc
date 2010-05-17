@@ -669,21 +669,17 @@ void TCPTrack::recompact_pblock_list(int what)
 		newlist = (struct packetblock *)calloc( paxmax, sizeof( struct packetblock) );
 		check_call_ret("memory allocation", errno, newlist == NULL ? -1 : 0, true );
 
-		switch( what )
-		{
-			case 0:
-				memcpy(	(void *)newlist, 
-						(void *)&pblock_list[0], 
-						sizeof(struct packetblock) * paxmax
-				);
-				break;
-			case 1:
-				memcpy(	(void *)newlist, 
-						(void *)&pblock_list[paxmax], 
-						sizeof(struct packetblock) * paxmax
-				);
-				pblock_list_count[0] = pblock_list_count[1];
-				break;
+		if(what == 0 ) {
+			memcpy(	(void *)newlist, 
+					(void *)&pblock_list[0], 
+					sizeof(struct packetblock) * paxmax
+			);
+		} else /* what == 1 */ {
+			memcpy(	(void *)newlist, 
+					(void *)&pblock_list[paxmax], 
+					sizeof(struct packetblock) * paxmax
+			);
+			pblock_list_count[0] = pblock_list_count[1];
 		}
 		
 		pblock_list_count[1] = 0;
