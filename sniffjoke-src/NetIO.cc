@@ -89,7 +89,7 @@ NetIO::NetIO(SjConf *sjconf)
 		internal_log(NULL, ALL_LEVEL, "NetIO constructor: set CLOSE on EXIT flag in TUN successful");
 	}
 
-	internal_log(stdout, ALL_LEVEL, "deleting default gateway in routing table...");
+	internal_log(stdout, VERBOSE_LEVEL, "deleting default gateway in routing table...");
 	system("/sbin/route del default");
 
 	snprintf(tmpsyscmd, MEDIUMBUF, 
@@ -97,13 +97,13 @@ NetIO::NetIO(SjConf *sjconf)
 		runcopy->tun_number,
 		runcopy->local_ip_addr
 	);
-	internal_log(stdout, ALL_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]\n",
+	internal_log(stdout, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]\n",
 		runcopy->tun_number, runcopy->interface,
 		runcopy->local_ip_addr, tmpsyscmd
 	);
 	system(tmpsyscmd);
 
-	internal_log(stdout, ALL_LEVEL, "setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
+	internal_log(stdout, VERBOSE_LEVEL, "setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
 	system("/sbin/route add default gw 1.198.10.5");
 
 	strcpy(orig_gw.ifr_name, (const char *)runcopy->interface);

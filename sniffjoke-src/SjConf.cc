@@ -94,12 +94,12 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
 		}
 
-		internal_log(NULL, ALL_LEVEL, "readed configuration settings in %s", user_opt->cfgfname);
-		internal_log(NULL, ALL_LEVEL, "-- sniffjoke running: %s", readed.sj_run == true ? "TRUE" : "FALSE");
-		internal_log(NULL, ALL_LEVEL, "-- sniffjoke gateway mac address: %s", readed.gw_mac_str);
-		internal_log(NULL, ALL_LEVEL, "-- sniffjoke gateway ip address: %s", readed.gw_ip_addr);
-		internal_log(NULL, ALL_LEVEL, "-- sniffjoke local interface: %s, %s address", readed.interface, readed.local_ip_addr);
-		internal_log(NULL, ALL_LEVEL, "-- sniffjoke dynamic tunnel interface: tun%d", readed.tun_number);
+		internal_log(NULL, VERBOSE_LEVEL, "readed configuration settings in %s", user_opt->cfgfname);
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke running: %s", readed.sj_run == true ? "TRUE" : "FALSE");
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway mac address: %s", readed.gw_mac_str);
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway ip address: %s", readed.gw_ip_addr);
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke local interface: %s, %s address", readed.interface, readed.local_ip_addr);
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke dynamic tunnel interface: tun%d", readed.tun_number);
 
 		fclose(cF);
 
@@ -243,5 +243,5 @@ endofautodetect:
 }
 
 SjConf::~SjConf() {
-	printf("SjConf: cleaning configuration object\n");
+	internal_log(NULL, ALL_LEVEL, "SjConf: cleaning configuration object\n");
 }

@@ -90,7 +90,7 @@ static void clean_pidfile_exit(bool exit_request) {
                 fgets(oldpid, 6, oldpidf);
                 fclose(oldpidf);
 
-		internal_log(NULL, ALL_LEVEL, "old pidfile %s had pid %d inside, sending sigterm...", PIDFILE, atoi(oldpid));
+		internal_log(NULL, VERBOSE_LEVEL, "old pidfile %s had pid %d inside, sending sigterm...", PIDFILE, atoi(oldpid));
 		kill(atoi(oldpid), SIGTERM);
 		/* usleep read microseconds, I need three milliseconds for permit a good cleaning of previous instance */
 		usleep(1000 * 3);
@@ -148,13 +148,11 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
         else
                 output_flow = useropt.logstream;
 
-	if(errorlevel == PACKETS_DEBUG) 
-		if(useropt.packet_logstream != NULL)
-			output_flow = useropt.packet_logstream;
+	if(errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
+		output_flow = useropt.packet_logstream;
 
-	if(errorlevel == HACKS_DEBUG)
-		if(useropt.hacks_logstream != NULL)
-			output_flow = useropt.hacks_logstream;
+	if(errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
+		output_flow = useropt.hacks_logstream;
 
         if(errorlevel <= useropt.debug_level)
         {
@@ -230,7 +228,7 @@ static int sniffjoke_background(void)
 		if(useropt.debug_level >= PACKETS_DEBUG) {
 			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
 			sprintf(tmpfname, "%s.packets", useropt.logfname);
-			if((useropt.packet_logstream = fopen(useropt.logfname, "a+")) == NULL) {
+			if((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
 				internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
 				clean_pidfile_exit(true);
 			} 
@@ -240,7 +238,7 @@ static int sniffjoke_background(void)
 		if(useropt.debug_level >= HACKS_DEBUG) {
 			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
 			sprintf(tmpfname, "%s.hacks", useropt.logfname);
-			if((useropt.hacks_logstream = fopen(useropt.logfname, "a+")) == NULL) {
+			if((useropt.hacks_logstream = fopen(tmpfname, "a+")) == NULL) {
 				internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
 				clean_pidfile_exit(true);
 			}
@@ -534,7 +532,7 @@ int main(int argc, char **argv) {
 	if(sniffjoke_srv && useropt.force_restart) {
 		kill(sniffjoke_srv, SIGTERM);
 		clean_pidfile_exit(false);
-		internal_log(stdout, ALL_LEVEL, "sniffjoke remove previous pidfile and killed %d process...", sniffjoke_srv);
+		internal_log(stdout, VERBOSE_LEVEL, "sniffjoke remove previous pidfile and killed %d process...", sniffjoke_srv);
 	}
 
 	/* setting ^C, SIGTERM and other signal trapped for clean network environment */

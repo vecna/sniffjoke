@@ -72,7 +72,7 @@ static char *default_creat(const char *tb, struct sj_config *runcopy)
 					x += l;
 					break;
 				default:
-					printf("default %s:%d ?\n", __FILE__, __LINE__);
+					printf("wrong/bad/error: default %s:%d ?\n", __FILE__, __LINE__);
 			}
 			i +=4;
 		}
@@ -106,7 +106,9 @@ static char * sysinfo_creat(const char *tb, struct sj_config *runcopy)
 				x++;
 
 				if(x == GARGANTUABUF) {
-					printf("AARGH! execution of %s give an output > than %d byte!\n",
+					internal_log(NULL, ALL_LEVEL,
+						"AARGH! :%s:%d execution of %s give an output > than %d byte! report to the author, please",
+						__FILE__, __LINE__,
 						cmd[(int)tb[i] - 48], x
 					);
 					break;
@@ -326,7 +328,7 @@ WebIO::WebIO( SjConf *sjc )
 }
 
 WebIO::~WebIO() {
-	printf("WebIO: cleaning swill instance...\n");
+	internal_log(NULL, ALL_LEVEL, "WebIO: cleaning swill instance...\n");
 	swill_shutdown();
 }
 
