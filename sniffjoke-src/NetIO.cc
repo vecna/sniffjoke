@@ -212,12 +212,14 @@ void NetIO::network_io()
 			{
 				if( (errno != EAGAIN) && (errno != EWOULDBLOCK))
 				{
-					internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network:  error: %s", strerror(errno));
+					internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network: error: %s", strerror(errno));
 					check_call_ret("Reading from network", errno, nbyte, false);
 					break;
 				}
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/recv readed correctly: %d bytes", nbyte);
+				internal_log(NULL, DEBUG_LEVEL, "network_io/recv bytes %d successfull [sniffjoke %s]",
+					nbyte, runcopy->sj_run == true ? "running" : "stopped");
+
 
 				/* add packet in connection tracking queue */
 				if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
@@ -284,7 +286,8 @@ void NetIO::queue_flush()
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, wbyt, false);
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull: %d", wbyt);
+				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
+					wbyt, runcopy->sj_run == true ? "running" : "stopped");
 			}
 
 		} 
@@ -302,7 +305,9 @@ void NetIO::queue_flush()
 				networkdown_condition = true;
 				check_call_ret("Writing in network", errno, wbyt, false);
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d bytes successfull", wbyt);
+				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
+					wbyt, runcopy->sj_run == true ? "running" : "stopped");
+
 			}
 			
 		}

@@ -45,7 +45,6 @@ struct sj_useropt {
 	bool go_foreground;
 	bool force_restart;
 	unsigned short bind_port;
-	char *command_input;
 };
 /* loglevels */
 #define ALL_LEVEL       0
@@ -61,31 +60,37 @@ struct sj_useropt {
 
 #define MAGICVAL	0xADECADDE
 struct sj_config {
-	char gw_ip_addr[SMALLBUF];				/* default: autodetect */
+	char gw_ip_addr[SMALLBUF];			/* default: autodetect */
 	char local_ip_addr[SMALLBUF];			/* default: autodetect */
-	char gw_mac_str[SMALLBUF];				/* default: autodetect */
-	unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
-	float MAGIC;							/* integrity check for saved binary configuration */
-	unsigned char sj_run;					/* default: 0 = NO RUNNING */
+	char gw_mac_str[SMALLBUF];			/* default: autodetect */
+	unsigned char gw_mac_addr[ETH_ALEN];		/* the conversion of _str */
+	float MAGIC;					/* integrity check for saved binary configuration */
+	unsigned char sj_run;				/* default: 0 = NO RUNNING */
 	unsigned short web_bind_port;			/* default: 8844 */
 	unsigned short max_ttl_probe;			/* default: 26 */
 	unsigned short max_session_tracked;		/* default: 20 */
 	unsigned short max_packet_que;			/* default: 60 */
 	unsigned short max_tracked_ttl;			/* default: 1024 */
 	unsigned char interface[SMALLBUF];		/* default: autodetect */
-	int tun_number;							/* tunnel interface number */
+	int tun_number;					/* tunnel interface number */
+#define PORTNUMBER 65535
+	unsigned char portconf[PORTNUMBER];
+#define HEAVY	0x04
+#define NORMAL	0x03
+#define LIGHT	0x02
+#define NONE	0x01
 
-	bool SjH__shift_ack;					/* default false */
-	bool SjH__fake_data;					/* default true */
-	bool SjH__fake_seq;						/* default true */
-	bool SjH__fake_close;					/* default true */
-	bool SjH__zero_window;					/* default true */
+	bool SjH__shift_ack;				/* default false */
+	bool SjH__fake_data;				/* default true */
+	bool SjH__fake_seq;				/* default true */
+	bool SjH__fake_close;				/* default true */
+	bool SjH__zero_window;				/* default true */
 	bool SjH__valid_rst_fake_seq;			/* default true */
-	bool SjH__fake_syn;						/* default true */
-	bool SjH__half_fake_syn;				/* default false */
-	bool SjH__half_fake_ack;				/* default false */
-	bool SjH__inject_ipopt;					/* default true */
-	bool SjH__inject_tcpopt;				/* default true */
+	bool SjH__fake_syn;				/* default true */
+	bool SjH__half_fake_syn;			/* default false */
+	bool SjH__half_fake_ack;			/* default false */
+	bool SjH__inject_ipopt;				/* default true */
+	bool SjH__inject_tcpopt;			/* default true */
 
 	char *error;
 };
@@ -102,6 +107,7 @@ public:
 	char *handle_stat_command(void);
 	char *handle_stop_command(void);
 	char *handle_start_command(void);
+	char *handle_set_command(unsigned short, unsigned short, unsigned char);
 
 	SjConf( struct sj_useropt * );
 	~SjConf();

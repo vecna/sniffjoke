@@ -4,6 +4,7 @@ using namespace std;
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include "sniffjoke.h"
 
@@ -51,20 +52,57 @@ char *SjConf::handle_stat_command(void)
 	return &io_buf[0];
 }
 
+char *SjConf::handle_set_command(unsigned short start, unsigned short end, unsigned char what)
+{
+	const char *what_weightness;
+
+	switch(what) {
+		case HEAVY: what_weightness = "heavy"; break;
+		case NORMAL: what_weightness = "normal"; break;
+		case LIGHT: what_weightness = "light"; break;
+		case NONE: what_weightness = "no hacking"; break;
+		default: 
+			snprintf(io_buf, HUGEBUF, "ERROR!! invalid code (0x%2x) in %s:%s:%d", what, __FILE__, __func__, __LINE__);
+			internal_log(NULL, ALL_LEVEL, "BAD ERROR: %s", io_buf);
+			return &io_buf[0];
+			break;
+	}
+
+	internal_log(NULL, ALL_LEVEL, "set start port %d end port %d to %s level", start, end, what_weightness);
+	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level", start, end, what_weightness);
+
+	do {
+		running->portconf[start] = what;
+		start++;
+	} while(start <= end);
+
+	return &io_buf[0];
+}
+
 char *SjConf::handle_stop_command(void)
 {
-	internal_log(NULL, VERBOSE_LEVEL, "stop command requested");
-	running->sj_run = false;
-	snprintf(io_buf, HUGEBUF, "%s:%d stopped sniffjoke as requested!\n", __FILE__, __LINE__);
+	if(running->sj_run != false) {
+		internal_log(NULL, ALL_LEVEL, "stop command requested");
+		running->sj_run = false;
+		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
+	} else /* sniffjoke is already stopped */ {
+		internal_log(NULL, ALL_LEVEL, "received stop request, but sniffjoke is already stopped!");
+		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
+	}
 	return &io_buf[0];
 	
 }
 
 char *SjConf::handle_start_command(void)
 {
-	internal_log(NULL, VERBOSE_LEVEL, "start command requested");
-	running->sj_run = true;
-	snprintf(io_buf, HUGEBUF, "%s:%d started sniffjoke as requested!\n", __FILE__, __LINE__);
+	if(running->sj_run != true) {
+		internal_log(NULL, ALL_LEVEL, "start command requested");
+		running->sj_run = true;
+		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
+	} else /* sniffjoke is already running */ {
+		internal_log(NULL, ALL_LEVEL, "received start request, but sniffjoke is already running!");
+		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
+	}
 	return &io_buf[0];
 }
 
@@ -75,7 +113,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	int i;
 
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
-	
+
 	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", user_opt->cfgfname);
 	if((cF = fopen(user_opt->cfgfname, "r")) != NULL) 
 	{
@@ -148,8 +186,8 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			running->interface[i] = imp_str[i];
 
 		if(i < 3) {
-			internal_log(NULL, ALL_LEVEL, "unable to detect external default gw: set up manually");
-			goto endofautodetect;
+			internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
+			raise(SIGTERM);
 		}
 		else {
 			internal_log(NULL, ALL_LEVEL, "== detected external interface with default gateway: %s", running->interface);
@@ -180,8 +218,8 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			running->gw_ip_addr[i] = imp_str[i];
 
 		if(strlen(running->gw_ip_addr) < 7) {
-			internal_log(NULL, ALL_LEVEL, "-- unable to autodetect gateway ip address, set up manually");
-			goto endofautodetect;
+			internal_log(NULL, ALL_LEVEL, "-- unable to autodetect gateway ip address, sniffjoke cannot be started");
+			raise(SIGTERM);
 		}
 		else 
 			internal_log(NULL, ALL_LEVEL, "== automatically acquired gateway ip address: %s", running->gw_ip_addr);
@@ -212,29 +250,30 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 				&running->gw_mac_addr[4], &running->gw_mac_addr[5]
 			);
 		}
-		
-		
-endofautodetect:
 
 		/* setting common defaults */
-		running->sj_run = 0;
 		running->max_session_tracked = 20;
 		running->max_packet_que = 60;
 		running->max_tracked_ttl = 1024;
 		running->MAGIC = magic_check;
 		running->web_bind_port = user_opt->bind_port;
 		running->max_ttl_probe = 26;
-		
-		/* hacks common defaults */
+
+		/* default is to set port in normal aggressivity */
+		memset(running->portconf, NORMAL, PORTNUMBER);
+
+		/* hacks to be fixed */
 		running->SjH__shift_ack = false;		/* implemented, need testing */
+		running->SjH__half_fake_syn = false;		/* currently not implemented */
+		running->SjH__half_fake_ack = false;		/* currently not implemented */
+
+		/* hacks common defaults */
 		running->SjH__fake_data = true;			/* implemented, enabled */
 		running->SjH__fake_seq = true;			/* implemented, enabled */
 		running->SjH__fake_close = true;		/* implemented, enabled */
 		running->SjH__zero_window = true;		/* implemented, enabled */
 		running->SjH__valid_rst_fake_seq = true;	/* implemented, enabled */
 		running->SjH__fake_syn = true;			/* implemented, enabled */
-		running->SjH__half_fake_syn = false;		/* currently not implemented */
-		running->SjH__half_fake_ack = false;		/* currently not implemented */
 		running->SjH__inject_ipopt = true;		/* implemented, enabled */
 		running->SjH__inject_tcpopt = true;		/* implemented, enabled */
 	}

@@ -363,7 +363,7 @@ static void send_command(char *cmdstring)
  */
 static void check_local_unixserv(int srvsock, SjConf *confobj)
 {
-	char received_command[MEDIUMBUF], *output =NULL;
+	char received_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
 	int i, rlen, cmdlen;
 	struct sockaddr_un fromaddr;
 
@@ -383,6 +383,24 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 		output = sjconf->handle_start_command();
 	} else if(!memcmp(received_command, "stop", strlen("stop") )) {
 		output = sjconf->handle_stop_command();
+	} else if(!memcmp(received_command, "set", strlen("set") )) 
+	{
+		int start_port, end_port, value;
+
+		sscanf(received_command, "set %d %d %d", &start_port, &end_port, &value);
+
+		if(start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER || 
+			value < 0 || value >= 0x05) 
+		{
+			internal_buf = (char *)malloc(MEDIUMBUF);
+			snprintf(internal_buf, MEDIUMBUF, "invalid port, %d or %d, must be > 0 and < %d",
+				start_port, end_port, PORTNUMBER);
+			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
+			output = internal_buf;
+		}
+		else {
+			output = sjconf->handle_set_command(start_port, end_port, value);
+		}
 	} else {
 		internal_log(NULL, ALL_LEVEL, "wrong command %s", received_command);
 	}
@@ -391,12 +409,16 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 	if(output != NULL) {
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
 	}
+
+	if(internal_buf != NULL)
+		free(internal_buf);
 }
 
 int main(int argc, char **argv) {
 	int i, charopt, local_input = 0;
 	time_t next_web_poll;
 	bool restart_on_restore = false;
+	char command_buffer[MEDIUMBUF], *command_input = NULL;
 
 	/* set the default vaule in the configuration struct */
 	useropt.force_restart = false;
@@ -406,12 +428,10 @@ int main(int argc, char **argv) {
 	useropt.cfgfname = "/etc/sniffjoke.conf";
 	useropt.bind_port = default_web_bind_port;
 	useropt.bind_addr = NULL;
-	useropt.command_input = NULL;   
 
 	struct option sj_option[] =
 	{
 		{ "debug", required_argument, NULL, 'd' },
-		{ "cmd", required_argument, NULL, 'c' },
 		{ "bind-port", required_argument, NULL, 'p' },
 		{ "bind-addr", required_argument, NULL, 'a' },
 		{ "help", optional_argument, NULL, 'h' },
@@ -423,6 +443,46 @@ int main(int argc, char **argv) {
 		{ NULL, 0, NULL, 0 }
 	};
 
+	memset(command_buffer, 0x00, MEDIUMBUF);
+	/* check for direct commands */
+	if ( (argc >= 2) && !memcmp(argv[1], "start", strlen("start") )) {
+		snprintf(command_buffer, MEDIUMBUF, "start");
+		command_input = argv[1];
+	}
+	if ( (argc >= 2) && !memcmp(argv[1], "stop", strlen("stop") )) {
+		snprintf(command_buffer, MEDIUMBUF, "stop");
+		command_input = argv[1];
+	}
+	if ( (argc >= 2) && !memcmp(argv[1], "stat", strlen("stat") )) {
+		snprintf(command_buffer, MEDIUMBUF, "stat");
+		command_input = argv[1];
+	}
+	if ( (argc == 5) && !memcmp(argv[1], "set", strlen("set") )) {
+		snprintf(command_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
+		command_input = command_buffer;
+	} 
+
+	/* check if sniffjoke is running in background */
+	pid_t sniffjoke_srv = sniffjoke_is_running();
+
+	/* understand if the usage is client-like or service-like */
+	if(command_input != NULL) 
+	{
+		if(sniffjoke_srv) 
+		{
+			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", command_input);
+			send_command(command_input);
+			/* KKK: not clean_pidfile because the other process must continue to run, and not _sigtrap because there
+			 * are not obj instanced */
+			exit(0);
+		}
+		else {
+			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
+			exit(0); // or:
+			/* the running proceeding */
+		}
+	}
+
 	for(i = 1; i < argc; i++) {
 		if(argv[i][0] == '-' && argv[i][1] != '-') {
 			internal_log(stdout, ALL_LEVEL, "options: %s wrong: only --long-options are accepted", argv[i]);
@@ -431,7 +491,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	while((charopt = getopt_long(argc, argv, "dcpahlfvrx", sj_option, NULL)) != -1)
+	while((charopt = getopt_long(argc, argv, "dpahlfvrx", sj_option, NULL)) != -1)
 	{
 		switch(charopt) {
 			case 'x':
@@ -439,9 +499,6 @@ int main(int argc, char **argv) {
 				break;
 			case 'd':
 				useropt.debug_level = atoi(optarg);
-				break;
-			case 'c':
-				useropt.command_input = strdup(optarg);
 				break;
 			case 'p':
 				useropt.bind_port = atoi(optarg);
@@ -473,8 +530,14 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	/* check integrity of the readed options */
-	/* bind port is ok: start set to default, is unsigned short, if overwritte in fine */
+	if(sniffjoke_srv && !useropt.force_restart) {
+		internal_log(stdout, ALL_LEVEL, "sniffjoke is already running (pid %d), use --force or check --help", sniffjoke_srv);
+		/* same reason of KKK before */
+		exit(0);
+	}
+
+	if(getuid() || geteuid()) 
+		check_call_ret("required root privileges", EPERM, -1, true);
 
 	/* checking config file */
 	if(useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
@@ -491,42 +554,6 @@ int main(int argc, char **argv) {
 		// FIXME
 		internal_log(stdout, ALL_LEVEL, "warning: --bind-addr is IGNORED at the moment: %s\n", useropt.bind_addr);
 	}
-
-	/* check if sniffjoke is running in background */
-	/* check cmd option */
-	pid_t sniffjoke_srv = sniffjoke_is_running();
-
-	if(useropt.command_input != NULL) 
-	{
-		pid_t sniffjoke_srv = sniffjoke_is_running();
-
-		if(sniffjoke_srv) 
-		{
-			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", useropt.command_input);
-
-			send_command(useropt.command_input);
-			/* KKK: not clean_pidfile because the other process must continue to run, and not _sigtrap because there
-			 * are not obj instanced */
-			exit(0);
-		}
-		else {
-			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, --cmd %s ignored",
-				useropt.command_input);
-			exit(0); // or:
-			/* the running proceeding */
-				// ?
-		}
-
-	} else {
-		if(sniffjoke_srv && !useropt.force_restart) {
-			internal_log(stdout, ALL_LEVEL, "sniffjoke is already running (pid %d), use --force or check --help", sniffjoke_srv);
-			/* same reason of KKK before */
-			exit(0);
-		}
-	}
-
-	if(getuid() || geteuid()) 
-		check_call_ret("required root privileges", EPERM, -1, true);
 
 	/* after the privilege checking */
 	if(sniffjoke_srv && useropt.force_restart) {
@@ -548,7 +575,7 @@ int main(int argc, char **argv) {
 
 	if(sjconf->running->sj_run == 0) {
 		internal_log(NULL, ALL_LEVEL,
-			"sniffjoke is not running: use \"sniffjoke --cmd start\" or http://127.0.0.1:%d/sniffjoke.html\n",
+			"sniffjoke is not running: use \"sniffjoke start\" command  or http://127.0.0.1:%d/sniffjoke.html\n",
                         sjconf->running->web_bind_port
 		);
 	}
