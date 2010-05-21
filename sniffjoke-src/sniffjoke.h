@@ -99,6 +99,7 @@ struct sj_config {
 class SjConf {
 private:
 	char io_buf[HUGEBUF];
+	const char *resolve_weight_name(int);
 public:
 	struct sj_config *running;
 
@@ -108,6 +109,8 @@ public:
 	char *handle_stop_command(void);
 	char *handle_start_command(void);
 	char *handle_set_command(unsigned short, unsigned short, unsigned char);
+	char *handle_showport_command(void);
+	char *handle_log_command(int);
 
 	SjConf( struct sj_useropt * );
 	~SjConf();

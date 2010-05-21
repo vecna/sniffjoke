@@ -271,14 +271,13 @@ void TCPTrack::analyze_packets_queue()
 	newp = get_pblock(YOUNG, TUNNEL, TCP, false);
 	while ( newp != NULL )
 	{
-#if 0
-		if(!(ntohs(newp->tcp->dest) == 80) || (ntohs(newp->tcp->source) == 80)) {
+		unsigned short destport = ntohs(newp->tcp->dest);
+
+		/* no hacks required for this destination port */
+		if(runcopy->portconf[destport] == NONE) {
 			newp->status = SEND; 
 			continue;
 		}
-#else
-		/* check configuration TODO, at the moment, all session are sniffjokeble */
-#endif
 
 		/* 
  		 * create/close session, check ttlfocus and start new discovery, 

@@ -7,6 +7,7 @@ using namespace std;
 #include <stdlib.h>
 #include <getopt.h>
 #include <fcntl.h>
+#include <pwd.h>
 
 #include <netinet/in.h>
 
@@ -18,7 +19,6 @@ using namespace std;
 
 #include "sniffjoke.h"
 
-const char *default_cfg = "/etc/sniffjoke.conf";
 const char *default_log = "/tmp/sniffjoke.log";
 const int default_web_bind_port = 8844;
 
@@ -37,20 +37,26 @@ static struct sj_useropt useropt;
 
 static void sniffjoke_help(const char *pname) {
 	printf(
-		"%s receive some --options:\n"
-		"--debug [level 1-3]\tenable debug and set the verbosity [default:1]\n"
-		"--logfile [file]\tset a logfile, [default %s]\n"
-		"--cmd\t\t\tsend a cmd to the running sniffjoke, commands available:\n"
-		"\tstart|stop|stat|portrange startport:endport paranoy <1-100>|clear startport:endport\n"
-		"--bind-port [port]\tset the port where bind management webserver [default:%d]\n"
-		"--bind-addr [addr]\tset interface where bind management webserver [default:%s]\n"
-		"--conf [file]\t\tconfiguration file [default:%s]\n"
-		"--force\t\t\tforce restart if sniffjoke service\n"
-		"--foreground\t\trunning in foreground\n"
-		"--version\t\tshow sniffjoke version\n"
-		"--help\t\t\tshow this help\n"
+		"%s [command] or %s --options:\n"
+		" --debug [level 1-3]\tenable debug and set the verbosity [default:1]\n"
+		" --logfile [file]\tset a logfile, [default %s]\n"
+		" --bind-port [port]\tset the port where bind management webserver [default:%d]\n"
+		" --bind-addr [addr]\tset interface where bind management webserver [default:%s]\n"
+		" --force\t\t\tforce restart if sniffjoke service\n"
+		" --foreground\t\trunning in foreground\n"
+		" --version\t\tshow sniffjoke version\n"
+		" --help\t\t\tshow this help\n\n"
+		"while sniffjoke is running, you should send one of those commands as command line argument:\n"
+		" start\t\t\tstart sniffjoke hijacking/injection\n"
+		" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"
+		" stat\t\t\tget statistics about sniffjoke configuration and network\n"
+		" set start end value\tset per tcp ports the strongness of injection\n"
+		"\t\t\tthe values are: [heavy|normal|light|none]\n"
+		" clear\t\t\talias to \"set 1 65535 none\"\n"
+		" showport\t\tshow TCP ports strongness of injection\n"
+		" log level\t\t0 = normal, 1 = verbose, 2 = debug\n\n"
 		"\t\t\thttp://www.delirandom.net/sniffjoke\n",
-	pname, default_log, default_web_bind_port, "127.0.0.1", default_cfg);
+	pname, pname, default_log, default_web_bind_port, "127.0.0.1");
 }
 
 static void sniffjoke_version(const char *pname) {
@@ -92,8 +98,8 @@ static void clean_pidfile_exit(bool exit_request) {
 
 		internal_log(NULL, VERBOSE_LEVEL, "old pidfile %s had pid %d inside, sending sigterm...", PIDFILE, atoi(oldpid));
 		kill(atoi(oldpid), SIGTERM);
-		/* usleep read microseconds, I need three milliseconds for permit a good cleaning of previous instance */
-		usleep(1000 * 3);
+		/* usleep read microseconds, I need fifty milliseconds for permit a good cleaning of previous instance */
+		usleep(1000 * 50);
 	} else {
 		internal_log(NULL, ALL_LEVEL, "unable to access %s file, request for unlinking from process %d: %s", PIDFILE, getpid(), strerror(errno));
 	}
@@ -308,7 +314,7 @@ static int receive_unix_data(int _sock, char *databuf, int bufsize, struct socka
 	return ret;
 }
 
-static void send_command(char *cmdstring) 
+static void send_command(char *cmdstring, pid_t srvpid) 
 {
 	int sock;
 	char received_buf[HUGEBUF];
@@ -335,7 +341,7 @@ static void send_command(char *cmdstring)
 		internal_log(stdout, ALL_LEVEL, "unable to bind client to %s: %s", SNIFFJOKE_CLI_US, strerror(errno));
 		exit(0);
 	}
-       
+
         /* Set up address structure for server socket */
 	memset(&servaddr, 0x00, sizeof(servaddr));
 	servaddr.sun_family = AF_UNIX;
@@ -352,7 +358,7 @@ static void send_command(char *cmdstring)
 	if(rlen == 0)
 		internal_log(stdout, ALL_LEVEL, "unreceived responde from command [%s]", cmdstring);
 	else	/* the output */
-		printf("%s", received_buf);
+		printf("answer reiceved from sniffjoke service running at %d:\n%s\n", srvpid, received_buf);
 	
         unlink(SNIFFJOKE_CLI_US);
         close(sock);
@@ -387,6 +393,8 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 	{
 		int start_port, end_port, value;
 
+		/* FIXME - magari supportare set portasingola TIPO, set start:end TIPO, set porta1,porta2,porta3,... TIPO */
+		/* FIXME - at the moment only integer value are accepted: 0 1 2 3 4 */
 		sscanf(received_command, "set %d %d %d", &start_port, &end_port, &value);
 
 		if(start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER || 
@@ -401,7 +409,25 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 		else {
 			output = sjconf->handle_set_command(start_port, end_port, value);
 		}
-	} else {
+	} else if (!memcmp(received_command, "clear", strlen("clear") )) {
+		output = sjconf->handle_set_command(1, PORTNUMBER, NONE);
+	} else if (!memcmp(received_command, "showport", strlen("showport") )) {
+		output = sjconf->handle_showport_command();
+	} else if (!memcmp(received_command, "log", strlen("log") )) 
+	{
+		int loglevel;
+
+		sscanf(received_command, "log %d", &loglevel);
+		if(loglevel < 0 || loglevel > HACKS_DEBUG) {
+			internal_buf = (char *)malloc(MEDIUMBUF);
+			snprintf(internal_buf, MEDIUMBUF, "invalid log value: %d, must be > 0 and < than %d", loglevel, HACKS_DEBUG);
+			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
+			output = internal_buf;
+		} else {
+			output = sjconf->handle_log_command(loglevel);
+		}
+	} 
+	else {
 		internal_log(NULL, ALL_LEVEL, "wrong command %s", received_command);
 	}
 
@@ -443,6 +469,13 @@ int main(int argc, char **argv) {
 		{ NULL, 0, NULL, 0 }
 	};
 
+	if(getuid() || geteuid()) {
+		printf("sniffjoke for running require root privileges\n");
+		sniffjoke_help(argv[0]);
+		return 0;
+	}
+	
+
 	memset(command_buffer, 0x00, MEDIUMBUF);
 	/* check for direct commands */
 	if ( (argc >= 2) && !memcmp(argv[1], "start", strlen("start") )) {
@@ -461,6 +494,18 @@ int main(int argc, char **argv) {
 		snprintf(command_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
 		command_input = command_buffer;
 	} 
+	if ( (argc == 2) && !memcmp(argv[1], "clear", strlen("clear") )) {
+		snprintf(command_buffer, MEDIUMBUF, "clear");
+		command_input = command_buffer;
+	} 
+	if ( (argc == 2) && !memcmp(argv[1], "showport", strlen("showport") )) {
+		snprintf(command_buffer, MEDIUMBUF, "showport");
+		command_input = command_buffer;
+	} 
+	if ( (argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel") )) {
+		snprintf(command_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
+		command_input = command_buffer;
+	} 
 
 	/* check if sniffjoke is running in background */
 	pid_t sniffjoke_srv = sniffjoke_is_running();
@@ -471,24 +516,22 @@ int main(int argc, char **argv) {
 		if(sniffjoke_srv) 
 		{
 			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", command_input);
-			send_command(command_input);
+			send_command(command_input, sniffjoke_srv);
 			/* KKK: not clean_pidfile because the other process must continue to run, and not _sigtrap because there
 			 * are not obj instanced */
-			exit(0);
+			return 0;
 		}
 		else {
 			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
-			exit(0); // or:
+			return 0; // or:
 			/* the running proceeding */
 		}
 	}
 
-	for(i = 1; i < argc; i++) {
-		if(argv[i][0] == '-' && argv[i][1] != '-') {
-			internal_log(stdout, ALL_LEVEL, "options: %s wrong: only --long-options are accepted", argv[i]);
-			sniffjoke_help(argv[0]);
-			return -1;
-		}
+	if(argc > 1 && argv[1][0] != '-') {
+		internal_log(stdout, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
+		sniffjoke_help(argv[0]);
+		return -1;
 	}
 
 	while((charopt = getopt_long(argc, argv, "dpahlfvrx", sj_option, NULL)) != -1)
@@ -533,21 +576,16 @@ int main(int argc, char **argv) {
 	if(sniffjoke_srv && !useropt.force_restart) {
 		internal_log(stdout, ALL_LEVEL, "sniffjoke is already running (pid %d), use --force or check --help", sniffjoke_srv);
 		/* same reason of KKK before */
-		exit(0);
+		return 0;
 	}
-
-	if(getuid() || geteuid()) 
-		check_call_ret("required root privileges", EPERM, -1, true);
 
 	/* checking config file */
 	if(useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
-		internal_log(stdout, ALL_LEVEL, "unable to access %s, running default conf and autodetect if not available", 
-			useropt.cfgfname
-		);
-		check_call_ret("invalid --config file", errno, -1, false);
+		internal_log(stdout, ALL_LEVEL, "unable to access %s: sniffjoke the defaults", useropt.cfgfname);
 	}
-	else
-		useropt.cfgfname = (char *)default_cfg;
+
+	struct passwd *userinfo = getpwuid(getuid());
+	internal_log(stdout, VERBOSE_LEVEL, "looking for personal preferences in %s./.sniffjoke/", userinfo->pw_dir);
 
 	/* bind addr */
 	if(useropt.bind_addr != NULL) {
@@ -575,7 +613,7 @@ int main(int argc, char **argv) {
 
 	if(sjconf->running->sj_run == 0) {
 		internal_log(NULL, ALL_LEVEL,
-			"sniffjoke is not running: use \"sniffjoke start\" command  or http://127.0.0.1:%d/sniffjoke.html\n",
+			"sniffjoke is running and INACTIVE: use \"sniffjoke start\" command or http://127.0.0.1:%d/sniffjoke.html\n",
                         sjconf->running->web_bind_port
 		);
 	}

@@ -36,7 +36,7 @@ void SjConf::dump_config(const char *dumpfname)
 
 char *SjConf::handle_stat_command(void) 
 {
-	internal_log(NULL, VERBOSE_LEVEL, "stat requested");
+	internal_log(NULL, VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, HUGEBUF, 
 		"sniffjoke running:\t\t%s\n" \
 		"gateway mac address:\t\t%s\n" \
@@ -68,8 +68,8 @@ char *SjConf::handle_set_command(unsigned short start, unsigned short end, unsig
 			break;
 	}
 
-	internal_log(NULL, ALL_LEVEL, "set start port %d end port %d to %s level", start, end, what_weightness);
 	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level", start, end, what_weightness);
+	internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 
 	do {
 		running->portconf[start] = what;
@@ -82,27 +82,76 @@ char *SjConf::handle_set_command(unsigned short start, unsigned short end, unsig
 char *SjConf::handle_stop_command(void)
 {
 	if(running->sj_run != false) {
-		internal_log(NULL, ALL_LEVEL, "stop command requested");
+		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!");
+		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 		running->sj_run = false;
-		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
 	} else /* sniffjoke is already stopped */ {
-		internal_log(NULL, ALL_LEVEL, "received stop request, but sniffjoke is already stopped!");
-		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
+		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!");
+		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 	}
 	return &io_buf[0];
-	
 }
 
 char *SjConf::handle_start_command(void)
 {
 	if(running->sj_run != true) {
-		internal_log(NULL, ALL_LEVEL, "start command requested");
+		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!");
+		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 		running->sj_run = true;
-		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
 	} else /* sniffjoke is already running */ {
-		internal_log(NULL, ALL_LEVEL, "received start request, but sniffjoke is already running!");
-		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
+		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!");
+		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 	}
+	return &io_buf[0];
+}
+
+/* private function useful for resolution of code/name */
+const char *SjConf::resolve_weight_name(int command_code) 
+{
+	switch(command_code) {
+		case HEAVY: return "heavy";
+		case NORMAL: return "normal";
+		case LIGHT: return "light";
+		case NONE: return "no hacks";
+		default: internal_log(NULL, ALL_LEVEL, "danger: found invalid code in ports configuration");
+			 return "VERY BAD BUFFER CORRUPTION! I WISH NO ONE EVER SEE THIS LINE";
+	}
+}
+
+char *SjConf::handle_showport_command(void) 
+{
+	int i, acc_start = 0, acc_end = 0, kind, actual_io = 0;
+	char *index = &io_buf[0];
+	memset(io_buf, 0x00, HUGEBUF);
+
+	/* the first port work as initialization */
+	kind = running->portconf[0];
+
+	for(i = 1; i < PORTNUMBER; i++) {
+		/* the kind has changed, so we must print the previous port range */
+		if(running->portconf[i] != kind) 
+		{
+			if( acc_start == ( i - 1) ) 
+				snprintf(index, HUGEBUF - actual_io, "%s\tdest port: %d\n", resolve_weight_name(kind), acc_start);
+			else
+				snprintf(index, HUGEBUF - actual_io, "%s\tdest ports: %d:%d\n", resolve_weight_name(kind), acc_start, i - 1);
+
+			actual_io = strlen(io_buf);
+			index = &io_buf[actual_io];
+
+			kind = running->portconf[i];
+			acc_start = i;
+		}
+	}
+
+	snprintf(index, HUGEBUF - actual_io, "%s\t dest ports %d:65535\n", resolve_weight_name(kind), acc_start);
+
+	return &io_buf[0];
+}
+
+char *SjConf::handle_log_command(int newloglevel)
+{
+	snprintf(io_buf, HUGEBUF, "TO BE IMPLEMENTED -- new log level requested %d\n", newloglevel);
 	return &io_buf[0];
 }
 
@@ -155,10 +204,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		const char *cmd3 = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
 		char cmd4[MEDIUMBUF];
 	
-		internal_log(NULL, ALL_LEVEL, "configuration file %s invalid (%s), creating new configuration...", 
-			user_opt->cfgfname, strerror(errno)
-		);
-
 		/* set up default before wait the "start sniffjoke" from web panel */
 		memset(running, 0x00, sizeof(sj_config));
 
@@ -174,7 +219,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 				break;
 		}
 		pclose(foca);
-		internal_log(NULL, ALL_LEVEL, "== detected %d as first unused tunnel device", running->tun_number);
+		internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
 
 		/* autodetecting interface */
 		internal_log(NULL, ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd1);
@@ -190,7 +235,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			raise(SIGTERM);
 		}
 		else {
-			internal_log(NULL, ALL_LEVEL, "== detected external interface with default gateway: %s", running->interface);
+			internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running->interface);
 		}
 		
 		/* autodetecting interface local ip address */
@@ -206,7 +251,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		for(i = 0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++)
 			running->local_ip_addr[i] = imp_str[i];
 
-		internal_log(NULL, ALL_LEVEL, "== acquired local ip address: %s", running->local_ip_addr);
+		internal_log(NULL, ALL_LEVEL, "  == acquired local ip address: %s", running->local_ip_addr);
 
 		/* autodetecting gw ip addr */
 		internal_log(NULL, ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd3);
@@ -218,11 +263,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			running->gw_ip_addr[i] = imp_str[i];
 
 		if(strlen(running->gw_ip_addr) < 7) {
-			internal_log(NULL, ALL_LEVEL, "-- unable to autodetect gateway ip address, sniffjoke cannot be started");
+			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
 			raise(SIGTERM);
 		}
 		else 
-			internal_log(NULL, ALL_LEVEL, "== automatically acquired gateway ip address: %s", running->gw_ip_addr);
+			internal_log(NULL, ALL_LEVEL, "  == acquired gateway ip address: %s", running->gw_ip_addr);
 
 		/* autodetecting mac address */
 		snprintf(cmd4, MEDIUMBUF, "ping -W 1 -c 1 %s", running->gw_ip_addr);
@@ -240,10 +285,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		for(i = 0; i < strlen(imp_str) && ( isxdigit(imp_str[i]) || imp_str[i] == ':' ); i++)
 			running->gw_mac_str[i] = imp_str[i];
 
-		if(i != 17) 
-			internal_log(NULL, ALL_LEVEL, "-- unable to autodetect gateway mac address");
-		else {
-			internal_log(NULL, ALL_LEVEL, "== automatically acquired mac address: %s", running->gw_mac_str);
+		if(i != 17) {
+			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
+			raise(SIGTERM);
+		} else {
+			internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
 			sscanf( running->gw_mac_str, "%hX:%hX:%hX:%hX:%hX:%hX",
 				&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
 				&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
