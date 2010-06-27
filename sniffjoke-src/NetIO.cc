@@ -24,29 +24,34 @@ NetIO::NetIO(SjConf *sjconf)
 	runcopy = sjconf->running;
 
 	networkdown_condition = false;
+	
+	if(getuid() || geteuid()) {
+		networkdown_condition = true;
+		return;
+	}
 
-        conntrack = new TCPTrack( sjconf );
+	conntrack = new TCPTrack( sjconf );
 
 	/* pseudo sanity check of received data, sjconf had already make something */
 	if(strlen(runcopy->gw_ip_addr) < 7 || strlen(runcopy->gw_ip_addr) > 17) {
 		internal_log(NULL, ALL_LEVEL, "invalid ip address [%s] is not an IPv4, check the config", runcopy->gw_ip_addr);
 		check_call_ret("ip address", EINVAL, -1, false);
 		networkdown_condition = true;
-		return ;
+		return;
 	}
 
 	if(strlen(runcopy->gw_mac_str) != 17) {
 		internal_log(NULL, ALL_LEVEL, "invalid mac address [%s] is not a MAC addr, check the config", runcopy->gw_mac_str);
 		check_call_ret("mac address", EINVAL, -1, false);
 		networkdown_condition = true;
-		return ;
+		return;
 	}
 
 	if((tunfd = open("/dev/net/tun", O_RDWR)) == -1) {
 		/* this is a serious problem, sniffjoke treat them as FATAL error */
 		internal_log(NULL, ALL_LEVEL, "unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
 		check_call_ret("Open /dev/net/tun", errno, tunfd, true);
-		return ;
+		return;
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO constructor: /dev/net/tun opened successfull");
 	}
@@ -79,17 +84,17 @@ NetIO::NetIO(SjConf *sjconf)
 		internal_log(NULL, ALL_LEVEL, "unable to set non blocking socket: how is this possibile !? %s", strerror(errno));
 		check_call_ret("Set TUN NONBLOCK", errno, ret, true);
 	} else {
-		internal_log(NULL, ALL_LEVEL, "NetIO constructor: set NONBLOCK in socket successful");
+		internal_log(NULL, DEBUG_LEVEL, "NetIO constructor: set NONBLOCK in socket successful");
 	}
 
 	if((ret = fcntl (tunfd, F_SETFD, FD_CLOEXEC)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "unable to fcntl FD_CLOEXEC in tunnel: %s", strerror(errno));
 		check_call_ret("Set TUN CLOEXEC", errno, ret, false);
 	} else {
-		internal_log(NULL, ALL_LEVEL, "NetIO constructor: set CLOSE on EXIT flag in TUN successful");
+		internal_log(NULL, DEBUG_LEVEL, "NetIO constructor: set CLOSE on EXIT flag in TUN successful");
 	}
 
-	internal_log(stdout, VERBOSE_LEVEL, "deleting default gateway in routing table...");
+	internal_log(NULL, VERBOSE_LEVEL, "deleting default gateway in routing table...");
 	system("/sbin/route del default");
 
 	snprintf(tmpsyscmd, MEDIUMBUF, 
@@ -97,29 +102,29 @@ NetIO::NetIO(SjConf *sjconf)
 		runcopy->tun_number,
 		runcopy->local_ip_addr
 	);
-	internal_log(stdout, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]\n",
+	internal_log(NULL, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]\n",
 		runcopy->tun_number, runcopy->interface,
 		runcopy->local_ip_addr, tmpsyscmd
 	);
 	system(tmpsyscmd);
 
-	internal_log(stdout, VERBOSE_LEVEL, "setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
+	internal_log(NULL, VERBOSE_LEVEL, "setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
 	system("/sbin/route add default gw 1.198.10.5");
 
 	strcpy(orig_gw.ifr_name, (const char *)runcopy->interface);
 	tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-        if((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
+		if((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
 	{
-		internal_log(stdout, ALL_LEVEL, 
+		internal_log(NULL, ALL_LEVEL, 
 			"fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand", 
 			runcopy->interface
 		);
 		check_call_ret("unable to SIOCGIFINDEX network interface", errno, ret, true);
 	}
-        close(tmpfd);
+		close(tmpfd);
 
 	if((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to open datalink layer packet: %s - fix your routing table by hand",
+		internal_log(NULL, ALL_LEVEL, "unable to open datalink layer packet: %s - fix your routing table by hand",
 			strerror(errno)
 		);
 		check_call_ret("socket for IP packet", errno, netfd, true);
@@ -136,7 +141,7 @@ NetIO::NetIO(SjConf *sjconf)
 	memcpy(send_ll.sll_addr, runcopy->gw_mac_addr, ETH_ALEN);
 
 	if((ret = bind(netfd, (struct sockaddr *)&send_ll, sizeof(send_ll) )) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to bind datalink layer interface: %s - fix your routing table by hand",
+		internal_log(NULL, ALL_LEVEL, "unable to bind datalink layer interface: %s - fix your routing table by hand",
 			strerror(errno)
 		);
 		check_call_ret("bind datalink layer interface", errno, ret, true);
@@ -145,7 +150,7 @@ NetIO::NetIO(SjConf *sjconf)
 	}
 
 	if((ret = fcntl (netfd, F_SETFL, O_NONBLOCK)) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to set socket in non blocking mode: %s - fix your routing table by hand",
+		internal_log(NULL, ALL_LEVEL, "unable to set socket in non blocking mode: %s - fix your routing table by hand",
 			strerror(errno)
 		);
 		check_call_ret("Setting non block in external socket", errno, ret, true);
@@ -153,23 +158,27 @@ NetIO::NetIO(SjConf *sjconf)
 		internal_log(NULL, DEBUG_LEVEL, "setting network socket to non blocking mode successfull");
 	}
 
-        fds[0].fd = netfd;
-        fds[0].events = POLLIN;
-        fds[1].fd = tunfd;
-        fds[1].events = POLLIN;
+	fds[0].fd = netfd;
+	fds[0].events = POLLIN;
+	fds[1].fd = tunfd;
+	fds[1].events = POLLIN;
 }
 
 NetIO::~NetIO() 
 {
 	char tmpsyscmd[MEDIUMBUF];
 
-        if(conntrack != NULL) {
+		if(conntrack != NULL) {
 		delete conntrack;
 		conntrack = NULL;
 	}
 
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));
+	
+	if(getuid() || geteuid()) {
+		return;
+	}
 
 	internal_log(NULL, VERBOSE_LEVEL, "NetIO: deleting our default gw [route del default]");
 	system("route del default");
@@ -186,11 +195,11 @@ NetIO::~NetIO()
 
 void NetIO::network_io()
 {
-        /* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
-        static unsigned char pktbuf[MTU];
+	/* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
+	static unsigned char pktbuf[MTU];
 	bool io_happened = false;
-        int nbyte = 0;
-        int burst = 10;
+	int nbyte = 0;
+	int burst = 10;
 	int nfds;
 
 	while( burst-- )
@@ -238,8 +247,7 @@ void NetIO::network_io()
 					check_call_ret("Reading from tunnel", errno, nbyte, false);
 					break;
 				}
-			} 
-			else {
+			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
 
 				/* add packet in connection tracking queue */

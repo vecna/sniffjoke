@@ -17,7 +17,7 @@ using namespace std;
 // define HACKSDEBUG enable dump about packet injected
 #define HACKSDEBUG
 
-#define DATADEBUG // WARNING: if you #define DATADEBUG, you need to mkdir /tmp/datadump/
+#define DATADEBUG // WARNING: if you #define DATADEBUG, you need to mkdir /tmp/datadump
 #ifdef DATADEBUG
 #include "Optional_DataDebug.h"
 static DataDebug *dd;

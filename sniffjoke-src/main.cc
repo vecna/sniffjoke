@@ -8,6 +8,8 @@ using namespace std;
 #include <getopt.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <grp.h>
+#include <wait.h>
 
 #include <netinet/in.h>
 
@@ -19,8 +21,15 @@ using namespace std;
 
 #include "sniffjoke.h"
 
-const char *default_log = "/tmp/sniffjoke.log";
+/* Sniffjoke defaults config values */
+const char *default_conf_file = "/root/.sniffjoke/sniffjoke.conf";
 const int default_web_bind_port = 8844;
+const char *default_user = "nobody";
+const char *default_group = "users";
+const char *default_chroot_dir = "/var/run/sniffjoke";
+const char *default_log_file = "/sniffjoke.log";
+unsigned int default_debug_level = 0;
+
 
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
@@ -33,7 +42,24 @@ static NetIO *mitm;
 /* WebIO, not required but usefull, implemented with libswill libraries */
 static WebIO *webio;
 /* process configuration, data struct defined in sniffjoke.h */
+static struct passwd *userinfo;
+static struct group *groupinfo;
 static struct sj_useropt useropt;
+static int listening_socket;
+
+static void sniffjoke_help(const char *pname);
+static void sniffjoke_version(const char *pname);
+static void kill_and_clean_pidfile(const char * pidfile);
+static void sniffjoke_sigtrap(int signal);
+static void clean_pidfile_exit(bool exit_request);
+void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal);
+void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...);
+static int receive_unix_data(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);
+static void check_local_unixserv(int srvsock, SjConf *confobj);
+static int sniffjoke_fork();
+static void sniffjoke_background();
+static pid_t sniffjoke_is_running(const char* pidfile);
+static void send_command(char *cmdstring, pid_t srvpid);
 
 static void sniffjoke_help(const char *pname) {
 	printf(
@@ -42,7 +68,10 @@ static void sniffjoke_help(const char *pname) {
 		" --logfile [file]\tset a logfile, [default %s]\n"
 		" --bind-port [port]\tset the port where bind management webserver [default:%d]\n"
 		" --bind-addr [addr]\tset interface where bind management webserver [default:%s]\n"
-		" --force\t\t\tforce restart if sniffjoke service\n"
+		" --user [username]\tdowngrade priviledge to the specified user [default:nobody]\n"
+		" --group [groupname]\tdowngrade priviledge to the specified group [default:users]\n"
+		" --chroot-dir [dir]\truns chroted into the specified dir [default:disabled]\n"
+		" --force\t\tforce restart if sniffjoke service\n"
 		" --foreground\t\trunning in foreground\n"
 		" --version\t\tshow sniffjoke version\n"
 		" --help\t\t\tshow this help\n\n"
@@ -56,15 +85,44 @@ static void sniffjoke_help(const char *pname) {
 		" showport\t\tshow TCP ports strongness of injection\n"
 		" log level\t\t0 = normal, 1 = verbose, 2 = debug\n\n"
 		"\t\t\thttp://www.delirandom.net/sniffjoke\n",
-	pname, pname, default_log, default_web_bind_port, "127.0.0.1");
+	pname, pname, default_log_file, default_web_bind_port, "127.0.0.1");
 }
 
 static void sniffjoke_version(const char *pname) {
 	printf("%s %s\n", prog_name, prog_version);
 }
 
-static void sniffjoke_sigtrap(int signal) 
-{
+static void kill_and_clean_pidfile(const char * pidfile) {
+	if(!access(pidfile, R_OK)) {
+		FILE *oldpidf = fopen(pidfile, "r");
+		char oldpid[6];
+
+		if(oldpidf == NULL) {
+			internal_log(NULL, ALL_LEVEL, "unable to open %s: %s", pidfile, strerror(errno));
+			return;
+		}
+
+		fgets(oldpid, 6, oldpidf);
+		fclose(oldpidf);
+
+		internal_log(NULL, VERBOSE_LEVEL, "old SNIFFJOKE_PID_FILE %s had pid %d inside, sending sigterm...", pidfile, atoi(oldpid));
+		kill(atoi(oldpid), SIGTERM);
+        /* usleep read microseconds, I need fifty milliseconds for permit a good cleaning of previous instance */
+        usleep(1000 * 50);
+
+	} else {
+		internal_log(NULL, ALL_LEVEL, "unable to access %s file, request for unlinking from process %d: %s", pidfile, getpid(), strerror(errno));
+	}
+
+	if(!unlink(pidfile)) {
+		internal_log(NULL, DEBUG_LEVEL, "unlinked %s as requested", pidfile);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", pidfile, strerror(errno));
+		/* and ... ? */
+	}
+}
+
+static void sniffjoke_sigtrap(int signal) {
 	if(signal)
 		internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
 	/* else, is the clean way used for sniffjoke to clean object */
@@ -77,38 +135,15 @@ static void sniffjoke_sigtrap(int signal)
 
 	if(mitm != NULL)
 		delete mitm;
-
+		
 	raise(SIGKILL);
 }
 
 /* used in clean closing */
 static void clean_pidfile_exit(bool exit_request) {
-
-	if(!access(PIDFILE, R_OK)) {
-		FILE *oldpidf = fopen(PIDFILE, "r");
-		char oldpid[6];
-
-		if(oldpidf == NULL) {
-			internal_log(NULL, ALL_LEVEL, "unable to open %s: %s", PIDFILE, strerror(errno));
-			return;
-		}
-
-                fgets(oldpid, 6, oldpidf);
-                fclose(oldpidf);
-
-		internal_log(NULL, VERBOSE_LEVEL, "old pidfile %s had pid %d inside, sending sigterm...", PIDFILE, atoi(oldpid));
-		kill(atoi(oldpid), SIGTERM);
-		/* usleep read microseconds, I need fifty milliseconds for permit a good cleaning of previous instance */
-		usleep(1000 * 50);
-	} else {
-		internal_log(NULL, ALL_LEVEL, "unable to access %s file, request for unlinking from process %d: %s", PIDFILE, getpid(), strerror(errno));
-	}
-
-	if(!unlink(PIDFILE)) {
-		internal_log(NULL, DEBUG_LEVEL, "unlinked %s as requested", PIDFILE);
-	} else {
-		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", PIDFILE, strerror(errno));
-		/* and ... ? */
+	if(!(getuid() || geteuid())) {
+		kill_and_clean_pidfile(SNIFFJOKE_FATHER_PID_FILE);
+		kill_and_clean_pidfile(SNIFFJOKE_CHILD_PID_FILE);
 	}
 
 	/* this is the clean way for exit, because sniffjoke_sigtrap delete the instance c++ obj */
@@ -116,8 +151,7 @@ static void clean_pidfile_exit(bool exit_request) {
 		sniffjoke_sigtrap(0);
 }
 
-void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
-{
+void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) {
 	char errbuf[STRERRLEN];
 	int my_ret = 0;
 
@@ -140,19 +174,18 @@ void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal)
 }
 
 /* forceflow is almost useless, use NULL in the normal logging options */
-void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
-{
-        va_list arguments;
-        time_t now = time(NULL);
-        FILE *output_flow;
+void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...) {
+	va_list arguments;
+	time_t now = time(NULL);
+	FILE *output_flow;
 
-	if(useropt.logstream == NULL)
-		forceflow = stderr;
+	if(forceflow == NULL && useropt.logstream == NULL)
+		return;
 
-        if(forceflow != NULL)
-                output_flow = forceflow;
-        else
-                output_flow = useropt.logstream;
+	if(forceflow != NULL)
+		output_flow = forceflow;
+	else
+		output_flow = useropt.logstream;
 
 	if(errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
 		output_flow = useropt.packet_logstream;
@@ -160,149 +193,25 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
 	if(errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
 		output_flow = useropt.hacks_logstream;
 
-        if(errorlevel <= useropt.debug_level)
-        {
-                char *time = strdup(asctime(localtime(&now)));
+	if(errorlevel <= useropt.debug_level) {
+		char *time = strdup(asctime(localtime(&now)));
 
 		va_start(arguments, msg);
-                time[strlen(time) -1] = ' ';
-                fprintf(output_flow, "%s ", time);
-                vfprintf(output_flow, msg, arguments);
-                fprintf(output_flow, "\n");
-                fflush(output_flow);
+		time[strlen(time) -1] = ' ';
+		fprintf(output_flow, "%s ", time);
+		vfprintf(output_flow, msg, arguments);
+		fprintf(output_flow, "\n");
+		fflush(output_flow);
 		va_end(arguments);
-
-                free(time);
-        }
-
-}
-
-static int sniffjoke_background(void) 
-{
-	const char *sniffjoke_socket_path = SNIFFJOKE_SRV_US;
-	struct sockaddr_un sjsrv;
-	int sock;
-
-	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		internal_log(stdout, ALL_LEVEL, "fatal: unable to open unix socket: %s", strerror(errno));
-		clean_pidfile_exit(true);
-	}
-
-	memset(&sjsrv, 0x00, sizeof(sjsrv));
-	sjsrv.sun_family = AF_UNIX;
-	memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
-
-	if(!access(sniffjoke_socket_path, F_OK))
-		if(unlink(sniffjoke_socket_path)) {
-			internal_log(stdout, ALL_LEVEL, "fatal: unable to unlink previous instance of %s: %s", 
-				sniffjoke_socket_path, strerror(errno));
-			clean_pidfile_exit(true);
-		}
-			
-
-	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
-		close(sock);
-		internal_log(stdout, ALL_LEVEL, "fatal: unable to bind unix socket %s: %s", 
-			sniffjoke_socket_path, strerror(errno)
-		);
-		clean_pidfile_exit(true);
-	}
-
-	if(fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
-		close(sock);
-		internal_log(stdout, ALL_LEVEL, "fatal: unable to set non blocking unix socket %s: %s",
-			sniffjoke_socket_path, strerror(errno)
-		);
-		clean_pidfile_exit(true);
-	}
-
-	internal_log(stdout, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
-
-	if(useropt.go_foreground) {
-		useropt.logstream = stdout;
-                internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
-        }
-        else {
-		if(fork())
-			exit(0);
-
-		if((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
-			internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
-			clean_pidfile_exit(true);
-		}
-
-		if(useropt.debug_level >= PACKETS_DEBUG) {
-			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
-			sprintf(tmpfname, "%s.packets", useropt.logfname);
-			if((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
-				internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
-				clean_pidfile_exit(true);
-			} 
-			internal_log(stdout, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
-		}
-
-		if(useropt.debug_level >= HACKS_DEBUG) {
-			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
-			sprintf(tmpfname, "%s.hacks", useropt.logfname);
-			if((useropt.hacks_logstream = fopen(tmpfname, "a+")) == NULL) {
-				internal_log(stdout, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
-				clean_pidfile_exit(true);
-			}
-			internal_log(stdout, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
-		}
-
-                FILE *pidfile =fopen(PIDFILE, "w+");
-                if(pidfile == NULL) {
-                        internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to write %s: %s", PIDFILE, strerror(errno));
-			clean_pidfile_exit(true);
-                } else {
-                        fprintf(pidfile, "%d", getpid());
-                        fclose(pidfile);
-                }
-        }
-	return sock;
-}
-        
-static pid_t sniffjoke_is_running(void)
-{
-        FILE *pidf = fopen(PIDFILE, "r");
-	pid_t potenctial_pid;
-	int killret;
-
-        if(pidf != NULL) {
-                char tmpstr[6];
-
-                fgets(tmpstr, 6, pidf);
-                fclose(pidf);
-
-		potenctial_pid = atoi(tmpstr);
-        }
-	else
-		return 0;
-
-	/* test if the pid is running again */
-	killret = kill(potenctial_pid, SIGUSR1);
-	if(!killret)
-		return potenctial_pid;
-	else {
-		if(errno == EPERM) {
-			internal_log(NULL, ALL_LEVEL, "you have not privileges to kill previous sniffjoke, running on %d", potenctial_pid);
-			exit(0);
-		}
-		else /* (errno == ESRCH) */ {
-			internal_log(NULL, ALL_LEVEL, "the pidfile contains information about a dead process (%d)", potenctial_pid);
-			clean_pidfile_exit(false);
-			return 0;
-		}
+		free(time);
 	}
 }
 
 /* internal routine called in send_command and check_local_unixserv */
-static int receive_unix_data(int _sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
-{
-	int fromlen =sizeof(struct sockaddr_un), ret;
+static int receive_unix_data(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg) {
+	int fromlen = sizeof(struct sockaddr_un), ret;
 
-	if((ret = recvfrom(_sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
+	if((ret = recvfrom(sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
 	{
 		if(errno == EAGAIN || errno == EWOULDBLOCK) {
 			return 0;
@@ -314,67 +223,14 @@ static int receive_unix_data(int _sock, char *databuf, int bufsize, struct socka
 	return ret;
 }
 
-static void send_command(char *cmdstring, pid_t srvpid) 
-{
-	int sock;
-	char received_buf[HUGEBUF];
-	struct sockaddr_un servaddr;/* address of server */
-	struct sockaddr_un clntaddr;/* address of client */
-	struct sockaddr_un from; /* address used for receiving data */
-	int rlen;
-       
-        /* Create a UNIX datagram socket for client */
-	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to open UNIX socket for connect to sniffjoke server: %s", strerror(errno));
-		exit(0);
-	}
-        
-	unlink(SNIFFJOKE_CLI_US);
-	/* Client will bind to an address so the server will get an address in its recvfrom call and use it to
-	 * send data back to the client.  
-	 */
-	memset(&clntaddr, 0x00, sizeof(clntaddr));
-	clntaddr.sun_family = AF_UNIX;
-	strcpy(clntaddr.sun_path, SNIFFJOKE_CLI_US);
-
-	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to bind client to %s: %s", SNIFFJOKE_CLI_US, strerror(errno));
-		exit(0);
-	}
-
-        /* Set up address structure for server socket */
-	memset(&servaddr, 0x00, sizeof(servaddr));
-	servaddr.sun_family = AF_UNIX;
-	strcpy(servaddr.sun_path, SNIFFJOKE_SRV_US);
-
-	if(sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		internal_log(stdout, ALL_LEVEL, "unable to send message [%s]: %s", cmdstring, strerror(errno));
-		exit(0);
-	}
-
-	if((rlen =receive_unix_data(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1) 
-		exit(0); // the error message has been delivered 
-
-	if(rlen == 0)
-		internal_log(stdout, ALL_LEVEL, "unreceived responde from command [%s]", cmdstring);
-	else	/* the output */
-		printf("answer reiceved from sniffjoke service running at %d:\n%s\n", srvpid, received_buf);
-	
-        unlink(SNIFFJOKE_CLI_US);
-        close(sock);
-}
-
-/* function used in sostitution/or with, the web interface, in order to receive command and modify
- * the running conf, display stats and so on 
- */
-static void check_local_unixserv(int srvsock, SjConf *confobj)
-{
+/* function used in in order to receive command and modify the running conf, display stats and so on . */
+static void check_local_unixserv(int srvsock, SjConf *confobj) {
 	char received_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
 	int i, rlen, cmdlen;
 	struct sockaddr_un fromaddr;
 
 	memset(received_command, 0x00, MEDIUMBUF);
-	if((rlen =receive_unix_data(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
+	if((rlen = receive_unix_data(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
 		clean_pidfile_exit(true);
 
 	if(!rlen)
@@ -389,8 +245,7 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 		output = sjconf->handle_start_command();
 	} else if(!memcmp(received_command, "stop", strlen("stop") )) {
 		output = sjconf->handle_stop_command();
-	} else if(!memcmp(received_command, "set", strlen("set") )) 
-	{
+	} else if(!memcmp(received_command, "set", strlen("set") )) {
 		int start_port, end_port, value;
 
 		/* FIXME - magari supportare set portasingola TIPO, set start:end TIPO, set porta1,porta2,porta3,... TIPO */
@@ -413,8 +268,7 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 		output = sjconf->handle_set_command(1, PORTNUMBER, NONE);
 	} else if (!memcmp(received_command, "showport", strlen("showport") )) {
 		output = sjconf->handle_showport_command();
-	} else if (!memcmp(received_command, "log", strlen("log") )) 
-	{
+	} else if (!memcmp(received_command, "log", strlen("log") ))  {
 		int loglevel;
 
 		sscanf(received_command, "log %d", &loglevel);
@@ -426,18 +280,197 @@ static void check_local_unixserv(int srvsock, SjConf *confobj)
 		} else {
 			output = sjconf->handle_log_command(loglevel);
 		}
-	} 
-	else {
+	} else {
 		internal_log(NULL, ALL_LEVEL, "wrong command %s", received_command);
 	}
 
 	/* send the answer message to the client */
-	if(output != NULL) {
+	if(output != NULL)
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
-	}
 
 	if(internal_buf != NULL)
 		free(internal_buf);
+}
+
+static int sniffjoke_fork() {
+	pid_t pid = fork();
+	FILE *sniffjoke_pid_file;
+	
+	if(pid < 0) {
+		return -1;
+	}
+
+	if(pid) { // FATHER (root process)
+
+		sniffjoke_pid_file = fopen(SNIFFJOKE_FATHER_PID_FILE, "w+");		
+		if(sniffjoke_pid_file == NULL) {
+			internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to write %s: %s", sniffjoke_pid_file, strerror(errno));
+			clean_pidfile_exit(true);
+		} else {
+			fprintf(sniffjoke_pid_file, "%d", getpid());
+			fclose(sniffjoke_pid_file);
+		}
+		
+		useropt.logstream = NULL;
+		
+		waitpid(pid, NULL, 0);
+		clean_pidfile_exit(true);
+			
+	} else { // CHILD (user process)
+
+		sniffjoke_pid_file = fopen(SNIFFJOKE_CHILD_PID_FILE, "w+");		
+		if(sniffjoke_pid_file == NULL) {
+			internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to write %s: %s", sniffjoke_pid_file, strerror(errno));
+			clean_pidfile_exit(true);
+		} else {
+			fprintf(sniffjoke_pid_file, "%d", getpid());
+			fclose(sniffjoke_pid_file);
+		}
+	}
+
+	return pid;
+}
+
+static void prepare_listening_socket() {
+		const char *sniffjoke_socket_path = SNIFFJOKE_SRV_US;
+		struct sockaddr_un sjsrv;
+		int sock;
+
+		if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
+			internal_log(NULL, ALL_LEVEL, "fatal: unable to open unix socket: %s", strerror(errno));
+			clean_pidfile_exit(true);
+		}
+
+		memset(&sjsrv, 0x00, sizeof(sjsrv));
+		sjsrv.sun_family = AF_UNIX;
+		memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
+
+		if(!access(sniffjoke_socket_path, F_OK)) {
+			if(unlink(sniffjoke_socket_path)) {
+				internal_log(NULL, ALL_LEVEL, "fatal: unable to unlink previous instance of %s: %s", 
+				sniffjoke_socket_path, strerror(errno));
+				clean_pidfile_exit(true);
+			}
+		}
+								
+		if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
+			close(sock);
+			internal_log(NULL, ALL_LEVEL, "fatal: unable to bind unix socket %s: %s", 
+						 sniffjoke_socket_path, strerror(errno)
+			);
+			clean_pidfile_exit(true);
+		}
+
+		if(fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
+			close(sock);
+			internal_log(NULL, ALL_LEVEL, "fatal: unable to set non blocking unix socket %s: %s",
+						sniffjoke_socket_path, strerror(errno)
+			);
+
+			clean_pidfile_exit(true);
+		}
+		internal_log(NULL, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
+		listening_socket = sock;	
+}
+
+static void jailme() {
+	/* chroot to the specified dir */
+	chdir(useropt.chroot_dir);
+	if(useropt.chroot_dir != NULL && chroot(useropt.chroot_dir)) {
+		internal_log(NULL, ALL_LEVEL, "error chrooting into %s: unable to start sniffjoke", useropt.chroot_dir);
+		clean_pidfile_exit(true);		
+	}
+}
+
+static void downgrade_privileges() {
+	if(setgid(groupinfo->gr_gid) || setuid(userinfo->pw_uid)) {
+		internal_log(NULL, ALL_LEVEL, "error loosing root privileges: unable to start sniffjoke");
+		clean_pidfile_exit(true);
+	}
+}
+
+static void sniffjoke_background() {
+	if(fork())
+		exit(0);
+}
+		
+static pid_t sniffjoke_is_running(const char* pidfile) {
+	FILE *pidf = fopen(pidfile, "r");
+	pid_t potenctial_pid;
+	int killret;
+
+	if(pidf != NULL) {
+		char tmpstr[6];
+		fgets(tmpstr, 6, pidf);
+		fclose(pidf);
+		potenctial_pid = atoi(tmpstr);
+	} else
+		return 0;
+
+	/* test if the pid is running again */
+	killret = kill(potenctial_pid, SIGUSR1);
+	if(!killret)
+		return potenctial_pid;
+	else {
+		if(errno == EPERM) {
+			internal_log(NULL, ALL_LEVEL, "you have not privileges to kill previous sniffjoke, running on %d", potenctial_pid);
+			exit(0);
+		}
+		else /* (errno == ESRCH) */ {
+			internal_log(NULL, ALL_LEVEL, "the file %s contains information about a dead process (%d)", pidfile, potenctial_pid);
+			clean_pidfile_exit(false);
+			return 0;
+		}
+	}
+}
+
+static void send_command(char *cmdstring, pid_t srvpid)  {
+	int sock;
+	char received_buf[HUGEBUF];
+	struct sockaddr_un servaddr;/* address of server */
+	struct sockaddr_un clntaddr;/* address of client */
+	struct sockaddr_un from; /* address used for receiving data */
+	int rlen;
+	   
+	/* Create a UNIX datagram socket for client */
+	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
+		internal_log(NULL, ALL_LEVEL, "unable to open UNIX socket for connect to sniffjoke server: %s", strerror(errno));
+		exit(0);
+	}
+		
+	unlink(SNIFFJOKE_CLI_US);
+	/* Client will bind to an address so the server will get an address in its recvfrom call and use it to
+	 * send data back to the client.  
+	 */
+	memset(&clntaddr, 0x00, sizeof(clntaddr));
+	clntaddr.sun_family = AF_UNIX;
+	strcpy(clntaddr.sun_path, SNIFFJOKE_CLI_US);
+
+	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
+		internal_log(NULL, ALL_LEVEL, "unable to bind client to %s: %s", SNIFFJOKE_CLI_US, strerror(errno));
+		exit(0);
+	}
+
+	/* Set up address structure for server socket */
+	memset(&servaddr, 0x00, sizeof(servaddr));
+	servaddr.sun_family = AF_UNIX;
+	strcpy(servaddr.sun_path, SNIFFJOKE_SRV_US);
+
+	if(sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
+		internal_log(NULL, ALL_LEVEL, "unable to send message [%s]: %s", cmdstring, strerror(errno));
+		exit(0);
+	}
+
+	if((rlen = receive_unix_data(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1) 
+		exit(0); // the error message has been delivered 
+
+	if(rlen == 0)
+		internal_log(NULL, ALL_LEVEL, "unreceived responde from command [%s]", cmdstring);
+	else	/* the output */
+		printf("answer reiceved from sniffjoke service running at %d:\n%s\n", srvpid, received_buf);
+	
+		unlink(SNIFFJOKE_CLI_US);
+		close(sock);
 }
 
 int main(int argc, char **argv) {
@@ -445,27 +478,34 @@ int main(int argc, char **argv) {
 	time_t next_web_poll;
 	bool restart_on_restore = false;
 	char command_buffer[MEDIUMBUF], *command_input = NULL;
-
-	/* set the default vaule in the configuration struct */
+	
+	/* set the default values in the configuration struct */
 	useropt.force_restart = false;
 	useropt.go_foreground = false;
- 	useropt.debug_level = 0;
-	useropt.logfname = "/tmp/sniffjoke_tmp.log";
-	useropt.cfgfname = "/etc/sniffjoke.conf";
+	useropt.cfgfname = default_conf_file;
 	useropt.bind_port = default_web_bind_port;
 	useropt.bind_addr = NULL;
+	useropt.user = default_user;
+	useropt.group = default_group;
+	useropt.chroot_dir = default_chroot_dir;
+	useropt.logfname = default_log_file;
+	useropt.debug_level = default_debug_level;
+	useropt.logstream = stdout;
 
 	struct option sj_option[] =
 	{
-		{ "debug", required_argument, NULL, 'd' },
+		{ "conf", required_argument, NULL, 'f' },
 		{ "bind-port", required_argument, NULL, 'p' },
 		{ "bind-addr", required_argument, NULL, 'a' },
-		{ "help", optional_argument, NULL, 'h' },
+		{ "user", optional_argument, NULL, 'u' },
+		{ "group", optional_argument, NULL, 'g' },
+		{ "chroot-dir", optional_argument, NULL, 'c' },
+		{ "debug", required_argument, NULL, 'd' },
 		{ "logfile", required_argument, NULL, 'l' },
-		{ "conf", required_argument, NULL, 'f' },
+		{ "foreground", optional_argument, NULL, 'x' },
 		{ "force", optional_argument, NULL, 'r' },
 		{ "version", optional_argument, NULL, 'v' },
-		{ "foreground", optional_argument, NULL, 'x' },
+		{ "help", optional_argument, NULL, 'h' },
 		{ NULL, 0, NULL, 0 }
 	};
 
@@ -475,7 +515,6 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 	
-
 	memset(command_buffer, 0x00, MEDIUMBUF);
 	/* check for direct commands */
 	if ( (argc >= 2) && !memcmp(argv[1], "start", strlen("start") )) {
@@ -505,65 +544,88 @@ int main(int argc, char **argv) {
 	if ( (argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel") )) {
 		snprintf(command_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
 		command_input = command_buffer;
-	} 
-
+	}
+	
 	/* check if sniffjoke is running in background */
-	pid_t sniffjoke_srv = sniffjoke_is_running();
+	pid_t sniffjoke_father = sniffjoke_is_running(SNIFFJOKE_FATHER_PID_FILE);
+	pid_t sniffjoke_child = sniffjoke_is_running(SNIFFJOKE_CHILD_PID_FILE);
 
 	/* understand if the usage is client-like or service-like */
 	if(command_input != NULL) 
 	{
-		if(sniffjoke_srv) 
+		if(sniffjoke_child)
 		{
-			internal_log(stdout, ALL_LEVEL, "sending command: [%s] to sniffjoke service", command_input);
-			send_command(command_input, sniffjoke_srv);
-			/* KKK: not clean_pidfile because the other process must continue to run, and not _sigtrap because there
-			 * are not obj instanced */
+			sjconf = new SjConf( &useropt );
+			
+			userinfo = getpwnam(sjconf->running->user);
+			groupinfo = getgrnam(sjconf->running->group);
+			
+			if(userinfo == NULL || groupinfo == NULL) {
+				internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s, %s", sjconf->running->user, sjconf->running->group);
+
+				return -1;
+			}
+			
+			jailme();
+			
+			downgrade_privileges();
+			
+			internal_log(NULL, ALL_LEVEL, "sending command: [%s] to sniffjoke service", command_input);
+			send_command(command_input, sniffjoke_child);
+			/* KKK: not clean_pidfile_exit because the other process must continue to run,
+			 * and not _sigtrap because there are not obj instanced */
 			return 0;
 		}
 		else {
-			internal_log(stdout, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
+			internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
 			return 0; // or:
 			/* the running proceeding */
 		}
 	}
 
 	if(argc > 1 && argv[1][0] != '-') {
-		internal_log(stdout, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
+		internal_log(NULL, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
 		sniffjoke_help(argv[0]);
 		return -1;
 	}
 
-	while((charopt = getopt_long(argc, argv, "dpahlfvrx", sj_option, NULL)) != -1)
+	while((charopt = getopt_long(argc, argv, "fapugcldxrvh", sj_option, NULL)) != -1)
 	{
 		switch(charopt) {
-			case 'x':
-				useropt.go_foreground = true;
-				break;
-			case 'd':
-				useropt.debug_level = atoi(optarg);
-				break;
-			case 'p':
-				useropt.bind_port = atoi(optarg);
+			case 'f':
+				useropt.cfgfname = strdup(optarg);
 				break;
 			case 'a':
 				useropt.bind_addr = strdup(optarg);
 				break;
-			case 'h':
-				sniffjoke_help(argv[0]);
-				return -1;
+			case 'p':
+				useropt.bind_port = atoi(optarg);
+				break;
+			case 'u':
+				useropt.user = strdup(optarg);
+				break;
+			case 'g':
+				useropt.group = strdup(optarg);
+				break;
+			case 'c':
+				useropt.chroot_dir = strdup(optarg);
+				break;
 			case 'l':
 				useropt.logfname = strdup(optarg);
 				break;
-			case 'f':
-				useropt.cfgfname = strdup(optarg);
+			case 'd':
+				useropt.debug_level = atoi(optarg);
+				break;
+			case 'x':
+				useropt.go_foreground = true;
+				break;
+			case 'r':
+				useropt.force_restart = true;
 				break;
 			case 'v':
 				sniffjoke_version(argv[0]);
 				return 0;
-			case 'r':
-				useropt.force_restart = true;
-				break;
+			case 'h':
 			default:
 				sniffjoke_help(argv[0]);
 				return -1;
@@ -573,74 +635,122 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if(sniffjoke_srv && !useropt.force_restart) {
-		internal_log(stdout, ALL_LEVEL, "sniffjoke is already running (pid %d), use --force or check --help", sniffjoke_srv);
+	if((sniffjoke_father || sniffjoke_child) && !useropt.force_restart) {
+		internal_log(NULL, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
 		/* same reason of KKK before */
 		return 0;
 	}
 
 	/* checking config file */
 	if(useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
-		internal_log(stdout, ALL_LEVEL, "unable to access %s: sniffjoke the defaults", useropt.cfgfname);
+		internal_log(NULL, ALL_LEVEL, "unable to access %s: sniffjoke will use the defaults", useropt.cfgfname);
 	}
 
-	struct passwd *userinfo = getpwuid(getuid());
-	internal_log(stdout, VERBOSE_LEVEL, "looking for personal preferences in %s./.sniffjoke/", userinfo->pw_dir);
-
+	userinfo = getpwnam(useropt.user);
+	groupinfo = getgrnam(useropt.group);
+	if(userinfo == NULL || groupinfo == NULL) {
+		internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
+		return -1;
+	}
+		
 	/* bind addr */
 	if(useropt.bind_addr != NULL) {
 		// FIXME
-		internal_log(stdout, ALL_LEVEL, "warning: --bind-addr is IGNORED at the moment: %s\n", useropt.bind_addr);
+		internal_log(NULL, ALL_LEVEL, "warning: --bind-addr is IGNORED at the moment: %s\n", useropt.bind_addr);
 	}
 
 	/* after the privilege checking */
-	if(sniffjoke_srv && useropt.force_restart) {
-		kill(sniffjoke_srv, SIGTERM);
-		clean_pidfile_exit(false);
-		internal_log(stdout, VERBOSE_LEVEL, "sniffjoke remove previous pidfile and killed %d process...", sniffjoke_srv);
+	if(useropt.force_restart) {
+		if(sniffjoke_father) {
+			kill(sniffjoke_father, SIGTERM);
+			internal_log(NULL, VERBOSE_LEVEL, "sniffjoke remove previous SNIFFJOKESRV_PID_FILE and killed %d process...", sniffjoke_father);
+		}
+		if(sniffjoke_child) {
+			kill(sniffjoke_child, SIGTERM);
+			internal_log(NULL, VERBOSE_LEVEL, "sniffjoke remove previous SNIFFJOKE_PID_FILE and killed %d process...", sniffjoke_child);
+		}
 	}
-
-	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
-	signal(SIGINT, sniffjoke_sigtrap);
-	signal(SIGABRT, sniffjoke_sigtrap);
-	signal(SIGTERM, sniffjoke_sigtrap);
-	signal(SIGQUIT, sniffjoke_sigtrap);
-	signal(SIGUSR1, SIG_IGN);
-
-	/* initialiting object configuration and web interface */
+	
+	sleep(1); //FIXME
+	
+	/* initialiting object configuration */
 	sjconf = new SjConf( &useropt );
-	webio = new WebIO( sjconf );
 
-	if(sjconf->running->sj_run == 0) {
-		internal_log(NULL, ALL_LEVEL,
-			"sniffjoke is running and INACTIVE: use \"sniffjoke start\" command or http://127.0.0.1:%d/sniffjoke.html\n",
-                        sjconf->running->web_bind_port
-		);
-	}
-	/* setting logfile, debug level, background running and unix socket */
-	if(!useropt.go_foreground)
-		local_input = sniffjoke_background();
-	else
-		internal_log(NULL, ALL_LEVEL, "remind: using foreground running disable the --cmd command sending");
-
-	/* the code flow reach here, SniffJoke is ready to instance network environment,
- 	 * create the restoration process and loose privileges */
+	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = new NetIO( sjconf );
 
+	if(mitm->networkdown_condition)
 	if(mitm->networkdown_condition)
 	{
 		internal_log(NULL, ALL_LEVEL, "detected network error in NetIO constructor: unable to start sniffjoke");
 		clean_pidfile_exit(true);
 	}
 
-	/* TODO FIXME: instance the recovery process */
-	/* TODO FIXME: loose root privileges */
+	/* setting logfile, debug level, background running */
+	if(!useropt.go_foreground)
+		sniffjoke_background();
+	else {
+		useropt.logstream = stdout;
+		internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
+	}
+	
+	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
+	signal(SIGINT, sniffjoke_sigtrap);
+	signal(SIGABRT, sniffjoke_sigtrap);
+	signal(SIGTERM, sniffjoke_sigtrap);
+	signal(SIGQUIT, sniffjoke_sigtrap);
+	signal(SIGUSR1, SIG_IGN);
+		
+	if(sniffjoke_fork() == -1) {
+		internal_log(NULL, ALL_LEVEL, "fatal: unable to fork sniffjoke server: %s", strerror(errno));
+		clean_pidfile_exit(true);
+	}
+	
+	jailme();
+
+	if(!useropt.go_foreground) {	
+		if((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
+			internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
+			clean_pidfile_exit(true);
+		}
+			
+		if(useropt.debug_level >= PACKETS_DEBUG) {
+			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
+			sprintf(tmpfname, "%s.packets", useropt.logfname);
+			if((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
+				internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				clean_pidfile_exit(true);
+			} 
+			internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
+		}
+
+		if(useropt.debug_level >= HACKS_DEBUG) {
+			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
+			sprintf(tmpfname, "%s.hacks", useropt.logfname);
+			if((useropt.hacks_logstream = fopen(tmpfname, "a+")) == NULL) {
+				internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				clean_pidfile_exit(true);
+			}
+			internal_log(NULL, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
+		}
+	}
+	
+	downgrade_privileges();
+	
+	prepare_listening_socket();
+	
+	//webio = new WebIO( sjconf );
+	if(sjconf->running->sj_run == false) {
+		internal_log(NULL, ALL_LEVEL,
+			"sniffjoke is running and INACTIVE: use \"sniffjoke start\" command or http://127.0.0.1:%d/sniffjoke.html\n",
+			sjconf->running->web_bind_port
+		);
+	}
 
 	next_web_poll = time(NULL) + 1;
 
 	/* main block */
-	while(1) 
-	{
+	while(1) {
 		mitm->network_io();
 		mitm->queue_flush();
 
@@ -655,16 +765,15 @@ int main(int argc, char **argv) {
 			sjconf->running->sj_run = true;
 			restart_on_restore = false;
 		}
+		
+		check_local_unixserv(listening_socket, sjconf);
 
-		if(time(NULL) >= next_web_poll) 
+		/*if(time(NULL) >= next_web_poll) 
 		{
 			webio->web_poll();
 
-			if(!useropt.go_foreground)
-				check_local_unixserv(local_input, sjconf);
-
 			next_web_poll = time(NULL) + 1;
-		}
+		}*/
 	}
 	/* nevah here */
 }

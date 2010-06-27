@@ -65,7 +65,7 @@ static char *default_creat(const char *tb, struct sj_config *runcopy)
 					x += l;
 					break;
 				case 'S': /* sniffjoke status */
-					if(runcopy->sj_run == 1) 
+					if(runcopy->sj_run == true) 
 						l =sprintf(&ret[x], "%s", ok);
 					else
 						l =sprintf(&ret[x], "%s", ko);
@@ -150,15 +150,15 @@ static void import_get_vars(
 {
 	/* is button start set ? */
 	if(R_start != 0)
-		runcopy->sj_run = 1;
+		runcopy->sj_run = true;
 	if(R_stop != 0)
-		runcopy->sj_run = 0;
+		runcopy->sj_run = false;
 
 	/* import weblocal conf */
 	if(R_wbp != 0) 
 		runcopy->web_bind_port = R_wbp;
 	else
-		runcopy->sj_run = 0;
+		runcopy->sj_run = false;
 		
 	if(R_mtp != 0)
 		runcopy->max_ttl_probe = R_mtp;
@@ -172,7 +172,7 @@ static void import_get_vars(
 	else {
 		char *swp =(char *)"gw IP";
 		memcpy(runcopy->gw_ip_addr, swp, strlen(swp));
-		runcopy->sj_run = 0;
+		runcopy->sj_run = false;
 	}
 
 	if(R_i != NULL) {
@@ -183,7 +183,7 @@ static void import_get_vars(
 		char *swp= (char *)"interface";
 		/* interface is char[18] */
 		memcpy(runcopy->interface, swp, strlen(swp));
-		runcopy->sj_run = 0;
+		runcopy->sj_run = false;
 	}
 
 	/* import mac address without check */

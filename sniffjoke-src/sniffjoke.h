@@ -31,20 +31,24 @@ enum size_buf_t {
 /* main.cc global functions */
 void check_call_ret( const char *, int, int, bool);
 void internal_log(FILE *, int, const char *, ...);
-#define PIDFILE "/tmp/sniffjoke.pid" // FIXME - /var/run/sniffjoke.pid - verificare se ci sono altri path al posto di /var/run
-#define SNIFFJOKE_SRV_US "/tmp/sniffjoke_srv"
-#define SNIFFJOKE_CLI_US "/tmp/sniffjoke_cli"
+#define SNIFFJOKE_FATHER_PID_FILE "/var/run/sniffjoke/sniffjoke_father.pid"
+#define SNIFFJOKE_CHILD_PID_FILE "/var/run/sniffjoke/sniffjoke_child.pid"
+#define SNIFFJOKE_SRV_US "sniffjoke_srv" // relative to the jail
+#define SNIFFJOKE_CLI_US "sniffjoke_cli" // relative to the jail
 struct sj_useropt {
-	unsigned int debug_level;
+	const char *cfgfname;
+	unsigned short bind_port;
+	char *bind_addr;
+	const char *user;
+	const char *group;
+	const char *chroot_dir;
 	const char *logfname;
+	unsigned int debug_level;
+	bool go_foreground;
+	bool force_restart;
 	FILE *logstream;
 	FILE *packet_logstream;
 	FILE *hacks_logstream;
-	const char *cfgfname;
-	char *bind_addr;
-	bool go_foreground;
-	bool force_restart;
-	unsigned short bind_port;
 };
 /* loglevels */
 #define ALL_LEVEL       0
@@ -60,19 +64,24 @@ struct sj_useropt {
 
 #define MAGICVAL	0xADECADDE
 struct sj_config {
-	char gw_ip_addr[SMALLBUF];			/* default: autodetect */
-	char local_ip_addr[SMALLBUF];			/* default: autodetect */
-	char gw_mac_str[SMALLBUF];			/* default: autodetect */
-	unsigned char gw_mac_addr[ETH_ALEN];		/* the conversion of _str */
-	float MAGIC;					/* integrity check for saved binary configuration */
-	unsigned char sj_run;				/* default: 0 = NO RUNNING */
+	float MAGIC;							/* integrity check for saved binary configuration */
+	bool sj_run;							/* default: false = NO RUNNING */
 	unsigned short web_bind_port;			/* default: 8844 */
+	char user[SMALLBUF];					/* default: nobody */
+	char group[SMALLBUF];					/* default: users */
+	char chroot_dir[MEDIUMBUF];				/* default: /var/run/sniffjoke */
+	char logfname[MEDIUMBUF];				/* default: /var/log/sniffjoke.log */
+	int debug_level;						/* default: 1 */
+	char local_ip_addr[SMALLBUF];			/* default: autodetect */
+	char gw_ip_addr[SMALLBUF];				/* default: autodetect */
+	char gw_mac_str[SMALLBUF];				/* default: autodetect */
+	unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
 	unsigned short max_ttl_probe;			/* default: 26 */
 	unsigned short max_session_tracked;		/* default: 20 */
 	unsigned short max_packet_que;			/* default: 60 */
 	unsigned short max_tracked_ttl;			/* default: 1024 */
 	unsigned char interface[SMALLBUF];		/* default: autodetect */
-	int tun_number;					/* tunnel interface number */
+	int tun_number;							/* tunnel interface number */
 #define PORTNUMBER 65535
 	unsigned char portconf[PORTNUMBER];
 #define HEAVY	0x04
@@ -82,11 +91,11 @@ struct sj_config {
 
 	bool SjH__shift_ack;				/* default false */
 	bool SjH__fake_data;				/* default true */
-	bool SjH__fake_seq;				/* default true */
+	bool SjH__fake_seq;					/* default true */
 	bool SjH__fake_close;				/* default true */
 	bool SjH__zero_window;				/* default true */
-	bool SjH__valid_rst_fake_seq;			/* default true */
-	bool SjH__fake_syn;				/* default true */
+	bool SjH__valid_rst_fake_seq;		/* default true */
+	bool SjH__fake_syn;					/* default true */
 	bool SjH__half_fake_syn;			/* default false */
 	bool SjH__half_fake_ack;			/* default false */
 	bool SjH__inject_ipopt;				/* default true */
