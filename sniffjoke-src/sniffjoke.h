@@ -33,6 +33,7 @@ void check_call_ret( const char *, int, int, bool);
 void internal_log(FILE *, int, const char *, ...);
 #define SNIFFJOKE_FATHER_LOCK "/var/run/sniffjoke/sniffjoke_father.lock"
 #define SNIFFJOKE_CHILD_LOCK "/var/run/sniffjoke/sniffjoke_child.lock"
+#define SNIFFJOKE_CLI_LOCK "/var/run/sniffjoke/sniffjoke_cli.lock"
 #define SNIFFJOKE_FATHER_PID_FILE "/var/run/sniffjoke/sniffjoke_father.pid"
 #define SNIFFJOKE_CHILD_PID_FILE "/var/run/sniffjoke/sniffjoke_child.pid"
 #define SNIFFJOKE_SRV_US "sniffjoke_srv" // relative to the jail
