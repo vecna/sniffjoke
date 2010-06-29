@@ -1,4 +1,4 @@
-AC_INIT(main.cc)
+AC_INIT(sniffjoke.cc)
 AM_INIT_AUTOMAKE(sniffjoke,0.3)
 AC_PROG_CC
 AC_PROG_CXX

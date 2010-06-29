@@ -1,9 +1,9 @@
 vecna <vecna@delirandom.net>
 
-pub   1024D/602EEFA5 2007-08-28 [expires: 2009-08-27]
-uid                  vecna <vecna@winstonsmith.info>
+pub   1024D/C6765430 2009-08-25 [expires: 2011-08-25]
+      Key fingerprint = 341F 1A8C E2B4 F4F4 174D  7C21 B842 093D C676 5430
 uid                  vecna <vecna@s0ftpj.org>
 uid                  vecna <vecna@delirandom.net>
-sub   2624g/A08D063D 2007-08-28 [expires: 2009-08-27]
+sub   3072g/E8157737 2009-08-25 [expires: 2011-08-25]
 
 http://www.delirandom.net/sniffjoke is the main page of the project
