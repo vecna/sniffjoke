@@ -11,10 +11,13 @@
 #ifndef SNIFFJOKE_H
 #define SNIFFJOKE_H
 
-#define SJ_PROCESS_TYPE_UNASSIGNED (-1)
-#define SJ_PROCESS_TYPE_SRV_FATHER (0)
-#define SJ_PROCESS_TYPE_SRV_CHILD (1)
-#define SJ_PROCESS_TYPE_CLI (2)
+enum sj_process_t {
+	SJ_PROCESS_TYPE_UNASSIGNED = -1,
+	SJ_PROCESS_TYPE_SRV_FATHER = 0,
+	SJ_PROCESS_TYPE_SRV_CHILD = 1,
+	SJ_PROCESS_TYPE_CLI = 2
+};
+
 #define SJ_SRV_LOCK "/var/run/sniffjoke/srv.lock"
 #define SJ_CLI_LOCK "/var/run/sniffjoke/cli.lock"
 #define SJ_SRV_TMPDIR "/var/run/sniffjoke/srv"

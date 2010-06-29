@@ -29,7 +29,7 @@ const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
 const char *prog_version = "0.3";
 
-static int sj_process_type = SJ_PROCESS_TYPE_UNASSIGNED;
+static sj_process_t sj_process_type = SJ_PROCESS_TYPE_UNASSIGNED;
 static int sj_srv_child_pid = -1;
 static struct passwd *userinfo;
 static struct group *groupinfo;
@@ -79,7 +79,7 @@ static void sniffjoke_help(const char *pname) {
 		"\t\t\tthe values are: [heavy|normal|light|none]\n"
 		" clear\t\t\talias to \"set 1 65535 none\"\n"
 		" showport\t\tshow TCP ports strongness of injection\n"
-		" log level\t\t0 = normal, 1 = verbose, 2 = debug\n\n"
+		" loglevel\t\t0 = normal, 1 = verbose, 2 = debug\n\n"
 		"\t\t\thttp://www.delirandom.net/sniffjoke\n",
 		pname, pname, default_log_file, "127.0.0.1");
 }
@@ -197,27 +197,27 @@ static void sj_privileges_downgrade() {
 static void sj_clean_exit(bool exit_request) {
 	
 	switch(sj_process_type) {
-			case SJ_PROCESS_TYPE_SRV_FATHER:
-				internal_log(stdout, VERBOSE_LEVEL, "sniffjoke srv father is exiting");
-				if(sj_srv_child_pid != -1) {
-					internal_log(stdout, VERBOSE_LEVEL, "sniffjoke srv father generated a child possibily still alive, and now is killing him");
-					kill(sj_srv_child_pid, SIGTERM);
-					/* let the child express his last desire */
-					waitpid(sj_srv_child_pid, NULL, 0);
-				}
-				rmdir(SJ_SRV_TMPDIR);
-				unlink(SJ_SRV_LOCK);
-				break;
-			case SJ_PROCESS_TYPE_SRV_CHILD:
-				internal_log(stdout, VERBOSE_LEVEL, "sniffjoke srv child is exiting");
-				unlink(SJ_SRV_US);
-				break;
-			case SJ_PROCESS_TYPE_CLI:
-				unlink(SJ_CLI_LOCK);
-				break;
-			case SJ_PROCESS_TYPE_UNASSIGNED:
-			default:
-				break;
+		case SJ_PROCESS_TYPE_SRV_FATHER:
+			internal_log(stdout, VERBOSE_LEVEL, "sniffjoke srv father is exiting");
+			if(sj_srv_child_pid != -1) {
+				internal_log(stdout, VERBOSE_LEVEL, "sniffjoke srv father generated a child possibily still alive, and now is killing him");
+				kill(sj_srv_child_pid, SIGTERM);
+				/* let the child express his last desire */
+				waitpid(sj_srv_child_pid, NULL, 0);
+			}
+			rmdir(SJ_SRV_TMPDIR);
+			unlink(SJ_SRV_LOCK);
+			break;
+		case SJ_PROCESS_TYPE_SRV_CHILD:
+			internal_log(stdout, VERBOSE_LEVEL, "sniffjoke srv child is exiting");
+			unlink(SJ_SRV_US);
+			break;
+		case SJ_PROCESS_TYPE_CLI:
+			unlink(SJ_CLI_LOCK);
+			break;
+		case SJ_PROCESS_TYPE_UNASSIGNED:
+		default:
+			break;
 	}
 
 	/* this is the clean way for exit, because sj_sigtrap delete the instance c++ obj */
@@ -269,6 +269,10 @@ static void sj_sigtrap(int signal) {
 static int sj_recv_unix_data(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg) {
 
 	assert(sj_process_type == SJ_PROCESS_TYPE_SRV_CHILD || sj_process_type == SJ_PROCESS_TYPE_CLI);
+
+	memset(databuf, 0x00, bufsize);
+
+	/* we receive up to bufsize -1 having databuf[bufsize] = 0 and saving us from future segfaults */
 
 	int fromlen = sizeof(struct sockaddr_un), ret;
 
@@ -339,7 +343,6 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 	int i, rlen, cmdlen;
 	struct sockaddr_un fromaddr;
 
-	memset(received_command, 0x00, MEDIUMBUF);
 	if((rlen = sj_recv_unix_data(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
 		sj_clean_exit(true);
 
@@ -378,12 +381,13 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 		output = sjconf->handle_set_command(1, PORTNUMBER, NONE);
 	} else if (!memcmp(received_command, "showport", strlen("showport") )) {
 		output = sjconf->handle_showport_command();
-	} else if (!memcmp(received_command, "log", strlen("log") ))  {
+	} else if (!memcmp(received_command, "loglevel", strlen("loglevel") ))  {
 		int loglevel;
 
-		sscanf(received_command, "log %d", &loglevel);
+		sscanf(received_command, "loglevel %d", &loglevel);
 		if(loglevel < 0 || loglevel > HACKS_DEBUG) {
 			internal_buf = (char *)malloc(MEDIUMBUF);
+			printf("%d\n", loglevel);
 			snprintf(internal_buf, MEDIUMBUF, "invalid log value: %d, must be > 0 and < than %d", loglevel, HACKS_DEBUG);
 			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
@@ -443,6 +447,7 @@ static void sj_cli_send_command(char *cmdstring)  {
 		exit(0);
 	}
 
+	/* We receive a max of HUGEBUF -1 saving us from segfault during printf */
 	if((rlen = sj_recv_unix_data(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1) 
 		exit(0); // the error message has been delivered 
 
@@ -584,7 +589,59 @@ int main(int argc, char **argv) {
 		command_input = command_buffer;
 	}
 	
-	/* sj_trylock 1/2, works also as a first test on server activity */
+	if( command_input == NULL) {
+		while((charopt = getopt_long(argc, argv, "fugcldxrvh", sj_option, NULL)) != -1) {
+			switch(charopt) {
+				case 'f':
+					useropt.cfgfname = strdup(optarg);
+					break;
+				case 'u':
+					useropt.user = strdup(optarg);
+					break;
+				case 'g':
+					useropt.group = strdup(optarg);
+					break;
+				case 'c':
+					useropt.chroot_dir = strdup(optarg);
+					break;
+				case 'l':
+					useropt.logfname = strdup(optarg);
+					break;
+				case 'd':
+					useropt.debug_level = atoi(optarg);
+					break;
+				case 'x':
+					useropt.go_foreground = true;
+					break;
+				case 'r':
+					useropt.force_restart = true;
+					break;
+				case 'v':
+					sniffjoke_version(argv[0]);
+					return 0;
+				case 'h':
+				default:
+					sniffjoke_help(argv[0]);
+					return -1;
+
+				argc -= optind;
+				argv += optind;
+			}
+		}
+
+		if(!useropt.go_foreground)
+			sniffjoke_background();
+		else {
+			useropt.logstream = stdout;
+			internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
+		}
+	}
+	
+	/* sj_trylock 1/2, works also as a first test on server activity
+	 *
+	 * taking the lock after the background evaluation is fundamentl because in a fork the child does not inherit
+	 * parent's locks so the locks would be released after parent death. */
+	
 	switch(sj_trylock(SJ_SRV_LOCK)) {
 		case 0:	/* Success */
 				break;
@@ -603,8 +660,7 @@ int main(int argc, char **argv) {
 	if(command_input != NULL) 
 	{
 		sj_process_type = SJ_PROCESS_TYPE_CLI;
-		if(srv_just_active)
-		{
+		if(srv_just_active) {
 			switch(sj_trylock(SJ_CLI_LOCK)) {
 				case 0:	 // Success
 						break;
@@ -639,57 +695,16 @@ int main(int argc, char **argv) {
 			/* KKK: not clean_pidfile because the other process must continue to run,
 			 * and not _sigtrap because there are not obj instanced */
 			return 0;
-		}
-		else {
+		} else {
 			internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
 			return 0;
 		}
 	}
 
 	if(argc > 1 && argv[1][0] != '-') {
-		internal_log(NULL, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
+		internal_log(stderr, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
 		sniffjoke_help(argv[0]);
 		return -1;
-	}
-
-	while((charopt = getopt_long(argc, argv, "fugcldxrvh", sj_option, NULL)) != -1)
-	{
-		switch(charopt) {
-			case 'f':
-				useropt.cfgfname = strdup(optarg);
-				break;
-			case 'u':
-				useropt.user = strdup(optarg);
-				break;
-			case 'g':
-				useropt.group = strdup(optarg);
-				break;
-			case 'c':
-				useropt.chroot_dir = strdup(optarg);
-				break;
-			case 'l':
-				useropt.logfname = strdup(optarg);
-				break;
-			case 'd':
-				useropt.debug_level = atoi(optarg);
-				break;
-			case 'x':
-				useropt.go_foreground = true;
-				break;
-			case 'r':
-				useropt.force_restart = true;
-				break;
-			case 'v':
-				sniffjoke_version(argv[0]);
-				return 0;
-			case 'h':
-			default:
-				sniffjoke_help(argv[0]);
-				return -1;
-
-			argc -= optind;
-			argv += optind;
-		}
 	}
 
 	if(srv_just_active) {
@@ -699,11 +714,11 @@ int main(int argc, char **argv) {
 
 			if(sj_srv_father_pid) {
 				sj_forced_clean_exit(sj_srv_father_pid);
-				internal_log(stdout, VERBOSE_LEVEL, "forced kill of srv father %d process...", sj_srv_father_pid);
+				internal_log(NULL, VERBOSE_LEVEL, "forced kill of srv father %d process...", sj_srv_father_pid);
 			}
 			if(sj_srv_child_pid) {
 				sj_forced_clean_exit(sj_srv_child_pid);
-				internal_log(stdout, VERBOSE_LEVEL, "forced kill of srv child %d process...", sj_srv_child_pid);
+				internal_log(NULL, VERBOSE_LEVEL, "forced kill of srv child %d process...", sj_srv_child_pid);
 			}
 			
 			/* sj_lock 2/2, works also as a second test on server activity */
@@ -711,18 +726,18 @@ int main(int argc, char **argv) {
 				case 0:	/* Success */
 						break;
 				case 1: /* Just Locked */
-						internal_log(NULL, ALL_LEVEL, "FATAL ERROR: srv killed but probably an other srv has been run");						
+						internal_log(stderr, ALL_LEVEL, "FATAL ERROR: srv killed but probably an other srv has been run");						
 						exit(0);
 						break;
 				case -1: /* Fail */
 				case -2: /* Miserable Fail */
 				default: /* There are no other cases, so this is a spectacular fail */
-						internal_log(NULL, ALL_LEVEL, "FATAL ERROR: we are unable to acquire server lock: %s", SJ_SRV_LOCK);
+						internal_log(stderr, ALL_LEVEL, "FATAL ERROR: we are unable to acquire server lock: %s", SJ_SRV_LOCK);
 						exit(0);
 						break;	
 			}			
 		} else {
-			internal_log(NULL, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
+			internal_log(stderr, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
 			/* same reason of KKK before */
 			return 0;
 		}
@@ -740,7 +755,7 @@ int main(int argc, char **argv) {
 	userinfo = getpwnam(useropt.user);
 	groupinfo = getgrnam(useropt.group);
 	if(userinfo == NULL || groupinfo == NULL) {
-		internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
+		internal_log(stderr, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
 		return -1;
 	}
 		
@@ -750,30 +765,21 @@ int main(int argc, char **argv) {
 	signal(SIGTERM, sj_sigtrap);
 	signal(SIGQUIT, sj_sigtrap);
 	signal(SIGUSR1, SIG_IGN);
-	
+
 	/* initialiting object configuration */
 	sjconf = new SjConf( &useropt );
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = new NetIO( sjconf );
 
-	if(mitm->networkdown_condition)
-	if(mitm->networkdown_condition)
+	if(mitm->is_network_down())
 	{
-		internal_log(NULL, ALL_LEVEL, "detected network error in NetIO constructor: unable to start sniffjoke");
+		internal_log(stderr, ALL_LEVEL, "detected network error in NetIO constructor: unable to start sniffjoke");
 		sj_clean_exit(true);
 	}
 
-	/* setting logfile, debug level, background running */
-	if(!useropt.go_foreground)
-		sniffjoke_background();
-	else {
-		useropt.logstream = stdout;
-		internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
-	}
-		
 	if(sj_fork() == -1) {
-		internal_log(NULL, ALL_LEVEL, "fatal: unable to fork sniffjoke server: %s", strerror(errno));
+		internal_log(stderr, ALL_LEVEL, "fatal: unable to fork sniffjoke server: %s", strerror(errno));
 		sj_clean_exit(true);
 	}
 	
@@ -781,7 +787,7 @@ int main(int argc, char **argv) {
 
 	if(!useropt.go_foreground) {	
 		if((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
-			internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
+			internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
 			sj_clean_exit(true);
 		}
 			
@@ -789,7 +795,7 @@ int main(int argc, char **argv) {
 			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
 			sprintf(tmpfname, "%s.packets", useropt.logfname);
 			if((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
-				internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
 				sj_clean_exit(true);
 			} 
 			internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
@@ -799,7 +805,7 @@ int main(int argc, char **argv) {
 			char *tmpfname = (char *)malloc(strlen(useropt.logfname) + 10);
 			sprintf(tmpfname, "%s.hacks", useropt.logfname);
 			if((useropt.hacks_logstream = fopen(tmpfname, "a+")) == NULL) {
-				internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
 				sj_clean_exit(true);
 			}
 			internal_log(NULL, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
@@ -818,13 +824,13 @@ int main(int argc, char **argv) {
 		mitm->network_io();
 		mitm->queue_flush();
 
-		if(mitm->networkdown_condition == true && sjconf->running->sj_run == true) {
+		if(mitm->is_network_down() && sjconf->running->sj_run == true) {
 			internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
 			sjconf->running->sj_run = false;
 			restart_on_restore = true;
 		}
 
-		if(mitm->networkdown_condition == false && restart_on_restore == true) {
+		if(!mitm->is_network_down() && restart_on_restore == true) {
 			internal_log(NULL, ALL_LEVEL, "Network restored, restarting sniffjoke");
 			sjconf->running->sj_run = true;
 			restart_on_restore = false;

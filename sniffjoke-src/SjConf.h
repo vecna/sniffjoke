@@ -3,6 +3,16 @@
 
 #include <net/ethernet.h>
 
+#define MAGICVAL	0xADECADDE
+
+#define HEAVY		0x04
+#define NORMAL		0x03
+#define LIGHT		0x02
+#define NONE		0x01
+
+#define PORTNUMBER	65535
+
+
 struct port_range {
         unsigned short start;
         unsigned short end;
@@ -30,8 +40,6 @@ struct sj_useropt {
         FILE *hacks_logstream;
 };
 
-#define MAGICVAL        0xADECADDE
-
 struct sj_config {
         float MAGIC;                            /* integrity check for saved binary configuration */
         bool sj_run;                            /* default: false = NO RUNNING */
@@ -50,12 +58,7 @@ struct sj_config {
         unsigned short max_tracked_ttl;         /* default: 1024 */
         unsigned char interface[SMALLBUF];      /* default: autodetect */
         int tun_number;                         /* tunnel interface number */
-#define PORTNUMBER 65535
         unsigned char portconf[PORTNUMBER];
-#define HEAVY   0x04
-#define NORMAL  0x03
-#define LIGHT   0x02
-#define NONE    0x01
 
         bool SjH__shift_ack;                    /* default false */
         bool SjH__fake_data;                    /* default true */
@@ -79,6 +82,9 @@ private:
 public:
         struct sj_config *running;
 
+        SjConf( struct sj_useropt * );
+        ~SjConf();
+
         void dump_config( const char * );
 
         char *handle_stat_command(void);
@@ -88,8 +94,6 @@ public:
         char *handle_showport_command(void);
         char *handle_log_command(int);
 
-        SjConf( struct sj_useropt * );
-        ~SjConf();
 };
 
 #endif /* SJ_CONF_H */

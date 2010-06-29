@@ -54,15 +54,8 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 
 		fclose(cF);
 
-		memcpy(running, &readed, sizeof(sj_config));
+		memcpy(running, &readed, sizeof(struct sj_config));
 		
-	} else {
-		
-		memset(running, 0x00, sizeof(sj_config));
-
-		/* set up defaults */		
-		running->MAGIC = magic_check;
-		running->sj_run = false;
 		strncpy(running->user, user_opt->user, SMALLBUF);
 		running->user[SMALLBUF - 1] = '\0';
 		strncpy(running->group, user_opt->group, SMALLBUF);
@@ -71,33 +64,13 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		running->chroot_dir[MEDIUMBUF - 1] = '\0';
 		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
 		running->logfname[MEDIUMBUF - 1] = '\0';
-		running->debug_level = 1;
-		running->max_ttl_probe = 26;
-		running->max_session_tracked = 20;
-		running->max_packet_que = 60;
-		running->max_tracked_ttl = 1024;
-
-		/* default is to set port in normal aggressivity */
-		memset(running->portconf, NORMAL, PORTNUMBER);
-
-		/* hacks to be fixed */
-		running->SjH__shift_ack = false;			/* implemented, need testing */
-		running->SjH__half_fake_syn = false;		/* currently not implemented */
-		running->SjH__half_fake_ack = false;		/* currently not implemented */
-
-		/* hacks common defaults */
-		running->SjH__fake_data = true;				/* implemented, enabled */
-		running->SjH__fake_seq = true;				/* implemented, enabled */
-		running->SjH__fake_close = true;			/* implemented, enabled */
-		running->SjH__zero_window = true;			/* implemented, enabled */
-		running->SjH__valid_rst_fake_seq = true;	/* implemented, enabled */
-		running->SjH__fake_syn = true;				/* implemented, enabled */
-		running->SjH__inject_ipopt = true;			/* implemented, enabled */
-		running->SjH__inject_tcpopt = true;			/* implemented, enabled */
-	}
-
-	if(user_opt == NULL) {
 		
+		dump_config(user_opt->cfgfname);
+		
+	} else {
+	
+		memset(running, 0x00, sizeof(sj_config));
+
 		/* begin autodetecting interface */
 		internal_log(NULL, ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd1);
 		foca = popen(cmd1, "r");
@@ -143,7 +116,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
 			raise(SIGTERM);
 		} else  {
-			internal_log(NULL, ALL_LEVEL, "  == acquired gateway ip address: %s", running->gw_ip_addr);
+			internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running->gw_ip_addr);
 		}
 		/* end autodetect gw ip addr */
 
@@ -181,12 +154,47 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		{
 			memset(imp_str, 0x00, SMALLBUF);
 			fgets(imp_str, SMALLBUF, foca);
-		if(imp_str[0] == 0x00)
-			break;
-	}
-	pclose(foca);
-	internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
-	/* end autodetect first tunnel device free */
+			if(imp_str[0] == 0x00)
+				break;
+		}
+		pclose(foca);
+		internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
+		/* end autodetect first tunnel device free */
+
+		/* set up defaults */		
+		running->MAGIC = magic_check;
+		running->sj_run = false;
+		strncpy(running->user, user_opt->user, SMALLBUF);
+		running->user[SMALLBUF - 1] = '\0';
+		strncpy(running->group, user_opt->group, SMALLBUF);
+		running->group[SMALLBUF - 1] = '\0';
+		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
+		running->chroot_dir[MEDIUMBUF - 1] = '\0';
+		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
+		running->logfname[MEDIUMBUF - 1] = '\0';
+		running->debug_level = 1;
+		running->max_ttl_probe = 26;
+		running->max_session_tracked = 20;
+		running->max_packet_que = 60;
+		running->max_tracked_ttl = 1024;
+
+		/* default is to set port in normal aggressivity */
+		memset(running->portconf, NORMAL, PORTNUMBER);
+
+		/* hacks to be fixed */
+		running->SjH__shift_ack = false;			/* implemented, need testing */
+		running->SjH__half_fake_syn = false;			/* currently not implemented */
+		running->SjH__half_fake_ack = false;			/* currently not implemented */
+
+		/* hacks common defaults */
+		running->SjH__fake_data = true;				/* implemented, enabled */
+		running->SjH__fake_seq = true;				/* implemented, enabled */
+		running->SjH__fake_close = true;			/* implemented, enabled */
+		running->SjH__zero_window = true;			/* implemented, enabled */
+		running->SjH__valid_rst_fake_seq = true;		/* implemented, enabled */
+		running->SjH__fake_syn = true;				/* implemented, enabled */
+		running->SjH__inject_ipopt = true;			/* implemented, enabled */
+		running->SjH__inject_tcpopt = true;			/* implemented, enabled */
 	}
 
 	dump_config(user_opt->cfgfname);
@@ -204,7 +212,7 @@ void SjConf::dump_config(const char *dumpfname)
 
 	running->MAGIC = magic_value;
 
-	dumpfd = fopen(dumpfname, "w+");
+	dumpfd = fopen(dumpfname, "w");
 	check_call_ret("open config file in writing", errno, dumpfd == NULL ? -1 : 0, false);
 
 	ret = fwrite(running, sizeof(struct sj_config), 1, dumpfd);

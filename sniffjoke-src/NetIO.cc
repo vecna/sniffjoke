@@ -340,3 +340,7 @@ void NetIO::queue_flush()
 	}
 #endif
 }
+
+bool NetIO::is_network_down() {
+	return networkdown_condition;
+}

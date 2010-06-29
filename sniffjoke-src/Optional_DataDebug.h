@@ -1,3 +1,6 @@
+#ifndef SJ_OPTIONAL_DATADEBUG_H
+#define SJ_OPTIONAL_DATADEBUG_H
+
 #define SESSION_FILE_DEBUG	"/tmp/datadump/session.log"
 #define PACKET_FILE_DEBUG	"/tmp/datadump/packet.log"
 #define TTL_FILE_DEBUG		"/tmp/datadump/ttl.log"
@@ -23,3 +26,5 @@ class DataDebug
 		/* "Session", "Packet", "TTL" */
 		void InfoMsg( const char *, const char *, ... );
 };
+
+#endif /* SJ_OPTIONAL_DATADEBUG_H */

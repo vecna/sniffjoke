@@ -16,7 +16,6 @@ private:
         struct sockaddr_ll send_ll;
         struct sj_config *runcopy;
         TCPTrack *conntrack;
-public:
 
         /* tunfd/netfd: file descriptor for I/O purpose */
         int tunfd;
@@ -25,16 +24,19 @@ public:
         /* poll variables, two file descriptors */
         struct pollfd fds[2];
 
+	bool networkdown_condition;
+
+public:
+
 	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
 	 *       --- but not killed!
-	*/
-
-        bool networkdown_condition;
+	 */
 
         NetIO( SjConf * );
         ~NetIO();
         void network_io();
         void queue_flush();
+	bool is_network_down();
 };
 
 #endif /* SJ_NETIO_H */
