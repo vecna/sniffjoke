@@ -1,13 +1,14 @@
 #include <iostream>
 #include <cerrno>
 using namespace std;
-#include <errno.h>
+
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <signal.h>
-#include <stdio.h>
 
-#include "sniffjoke.h"
+#include "SjUtils.h"
+#include "SjConf.h"
 
 SjConf::SjConf(struct sj_useropt *user_opt) 
 {

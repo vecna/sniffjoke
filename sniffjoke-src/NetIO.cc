@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cerrno>
 using namespace std;
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,7 +12,12 @@ using namespace std;
 #include <linux/if_tun.h>
 #include <linux/if_ether.h>
 
-#include "sniffjoke.h"
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <sys/poll.h>
+
+#include "SjUtils.h"
+#include "NetIO.h"
 
 NetIO::NetIO(SjConf *sjconf) 
 {

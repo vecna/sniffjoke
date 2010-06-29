@@ -10,7 +10,17 @@ using namespace std;
 #include <stdlib.h>
 #include <string.h>
 
-#include "sniffjoke.h"
+#include <sys/socket.h>
+
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/in.h>
+
+#include <arpa/inet.h>
+
+#include "SjUtils.h"
+#include "TCPTrack.h"
 
 // define PACKETDEBUG enable session debug, ttl bruteforce 
 #define PACKETDEBUG 

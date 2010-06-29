@@ -1,10 +1,16 @@
 #include <stdio.h>
 #include <stdarg.h>
-#include <netinet/ip.h>
 #include <time.h>
 #include <string.h>
-#include <sys/signal.h>
 #include <stdlib.h>
+
+#include <sys/signal.h>
+#include <sys/socket.h>
+
+#include <netinet/in.h>
+#include <netinet/ip.h>
+
+#include <arpa/inet.h>
 
 #include "Optional_DataDebug.h"
 #include "sniffjoke.h"
