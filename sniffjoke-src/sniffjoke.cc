@@ -22,8 +22,7 @@ const char *default_user = "nobody";
 const char *default_group = "users";
 const char *default_chroot_dir = "/var/run/sniffjoke";
 const char *default_log_file = "/sniffjoke.log";
-unsigned int default_debug_level = 0;
-
+const unsigned int default_debug_level = 0;
 
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
@@ -49,6 +48,7 @@ static pid_t sj_read_pid(const char* pidfile);
 static int sj_trylock(const char* file);
 static int sj_fork();
 static void sj_background();
+static void sj_daemon_sec();
 static void sj_jail();
 static void sj_privileges_downgrade();
 static void sj_clean_exit(bool exit_request);
@@ -130,8 +130,27 @@ static int sj_trylock(const char* file) {
 
 
 static void sniffjoke_background() {
+	
 	if(fork())
 		exit(0);
+
+	sj_daemon_sec();
+	
+}
+
+static void sj_daemon_sec() {
+	int i;
+        setsid();
+
+        /* close all descriptors */
+        for (i = getdtablesize(); i >= 0; --i)
+                close(i);
+
+        i=open("/dev/null",O_RDWR);     /* stdin */
+        dup(i);                         /* stdout */
+        dup(i);                         /* stderr */
+
+        umask(027);
 }
 
 static int sj_fork() {
@@ -164,6 +183,7 @@ static int sj_fork() {
 		sj_clean_exit(true);
 			
 	} else { // SJ_SRV_CHILD (user process)
+		
 		sj_process_type = SJ_PROCESS_TYPE_SRV_CHILD;
 		sj_pid_file = fopen(SJ_SRV_CHILD_PID_FILE, "w+");	
 		if(sj_pid_file == NULL) {
@@ -540,9 +560,9 @@ int main(int argc, char **argv) {
 	struct option sj_option[] =
 	{
 		{ "conf", required_argument, NULL, 'f' },
-		{ "user", optional_argument, NULL, 'u' },
-		{ "group", optional_argument, NULL, 'g' },
-		{ "chroot-dir", optional_argument, NULL, 'c' },
+		{ "user", required_argument, NULL, 'u' },
+		{ "group", required_argument, NULL, 'g' },
+		{ "chroot-dir", required_argument, NULL, 'c' },
 		{ "debug", required_argument, NULL, 'd' },
 		{ "logfile", required_argument, NULL, 'l' },
 		{ "foreground", optional_argument, NULL, 'x' },
@@ -590,7 +610,7 @@ int main(int argc, char **argv) {
 	}
 	
 	if( command_input == NULL) {
-		while((charopt = getopt_long(argc, argv, "fugcldxrvh", sj_option, NULL)) != -1) {
+		while((charopt = getopt_long(argc, argv, "f:u:g:c:l:d:xrvh", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
 					useropt.cfgfname = strdup(optarg);
@@ -636,7 +656,7 @@ int main(int argc, char **argv) {
 			internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 		}
 	}
-	
+
 	/* sj_trylock 1/2, works also as a first test on server activity
 	 *
 	 * taking the lock after the background evaluation is fundamentl because in a fork the child does not inherit
@@ -676,6 +696,9 @@ int main(int argc, char **argv) {
 						break;
 			}
 			
+			/* force to read user and group in confi file */
+		        useropt.user = NULL;
+		        useropt.group = NULL;	
 			sjconf = new SjConf( &useropt );
 			
 			userinfo = getpwnam(sjconf->running->user);
@@ -746,19 +769,11 @@ int main(int argc, char **argv) {
 	/* If we are here we have the lock on SJ_SRV_LOCK so we can remove the temporary dir SJ_SRV_TMPDIR*/
 	rmdir(SJ_SRV_TMPDIR);
 	mkdir(SJ_SRV_TMPDIR, 644);
-
 	/* checking config file */
 	if(useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
 		internal_log(NULL, ALL_LEVEL, "unable to access %s: sniffjoke will use the defaults", useropt.cfgfname);
 	}
-
-	userinfo = getpwnam(useropt.user);
-	groupinfo = getgrnam(useropt.group);
-	if(userinfo == NULL || groupinfo == NULL) {
-		internal_log(stderr, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
-		return -1;
-	}
-		
+	
 	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
 	signal(SIGINT, sj_sigtrap);
 	signal(SIGABRT, sj_sigtrap);
@@ -768,6 +783,15 @@ int main(int argc, char **argv) {
 
 	/* initialiting object configuration */
 	sjconf = new SjConf( &useropt );
+
+        userinfo = getpwnam(sjconf->running->user);
+        groupinfo = getgrnam(sjconf->running->group);
+
+        if(userinfo == NULL || groupinfo == NULL) {
+                internal_log(stderr, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
+                return -1;
+        }
+
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = new NetIO( sjconf );

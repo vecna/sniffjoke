@@ -56,19 +56,8 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 
 		memcpy(running, &readed, sizeof(struct sj_config));
 		
-		strncpy(running->user, user_opt->user, SMALLBUF);
-		running->user[SMALLBUF - 1] = '\0';
-		strncpy(running->group, user_opt->group, SMALLBUF);
-		running->group[SMALLBUF - 1] = '\0';
-		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
-		running->chroot_dir[MEDIUMBUF - 1] = '\0';
-		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
-		running->logfname[MEDIUMBUF - 1] = '\0';
-		
-		dump_config(user_opt->cfgfname);
-		
 	} else {
-	
+
 		memset(running, 0x00, sizeof(sj_config));
 
 		/* begin autodetecting interface */
@@ -164,14 +153,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		/* set up defaults */		
 		running->MAGIC = magic_check;
 		running->sj_run = false;
-		strncpy(running->user, user_opt->user, SMALLBUF);
-		running->user[SMALLBUF - 1] = '\0';
-		strncpy(running->group, user_opt->group, SMALLBUF);
-		running->group[SMALLBUF - 1] = '\0';
-		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
-		running->chroot_dir[MEDIUMBUF - 1] = '\0';
-		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
-		running->logfname[MEDIUMBUF - 1] = '\0';
 		running->debug_level = 1;
 		running->max_ttl_probe = 26;
 		running->max_session_tracked = 20;
@@ -196,6 +177,26 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		running->SjH__inject_ipopt = true;			/* implemented, enabled */
 		running->SjH__inject_tcpopt = true;			/* implemented, enabled */
 	}
+	
+	/* Read command line values if present */
+	if(user_opt->user != NULL) {
+		strncpy(running->user, user_opt->user, SMALLBUF);
+		running->user[SMALLBUF - 1] = '\0';
+	}
+	if(user_opt->group != NULL) {
+	strncpy(running->group, user_opt->group, SMALLBUF);
+	running->group[SMALLBUF - 1] = '\0';
+	}
+	if(user_opt->chroot_dir != NULL) {
+		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
+		running->chroot_dir[MEDIUMBUF - 1] = '\0';
+	}
+	if(user_opt->logfname != NULL) {
+		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
+		running->logfname[MEDIUMBUF - 1] = '\0';	
+	}
+	if(user_opt->debug_level != -1)
+		running->debug_level = user_opt->debug_level;
 
 	dump_config(user_opt->cfgfname);
 }
