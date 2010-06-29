@@ -5,26 +5,19 @@ GPL software by vecna - <vecna@delirandom.net>
 SniffJoke is a software implementing sniffer evasion techniques.
 It Is implemented in C++, and at the moment tested only under Linux
 environment.
-It uses a local web interface, provided by SWILL (http://swill.sf.net) library
-by David Beazley, Sotiria Lampoudi, Gonzalo Diethelm. Thanks for your
-work. One copy of SWILL 0.3 is distributed in this SniffJoke package.
 
 HOW TO COMPILE/INSTALL:
 
-cd swill-0.3-src/
-./configure && make && make install
-cd ..
 cd sniffjoke-src/
 ./configure && make 
 ./sniffjoke 
 
 Remember:
 
-1) Current running configuration is available by default at
-   http://127.0.0.1:8844 .
-2) If you start SniffJoke without the configuration parameter (default
-   configuration file is /etc/sniffjoke.conf) SniffJoke will not save your
-   settings.
+1) If you start SniffJoke without the configuration parameter sniffjoke will use
+   settings present in /root/sniffjoke/sniffjoke.conf).
+   If that file does not exist SniffJoke will initialize it with default setting
+   or settings provided in command line arguments.
 3) SniffJoke is a software that mangles kernel traffic in userspace. To satisfy
    this condition it requires some weird hack, like creation of a
    fake-tunnel interface and use of the same local IP address. SniffJoke tries

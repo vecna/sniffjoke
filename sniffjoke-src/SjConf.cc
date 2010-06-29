@@ -5,6 +5,7 @@ using namespace std;
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <stdio.h>
 
 #include "sniffjoke.h"
 
@@ -61,7 +62,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		/* set up defaults */		
 		running->MAGIC = magic_check;
 		running->sj_run = false;
-		running->web_bind_port = user_opt->bind_port;
 		strncpy(running->user, user_opt->user, SMALLBUF);
 		running->user[SMALLBUF - 1] = '\0';
 		strncpy(running->group, user_opt->group, SMALLBUF);
@@ -222,7 +222,7 @@ char *SjConf::handle_stat_command(void)
 		"gateway mac address:\t\t%s\n" \
 		"gateway ip address:\t\t%s\n" \
 		"local interface:\t\t%s, %s address\n" \
-		"dynamic tunnel interface:\ttun%d\n",
+		"dynamic tunnel interface:\ttun%d",
 		running->sj_run == true ? "TRUE" : "FALSE",
 		running->gw_mac_str,
 		running->gw_ip_addr,

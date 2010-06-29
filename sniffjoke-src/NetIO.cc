@@ -2,6 +2,7 @@
 #include <cerrno>
 using namespace std;
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include <netdb.h>

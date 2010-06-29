@@ -31,17 +31,19 @@ enum size_buf_t {
 /* main.cc global functions */
 void check_call_ret( const char *, int, int, bool);
 void internal_log(FILE *, int, const char *, ...);
-#define SNIFFJOKE_FATHER_LOCK "/var/run/sniffjoke/sniffjoke_father.lock"
-#define SNIFFJOKE_CHILD_LOCK "/var/run/sniffjoke/sniffjoke_child.lock"
-#define SNIFFJOKE_CLI_LOCK "/var/run/sniffjoke/sniffjoke_cli.lock"
-#define SNIFFJOKE_FATHER_PID_FILE "/var/run/sniffjoke/sniffjoke_father.pid"
-#define SNIFFJOKE_CHILD_PID_FILE "/var/run/sniffjoke/sniffjoke_child.pid"
-#define SNIFFJOKE_SRV_US "sniffjoke_srv" // relative to the jail
-#define SNIFFJOKE_CLI_US "sniffjoke_cli" // relative to the jail
+#define SJ_PROCESS_TYPE_UNASSIGNED (-1)
+#define SJ_PROCESS_TYPE_SRV_FATHER (0)
+#define SJ_PROCESS_TYPE_SRV_CHILD (1)
+#define SJ_PROCESS_TYPE_CLI (2)
+#define SJ_SRV_LOCK "/var/run/sniffjoke/srv.lock"
+#define SJ_CLI_LOCK "/var/run/sniffjoke/cli.lock"
+#define SJ_SRV_TMPDIR "/var/run/sniffjoke/srv"
+#define SJ_SRV_FATHER_PID_FILE SJ_SRV_TMPDIR"/father.pid"
+#define SJ_SRV_CHILD_PID_FILE SJ_SRV_TMPDIR"/child.pid"
+#define SJ_SRV_US "sniffjoke_srv" // relative to the jail
+#define SJ_CLI_US "sniffjoke_cli" // relative to the jail
 struct sj_useropt {
 	const char *cfgfname;
-	unsigned short bind_port;
-	char *bind_addr;
 	const char *user;
 	const char *group;
 	const char *chroot_dir;
@@ -67,24 +69,23 @@ struct sj_useropt {
 
 #define MAGICVAL	0xADECADDE
 struct sj_config {
-	float MAGIC;							/* integrity check for saved binary configuration */
-	bool sj_run;							/* default: false = NO RUNNING */
-	unsigned short web_bind_port;			/* default: 8844 */
-	char user[SMALLBUF];					/* default: nobody */
-	char group[SMALLBUF];					/* default: users */
-	char chroot_dir[MEDIUMBUF];				/* default: /var/run/sniffjoke */
-	char logfname[MEDIUMBUF];				/* default: /var/log/sniffjoke.log */
-	int debug_level;						/* default: 1 */
-	char local_ip_addr[SMALLBUF];			/* default: autodetect */
-	char gw_ip_addr[SMALLBUF];				/* default: autodetect */
-	char gw_mac_str[SMALLBUF];				/* default: autodetect */
+	float MAGIC; 				/* integrity check for saved binary configuration */
+	bool sj_run; 				/* default: false = NO RUNNING */
+	char user[SMALLBUF]; 			/* default: nobody */
+	char group[SMALLBUF];			/* default: users */
+	char chroot_dir[MEDIUMBUF];		/* default: /var/run/sniffjoke */
+	char logfname[MEDIUMBUF];		/* default: /var/log/sniffjoke.log */
+	int debug_level;			/* default: 1 */
+	char local_ip_addr[SMALLBUF];		/* default: autodetect */
+	char gw_ip_addr[SMALLBUF];		/* default: autodetect */
+	char gw_mac_str[SMALLBUF];		/* default: autodetect */
 	unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
-	unsigned short max_ttl_probe;			/* default: 26 */
-	unsigned short max_session_tracked;		/* default: 20 */
-	unsigned short max_packet_que;			/* default: 60 */
-	unsigned short max_tracked_ttl;			/* default: 1024 */
-	unsigned char interface[SMALLBUF];		/* default: autodetect */
-	int tun_number;							/* tunnel interface number */
+	unsigned short max_ttl_probe;		/* default: 26 */
+	unsigned short max_session_tracked;	/* default: 20 */
+	unsigned short max_packet_que;		/* default: 60 */
+	unsigned short max_tracked_ttl;		/* default: 1024 */
+	unsigned char interface[SMALLBUF];	/* default: autodetect */
+	int tun_number;				/* tunnel interface number */
 #define PORTNUMBER 65535
 	unsigned char portconf[PORTNUMBER];
 #define HEAVY	0x04
@@ -92,17 +93,17 @@ struct sj_config {
 #define LIGHT	0x02
 #define NONE	0x01
 
-	bool SjH__shift_ack;				/* default false */
-	bool SjH__fake_data;				/* default true */
-	bool SjH__fake_seq;					/* default true */
-	bool SjH__fake_close;				/* default true */
-	bool SjH__zero_window;				/* default true */
+	bool SjH__shift_ack;			/* default false */
+	bool SjH__fake_data; 			/* default true */
+	bool SjH__fake_seq; 			/* default true */
+	bool SjH__fake_close;			/* default true */
+	bool SjH__zero_window;			/* default true */
 	bool SjH__valid_rst_fake_seq;		/* default true */
-	bool SjH__fake_syn;					/* default true */
-	bool SjH__half_fake_syn;			/* default false */
-	bool SjH__half_fake_ack;			/* default false */
-	bool SjH__inject_ipopt;				/* default true */
-	bool SjH__inject_tcpopt;			/* default true */
+	bool SjH__fake_syn;			/* default true */
+	bool SjH__half_fake_syn;		/* default false */
+	bool SjH__half_fake_ack;		/* default false */
+	bool SjH__inject_ipopt;			/* default true */
+	bool SjH__inject_tcpopt;		/* default true */
 
 	char *error;
 };
@@ -127,23 +128,6 @@ public:
 	SjConf( struct sj_useropt * );
 	~SjConf();
 };
-
-#include <swill/swill.h>
-class WebIO {
-private:
-	/* static struct sj_config *runcopy, and the other member, due to
- 	 * swill integration */
-public:
-	WebIO( SjConf* );
-	~WebIO();
-	int web_poll();
-};
-
-/* 
- * the class before had err value, below this isn't 
- * present because thats objects had not an "initialization"
- * and are not called on init section.
- */
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
