@@ -81,20 +81,20 @@ void DataDebug::Dump_Packet( int pblock_elements)
 		return;
 	}
 
-	int i, accumulo_start = 0, accumulo_end = 0;
-	for(i =0; i < pblock_elements; i++) 
+	int accumulo_start = 0, accumulo_end = 0;
+	for(int i = 0; i < pblock_elements; i++) 
 	{
-		if(accumulo_start && Packet[i].orig_pktlen) {
+		if(accumulo_start && Packet[i].pbuf_size) {
 			accumulo_end = (i - 1);
 			fprintf(Packet_f, "[%d - %d]/%d empty\n", accumulo_start, accumulo_end, pblock_elements);
 			accumulo_start = accumulo_end = 0;
 		}
 
-		if(!Packet[i].orig_pktlen && !Packet[i].proto && !accumulo_start) {
+		if(!accumulo_start && !Packet[i].pbuf_size) {
 			accumulo_start = i;
 		}
 
-		if(Packet[i].orig_pktlen && Packet[i].proto) 
+		if(Packet[i].pbuf_size) 
 		{
 			const char *source;
 
@@ -133,7 +133,7 @@ void DataDebug::Dump_Packet( int pblock_elements)
 					Packet[i].packet_id
 				);
 			} 
-			else 
+			else if ( Packet[i].proto == OTHER_IP)
 			{
 				fprintf( Packet_f, "[%d]/%d %s OTHER PROTOCOL (%d) origlen %d bufsize %d packet_id %8x\n", 
 					i, pblock_elements,

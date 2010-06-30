@@ -305,8 +305,7 @@ void NetIO::queue_flush()
 					wbyt, runcopy->sj_run == true ? "running" : "stopped");
 			}
 
-		} 
-		else {
+		} else {
 			if(packet->source != TTLBFORCE) 
 			{
 				/* fixing TTL, fixing checksum and IP/TCP options */

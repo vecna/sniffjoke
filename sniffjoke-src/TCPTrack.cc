@@ -294,6 +294,8 @@ void TCPTrack::analyze_packets_queue()
 		newp->status = SEND;
 		newp = get_pblock(YOUNG, ANY_SOURCE, ANY_PROTO, true);
 	}
+
+	clear_dropped_pblocks();
 }
 
 struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, proto_t proto, bool must_continue) 
@@ -1212,7 +1214,7 @@ struct packetblock * TCPTrack::get_free_pblock( int pktsize, priority_t prio, un
 
 	for(; i < end; i++) 
 	{
-		if(first_free == -1 && pblock_list[i].pbuf_size == 0) 
+		if(first_free == -1 && pblock_list[i].pbuf_size == 0)
 			first_free = i;
 		
 		/* 
@@ -1651,6 +1653,7 @@ void TCPTrack::SjH__fake_close( struct packetblock *hackp )
 	if(random() % 2) 
 		hackp->tcp->fin = 1;
 	else 
+
 		hackp->tcp->rst = 1;
 
 	/* in both case, the sequence number must be shrink as no data are there.
@@ -1700,7 +1703,7 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	/* l47len = length of the frame layer 4 to 7 */
 	l47len = ntohs(hackp->ip->tot_len) - iphlen;
 
-	/* 1: strip the original ip options, if present */	
+	/* 1: strip the original ip options, if present, copying payload over */	
 	if( iphlen > sizeof(struct iphdr) ) 
 	{
 		memmove(endip, endip + startipopt, l47len);
@@ -1754,10 +1757,10 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 	/* l57len = length of the frame layer 5 to 7 */
 	l57len = ntohs(hackp->ip->tot_len) - ( iphlen + tcphlen );
 
+	/* 1: strip the original tcp options, if present, copying payload over */
 	if(tcphlen > sizeof(struct tcphdr))
 	{
-		/* 1: strip the original ip options, if present */
-		memmove(endtcp, endtcp + starttcpopt, tcphlen);
+		memmove(endtcp, endtcp + starttcpopt, l57len);
 		
 		l57len = ntohs(hackp->ip->tot_len) - ( iphlen + sizeof(struct tcphdr) );
 		tcphlen = sizeof(struct tcphdr);
@@ -1780,6 +1783,7 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 	memcpy(&endtcp[4], &now, sizeof(time_t));
 
 #ifdef HACKSDEBUG
+	printf("%s\n", inet_ntoa( *((struct in_addr *)&hackp->ip->daddr) ));
 	internal_log(NULL, HACKS_DEBUG,
 		"Fake TcpOpt (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
 		ntohs(hackp->tcp->source), 
