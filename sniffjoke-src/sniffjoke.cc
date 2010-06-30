@@ -734,7 +734,7 @@ int main(int argc, char **argv) {
 
 	if(argc > 1 && argv[1][0] != '-') {
 		internal_log(stderr, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
-		sniffjoke_help(argv[0]);
+		sj_help(argv[0]);
 		return -1;
 	}
 
