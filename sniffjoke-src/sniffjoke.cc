@@ -29,7 +29,9 @@ const char *help_url = "http://www.delirandom.net/sniffjoke";
 const char *prog_version = "0.3";
 
 static sj_process_t sj_process_type = SJ_PROCESS_TYPE_UNASSIGNED;
+static int sj_srv_father_pid = -1;
 static int sj_srv_child_pid = -1;
+static int sj_srv_lock;
 static struct passwd *userinfo;
 static struct group *groupinfo;
 
@@ -128,29 +130,31 @@ static int sj_trylock(const char* file) {
 	return -2; // Miserable Fail
 }
 
-
-static void sniffjoke_background() {
-	
-	if(fork())
-		exit(0);
-
-	sj_daemon_sec();
-	
-}
-
-static void sj_daemon_sec() {
+static void sj_close_fd() {
 	int i;
-        setsid();
-
-        /* close all descriptors */
         for (i = getdtablesize(); i >= 0; --i)
                 close(i);
 
-        i=open("/dev/null",O_RDWR);     /* stdin */
-        dup(i);                         /* stdout */
-        dup(i);                         /* stderr */
+	if(useropt.go_foreground == false) {
+		i=open("/dev/null",O_RDWR);     /* stdin  */
+		dup(i);                         /* stdout */
+		dup(i);                         /* stderr */
+	}
 
-        umask(027);
+}
+
+static void sj_background() {
+
+	if(fork())
+		exit(0);
+		
+	sj_close_fd();
+	
+}
+
+static void sj_process_isolation() {
+        setsid();
+        umask(0);
 }
 
 static int sj_fork() {
@@ -183,7 +187,11 @@ static int sj_fork() {
 		sj_clean_exit(true);
 			
 	} else { // SJ_SRV_CHILD (user process)
-		
+	
+		/* close sj_srv_lock fd on child */
+		close(sj_srv_lock);
+			
+		sj_process_isolation();
 		sj_process_type = SJ_PROCESS_TYPE_SRV_CHILD;
 		sj_pid_file = fopen(SJ_SRV_CHILD_PID_FILE, "w+");	
 		if(sj_pid_file == NULL) {
@@ -542,9 +550,7 @@ int main(int argc, char **argv) {
 	bool restart_on_restore = false;
 	char command_buffer[MEDIUMBUF], *command_input = NULL;
 	bool srv_just_active = 0;
-	pid_t sj_srv_father_pid = 0;
-	pid_t sj_srv_child_pid = 0;
-	int listening_unix_socket = -1;
+	int listening_unix_socket;
 	
 	/* set the default values in the configuration struct */
 	useropt.force_restart = false;
@@ -648,21 +654,24 @@ int main(int argc, char **argv) {
 				argv += optind;
 			}
 		}
-
+		
 		if(!useropt.go_foreground)
-			sniffjoke_background();
+			sj_background();
 		else {
 			useropt.logstream = stdout;
 			internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 		}
+
+		sj_process_isolation();
 	}
 
 	/* sj_trylock 1/2, works also as a first test on server activity
 	 *
 	 * taking the lock after the background evaluation is fundamentl because in a fork the child does not inherit
 	 * parent's locks so the locks would be released after parent death. */
-	
-	switch(sj_trylock(SJ_SRV_LOCK)) {
+
+	sj_srv_lock = sj_trylock(SJ_SRV_LOCK);
+	switch(sj_srv_lock) {
 		case 0:	/* Success */
 				break;
 		case 1: /* Just Locked */
@@ -745,7 +754,8 @@ int main(int argc, char **argv) {
 			}
 			
 			/* sj_lock 2/2, works also as a second test on server activity */
-			switch(sj_trylock(SJ_SRV_LOCK)) {
+			sj_srv_lock = sj_trylock(SJ_SRV_LOCK);
+			switch(sj_srv_lock) {
 				case 0:	/* Success */
 						break;
 				case 1: /* Just Locked */
@@ -784,14 +794,13 @@ int main(int argc, char **argv) {
 	/* initialiting object configuration */
 	sjconf = new SjConf( &useropt );
 
-        userinfo = getpwnam(sjconf->running->user);
-        groupinfo = getgrnam(sjconf->running->group);
+	userinfo = getpwnam(sjconf->running->user);
+	groupinfo = getgrnam(sjconf->running->group);
 
-        if(userinfo == NULL || groupinfo == NULL) {
-                internal_log(stderr, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
-                return -1;
-        }
-
+	if(userinfo == NULL || groupinfo == NULL) {
+		internal_log(stderr, ALL_LEVEL, "invalid user or group specified: %s %s", useropt.user, useropt.group);
+		return -1;
+	}
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = new NetIO( sjconf );

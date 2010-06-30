@@ -330,15 +330,15 @@ void NetIO::queue_flush()
 		packet = conntrack->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, true);
 	}
 
-#if 0
 	/* remove packet marked as DROP */
 	packet = conntrack->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, false);
-	while( (packet != NULL )
+	while( packet != NULL )
 	{
+		printf("antani\n");
+		exit(1);
 		conntrack->clear_pblock(packet);
 		packet = conntrack->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, true);
 	}
-#endif
 }
 
 bool NetIO::is_network_down() {
