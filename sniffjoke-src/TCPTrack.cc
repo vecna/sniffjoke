@@ -1783,7 +1783,6 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 	memcpy(&endtcp[4], &now, sizeof(time_t));
 
 #ifdef HACKSDEBUG
-	printf("%s\n", inet_ntoa( *((struct in_addr *)&hackp->ip->daddr) ));
 	internal_log(NULL, HACKS_DEBUG,
 		"Fake TcpOpt (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
 		ntohs(hackp->tcp->source), 
