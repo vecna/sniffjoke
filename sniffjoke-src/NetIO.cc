@@ -326,19 +326,12 @@ void NetIO::queue_flush()
 			}
 			
 		}
-		conntrack->clear_pblock(packet);
+		packet->status = DROP;
 		packet = conntrack->get_pblock(SEND, ANY_SOURCE, ANY_PROTO, true);
 	}
 
 	/* remove packet marked as DROP */
-	packet = conntrack->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, false);
-	while( packet != NULL )
-	{
-		printf("antani\n");
-		exit(1);
-		conntrack->clear_pblock(packet);
-		packet = conntrack->get_pblock(DROP, ANY_SOURCE, ANY_PROTO, true);
-	}
+	conntrack->clear_dropped_pblocks();
 }
 
 bool NetIO::is_network_down() {

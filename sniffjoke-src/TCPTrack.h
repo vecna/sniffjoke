@@ -144,7 +144,7 @@ public:
         void add_packet_queue( const source_t, const unsigned char *, int );
         void analyze_packets_queue();
         struct packetblock *get_pblock( status_t, source_t, proto_t, bool);
-        void clear_pblock( struct packetblock * );
+        void clear_dropped_pblocks();
         void last_pkt_fix( struct packetblock * );
 
         /* force all packets sendable, used from NetIO for avoid Sn mangling */

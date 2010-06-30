@@ -9,6 +9,7 @@
 using namespace std;
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <sys/socket.h>
 
@@ -35,8 +36,6 @@ static DataDebug *dd;
 
 TCPTrack::TCPTrack(SjConf *sjconf) 
 {
-	int i;
-
 	runcopy = sjconf->running;
 
 	sextraxmax = runcopy->max_session_tracked;
@@ -58,7 +57,7 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	pblock_list_count[0] = pblock_list_count[1] = 0;
 
 	/* random pool initialization */
-	for( i = 0; i < ( (random() % 40) + 3 ); i++ ) 
+	for(int i = 0; i < ( (random() % 40) + 3 ); i++ ) 
 		srandom( (unsigned int)time(NULL) ^ random() );
 
 #ifdef DATADEBUG
@@ -190,6 +189,7 @@ void TCPTrack::analyze_packets_queue()
 
 #ifdef DATADEBUG
 	dd->InfoMsg("Packet", "analyze_packets_queue");
+	for(int i = 0; i < paxmax; i++) update_pblock_pointers( &pblock_list[i] );
 	dd->Dump_Packet( paxmax );
 #endif
 
@@ -204,7 +204,11 @@ void TCPTrack::analyze_packets_queue()
 			analyze_incoming_icmp(newp);
 
 		/* if packet exist again = is not destroyed by analyze function */
+		/*
 		if(newp != NULL)
+			newp->status = SEND;
+		*/
+		if(newp->status != DROP)
 			newp->status = SEND;
 		
 		newp = get_pblock(YOUNG, NETWORK, ICMP, true);
@@ -224,7 +228,11 @@ void TCPTrack::analyze_packets_queue()
 			analyze_incoming_rstfin(newp);	
 
 		/* if packet exist again = is not destroyed by analyze function */
+		/*
 		if(newp != NULL)
+			newp->status = SEND;
+		*/
+		if(newp->status != DROP)
 			newp->status = SEND;
 			
 		newp = get_pblock(YOUNG, NETWORK, TCP, true);
@@ -252,7 +260,7 @@ void TCPTrack::analyze_packets_queue()
 		manage_outgoing_packets(newp);
 
 		/* all outgoing packets, exception for starting SYN (status = KEEP), are sent immediatly */
-		if(newp != NULL && newp->status != KEEP)
+		if(newp->status != KEEP && newp->status != DROP)
 			newp->status = SEND;
 			
 		newp = get_pblock(YOUNG, TUNNEL, TCP, true);
@@ -291,12 +299,11 @@ void TCPTrack::analyze_packets_queue()
 struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, proto_t proto, bool must_continue) 
 {
 	static int start_index = 0;
-	int i;
 
 	if (!must_continue)
 		start_index = 0;
 
-	for(i = start_index; i < paxmax; i++) 
+	for(int i = start_index; i < paxmax; i++) 
 	{
 		if (status != ANY_STATUS && pblock_list[i].status != status )
 			continue;
@@ -316,34 +323,32 @@ struct packetblock * TCPTrack::get_pblock(status_t status, source_t source, prot
 	return NULL;
 }
 
-void TCPTrack::clear_pblock( struct packetblock *used_pb )
+void TCPTrack::clear_dropped_pblocks()
 {
-	int i;
-	int free = 1;
-
-	for(i = 0; i < paxmax; i++) 
+	for(int i = 0; i < paxmax; i++) 
 	{		
-		if( &(pblock_list[i]) == used_pb ) 
+		if( pblock_list[i].status == DROP ) 
 		{
-			memset(used_pb, 0x00, sizeof(struct packetblock));
+			memset(&pblock_list[i], 0x00, sizeof(struct packetblock));
 			
 			if ( i < paxmax /2 ) {
 				pblock_list_count[0]--;
-				if (pblock_list_count[0] == 0)
-					recompact_pblock_list(0);
 			} else {
 				pblock_list_count[1]--;
-				if (pblock_list_count[1] == 0)
-					recompact_pblock_list(1);
 			}
-				
-			return;
 		}
 	}
-		
-	check_call_ret("unforeseen bug: TCPTrack.cc, contact the sofware manteiner, sorry. function clear_pblock", 0, -1, true);
+	
+	if (pblock_list_count[0] == 0 && pblock_list_count[1] == 0) {
+		paxmax = runcopy->max_packet_que;
+		free(pblock_list);
+		pblock_list = (struct packetblock *)calloc( paxmax, sizeof(struct packetblock) );
+	} else if (pblock_list_count[0] == 0) {
+		recompact_pblock_list(0);
+	} else if (pblock_list_count[1] == 0) {
+		recompact_pblock_list(1);
+	}
 }
-
 
 void TCPTrack::update_pblock_pointers( struct packetblock *pb ) {
 
@@ -373,13 +378,11 @@ void TCPTrack::update_pblock_pointers( struct packetblock *pb ) {
  */
 void TCPTrack::force_send()
 {
-	int i;
-
 #ifdef PACKETDEBUG
 	int counter =0;
 #endif
 
-	for(i = 0; i < paxmax; i++) {
+	for(int i = 0; i < paxmax; i++) {
 		if(pblock_list[i].pbuf_size) {
 #ifdef PACKETDEBUG
 			counter++;
@@ -522,8 +525,7 @@ void TCPTrack::analyze_incoming_icmp( struct packetblock *timeexc )
 			}
 #endif
 		}
-		clear_pblock(timeexc);
-		timeexc = NULL;
+		timeexc->status = DROP;
 	}
 }
 
@@ -584,6 +586,7 @@ void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 		 */
 		
 		mark_real_syn_packets_SEND( synack->ip->saddr );
+		synack->status = DROP;
 		
 	}
 
@@ -868,9 +871,8 @@ sendchosenhacks:
 	if(hpool_len)
 	{
 		judge_t court_word;
-		int i;
 
-		for(i = 0; i < hpool_len; i++) 
+		for(int i = 0; i < hpool_len; i++) 
 		{
 			if( chackpo[i].prcnt ) 
 			{
@@ -1028,9 +1030,8 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
 bool TCPTrack::check_uncommon_tcpopt( const struct tcphdr *tcp )
 {
 	unsigned char check;
-	int i;
 
-	for( i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++)
+	for(int i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++)
 	{
 		check = ((unsigned char *)tcp)[i];
 
@@ -1315,8 +1316,8 @@ void TCPTrack::recompact_pblock_list(int what)
 
 struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb ) 
 {
-	int i, first_free = -1;
-	for(i = 0; i < sextraxmax; i++) 
+	int first_free = -1;
+	for(int i = 0; i < sextraxmax; i++) 
 	{
 		if( sex_list[i].daddr == 0 ) {
 			first_free = i;
@@ -1381,9 +1382,7 @@ struct sniffjoke_track * TCPTrack::init_sexion( const struct packetblock *pb )
 /* get_sexion search for the session, if not found, return NULL */
 struct sniffjoke_track * TCPTrack::get_sexion( unsigned int daddr, unsigned short sport, unsigned short dport )
 {
-	int i;
-
-	for(i = 0; i < sextraxmax; i++) 
+	for(int i = 0; i < sextraxmax; i++) 
 	{
 		if(
 			sex_list[i].daddr == daddr &&
@@ -1415,9 +1414,7 @@ struct sniffjoke_track * TCPTrack::find_sexion( const struct packetblock *pb )
  */
 void TCPTrack::clear_sexion( struct sniffjoke_track *used_ct ) 
 {
-	int i;
-
-	for(i = 0 ; i < sextraxmax; i++)
+	for(int i = 0 ; i < sextraxmax; i++)
 	{
 		if( &(sex_list[i]) == used_ct )
 		{
@@ -1502,24 +1499,24 @@ void TCPTrack::recompact_sex_list( int what )
 
 struct ttlfocus *TCPTrack::init_ttl_focus( int first_free, unsigned int destip )
 {
-		if (first_free == -1) {
-			maxttlfocus *= 2;
-			ttlfocus_list = (struct ttlfocus *)realloc( 
-				(void *)ttlfocus_list, 
-				sizeof(struct ttlfocus) * maxttlfocus 
-			);
+	if (first_free == -1) {
+		maxttlfocus *= 2;
+		ttlfocus_list = (struct ttlfocus *)realloc( 
+			(void *)ttlfocus_list, 
+			sizeof(struct ttlfocus) * maxttlfocus 
+		);
+
+		check_call_ret("memory allocation", errno, ttlfocus_list == NULL ? -1 : 0, true );
+		
+		memset(	(void *)&ttlfocus_list[maxttlfocus / 2], 
+			0x00, 
+			(sizeof(struct ttlfocus) * maxttlfocus / 2)
+		);
 			
-			check_call_ret("memory allocation", errno, ttlfocus_list == NULL ? -1 : 0, true );
-			
-			memset(	(void *)&ttlfocus_list[maxttlfocus / 2], 
-				0x00, 
-				(sizeof(struct ttlfocus) * maxttlfocus / 2)
-			);
-			
-			internal_log(NULL, DEBUG_LEVEL,
-				"### memory allocation for ttlfocus_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
-				maxttlfocus
-			);
+		internal_log(NULL, DEBUG_LEVEL,
+			"### memory allocation for ttlfocus_list in %s:%d:%s() new size: %d", __FILE__, __LINE__, __func__, 
+			maxttlfocus
+		);
 			
 			first_free = maxttlfocus / 2;
 		}
@@ -1542,9 +1539,9 @@ struct ttlfocus *TCPTrack::init_ttl_focus( int first_free, unsigned int destip )
  */
 struct ttlfocus *TCPTrack::find_ttl_focus( unsigned int destip, int initialize )
 {
-	int i, first_free = -1;
+	int first_free = -1;
 
-	for(i = 0; i < maxttlfocus; i++) 
+	for(int i = 0; i < maxttlfocus; i++) 
 	{
 		if( first_free == -1 && ttlfocus_list[i].daddr == 0)
 			first_free = i;
@@ -1570,13 +1567,13 @@ struct ttlfocus *TCPTrack::find_ttl_focus( unsigned int destip, int initialize )
  */
 void TCPTrack::SjH__fake_data( struct packetblock *hackp )
 {
-	int i, diff;
+	int diff;
 
 	hackp->ip->id = htons(ntohs(hackp->ip->id) + (random() % 10));
 
 	diff = ntohs(hackp->ip->tot_len) - ( (hackp->ip->ihl * 4) + (hackp->tcp->doff * 4) );
 
-	for(i = 0; i < (diff - 3); i += 4)
+	for(int i = 0; i < (diff - 3); i += 4)
 		*(unsigned int *)(&hackp->payload[i]) = random();
 }
 
@@ -1699,7 +1696,6 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	int fakeipopt = ( (route_n + 1) * 4);
 	unsigned char *endip = hackp->pbuf + sizeof(struct iphdr);
 	int startipopt = iphlen - sizeof(struct iphdr);
-	int i;
 
 	/* l47len = length of the frame layer 4 to 7 */
 	l47len = ntohs(hackp->ip->tot_len) - iphlen;
@@ -1723,7 +1719,7 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	endip[2] = (route_n * 4) + 3;	/* IPOPT_OLEN   */
 	endip[3] = 4;			/* IPOPT_OFFSET = IPOPT_MINOFF */
 
-	for(i = 4; i != fakeipopt; i += 4 )
+	for(int i = 4; i != fakeipopt; i += 4 )
 		*(unsigned int *)(&endip[i]) = random();
 
 #ifdef HACKSDEBUG
