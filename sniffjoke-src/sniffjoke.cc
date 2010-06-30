@@ -247,10 +247,15 @@ static void sj_clean_exit(bool exit_request) {
 		default:
 			break;
 	}
+	
+	if(sjconf != NULL) 
+		delete sjconf;
 
-	/* this is the clean way for exit, because sj_sigtrap delete the instance c++ obj */
+	if(mitm != NULL)
+		delete mitm;
+
 	if(exit_request)
-		sj_sigtrap(0);
+		exit(1);
 }
 
 static void sj_forced_clean_exit(pid_t pid) {
@@ -281,12 +286,6 @@ static void sj_forced_clean_exit(pid_t pid) {
 static void sj_sigtrap(int signal) {
 	if(signal)
 		internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
-
-	if(sjconf != NULL) 
-		delete sjconf;
-
-	if(mitm != NULL)
-		delete mitm;
 		
 	sj_clean_exit(false);
 		
