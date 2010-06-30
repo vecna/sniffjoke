@@ -61,7 +61,7 @@ static int sj_srv_child_prepare_local_unixserv();
 static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj);
 static void sj_cli_send_command(char *cmdstring);
 
-static void sniffjoke_help(const char *pname) {
+static void sj_help(const char *pname) {
 	printf(
 		"%s [command] or %s --options:\n"
 		" --debug [level 1-3]\tenable debug and set the verbosity [default:1]\n"
@@ -86,7 +86,7 @@ static void sniffjoke_help(const char *pname) {
 		pname, pname, default_log_file, "127.0.0.1");
 }
 
-static void sniffjoke_version(const char *pname) {
+static void sj_version(const char *pname) {
 	printf("%s %s\n", prog_name, prog_version);
 }
 
@@ -579,7 +579,7 @@ int main(int argc, char **argv) {
 
 	if(getuid() || geteuid()) {
 		printf("sniffjoke for running require root privileges\n");
-		sniffjoke_help(argv[0]);
+		sj_help(argv[0]);
 		return 0;
 	}
 	
@@ -642,11 +642,11 @@ int main(int argc, char **argv) {
 					useropt.force_restart = true;
 					break;
 				case 'v':
-					sniffjoke_version(argv[0]);
+					sj_version(argv[0]);
 					return 0;
 				case 'h':
 				default:
-					sniffjoke_help(argv[0]);
+					sj_help(argv[0]);
 					return -1;
 
 				argc -= optind;
