@@ -20,6 +20,8 @@ using namespace std;
 
 #include <arpa/inet.h>
 
+#include <assert.h>
+
 #include "SjUtils.h"
 #include "TCPTrack.h"
 
@@ -98,9 +100,7 @@ TCPTrack::~TCPTrack()
 
 bool TCPTrack::check_evil_packet( const unsigned char * buff, int nbyte)
 {
-	struct iphdr *ip;
-		
-	ip = (struct iphdr *)buff;
+	struct iphdr *ip = (struct iphdr *)buff;
  
 	if( nbyte < sizeof(struct iphdr) || nbyte != ntohs(ip->tot_len) ) {
 #ifdef DATADEBUG
@@ -466,13 +466,13 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 		
 		if( runcopy->SjH__inject_ipopt ) {
 			if ( ntohs(pkt->ip->tot_len) < (MTU - 72) )
-				if( percentage( 1, 100 ) )
+				//if( percentage( 1, 100 ) )
 					SjH__inject_ipopt( pkt );
 		}
 
 		if( runcopy->SjH__inject_tcpopt ) {
 			if ( !check_uncommon_tcpopt(pkt->tcp) && pkt->wtf != INNOCENT )
-				if( percentage( 25, 100 ) )
+				//if( percentage( 25, 100 ) )
 					SjH__inject_tcpopt( pkt );
 		}
 	}
@@ -755,7 +755,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 			{
 				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__shift_ack;
 				chackpo[hpool_len].prcnt = 0;
-				chackpo[hpool_len].debug_info =  (char *)"SHIFT ack";
+				chackpo[hpool_len].debug_info =  (char *)"shift ack";
 				chackpo[hpool_len].resize = UNCHANGED_SIZE;
 				
 				hpool_len++;
@@ -774,7 +774,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 			{
 				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_data;
 				chackpo[hpool_len].prcnt = 98;
-				chackpo[hpool_len].debug_info = (char *)"fake DATA";
+				chackpo[hpool_len].debug_info = (char *)"fake data";
 				chackpo[hpool_len].resize = UNCHANGED_SIZE; 
 				
 				hpool_len++;
@@ -791,7 +791,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 		{
 			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_seq;
 			chackpo[hpool_len].prcnt = 98;
-			chackpo[hpool_len].debug_info = (char *)"fake SEQ";
+			chackpo[hpool_len].debug_info = (char *)"fake seq";
 
 			if(payload_len > 312)
 				chackpo[hpool_len].resize = (random() % 200);
@@ -812,7 +812,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 			{
 				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_close;
 				chackpo[hpool_len].prcnt = 98;
-				chackpo[hpool_len].debug_info = (char *)"fake FIN/RST";
+				chackpo[hpool_len].debug_info = (char *)"fake close";
 				chackpo[hpool_len].resize = 0;
 				
 				hpool_len++;
@@ -844,7 +844,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 		{
 			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__valid_rst_fake_seq;
 			chackpo[hpool_len].prcnt = 0;
-			chackpo[hpool_len].debug_info = (char *)"valid RST with invalid SEQ";
+			chackpo[hpool_len].debug_info = (char *)"valid rst fake seq";
 			chackpo[hpool_len].resize = 0;
 			
 			hpool_len++;
@@ -859,7 +859,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 		{
 			chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_syn;
 			chackpo[hpool_len].prcnt = 94;
-			chackpo[hpool_len].debug_info = (char *)"fake SYN";
+			chackpo[hpool_len].debug_info = (char *)"fake syn";
 			chackpo[hpool_len].resize = 0;
 			
 			hpool_len++;
@@ -1653,7 +1653,6 @@ void TCPTrack::SjH__fake_close( struct packetblock *hackp )
 	if(random() % 2) 
 		hackp->tcp->fin = 1;
 	else 
-
 		hackp->tcp->rst = 1;
 
 	/* in both case, the sequence number must be shrink as no data are there.
@@ -1694,36 +1693,29 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 {
 	int iphlen = hackp->ip->ihl * 4;
 	int tcphlen = hackp->tcp->doff * 4;
-	int l47len;
+	int l47len = ntohs(hackp->ip->tot_len) - iphlen;
 	int route_n = (random() % 5) + 5; /* 5 - 9 */
-	int fakeipopt = ( (route_n + 1) * 4);
+	unsigned fakeipopt = ( (route_n + 1) * 4);
 	unsigned char *endip = hackp->pbuf + sizeof(struct iphdr);
-	int startipopt = iphlen - sizeof(struct iphdr);
-
-	/* l47len = length of the frame layer 4 to 7 */
-	l47len = ntohs(hackp->ip->tot_len) - iphlen;
+	int startipopt = hackp->ip->ihl * 4 - sizeof(struct iphdr);
 
 	/* 1: strip the original ip options, if present, copying payload over */	
 	if( iphlen > sizeof(struct iphdr) ) 
-	{
 		memmove(endip, endip + startipopt, l47len);
-
-		l47len = ntohs(hackp->ip->tot_len) - sizeof(struct iphdr);
-		iphlen = sizeof(struct iphdr);
-	}
+	
+	iphlen = sizeof(struct iphdr) + fakeipopt;
 
 	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
 	memmove(endip + fakeipopt, endip, l47len);
-	hackp->tcp = (struct tcphdr *)(endip + fakeipopt);
-	hackp->payload = (unsigned char *)hackp->tcp + tcphlen;
 
+	memset(endip, 0, fakeipopt);
 	endip[0] = IPOPT_NOP;
 	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
-	endip[2] = (route_n * 4) + 3;	/* IPOPT_OLEN   */
-	endip[3] = 4;			/* IPOPT_OFFSET = IPOPT_MINOFF */
+	endip[2] = fakeipopt - 1;	/* IPOPT_OLEN   */
+	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
 
-	for(int i = 4; i != fakeipopt; i += 4 )
-		*(unsigned int *)(&endip[i]) = random();
+	for(int i = 4; i < fakeipopt; i++)
+		endip[i] = (char)random();
 
 #ifdef HACKSDEBUG
 	internal_log(NULL, HACKS_DEBUG,
@@ -1735,12 +1727,16 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 		ntohs(hackp->ip->id),
 		l47len,
 		ntohs(hackp->ip->tot_len),
-		(iphlen + fakeipopt + l47len),
+		(iphlen + l47len),
 		hackp->tcp->syn, hackp->tcp->ack, hackp->tcp->psh, hackp->tcp->fin, hackp->tcp->rst
 	);
 #endif
-	hackp->ip->ihl = 5 + route_n + 1;  /* 20 byte ip hdr, route_n * 4 byte options + 4 byte */
-	hackp->ip->tot_len = htons((hackp->ip->ihl * 4) + l47len);
+
+	hackp->ip->ihl = iphlen / 4;
+	hackp->ip->tot_len = htons(iphlen + l47len);
+	hackp->tcp = (struct tcphdr *)((unsigned char*)(hackp->ip) + iphlen);
+	hackp->payload = (unsigned char *)(hackp->tcp) + tcphlen;
+	
 }
 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
@@ -1748,26 +1744,21 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 {
 	int iphlen = hackp->ip->ihl * 4;
 	int tcphlen = hackp->tcp->doff * 4;
-	int l57len;
+	int l57len = ntohs(hackp->ip->tot_len) - ( iphlen + tcphlen );
 	int faketcpopt = 8;
 	unsigned char *endtcp = hackp->pbuf + iphlen + sizeof(struct tcphdr);
 	int starttcpopt = tcphlen - sizeof(struct tcphdr);
 	time_t now = time(NULL);
 
-	/* l57len = length of the frame layer 5 to 7 */
-	l57len = ntohs(hackp->ip->tot_len) - ( iphlen + tcphlen );
-
 	/* 1: strip the original tcp options, if present, copying payload over */
 	if(tcphlen > sizeof(struct tcphdr))
-	{
 		memmove(endtcp, endtcp + starttcpopt, l57len);
-		
-		l57len = ntohs(hackp->ip->tot_len) - ( iphlen + sizeof(struct tcphdr) );
-		tcphlen = sizeof(struct tcphdr);
-	}
+
+	tcphlen = sizeof(struct tcphdr) + faketcpopt;
 	
 	/* 2: shift the payload after the reserved space to faketcpopt */
 	memmove(endtcp + faketcpopt, endtcp, l57len);
+	hackp->payload = (unsigned char *)(hackp->tcp) + tcphlen;
 
 	endtcp[0] = TCPOPT_NOP;
 	endtcp[1] = TCPOPT_NOP;
@@ -1795,6 +1786,6 @@ void TCPTrack::SjH__inject_tcpopt( struct packetblock *hackp )
 		hackp->tcp->syn, hackp->tcp->ack, hackp->tcp->psh, hackp->tcp->fin, hackp->tcp->rst
 	);
 #endif
-	hackp->tcp->doff = (sizeof(struct tcphdr) + 2) & 0xf;
 	hackp->ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
+	hackp->tcp->doff = (sizeof(struct tcphdr) + 2) & 0xf;
 }

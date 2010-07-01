@@ -43,7 +43,7 @@ void DataDebug::Dump_Session( int session_elements )
 	}
 
 	int i, accumulo_start = 0, accumulo_end = 0;
-	for(i =0; i < session_elements; i++) 
+	for(i = 0; i < session_elements; i++) 
 	{
 		if(accumulo_start && Session[i].daddr) {
 			accumulo_end = (i - 1);
@@ -159,7 +159,7 @@ void DataDebug::Dump_TTL ( int ttl_elements )
 	}
 
 	int i, accumulo_start = 0, accumulo_end = 0;
-	for(i =0; i < ttl_elements; i++) 
+	for(i = 0; i < ttl_elements; i++) 
 	{
 		if(accumulo_start && TTL[i].daddr) {
 			accumulo_end = (i - 1);
@@ -232,4 +232,3 @@ DataDebug::~DataDebug()
 	fclose(Packet_f);
 	fclose(TTL_f);
 }
-
