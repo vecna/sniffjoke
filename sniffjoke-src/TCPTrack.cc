@@ -204,10 +204,6 @@ void TCPTrack::analyze_packets_queue()
 			analyze_incoming_icmp(newp);
 
 		/* if packet exist again = is not destroyed by analyze function */
-		/*
-		if(newp != NULL)
-			newp->status = SEND;
-		*/
 		if(newp->status != DROP)
 			newp->status = SEND;
 		
@@ -228,10 +224,6 @@ void TCPTrack::analyze_packets_queue()
 			analyze_incoming_rstfin(newp);	
 
 		/* if packet exist again = is not destroyed by analyze function */
-		/*
-		if(newp != NULL)
-			newp->status = SEND;
-		*/
 		if(newp->status != DROP)
 			newp->status = SEND;
 			
@@ -466,13 +458,13 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 		
 		if( runcopy->SjH__inject_ipopt ) {
 			if ( ntohs(pkt->ip->tot_len) < (MTU - 72) )
-				//if( percentage( 1, 100 ) )
+				if( percentage( 1, 100 ) )
 					SjH__inject_ipopt( pkt );
 		}
 
 		if( runcopy->SjH__inject_tcpopt ) {
 			if ( !check_uncommon_tcpopt(pkt->tcp) && pkt->wtf != INNOCENT )
-				//if( percentage( 25, 100 ) )
+				if( percentage( 25, 100 ) )
 					SjH__inject_tcpopt( pkt );
 		}
 	}
