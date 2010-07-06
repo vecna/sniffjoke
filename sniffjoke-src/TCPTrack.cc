@@ -557,6 +557,9 @@ void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 		discern_ttl =  ntohl(synack->tcp->ack_seq) - tf->rand_key -1;
 		tf->status = TTL_KNOW;
 
+		if(tf->min_working_ttl > discern_ttl && discern_ttl <= tf->sent_probe) 
+			tf->min_working_ttl = discern_ttl;
+
 #ifdef PACKETDEBUG
 		internal_log(NULL, PACKETS_DEBUG,
 			"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
@@ -568,9 +571,6 @@ void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 		);
 #endif
 
-		if(tf->min_working_ttl > discern_ttl && discern_ttl <= tf->sent_probe) 
-			tf->min_working_ttl = discern_ttl;
-
 		/* 
  		 * this code flow happens only when the SYN ACK is received, due to
  		 * a SYN send from the "puppet port". this kind of SYN is used only
@@ -580,7 +580,7 @@ void TCPTrack::analyze_incoming_synack( struct packetblock *synack )
 		 */
 		
 		mark_real_syn_packets_SEND( synack->ip->saddr );
-		//synack->status = DROP;
+		synack->status = DROP;
 		
 	}
 
@@ -799,7 +799,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 		/* fake close (FIN/RST) injection, is required a good ack_seq */
 		if ( pb->tcp->ack ) 
 		{
-			if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
+			//if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
 			{
 				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_close;
 				chackpo[hpool_len].prcnt = 98;
@@ -948,7 +948,7 @@ void TCPTrack::enque_ttl_probe( struct packetblock *delayed_syn_pkt, struct snif
 
 	/* the copy is done to keep refsyn ORIGINAL */
 	memcpy( injpb->pbuf, delayed_syn_pkt->pbuf, delayed_syn_pkt->pbuf_size);
-
+	
 	update_pblock_pointers( injpb );
 
 	/* 
@@ -1641,9 +1641,9 @@ void TCPTrack::SjH__fake_close( struct packetblock *hackp )
 	/* fake close could have FIN+ACK or RST+ACK */
 	hackp->tcp->psh = 0;
 
-	if(random() % 2) 
+	if(0) //if(random() % 2)
 		hackp->tcp->fin = 1;
-	else 
+	else
 		hackp->tcp->rst = 1;
 
 	/* in both case, the sequence number must be shrink as no data are there.

@@ -139,6 +139,9 @@ NetIO::NetIO(SjConf *sjconf)
 		internal_log(NULL, DEBUG_LEVEL, "open successful datalink layer socket packet");
 	}
 
+	unsigned int hdr = 1;
+	setsockopt(netfd, IPPROTO_IP, IP_HDRINCL, &hdr, sizeof(hdr));
+
 	send_ll.sll_family = PF_PACKET;
 	send_ll.sll_protocol = htons(ETH_P_IP);
 	send_ll.sll_ifindex = orig_gw.ifr_ifindex;
@@ -238,10 +241,10 @@ void NetIO::network_io()
 
 
 				/* add packet in connection tracking queue */
-				//if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
+				if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
 					conntrack->add_packet_queue(NETWORK, pktbuf, nbyte);
 					io_happened = true;
-				//}
+				}
 			}
 		}
 
@@ -258,10 +261,10 @@ void NetIO::network_io()
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes", nbyte);
 
 				/* add packet in connection tracking queue */
-				//if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
+				if( conntrack->check_evil_packet(pktbuf, nbyte) ) {
 					conntrack->add_packet_queue(TUNNEL, pktbuf, nbyte);
 					io_happened = true;
-				//}
+				}
 			}
 		}
 	}
