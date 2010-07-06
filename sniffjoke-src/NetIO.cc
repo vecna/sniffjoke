@@ -128,7 +128,7 @@ NetIO::NetIO(SjConf *sjconf)
 		);
 		check_call_ret("unable to SIOCGIFINDEX network interface", errno, ret, true);
 	}
-		close(tmpfd);
+	close(tmpfd);
 
 	if((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) == -1) {
 		internal_log(NULL, ALL_LEVEL, "unable to open datalink layer packet: %s - fix your routing table by hand",
@@ -311,7 +311,6 @@ void NetIO::queue_flush()
 				/* fixing TTL, fixing checksum and IP/TCP options */
 				conntrack->last_pkt_fix(packet);
 			}
-			
 			if((wbyt = sendto( netfd, packet->pbuf, 
 				ntohs(packet->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{

@@ -36,6 +36,15 @@ using namespace std;
 static DataDebug *dd;
 #endif
 
+/* Max Number of options injectable */
+#define MAXOPTINJ       12
+#define MAXHACKS        7
+
+#define STARTING_ARB_TTL 46
+
+#define UNCHANGED_SIZE  (-1)
+
+
 TCPTrack::TCPTrack(SjConf *sjconf) 
 {
 	runcopy = sjconf->running;
@@ -402,7 +411,6 @@ void TCPTrack::force_send()
  */
 void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 {
-#define STARTING_ARB_TTL 46
 	time_t now = time(NULL);
 	int i;
 
@@ -447,6 +455,7 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 			pkt->ip->ttl = pkt->tf->expiring_ttl; 
 		else 	/* GUILTY or INNOCENT */
 			pkt->ip->ttl = (pkt->tf->expiring_ttl + (random() % 5) + 1 );
+
 	}
 
 	/* 
@@ -457,9 +466,10 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 	if (!pkt->tcp->syn) { 
 		
 		if( runcopy->SjH__inject_ipopt ) {
-			if ( ntohs(pkt->ip->tot_len) < (MTU - 72) )
+			if ( ntohs(pkt->ip->tot_len) < (MTU - 72) ) {
 				if( percentage( 1, 100 ) )
 					SjH__inject_ipopt( pkt );
+			}
 		}
 
 		if( runcopy->SjH__inject_tcpopt ) {
@@ -727,7 +737,6 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
  		 * */
 		char *debug_info;
 		int resize;
-#define UNCHANGED_SIZE	(-1)
 		/* otherwise, the size is 0 for non-payload-pkt, or a new size required 
  		 * by the choosen hack
  		 */
@@ -799,7 +808,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 		/* fake close (FIN/RST) injection, is required a good ack_seq */
 		if ( pb->tcp->ack ) 
 		{
-			//if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
+			if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
 			{
 				chackpo[hpool_len].choosen_hack = &TCPTrack::SjH__fake_close;
 				chackpo[hpool_len].prcnt = 98;
@@ -1641,7 +1650,7 @@ void TCPTrack::SjH__fake_close( struct packetblock *hackp )
 	/* fake close could have FIN+ACK or RST+ACK */
 	hackp->tcp->psh = 0;
 
-	if(0) //if(random() % 2)
+	if(random() % 2)
 		hackp->tcp->fin = 1;
 	else
 		hackp->tcp->rst = 1;
