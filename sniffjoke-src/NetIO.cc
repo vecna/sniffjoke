@@ -139,9 +139,6 @@ NetIO::NetIO(SjConf *sjconf)
 		internal_log(NULL, DEBUG_LEVEL, "open successful datalink layer socket packet");
 	}
 
-	unsigned int hdr = 1;
-	setsockopt(netfd, IPPROTO_IP, IP_HDRINCL, &hdr, sizeof(hdr));
-
 	send_ll.sll_family = PF_PACKET;
 	send_ll.sll_protocol = htons(ETH_P_IP);
 	send_ll.sll_ifindex = orig_gw.ifr_ifindex;
