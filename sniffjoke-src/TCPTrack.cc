@@ -447,7 +447,7 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 		if(pkt->wtf == PRESCRIPTION)
 			pkt->wtf = GUILTY;
 
-		pkt->ip->ttl = STARTING_ARB_TTL + (random() % 20);
+		pkt->ip->ttl = STARTING_ARB_TTL + (random() % 100);
 	}
 	else 
 	{
@@ -466,14 +466,22 @@ void TCPTrack::last_pkt_fix( struct packetblock *pkt )
 	if (!pkt->tcp->syn) { 
 		
 		if( runcopy->SjH__inject_ipopt ) {
-			if ( ntohs(pkt->ip->tot_len) < (MTU - 72) ) {
+			/* we can inject if we have at least 8byte free
+			 * in point of fact we does not need 8 bytes, because we can strip also
+			 * options just present in the packet
+			 */
+			if ( ntohs(pkt->ip->tot_len) < (MTU - 8) && pkt->wtf != INNOCENT ) {
 				if( percentage( 1, 100 ) )
 					SjH__inject_ipopt( pkt );
 			}
 		}
 
 		if( runcopy->SjH__inject_tcpopt ) {
-			if ( !check_uncommon_tcpopt(pkt->tcp) && pkt->wtf != INNOCENT )
+			/* we can inject if we have 8byte free
+			 * in point of fact we does not need 8 bytes, because we can strip also
+			 * options just present in the packet
+			 */
+			if ( !check_uncommon_tcpopt(pkt->tcp) && ntohs(pkt->ip->tot_len) < (MTU - 8) && pkt->wtf != INNOCENT )
 				if( percentage( 25, 100 ) )
 					SjH__inject_tcpopt( pkt );
 		}
@@ -806,7 +814,7 @@ void TCPTrack::inject_hack_in_queue( struct packetblock *pb, struct sniffjoke_tr
 	if (runcopy->SjH__fake_close) {
 		
 		/* fake close (FIN/RST) injection, is required a good ack_seq */
-		if ( pb->tcp->ack ) 
+		if ( pb->tcp->ack) 
 		{
 			if ( percentage ( logarithm ( ct->packet_number ), 5 ) ) 
 			{
@@ -1650,10 +1658,10 @@ void TCPTrack::SjH__fake_close( struct packetblock *hackp )
 	/* fake close could have FIN+ACK or RST+ACK */
 	hackp->tcp->psh = 0;
 
-	if(random() % 2)
+	if(1) //if(random() % 2)
 		hackp->tcp->fin = 1;
 	else
-		hackp->tcp->rst = 1;
+		hackp->tcp->rst = 1; /* FIXME, a fake rst seems to break connection */
 
 	/* in both case, the sequence number must be shrink as no data are there.
  	 * the ack_seq is set because the ACK flag is checked to be 1 */
@@ -1694,7 +1702,9 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	int iphlen = hackp->ip->ihl * 4;
 	int tcphlen = hackp->tcp->doff * 4;
 	int l47len = ntohs(hackp->ip->tot_len) - iphlen;
-	int route_n = (random() % 5) + 5; /* 5 - 9 */
+	int max_route_n = ((MTU - 8) - ntohs(hackp->ip->tot_len)) / 4;
+	int route_n = max_route_n > 9 ? (random() % 10) : max_route_n;
+	
 	unsigned fakeipopt = ( (route_n + 1) * 4);
 	unsigned char *endip = hackp->pbuf + sizeof(struct iphdr);
 	int startipopt = hackp->ip->ihl * 4 - sizeof(struct iphdr);
@@ -1711,7 +1721,13 @@ void TCPTrack::SjH__inject_ipopt( struct packetblock *hackp )
 	memset(endip, 0, fakeipopt);
 	endip[0] = IPOPT_NOP;
 	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
-	endip[2] = fakeipopt - 1;	/* IPOPT_OLEN   */
+	
+	/* Here comes the tha hack, 4 more or 4 less the right value*/
+	if(random() % 2)
+		endip[2] = fakeipopt - 1 - (4 * (random() % 5));	/* IPOPT_OLEN   */
+	else
+		endip[2] = fakeipopt - 1 + (4 * (random() % 5));	/* IPOPT_OLEN   */
+				
 	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
 
 	for(int i = 4; i < fakeipopt; i++)

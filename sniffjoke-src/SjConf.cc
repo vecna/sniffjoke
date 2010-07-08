@@ -162,20 +162,20 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		/* default is to set port in normal aggressivity */
 		memset(running->portconf, NORMAL, PORTNUMBER);
 
+		/* hacks common defaults */
+		running->SjH__fake_data = true;					/* implemented, enabled */
+		running->SjH__fake_seq = true;					/* implemented, enabled */
+		running->SjH__fake_close = true;				/* implemented, enabled */
+		running->SjH__zero_window = true;				/* implemented, enabled */
+		running->SjH__valid_rst_fake_seq = true;		/* implemented, enabled */
+		running->SjH__fake_syn = true;					/* implemented, enabled */
+		running->SjH__inject_ipopt = true;				/* implemented, enabled */
+		running->SjH__inject_tcpopt = true;				/* implemented, enabled */
+		
 		/* hacks to be fixed */
-		running->SjH__shift_ack = false;			/* implemented, need testing */
+		running->SjH__shift_ack = false;				/* implemented, need testing */
 		running->SjH__half_fake_syn = false;			/* currently not implemented */
 		running->SjH__half_fake_ack = false;			/* currently not implemented */
-
-		/* hacks common defaults */
-		running->SjH__fake_data = false;			/* implemented, enabled */
-		running->SjH__fake_seq = false;				/* implemented, enabled */
-		running->SjH__fake_close = true;			/* implemented, enabled */
-		running->SjH__zero_window = false;			/* implemented, enabled */
-		running->SjH__valid_rst_fake_seq = false;		/* implemented, enabled */
-		running->SjH__fake_syn = false;				/* implemented, enabled */
-		running->SjH__inject_ipopt = false;			/* implemented, enabled */
-		running->SjH__inject_tcpopt = false;			/* implemented, enabled */
 	}
 	
 	/* Read command line values if present */
