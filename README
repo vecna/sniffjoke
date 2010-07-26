@@ -6,4 +6,3 @@ client and server doesn't notify those packets, but a sniffer could read these a
 official home page: http://www.delirandom.net/sniffjoke
 
 vecna and evilaliv3 are currently developing in order to bring the 0.3 release at an almost stable and useful 0.4/1.0
-

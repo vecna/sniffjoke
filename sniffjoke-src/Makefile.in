@@ -50,7 +50,7 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_sniffjoke_OBJECTS = sniffjoke.$(OBJEXT) NetIO.$(OBJEXT) \
 	SjConf.$(OBJEXT) TCPTrack.$(OBJEXT) \
-	Optional_DataDebug.$(OBJEXT)
+	Optional_DataDebug.$(OBJEXT) Process.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -168,7 +168,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-sniffjoke_SOURCES = sniffjoke.h sniffjoke.cc NetIO.h NetIO.cc SjConf.h SjConf.cc TCPTrack.h TCPTrack.cc Optional_DataDebug.h Optional_DataDebug.cc
+sniffjoke_SOURCES = sniffjoke.h sniffjoke.cc NetIO.h NetIO.cc SjConf.h SjConf.cc TCPTrack.h TCPTrack.cc Optional_DataDebug.h Optional_DataDebug.cc Process.cc
 all: all-am
 
 .SUFFIXES:
@@ -255,6 +255,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NetIO.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Process.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Optional_DataDebug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjConf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCPTrack.Po@am__quote@

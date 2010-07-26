@@ -2,6 +2,10 @@
 #define SJ_NETIO_H
 
 #include <poll.h>
+
+#include <sys/socket.h> 
+#include <sys/types.h>
+
 #include <netpacket/packet.h>
 
 #include "TCPTrack.h"
@@ -13,7 +17,7 @@ private:
          * these data are required for handle 
          * tunnel/ethernet man in the middle
          */
-        struct sockaddr_ll send_ll;
+	struct sockaddr_ll send_ll;
         struct sj_config *runcopy;
         TCPTrack *conntrack;
 

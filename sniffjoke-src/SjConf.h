@@ -43,8 +43,8 @@ struct sj_useropt {
 struct sj_config {
         float MAGIC;                            /* integrity check for saved binary configuration */
         bool sj_run;                            /* default: false = NO RUNNING */
-        char user[SMALLBUF];                    /* default: nobody */
-        char group[SMALLBUF];                   /* default: users */
+        const char *user;                       /* default: nobody */
+        const char *group;                	/* default: nogroup */
         char chroot_dir[MEDIUMBUF];             /* default: /var/run/sniffjoke */
         char logfname[MEDIUMBUF];               /* default: /var/log/sniffjoke.log */
         int debug_level;                        /* default: 1 */

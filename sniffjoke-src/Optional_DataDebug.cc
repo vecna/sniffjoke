@@ -6,6 +6,8 @@
 
 #include <sys/signal.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -17,6 +19,7 @@
 
 DataDebug::DataDebug()
 {
+	mkdir("/tmp/datadump", 777);
 	Session_f = fopen(SESSION_FILE_DEBUG, "a+");
 	Packet_f = fopen(PACKET_FILE_DEBUG, "a+");
 	TTL_f = fopen(TTL_FILE_DEBUG, "a+");

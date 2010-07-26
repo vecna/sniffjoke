@@ -180,17 +180,18 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	
 	/* Read command line values if present */
 	if(user_opt->user != NULL) {
-		strncpy(running->user, user_opt->user, SMALLBUF);
-		running->user[SMALLBUF - 1] = '\0';
-	}
+		running->user = user_opt->user;
+	} /* FIXME - else default ? */
+
 	if(user_opt->group != NULL) {
-	strncpy(running->group, user_opt->group, SMALLBUF);
-	running->group[SMALLBUF - 1] = '\0';
-	}
+		running->group = user_opt->group;
+	} /* FIXME - else default ? */
+
 	if(user_opt->chroot_dir != NULL) {
 		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
 		running->chroot_dir[MEDIUMBUF - 1] = '\0';
-	}
+	} /* IDEM COME SOPRA, I DEFAULT SONO CONST CHAR NEL TEXT, GLI ARGOMENTI SONO PARAMETRI SU ENV... TANTO VALE NON USARE MEMCPY MA L'ASSEGNAMENTO TRA CONST -- FIXME REVIEW */
+
 	if(user_opt->logfname != NULL) {
 		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
 		running->logfname[MEDIUMBUF - 1] = '\0';	
