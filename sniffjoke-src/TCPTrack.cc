@@ -153,7 +153,7 @@ void TCPTrack::add_packet_queue( const source_t source, const unsigned char *buf
 	unsigned int packet_id = make_pkt_id( buff );
 
 	/* 
- 	 * the packet_id is required because the OS should generate 
+	 * the packet_id is required because the OS should generate 
  	 * duplicate SYN when didn't receive the expected answer. 
  	 *
  	 * this happens when the first SYN is blocked for TTL bruteforce
@@ -174,7 +174,6 @@ void TCPTrack::add_packet_queue( const source_t source, const unsigned char *buf
 	target->orig_pktlen = nbyte;
 
 	memcpy(target->pbuf, buff, nbyte);
-	
 	update_pblock_pointers( target );
 }
 

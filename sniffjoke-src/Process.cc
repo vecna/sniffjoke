@@ -30,7 +30,7 @@ bool Process::setLocktoExist(const char *lockfname) {
 	fl.l_type   = F_WRLCK;
 
 	printf("%s failure %d e lock di di %s pid %d ppid %d\n", 
-		__func__, failure, lockfname,getpid(), getppid() );
+			__func__, failure, lockfname,getpid(), getppid() );
 
 	if(fcntl(fd, F_SETLK, &fl) == 0)
 		return true;
@@ -58,14 +58,14 @@ pid_t Process::CheckLockExist(const char *lockfname)
 
 	if(fcntl(fd, F_GETLK, &fl) != 0) {
 		printf("%s : FAIL lock GET %s per %d+%s\n", __func__, lockfname, errno, strerror(errno));
-//		failure = true;
-// 		error handled properly 
+		// failure = true;
+		// error handled properly 
 	}
 	printf("%s failure %d e lock di di %s pid %d ppid %d\n", 
-		__func__, failure, lockfname,getpid(), getppid() );
+			__func__, failure, lockfname,getpid(), getppid() );
 
 	printf("la struttura è: type %d when %d start %d len %d pid %d\n",
-		fl.l_type, fl.l_whence, fl.l_start, fl.l_len, fl.l_pid);
+			fl.l_type, fl.l_whence, fl.l_start, fl.l_len, fl.l_pid);
 
 	/* if the pid is present, lock is present too */
 	if(fl.l_type != 0) {
@@ -82,10 +82,10 @@ pid_t Process::CheckLockExist(const char *lockfname)
 
 void Process::processDetach() 
 {
-//	assert(ProcessType == Process::SJ_PROCESS_UNASSIGNED);
+	// assert(ProcessType == Process::SJ_PROCESS_UNASSIGNED);
 	pid_t pidval;
 
-        if((pidval = fork()) == -1) {
+	if((pidval = fork()) == -1) {
 		failure = true;
 		// error handling
 		return;
@@ -93,18 +93,18 @@ void Process::processDetach()
 	printf(" xxx --- sono in %s %d e %d e il mio ppid è %d\n", __func__, pidval, getpid(), getppid());
 
 	// Sniffjoke SERVICE FATHER: the sleeping root process for restore the network
-        if(pidval) 
-	{ 
+	if(pidval) { 
 		int deadtrace;
 		printf(" qui faro' la waitpid di --> %d e il mio pid è %d e il mio ppid è %d\n", pidval, getpid(), getppid());
-                ProcessType = SJ_PROCESS_SERVICE_FATHER; 
+		ProcessType = SJ_PROCESS_SERVICE_FATHER; 
 		writePidfile(SJ_SERVICE_FATHER_PID_FILE, pidval);
 
 		// FIXME - decidere
 		// logstream = NULL;
 
 		/* waitpid wait until the userprocess - child pid, run */
-                waitpid(-1, &deadtrace, 0);
+		waitpid(-1, &deadtrace, 0);
+
 		if(WIFEXITED(deadtrace))
 			printf("WIFEXITED ganga!\n");
 		if(WIFSIGNALED(deadtrace))
@@ -113,8 +113,8 @@ void Process::processDetach()
 			printf("baaaa WIFSTOPPED\n");
 
 		/* whenever the child die, the father restore the network */
-                Process::CleanExit(true);
-        } 
+		Process::CleanExit(true);
+	} 
 	// Sniffjoke SERVICE CHILD: I/O, user privileges, networking  process
 	else { 
 		printf(" service child! sono in %d e %d e il mio ppid è %d\n", pidval, getpid(), getppid());
@@ -122,9 +122,9 @@ void Process::processDetach()
 		ReleaseLock(SJ_SERVICE_LOCK);
 
 		processIsolation();
-                ProcessType = SJ_PROCESS_SERVICE_CHILD; 
+		ProcessType = SJ_PROCESS_SERVICE_CHILD; 
 		writePidfile(SJ_SERVICE_CHILD_PID_FILE, retval);
-        }
+	}
 	printf("epilogo di detach per pid %d ppid %d\n", getpid(), getppid());
 }
 
@@ -132,7 +132,7 @@ void Process::ReleaseLock(const char *lockpath)
 {
 	unlink(lockpath);
 	printf("%s failure %d e release di %s pid %d ppid %d\n", 
-		__func__, failure, lockpath,getpid(), getppid() );
+			__func__, failure, lockpath,getpid(), getppid() );
 }
 
 void Process::Jail(const char *chroot_dir, struct sj_config *running) 
@@ -155,11 +155,11 @@ void Process::Jail(const char *chroot_dir, struct sj_config *running)
 		// handle error
 		failure = true;
 		printf("errore non riportato - male !! %s\n", chroot_dir);
-                internal_log(stderr, ALL_LEVEL, "chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
-                CleanExit(true);
-        }
+		internal_log(stderr, ALL_LEVEL, "chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
+		CleanExit(true);
+	}
 	printf("%s failure %d e chroot in %s pid %d ppid %d\n", 
-		__func__, failure, chroot_dir,getpid(), getppid() );
+			__func__, failure, chroot_dir,getpid(), getppid() );
 }
 
 void Process::PrivilegesDowngrade(struct sj_config *running)
@@ -181,7 +181,7 @@ void Process::PrivilegesDowngrade(struct sj_config *running)
 		CleanExit(true);
 	}
 	printf("%s failure %d e set in %d pid %d ppid, uid %d gid %d\n", 
-		__func__, failure, getpid(), getppid(), userinfo->pw_uid, groupinfo->gr_gid);
+            __func__, failure, getpid(), getppid(), userinfo->pw_uid, groupinfo->gr_gid);
 }
 
 void Process::CleanExit(bool boh) {
@@ -192,41 +192,42 @@ void Process::CleanExit(void)
 {
 	int sj_srv_child_pid_FIXME = -1; // FIXME - unificare getpid con lock + estendere lock ai due processi
 	switch(ProcessType) {
-	case Process::SJ_PROCESS_SERVICE_FATHER:
-		internal_log(stdout, VERBOSE_LEVEL, "sniffjoke server father (pid %d) is exiting", getpid() );
-		if(sj_srv_child_pid_FIXME != -1) {
-			internal_log(stdout, VERBOSE_LEVEL, "sniffjoke server father generated a child possibily still alive, and now is killing him");
-			kill(sj_srv_child_pid_FIXME, SIGTERM);
-		/* let the child express his last desire */
-			waitpid(sj_srv_child_pid_FIXME, NULL, 0);
-		}
-	
-		Process::ReleaseLock(SJ_SERVICE_LOCK);	
-		break;
+		case Process::SJ_PROCESS_SERVICE_FATHER:
+			internal_log(stdout, VERBOSE_LEVEL, "sniffjoke server father (pid %d) is exiting", getpid() );
+			if(sj_srv_child_pid_FIXME != -1) {
+				internal_log(stdout, VERBOSE_LEVEL, "sniffjoke server father generated a child possibily still alive, and now is killing him");
+				kill(sj_srv_child_pid_FIXME, SIGTERM);
+				/* let the child express his last desire */
+				waitpid(sj_srv_child_pid_FIXME, NULL, 0);
+			}
+		
+			Process::ReleaseLock(SJ_SERVICE_LOCK);	
+			break;
 
-	case Process::SJ_PROCESS_SERVICE_CHILD:
-		internal_log(stdout, VERBOSE_LEVEL, "sniffjoke service child is exiting");
-		unlink(SJ_SERVICE_UNIXSOCK);
-		break;
+		case Process::SJ_PROCESS_SERVICE_CHILD:
+			internal_log(stdout, VERBOSE_LEVEL, "sniffjoke service child is exiting");
+			unlink(SJ_SERVICE_UNIXSOCK);
+			break;
 
-	case Process::SJ_PROCESS_CLIENT:
-		unlink(SJ_CLIENT_UNIXSOCK);
-		break;
+		case Process::SJ_PROCESS_CLIENT:
+			unlink(SJ_CLIENT_UNIXSOCK);
+			break;
 
-	case Process::SJ_PROCESS_UNASSIGNED:
-	default:
-		break;
+		case Process::SJ_PROCESS_UNASSIGNED:
+		default:
+			break;
 	}
 /*
-        if(sjconf != NULL)
-                delete sjconf;
+	if(sjconf != NULL)
+		delete sjconf;
 
-        if(mitm != NULL)
-                delete mitm;
+	if(mitm != NULL)
+		delete mitm;
 */
 	printf("forced quit %s:%d\n", __FILE__, __LINE__);
-        if(1) // FIXME ...
-                exit(1);
+
+	if(1) // FIXME ...
+		exit(1);
 }
 
 void Process::sigtrapSetup(sig_t sigtrap_function) 
@@ -260,18 +261,18 @@ int Process::isClientRunning(void)
 }
 
 pid_t Process::readPidfile(const char *pidfile) {
-        int ret = 0;
-        FILE *pidf = fopen(pidfile, "r");
+	int ret = 0;
+	FILE *pidf = fopen(pidfile, "r");
 
-        if(pidf != NULL) { // FIXME - better error handling
-                char tmpstr[6];
-                if(fgets(tmpstr, 6, pidf) != NULL)
-                        ret = atoi(tmpstr);
-                fclose(pidf);
-        }
+	if(pidf != NULL) { // FIXME - better error handling
+		char tmpstr[6];
+		if(fgets(tmpstr, 6, pidf) != NULL)
+			ret = atoi(tmpstr);
+		fclose(pidf);
+	}
 
 	printf("%s: of %s from pid %d ret val %d\n", __func__, pidfile, getpid(), ret);
-        return ret;
+	return ret;
 }
 
 void Process::writePidfile(const char *pidfile, pid_t pid) {
@@ -305,11 +306,11 @@ void Process::SjBackground()
 void Process::processIsolation() {
 
 	printf("the pid %d is going to setsid \n", getpid());
-      if(setsid()) {
-//		failure = true;
+	if(setsid()) {
+		// failure = true;
 		printf("failure pid %d uid %d gid %d of setsid %s\n",getpid(), getuid(), getgid(),  strerror(errno));
 	}
-        umask(0);
+	umask(0);
 }
 
 void Process::SetProcType(sj_process_t ProcType) {
@@ -332,4 +333,3 @@ Process::Process( struct sj_useropt *useropt )
 Process::~Process() {
 	printf("destruction of ~Process\n");
 }
-
