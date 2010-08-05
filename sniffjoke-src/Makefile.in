@@ -49,8 +49,10 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_sniffjoke_OBJECTS = sniffjoke.$(OBJEXT) NetIO.$(OBJEXT) \
-	SjConf.$(OBJEXT) TCPTrack.$(OBJEXT) \
-	Optional_DataDebug.$(OBJEXT) Process.$(OBJEXT)
+	SjConf.$(OBJEXT) Packet.$(OBJEXT) PacketQueue.$(OBJEXT) \
+	TTLFocus.$(OBJEXT) TTLFocusList.$(OBJEXT) \
+	SessionTrack.$(OBJEXT) SessionTrackList.$(OBJEXT) \
+	TCPTrack.$(OBJEXT) Process.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -168,7 +170,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-sniffjoke_SOURCES = sniffjoke.h sniffjoke.cc NetIO.h NetIO.cc SjConf.h SjConf.cc TCPTrack.h TCPTrack.cc Optional_DataDebug.h Optional_DataDebug.cc Process.cc
+sniffjoke_SOURCES = sniffjoke.h sniffjoke.cc NetIO.h NetIO.cc SjConf.h SjConf.cc Packet.h Packet.cc PacketQueue.h PacketQueue.cc TTLFocus.h TTLFocus.cc TTLFocusList.h TTLFocusList.cc SessionTrack.h SessionTrack.cc SessionTrackList.h SessionTrackList.cc TCPTrack.h TCPTrack.cc Process.h Process.cc
 all: all-am
 
 .SUFFIXES:
@@ -255,10 +257,15 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NetIO.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Packet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PacketQueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Process.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Optional_DataDebug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SessionTrack.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SessionTrackList.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjConf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCPTrack.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TTLFocus.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TTLFocusList.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sniffjoke.Po@am__quote@
 
 .cc.o:

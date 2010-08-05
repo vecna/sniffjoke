@@ -13,34 +13,34 @@
 
 class NetIO {
 private:
-        /* 
-         * these data are required for handle 
-         * tunnel/ethernet man in the middle
-         */
-	struct sockaddr_ll send_ll;
-        struct sj_config *runcopy;
-        TCPTrack *conntrack;
+    /* 
+     * these data are required for handle 
+     * tunnel/ethernet man in the middle
+     */
+    struct sockaddr_ll send_ll;
+    struct sj_config *runcopy;
+    TCPTrack *conntrack;
 
-        /* tunfd/netfd: file descriptor for I/O purpose */
-        int tunfd;
-        int netfd;
+    /* tunfd/netfd: file descriptor for I/O purpose */
+    int tunfd;
+    int netfd;
 
-        /* poll variables, two file descriptors */
-        struct pollfd fds[2];
+    /* poll variables, two file descriptors */
+    struct pollfd fds[2];
 
-	bool networkdown_condition;
+    bool networkdown_condition;
 
 public:
 
-	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
-	 *       --- but not killed!
-	 */
+    /* networkdown_condition express if the network is down and sniffjoke must be interrupted 
+     *       --- but not killed!
+     */
 
-        NetIO( SjConf * );
-        ~NetIO();
-        void network_io();
-        void queue_flush();
-	bool is_network_down();
+    NetIO( SjConf * );
+    ~NetIO();
+    void network_io();
+    void queue_flush();
+    bool is_network_down();
 };
 
 #endif /* SJ_NETIO_H */

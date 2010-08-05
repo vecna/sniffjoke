@@ -3,14 +3,14 @@
 
 #include <net/ethernet.h>
 
-#define MAGICVAL	0xADECADDE
+#define MAGICVAL    0xADECADDE
 
-#define HEAVY		0x04
-#define NORMAL		0x03
-#define LIGHT		0x02
-#define NONE		0x01
+#define HEAVY       0x04
+#define NORMAL      0x03
+#define LIGHT       0x02
+#define NONE        0x01
 
-#define PORTNUMBER	65535
+#define PORTNUMBER  65535
 
 
 struct port_range {
@@ -44,7 +44,7 @@ struct sj_config {
         float MAGIC;                            /* integrity check for saved binary configuration */
         bool sj_run;                            /* default: false = NO RUNNING */
         const char *user;                       /* default: nobody */
-        const char *group;                	/* default: nogroup */
+        const char *group;                      /* default: nogroup */
         char chroot_dir[MEDIUMBUF];             /* default: /var/run/sniffjoke */
         char logfname[MEDIUMBUF];               /* default: /var/log/sniffjoke.log */
         int debug_level;                        /* default: 1 */
@@ -53,9 +53,6 @@ struct sj_config {
         char gw_mac_str[SMALLBUF];              /* default: autodetect */
         unsigned char gw_mac_addr[ETH_ALEN];    /* the conversion of _str */
         unsigned short max_ttl_probe;           /* default: 26 */
-        unsigned short max_session_tracked;     /* default: 20 */
-        unsigned short max_packet_que;          /* default: 60 */
-        unsigned short max_tracked_ttl;         /* default: 1024 */
         unsigned char interface[SMALLBUF];      /* default: autodetect */
         int tun_number;                         /* tunnel interface number */
         unsigned char portconf[PORTNUMBER];
