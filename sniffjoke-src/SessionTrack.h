@@ -7,19 +7,15 @@
 class SessionTrack {
 public:
 
-    SessionTrack *prev;
-    SessionTrack *next;
+	unsigned int daddr;
+	unsigned short sport;
+	unsigned short dport;
+	unsigned int isn;
+	unsigned int packet_number;
+	bool shutdown;
 
-    unsigned int daddr;
-    unsigned short sport;
-    unsigned short dport;
-    unsigned int isn;
-    unsigned int packet_number;
-    bool shutdown;
-
-    TTLFocus *tf;
-
-    SessionTrack( const Packet *pb );
+	SessionTrack( const Packet *pb );
+	bool operator==( const SessionTrack& );
 };
 
 #endif /* SJ_SESSIONTRACK_H */

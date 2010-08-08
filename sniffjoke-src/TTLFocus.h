@@ -6,9 +6,6 @@ enum ttlsearch_t { TTL_KNOW = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOW = 9 };
 class TTLFocus {
 public:
 
-	TTLFocus *prev;
-	TTLFocus *next;
-
 	unsigned int daddr;
 	unsigned char expiring_ttl;
 	unsigned char min_working_ttl;
