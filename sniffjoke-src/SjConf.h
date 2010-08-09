@@ -79,10 +79,10 @@ private:
 public:
 		struct sj_config *running;
 
-		SjConf( struct sj_useropt * );
+		SjConf(struct sj_useropt *);
 		~SjConf();
 
-		void dump_config( const char * );
+		void dump_config(const char *);
 
 		char *handle_stat_command(void);
 		char *handle_stop_command(void);

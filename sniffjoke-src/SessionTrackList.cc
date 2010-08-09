@@ -5,10 +5,23 @@
 #include <cstdlib>
 #include <arpa/inet.h>
 
-SessionTrack* SessionTrackList::get( unsigned int daddr, unsigned short sport, unsigned short dport )
+SessionTrack* SessionTrackList::get(bool must_continue)
 {
-	for(list<SessionTrack>::iterator i = begin(); i != end(); i++) {
-		if(i->daddr == daddr && i->sport == sport && i->dport == dport) {
+	static list<SessionTrack>::iterator i = begin();
+	
+	if (!must_continue)
+		i = begin();
+	
+	if (i++ != end())
+		return &(*i);
+
+	return NULL;
+}
+
+SessionTrack* SessionTrackList::get(unsigned int daddr, unsigned short sport, unsigned short dport)
+{
+	for (list<SessionTrack>::iterator i = begin(); i != end(); i++) {
+		if (i->daddr == daddr && i->sport == sport && i->dport == dport) {
 			return &(*i);
 		}
 	}
@@ -16,7 +29,7 @@ SessionTrack* SessionTrackList::get( unsigned int daddr, unsigned short sport, u
 }
 
 
-SessionTrack* SessionTrackList::get( const Packet *pkt )
+SessionTrack* SessionTrackList::get(const Packet *pkt)
 {
 	return get(pkt->ip->daddr, pkt->tcp->source, pkt->tcp->dest);
 }
@@ -24,9 +37,9 @@ SessionTrack* SessionTrackList::get( const Packet *pkt )
 /* clear_session: clear a session in two step, the first RST/FIN set shutdown 
  * variable to true, the second close finally.
  */
-void SessionTrackList::clear_session( SessionTrack* st ) 
+void SessionTrackList::clear_session(SessionTrack* st) 
 {
-	if(st->shutdown == false) {
+	if (st->shutdown == false) {
 		internal_log(NULL, DEBUG_LEVEL,
 					"SHUTDOWN sexion sport %d dport %d daddr %u",
 					ntohs(st->sport), ntohs(st->dport), st->daddr
@@ -36,7 +49,7 @@ void SessionTrackList::clear_session( SessionTrack* st )
 		internal_log(NULL, DEBUG_LEVEL,
 					"Removing session: local:%d . %s:%d #%d", 
 					ntohs(st->sport), 
-					inet_ntoa( *((struct in_addr *)&st->daddr) ) ,
+					inet_ntoa(*((struct in_addr *)&st->daddr)) ,
 					ntohs(st->dport),
 					st->packet_number
 		);

@@ -28,7 +28,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 
 	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", user_opt->cfgfname);
-	if(user_opt != NULL && ((cF = fopen(user_opt->cfgfname, "r")) != NULL)) 
+	if (user_opt != NULL && ((cF = fopen(user_opt->cfgfname, "r")) != NULL)) 
 	{
 		struct sj_config readed;
 
@@ -38,7 +38,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		check_call_ret("fread of config file", errno, (i - 1), false);
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", user_opt->cfgfname, i * sizeof(struct sj_config));
 
-		if(readed.MAGIC != magic_check) {
+		if (readed.MAGIC != magic_check) {
 			internal_log(NULL, ALL_LEVEL, "magic number of sniffjoke cfg: %s file seem to be corrupted -- delete them", 
 				user_opt->cfgfname
 			);
@@ -66,10 +66,10 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
+		for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
 			running->interface[i] = imp_str[i];
 
-		if(i < 3) {
+		if (i < 3) {
 			internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
 			raise(SIGTERM);
 		} else {
@@ -86,7 +86,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i = 0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++)
+		for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++)
 			running->local_ip_addr[i] = imp_str[i];
 
 		internal_log(NULL, ALL_LEVEL, "  == acquired local ip address: %s", running->local_ip_addr);
@@ -98,10 +98,10 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i = 0; i < strlen(imp_str) && ( isdigit(imp_str[i]) || imp_str[i] == '.' ); i++) 
+		for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++) 
 			running->gw_ip_addr[i] = imp_str[i];
 
-		if(strlen(running->gw_ip_addr) < 7) {
+		if (strlen(running->gw_ip_addr) < 7) {
 			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
 			raise(SIGTERM);
 		} else  {
@@ -121,14 +121,14 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		fgets(imp_str, SMALLBUF, foca);
 		pclose(foca);
 
-		for(i = 0; i < strlen(imp_str) && ( isxdigit(imp_str[i]) || imp_str[i] == ':' ); i++)
+		for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); i++)
 			running->gw_mac_str[i] = imp_str[i];
-		if(i != 17) {
+		if (i != 17) {
 			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
 			raise(SIGTERM);
 		} else {
 			internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
-			sscanf( running->gw_mac_str, "%hX:%hX:%hX:%hX:%hX:%hX",
+			sscanf(running->gw_mac_str, "%hX:%hX:%hX:%hX:%hX:%hX",
 				&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
 				&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
 				&running->gw_mac_addr[4], &running->gw_mac_addr[5]
@@ -139,11 +139,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		/* autodetecting first tunnel device free */
 		internal_log(NULL, ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd0);
 		foca = popen(cmd0, "r");
-		for(running->tun_number = 0; ; running->tun_number++)
+		for (running->tun_number = 0; ; running->tun_number++)
 		{
 			memset(imp_str, 0x00, SMALLBUF);
 			fgets(imp_str, SMALLBUF, foca);
-			if(imp_str[0] == 0x00)
+			if (imp_str[0] == 0x00)
 				break;
 		}
 		pclose(foca);
@@ -176,24 +176,24 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	}
 	
 	/* Read command line values if present */
-	if(user_opt->user != NULL) {
+	if (user_opt->user != NULL) {
 		running->user = user_opt->user;
 	} /* FIXME - else default ? */
 
-	if(user_opt->group != NULL) {
+	if (user_opt->group != NULL) {
 		running->group = user_opt->group;
 	} /* FIXME - else default ? */
 
-	if(user_opt->chroot_dir != NULL) {
+	if (user_opt->chroot_dir != NULL) {
 		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
 		running->chroot_dir[MEDIUMBUF - 1] = '\0';
 	} /* IDEM COME SOPRA, I DEFAULT SONO CONST CHAR NEL TEXT, GLI ARGOMENTI SONO PARAMETRI SU ENV... TANTO VALE NON USARE MEMCPY MA L'ASSEGNAMENTO TRA CONST -- FIXME REVIEW */
 
-	if(user_opt->logfname != NULL) {
+	if (user_opt->logfname != NULL) {
 		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
 		running->logfname[MEDIUMBUF - 1] = '\0';	
 	}
-	if(user_opt->debug_level != -1)
+	if (user_opt->debug_level != -1)
 		running->debug_level = user_opt->debug_level;
 
 	dump_config(user_opt->cfgfname);
@@ -262,14 +262,14 @@ char *SjConf::handle_set_command(unsigned short start, unsigned short end, unsig
 	do {
 		running->portconf[start] = what;
 		start++;
-	} while(start <= end);
+	} while (start <= end);
 
 	return &io_buf[0];
 }
 
 char *SjConf::handle_stop_command(void)
 {
-	if(running->sj_run != false) {
+	if (running->sj_run != false) {
 		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!");
 		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 		running->sj_run = false;
@@ -282,7 +282,7 @@ char *SjConf::handle_stop_command(void)
 
 char *SjConf::handle_start_command(void)
 {
-	if(running->sj_run != true) {
+	if (running->sj_run != true) {
 		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!");
 		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 		running->sj_run = true;
@@ -315,11 +315,11 @@ char *SjConf::handle_showport_command(void)
 	/* the first port work as initialization */
 	kind = running->portconf[0];
 
-	for(i = 1; i < PORTNUMBER; i++) {
+	for (i = 1; i < PORTNUMBER; i++) {
 		/* the kind has changed, so we must print the previous port range */
-		if(running->portconf[i] != kind) 
+		if (running->portconf[i] != kind) 
 		{
-			if( acc_start == ( i - 1) ) 
+			if (acc_start == (i - 1)) 
 				snprintf(index, HUGEBUF - actual_io, "%s\tdest port: %d\n", resolve_weight_name(kind), acc_start);
 			else
 				snprintf(index, HUGEBUF - actual_io, "%s\tdest ports: %d:%d\n", resolve_weight_name(kind), acc_start, i - 1);

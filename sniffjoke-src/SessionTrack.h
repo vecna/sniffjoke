@@ -6,7 +6,6 @@
 
 class SessionTrack {
 public:
-
 	unsigned int daddr;
 	unsigned short sport;
 	unsigned short dport;
@@ -14,8 +13,8 @@ public:
 	unsigned int packet_number;
 	bool shutdown;
 
-	SessionTrack( const Packet *pb );
-	bool operator==( const SessionTrack& );
+	SessionTrack(const Packet *pb);
+	bool operator==(const SessionTrack&);
 };
 
 #endif /* SJ_SESSIONTRACK_H */

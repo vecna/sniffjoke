@@ -14,7 +14,7 @@ PacketQueue::PacketQueue()
 PacketQueue::~PacketQueue()
 {
 	Packet *tmp = get(false);
-	while(tmp != NULL) {
+	while (tmp != NULL) {
 		delete tmp;
 		tmp = get(true);
 	}
@@ -22,14 +22,14 @@ PacketQueue::~PacketQueue()
 
 void PacketQueue::insert(priority_t prio, Packet *pkt)
 {
-	if(pkt->packet_id) {
+	if (pkt->packet_id) {
 		Packet* tmp = get(pkt->packet_id);
-		if(tmp != NULL) {
+		if (tmp != NULL) {
 			remove(tmp);
 			delete tmp;
 		}
 	}
-	if(front[prio] == NULL) {
+	if (front[prio] == NULL) {
 		pkt->prev = NULL;
 		pkt->next = NULL;
 		front[prio] = back[prio] = pkt;
@@ -45,12 +45,12 @@ void PacketQueue::remove(const Packet *pkt)
 {
 	bool found = false;
 	
-	for(int i = 0; i<= 1; i++) {
-		if(front[i] == pkt && back[i] == pkt) {
+	for (int i = 0; i<= 1; i++) {
+		if (front[i] == pkt && back[i] == pkt) {
 			front[i] = back[i] = NULL;
 			found = true;
 			break;
-		} else if(front[i] == pkt) {
+		} else if (front[i] == pkt) {
 			front[i] = front[i]->next;
 			front[i]->prev = NULL;
 			found = true;
@@ -63,7 +63,7 @@ void PacketQueue::remove(const Packet *pkt)
 		}
 	}
 
-	if(!found) {
+	if (!found) {
 		pkt->prev->next = pkt->next;
 		pkt->next->prev = pkt->prev;
 	}
@@ -82,15 +82,15 @@ Packet* PacketQueue::get(bool must_continue)
 		tmp = front[prio];
 	}
 	
-	while(!ended) {
-		while(tmp != NULL) {
+	while (!ended) {
+		while (tmp != NULL) {
 			ret = tmp;
 			tmp = tmp->next;
 			return ret;
 		}
 		
 		while (tmp == NULL) {
-			if(prio < 1) {
+			if (prio < 1) {
 				prio++;
 				tmp = front[prio];
 			} else {
@@ -130,7 +130,7 @@ Packet* PacketQueue::get(status_t status, source_t source, proto_t proto, bool m
 Packet* PacketQueue::get(unsigned int packet_id)
 {
 	Packet *tmp = get(false);
-	while(tmp != NULL) {
+	while (tmp != NULL) {
 		if (tmp->packet_id == packet_id)
 			return tmp;		
 		tmp = get(true);

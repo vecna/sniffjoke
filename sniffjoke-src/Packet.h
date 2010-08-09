@@ -40,16 +40,17 @@ public:
 	int pbuf_size;  
 	int orig_pktlen;
 
-	Packet( int, const unsigned char*, int) ;
-	Packet( const Packet * );
+	Packet(int, const unsigned char*, int) ;
+	Packet(const Packet *);
 	~Packet();
+
 	void updatePointers();
 	/* functions required in TCP/IP packets forging */
-	void resizePayload( int );
-	unsigned int half_cksum( const void *, int );
-	unsigned short compute_sum( unsigned int );
+	void resizePayload(int);
+	unsigned int half_cksum(const void *, int);
+	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum();
-	unsigned int make_pkt_id( const unsigned char* );
+	unsigned int make_pkt_id(const unsigned char*);
 };
 
 #endif /* SJ_PACKET_H */

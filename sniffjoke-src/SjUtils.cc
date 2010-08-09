@@ -4,15 +4,15 @@ void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) {
 
 		internal_log(NULL, DEBUG_LEVEL, "checking errno %d message of [%s], return value: %d fatal %d", objerrno, umsg, ret, fatal);
 
-		if(ret != -1)
+		if (ret != -1)
 				return;
 
-		if(objerrno)
+		if (objerrno)
 				snprintf(errbuf, STRERRLEN, "%s: %s", umsg, strerror(objerrno));
 		else
 				snprintf(errbuf, STRERRLEN, "%s ", umsg);
 
-		if(fatal) {
+		if (fatal) {
 				internal_log(NULL, ALL_LEVEL, "fatal error: %s", errbuf);
 				SjProc->CleanExit(true);
 		} else {
@@ -26,21 +26,21 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...) {
 		time_t now = time(NULL);
 		FILE *output_flow;
 
-		if(forceflow == NULL && useropt.logstream == NULL)
+		if (forceflow == NULL && useropt.logstream == NULL)
 				return;
 
-		if(forceflow != NULL)
+		if (forceflow != NULL)
 				output_flow = forceflow;
 		else
 				output_flow = useropt.logstream;
 
-		if(errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
+		if (errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
 				output_flow = useropt.packet_logstream;
 
-		if(errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
+		if (errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
 				output_flow = useropt.hacks_logstream;
 
-		if(errorlevel <= useropt.debug_level) {
+		if (errorlevel <= useropt.debug_level) {
 				char *time = strdup(asctime(localtime(&now)));
 
 				va_start(arguments, msg);

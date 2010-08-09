@@ -1,15 +1,15 @@
 #ifndef SJ_NETIO_H
 #define SJ_NETIO_H
 
+#include "TCPTrack.h"
+#include "SjConf.h"
+
 #include <poll.h>
 
 #include <sys/socket.h> 
 #include <sys/types.h>
-
 #include <netpacket/packet.h>
 
-#include "TCPTrack.h"
-#include "SjConf.h"
 
 class NetIO {
 private:
@@ -36,7 +36,7 @@ public:
 	 *	   --- but not killed!
 	 */
 
-	NetIO( SjConf * );
+	NetIO(SjConf *);
 	~NetIO();
 	void network_io();
 	void queue_flush();

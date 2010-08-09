@@ -19,6 +19,11 @@ Packet::Packet(const Packet* pkt) {
 	pbuf_size = pkt->pbuf_size;
 	orig_pktlen = pkt->orig_pktlen;
 
+	proto = pkt->proto;
+	source = pkt->source;
+	status = pkt->status;
+	wtf = pkt->wtf;
+
 	memcpy(pbuf, pkt->pbuf, pkt->pbuf_size);
 	packet_id = 0;
 	
@@ -32,7 +37,7 @@ Packet::~Packet() {
 void Packet::resizePayload(int newlen) {
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
-	int oldlen = ntohs(ip->tot_len) - ( iphlen + tcphlen );
+	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
 	int newpbuf_size = pbuf_size - oldlen + newlen;
 	unsigned char *newpbuf = (unsigned char *)calloc(1, newpbuf_size);
 	int newtotallen = iphlen + tcphlen + newlen;
@@ -52,7 +57,7 @@ void Packet::resizePayload(int newlen) {
 void Packet::updatePointers() {
 	
 	ip = (struct iphdr *)pbuf;
-	if(ip->protocol == IPPROTO_TCP) {
+	if (ip->protocol == IPPROTO_TCP) {
 		proto = TCP;
 		tcp = (struct tcphdr *)((unsigned char *)(ip) + (ip->ihl * 4));
 		icmp = NULL;
@@ -70,7 +75,7 @@ void Packet::updatePointers() {
 	}
 }
 
-unsigned int Packet::half_cksum( const void *pointed_data, int len )
+unsigned int Packet::half_cksum(const void *pointed_data, int len)
 {
 	unsigned int sum = 0x00;
 	unsigned short carry = 0x00;
@@ -105,12 +110,12 @@ void Packet::fixIpTcpSum()
 	unsigned int l4len = ntohs(ip->tot_len) - (ip->ihl * 4);
 
 	ip->check = 0;
-	sum = half_cksum ((void *)ip, (ip->ihl * 4) );
+	sum = half_cksum ((void *)ip, (ip->ihl * 4));
 	ip->check = compute_sum(sum);
 	tcp->check = 0;
 	sum = half_cksum ((void *) &ip->saddr, 8);
-	sum += htons (IPPROTO_TCP + l4len );
-	sum += half_cksum ((void *)tcp, l4len );
+	sum += htons (IPPROTO_TCP + l4len);
+	sum += half_cksum ((void *)tcp, l4len);
 	tcp->check = compute_sum(sum);
 }
 
@@ -119,7 +124,7 @@ unsigned int Packet::make_pkt_id(const unsigned char* buf)
 	struct iphdr *ip = (struct iphdr *)pbuf;
 	struct tcphdr *tcp;
 
-	if(ip->protocol == IPPROTO_TCP)
+	if (ip->protocol == IPPROTO_TCP)
 	{
 		tcp = (struct tcphdr *)((unsigned char *)ip + (ip->ihl * 4));
 		return tcp->seq;

@@ -9,7 +9,8 @@ using namespace std;
 
 class TTLFocusList : public list<TTLFocus> {
 public:
-	TTLFocus* get(unsigned int daddr);
+	TTLFocus* get(bool);
+	TTLFocus* get(unsigned int);
 };
 
 #endif /* SJ_TTLFOCUSLIST_H */

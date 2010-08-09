@@ -12,12 +12,11 @@ public:
 
 	PacketQueue();
 	~PacketQueue();
-	void insert( priority_t, Packet * );
-	void remove( const Packet * );
-	void drop( Packet * );
-	Packet* get( bool );
-	Packet* get( status_t, source_t, proto_t, bool );
-	Packet* get( unsigned int );
+	void insert(priority_t, Packet *);
+	void remove(const Packet *);
+	Packet* get(bool);
+	Packet* get(status_t, source_t, proto_t, bool);
+	Packet* get(unsigned int);
 };
 
 #endif /* SJ_PACKET_QUEUE_H */

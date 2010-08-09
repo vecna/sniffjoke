@@ -7,9 +7,23 @@
  * 
  * in ttlfocus are keep the informations for ttl bruteforcing
  */
+ 
+TTLFocus* TTLFocusList::get(bool must_continue)
+{
+	static list<TTLFocus>::iterator i = begin();
+	
+	if (!must_continue)
+		i = begin();
+	
+	if (i++ != end())
+		return &(*i);
+
+	return NULL;
+}
+
 TTLFocus* TTLFocusList::get(unsigned int daddr)
 {
-	for(list<TTLFocus>::iterator i = begin(); i != end(); i++) {
+	for (list<TTLFocus>::iterator i = begin(); i != end(); i++) {
 		if (i->daddr == daddr)
 			return &(*i);
 	}

@@ -16,7 +16,7 @@ public:
 
 	ttlsearch_t status;
 
-	TTLFocus( unsigned int );
+	TTLFocus(unsigned int);
 };
 
 #endif /* SJ_TTLFOCUS_H */
