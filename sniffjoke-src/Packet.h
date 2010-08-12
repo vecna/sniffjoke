@@ -5,9 +5,6 @@
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-/* Maximum Transfert Unit */
-#define MTU	 1500
-
 enum status_t { ANY_STATUS = 16, SEND = 5, KEEP = 10, YOUNG = 82 };
 enum source_t { ANY_SOURCE = 3, TUNNEL = 80, LOCAL = 5, NETWORK = 13, TTLBFORCE = 28 };
 enum proto_t { ANY_PROTO = 11, TCP = 6, ICMP = 9, OTHER_IP = 7 };

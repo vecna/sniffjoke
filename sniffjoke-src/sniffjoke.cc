@@ -641,16 +641,18 @@ int main(int argc, char **argv) {
 		mitm->network_io();
 		mitm->queue_flush();
 
-		if (mitm->is_network_down() && sjconf->running->sj_run == true) {
-			internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
-			sjconf->running->sj_run = false;
-			restart_on_restore = true;
-		}
-
-		if (!mitm->is_network_down() && restart_on_restore == true) {
-			internal_log(NULL, ALL_LEVEL, "Network restored, restarting sniffjoke");
-			sjconf->running->sj_run = true;
-			restart_on_restore = false;
+		if (mitm->is_network_down()) {
+			if (sjconf->running->sj_run == true) {
+				internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
+				sjconf->running->sj_run = false;
+				restart_on_restore = true;
+			}
+		} else {
+			if (restart_on_restore == true) {
+				internal_log(NULL, ALL_LEVEL, "Network restored, restarting sniffjoke");
+				sjconf->running->sj_run = true;
+				restart_on_restore = false;
+			}
 		}
 		
 		sj_srv_child_check_local_unixserv(listening_unix_socket, sjconf);

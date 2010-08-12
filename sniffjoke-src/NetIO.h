@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <netpacket/packet.h>
 
+#define MTU             1500
+#define BURSTSIZE       10
 
 class NetIO {
 private:
@@ -28,6 +30,10 @@ private:
 	/* poll variables, two file descriptors */
 	struct pollfd fds[2];
 
+	unsigned char pktbuf[MTU];
+	int size;
+	Packet *pkt;
+
 	bool networkdown_condition;
 
 public:
@@ -41,6 +47,7 @@ public:
 	void network_io();
 	void queue_flush();
 	bool is_network_down();
+	void set_running(bool);
 };
 
 #endif /* SJ_NETIO_H */

@@ -3,16 +3,14 @@
 
 #include "Packet.h"
 
-enum priority_t { HIGH = 0, LOW = 1 };
-
 class PacketQueue {
 public:
-	Packet *front[2];
-	Packet *back[2];
+	Packet **front;
+	Packet **back;
 
-	PacketQueue();
+	PacketQueue(int);
 	~PacketQueue();
-	void insert(priority_t, Packet *);
+	void insert(int, Packet *);
 	void remove(const Packet *);
 	Packet* get(bool);
 	Packet* get(status_t, source_t, proto_t, bool);

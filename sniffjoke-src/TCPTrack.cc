@@ -42,12 +42,14 @@ static DataDebug *dd;
 
 #define UNCHANGED_SIZE  (-1)
 
+enum priority_t { HIGH = 0, LOW = 1 };
+
 TCPTrack::TCPTrack(SjConf *sjconf) 
 {
 	runcopy = sjconf->running;
 	maxttlprobe = runcopy->max_ttl_probe;
 
-	p_queue = new PacketQueue();
+	p_queue = new PacketQueue(2);
 	sex_list = new SessionTrackList();
 	ttlfocus_list = new TTLFocusList();
 
@@ -178,6 +180,7 @@ void TCPTrack::analyze_packets_queue()
 {
 	Packet *pkt;
 	TTLFocus *ttlfocus;
+	unsigned short destport;
 
 #ifdef DATADEBUG
         dd->InfoMsg("Packet", "analyze_packets_queue");
@@ -222,7 +225,7 @@ void TCPTrack::analyze_packets_queue()
 	/* outgoing TCP packets ! */
 	pkt = p_queue->get(YOUNG, TUNNEL, TCP, false);
 	while (pkt != NULL) {
-		unsigned short destport = ntohs(pkt->tcp->dest);
+		destport = ntohs(pkt->tcp->dest);
 
 		/* no hacks required for this destination port */
 		if (runcopy->portconf[destport] == NONE) {
@@ -360,13 +363,13 @@ void TCPTrack::last_pkt_fix(Packet *pkt)
 	}
 	
 	/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
-	if (!pkt->tcp->syn) {
+	if (!pkt->tcp->syn && pkt->wtf != INNOCENT) {
 		if (runcopy->SjH__inject_ipopt) {
 			/* we can inject if we have at least 4 bytes free
 			 * in point of fact we does not need 4 bytes, because we can strip also
 			 * options just present in the packet
 			 */
-			if (pkt->wtf != INNOCENT && (pkt->pbuf_size - ntohs(pkt->ip->tot_len)) > 4)
+			if ((pkt->pbuf_size - ntohs(pkt->ip->tot_len)) > 4)
 				if (percentage(1, 100))
 					SjH__inject_ipopt(pkt);
 		}
@@ -376,7 +379,7 @@ void TCPTrack::last_pkt_fix(Packet *pkt)
 			 * in point of fact we does not need 8 bytes, because we can strip also
 			 * options just present in the packet
 			 */
-			if (pkt->wtf != INNOCENT && (pkt->pbuf_size - ntohs(pkt->ip->tot_len)) > 8 && !check_uncommon_tcpopt(pkt->tcp))
+			if ((pkt->pbuf_size - ntohs(pkt->ip->tot_len)) > 8 && !check_uncommon_tcpopt(pkt->tcp))
 				if (percentage(25, 100))
 					SjH__inject_tcpopt(pkt);
 		}
@@ -441,7 +444,7 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet *timeexc)
 
 Packet* TCPTrack::analyze_incoming_synack(Packet *synack)
 {
-	TTLFocus *ttlfocus;
+	TTLFocus *ttlfocus = ttlfocus_list->get(synack->ip->saddr);
 
 #ifdef DATADEBUG
         dd->InfoMsg("Session", "analyzie_incoming_synack, from: %s", inet_ntoa(*((struct in_addr *)&synack->ip->saddr)));
@@ -451,74 +454,74 @@ Packet* TCPTrack::analyze_incoming_synack(Packet *synack)
 	/* NETWORK is src: dest port and source port inverted and saddr are used, 
 	 * source is put as last argument (puppet port)
 	 */
-	if ((ttlfocus = ttlfocus_list->get(synack->ip->saddr)) == NULL) 
-		return synack;
+	if (ttlfocus != NULL) {
 
 #ifdef PACKETDEBUG
-	internal_log(NULL, PACKETS_DEBUG, "SYN/ACK (saddr %u) seq %08x seq_ack %08x - dport %d sport %d puppet %d",
-				synack->ip->saddr,
-				ntohl(synack->tcp->seq),
-				ntohl(synack->tcp->ack_seq),
-				ntohs(synack->tcp->dest), 
-				ntohs(synack->tcp->source),
-				ntohs(ttlfocus->puppet_port)
-	);
-#endif
-
-	if (synack->tcp->dest == ttlfocus->puppet_port) {
-		unsigned char discern_ttl;
-
-		ttlfocus->received_probe++;
-		discern_ttl =  ntohl(synack->tcp->ack_seq) - ttlfocus->rand_key - 1;
-		ttlfocus->status = TTL_KNOW;
-
-		if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) 
-			ttlfocus->min_working_ttl = discern_ttl;
-
-#ifdef PACKETDEBUG
-		internal_log(NULL, PACKETS_DEBUG,
-					"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
-					discern_ttl,
-					ttlfocus->min_working_ttl,
-					ttlfocus->expiring_ttl,
-					ttlfocus->received_probe,
-					ttlfocus->sent_probe
+		internal_log(NULL, PACKETS_DEBUG, "SYN/ACK (saddr %u) seq %08x seq_ack %08x - dport %d sport %d puppet %d",
+					synack->ip->saddr,
+					ntohl(synack->tcp->seq),
+					ntohl(synack->tcp->ack_seq),
+					ntohs(synack->tcp->dest), 
+					ntohs(synack->tcp->source),
+					ntohs(ttlfocus->puppet_port)
 		);
 #endif
 
-		/* 
-		 * this code flow happens only when the SYN ACK is received, due to
-		 * a SYN send from the "puppet port". this kind of SYN is used only
-		 * for discern TTL, and this mean a REFerence-SYN packet is present in
-		 * the packet queue. Now that ttl has been detected, the real SYN could
-		 * be send.
-		 */
-		
-		mark_real_syn_packets_SEND(synack->ip->saddr);
-		p_queue->remove(synack);
-		delete synack;
-		return NULL;
-	}
+		if (synack->tcp->dest == ttlfocus->puppet_port) {
+			unsigned char discern_ttl =  ntohl(synack->tcp->ack_seq) - ttlfocus->rand_key - 1;
 
-	/* 
-	 * connect(3, {sa_family=AF_INET, sin_port=htons(80), 
-	 * sin_addr=inet_addr("89.186.95.190")}, 16) = 
-	 * -1 EHOSTUNREACH (No route to host)
-	 *
-	 * sadly, this happens when you try to use the real syn. for
-	 * this reason I'm using encoding in random sequence and a
-	 * fake source port (puppet port)
-	 *
-	 * anyway, every SYN/ACK received is passed to the hosts, so
-	 * our kernel should RST/ACK the unrequested connect.
-	 */
+			ttlfocus->received_probe++;
+			ttlfocus->status = TTL_KNOW;
+
+			if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) 
+				ttlfocus->min_working_ttl = discern_ttl;
+
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG,
+						"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
+						discern_ttl,
+						ttlfocus->min_working_ttl,
+						ttlfocus->expiring_ttl,
+						ttlfocus->received_probe,
+						ttlfocus->sent_probe
+			);
+#endif
+
+			/* 
+			* this code flow happens only when the SYN ACK is received, due to
+			* a SYN send from the "puppet port". this kind of SYN is used only
+			* for discern TTL, and this mean a REFerence-SYN packet is present in
+			* the packet queue. Now that ttl has been detected, the real SYN could
+			* be send.
+			*/
+		
+			mark_real_syn_packets_SEND(synack->ip->saddr);
+			p_queue->remove(synack);
+			delete synack;
+			return NULL;
+		}
+		
+		/* 
+		 * connect(3, {sa_family=AF_INET, sin_port=htons(80), 
+		 * sin_addr=inet_addr("89.186.95.190")}, 16) = 
+		 * -1 EHOSTUNREACH (No route to host)
+		 *
+		 * sadly, this happens when you try to use the real syn. for
+		 * this reason I'm using encoding in random sequence and a
+		 * fake source port (puppet port)
+		 *
+		 * anyway, every SYN/ACK received is passed to the hosts, so
+		 * our kernel should RST/ACK the unrequested connect.
+		 */
+
+	}
 	
 	return synack;
 }
 
 Packet* TCPTrack::analyze_incoming_rstfin(Packet *rstfin)
 {
-	SessionTrack *session;
+	SessionTrack *session = sex_list->get(rstfin->ip->saddr, rstfin->tcp->dest, rstfin->tcp->source);
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
@@ -530,7 +533,6 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet *rstfin)
 	);
 #endif
 
-	session = sex_list->get(rstfin->ip->saddr, rstfin->tcp->dest, rstfin->tcp->source);
 	if (session != NULL) {
 		/* 
 		 * clear_session don't remove conntrack immediatly, at the first call
@@ -683,8 +685,7 @@ void TCPTrack::inject_hack_in_queue(const Packet *pkt, SessionTrack *session)
 				chackpkto[hpool_len].debug_info = (char *)"fake data";
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE; 
 				
-				hpool_len++;
-				if (hpool_len == MAXHACKS) goto sendchosenhacks; 
+				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 			}
 
 		}
@@ -703,8 +704,7 @@ void TCPTrack::inject_hack_in_queue(const Packet *pkt, SessionTrack *session)
 			else
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
 
-			hpool_len++;
-			if (hpool_len == MAXHACKS) goto sendchosenhacks; 
+			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 	}
 
@@ -718,8 +718,7 @@ void TCPTrack::inject_hack_in_queue(const Packet *pkt, SessionTrack *session)
 				chackpkto[hpool_len].debug_info = (char *)"fake close";
 				chackpkto[hpool_len].resize = 0;
 				
-				hpool_len++;
-				if (hpool_len == MAXHACKS) goto sendchosenhacks; 
+				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 			}
 		}
 	}
@@ -733,8 +732,7 @@ void TCPTrack::inject_hack_in_queue(const Packet *pkt, SessionTrack *session)
 			chackpkto[hpool_len].debug_info = (char *)"zero window";
 			chackpkto[hpool_len].resize = 0;
 			
-			hpool_len++;
-			if (hpool_len == MAXHACKS) goto sendchosenhacks; 
+			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 	
 	}
@@ -748,8 +746,7 @@ void TCPTrack::inject_hack_in_queue(const Packet *pkt, SessionTrack *session)
 			chackpkto[hpool_len].debug_info = (char *)"valid rst fake seq";
 			chackpkto[hpool_len].resize = 0;
 			
-			hpool_len++;
-			if (hpool_len == MAXHACKS) goto sendchosenhacks; 
+			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 	}
 
@@ -762,8 +759,8 @@ void TCPTrack::inject_hack_in_queue(const Packet *pkt, SessionTrack *session)
 			chackpkto[hpool_len].debug_info = (char *)"fake syn";
 			chackpkto[hpool_len].resize = 0;
 			
-			hpool_len++;
-			if (hpool_len == MAXHACKS) goto sendchosenhacks; 
+			/* if (++hpool_len == MAXHACKS) goto sendchosenhacks; */
+			/* this is the last hack, remember this line on reaorder or new hacks add */
 		}
 	}
 
@@ -840,8 +837,6 @@ void TCPTrack::enque_ttl_probe(const Packet *delayed_syn_pkt, TTLFocus* ttlfocus
 	/* create a new packet
 	 * the copy is done to keep refsyn ORIGINAL */
 	injpkt = new Packet(delayed_syn_pkt);
-
-	/* LOCAL src, ready to be SEND */
 	injpkt->proto = TCP;
 	injpkt->source = TTLBFORCE;
 	injpkt->status = SEND;
@@ -1034,8 +1029,7 @@ void TCPTrack::SjH__fake_seq(Packet *hackpkt)
 	if (!hackpkt->payload) {
 		hackpkt->tcp->seq = htonl(ntohl(hackpkt->tcp->seq) + MAXOPTINJ * 3);
 		hackpkt->ip->tot_len = htons(ntohs(hackpkt->ip->tot_len) + MAXOPTINJ * 3);
-	}
-	else
+	} else
 		if (what == 0)
 			what = 2;
 

@@ -175,10 +175,7 @@ NetIO::~NetIO()
 {
 	char tmpsyscmd[MEDIUMBUF];
 
-	if (conntrack != NULL) {
-		delete conntrack;
-		conntrack = NULL;
-	}
+	delete conntrack;
 
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));
@@ -201,11 +198,8 @@ NetIO::~NetIO()
 
 void NetIO::network_io()
 {
-	/* doens't work with MTU 9k, MTU is defined in sniffjoke.h as 1500 */
-	static unsigned char pktbuf[MTU];
 	bool io_happened = false;
-	int nbyte = 0;
-	int burst = 10;
+	int burst = BURSTSIZE;
 	int nfds;
 
 	while (burst--)
@@ -221,98 +215,85 @@ void NetIO::network_io()
 		if (!nfds)
 			break;
 
-		if (fds[0].revents & POLLIN)
-		{
-			if ((nbyte = recv(netfd, pktbuf, MTU, 0)) == -1)
-			{
+		if (fds[0].revents & POLLIN) {
+			if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 				{
 					internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network: error: %s", strerror(errno));
-					check_call_ret("Reading from network", errno, nbyte, false);
+					check_call_ret("Reading from network", errno, size, false);
 					break;
 				}
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network correctly: %d bytes [sniffjoke %s]", 
-							 nbyte, runcopy->sj_run == true ? "running" : "stopped");
+							 size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
-				if (conntrack->writepacket(NETWORK, pktbuf, nbyte))
+				if (conntrack->writepacket(NETWORK, pktbuf, size))
 					io_happened = true;
 			}
 		}
 
-		if (fds[1].revents & POLLIN)
-		{
-			if ((nbyte = read(tunfd, pktbuf, MTU)) == -1)
-			{
+		if (fds[1].revents & POLLIN) {
+			if ((size = read(tunfd, pktbuf, MTU)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
 					internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
-					check_call_ret("Reading from tunnel", errno, nbyte, false);
+					check_call_ret("Reading from tunnel", errno, size, false);
 					break;
 				}
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes [sniffjoke %s]", 
-							 nbyte, runcopy->sj_run == true ? "running" : "stopped");
+						size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
-				if (conntrack->writepacket(TUNNEL, pktbuf, nbyte))
+				if (conntrack->writepacket(TUNNEL, pktbuf, size))
 					io_happened = true;
 			}
 		}
 	}
 
-	if (io_happened) 
-	{
-		if (runcopy->sj_run == true) {
+	if (io_happened) {
+		if(runcopy->sj_run == true) {
 			/* when sniffjoke is running the packet are analyzed and mangled */
 			conntrack->analyze_packets_queue();
-		} 
-		else /* running->sj_run == false */ {
+		} else { /* running->sj_run == false */
 			/* all packets must be marked as SEND */
 			conntrack->force_send();
-		}
+		}	
 	}
-	/* returning network_io in main.cc is called the below queue_flush */
 }
 
 /* this method send all the packets sets as "SEND" */
 void NetIO::queue_flush()
 {
-	int wbyt = 0;
-	Packet *packet = NULL;
-
 	/* 
 	 * the NETWORK are flushed on the tunnel.
 	 * the other source_t could be LOCAL or TUNNEL;
 	 * in both case the packets goes through the network.
 	 */
-	while ((packet = conntrack->readpacket()) != NULL)
-	{
-		if (packet->source == NETWORK) 
-		{
-			if ((wbyt = write(tunfd, packet->pbuf, packet->pbuf_size)) == -1) {
+	while ((pkt = conntrack->readpacket()) != NULL) {
+		if (pkt->source == NETWORK) {
+			if ((size = write(tunfd, pkt->pbuf, pkt->pbuf_size)) == -1) {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
 				networkdown_condition = true;
-				check_call_ret("Writing in tunnel", errno, wbyt, false);
+				check_call_ret("Writing in tunnel", errno, size, false);
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
-							 wbyt, runcopy->sj_run == true ? "running" : "stopped");
+							size, runcopy->sj_run == true ? "running" : "stopped");
 			}
-
 		} else {
-			if ((wbyt = sendto(netfd, packet->pbuf, 
-				ntohs(packet->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
+			if ((size = sendto(netfd, pkt->pbuf, 
+				ntohs(pkt->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network error: %s", strerror(errno));
 				networkdown_condition = true;
-				check_call_ret("Writing in network", errno, wbyt, false);
+				check_call_ret("Writing in network", errno, size, false);
 			} else {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
-							 wbyt, runcopy->sj_run == true ? "running" : "stopped");
+							 size, runcopy->sj_run == true ? "running" : "stopped");
 			}
 			
 		}
-		delete packet;
+		delete pkt;
 	}
 }
 

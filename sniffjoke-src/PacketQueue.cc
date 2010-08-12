@@ -2,13 +2,14 @@
 
 #include <cstdlib>
 
-PacketQueue::PacketQueue()
+PacketQueue::PacketQueue(int queue_levels)
 {
-	front[HIGH] = NULL;
-	back[HIGH] = NULL;
-
-	front[LOW] = NULL;
-	back[LOW] = NULL;
+	front = new Packet*[queue_levels];
+	back = new Packet*[queue_levels];
+	for(int i = 0; i < queue_levels; i++) {
+		front[i] = NULL;
+		back[i] = NULL;
+	}
 }
 
 PacketQueue::~PacketQueue()
@@ -18,9 +19,12 @@ PacketQueue::~PacketQueue()
 		delete tmp;
 		tmp = get(true);
 	}
+
+	delete front;
+	delete back;
 }
 
-void PacketQueue::insert(priority_t prio, Packet *pkt)
+void PacketQueue::insert(int prio, Packet *pkt)
 {
 	if (pkt->packet_id) {
 		Packet* tmp = get(pkt->packet_id);
@@ -43,30 +47,24 @@ void PacketQueue::insert(priority_t prio, Packet *pkt)
 
 void PacketQueue::remove(const Packet *pkt)
 {
-	bool found = false;
-	
 	for (int i = 0; i<= 1; i++) {
-		if (front[i] == pkt && back[i] == pkt) {
-			front[i] = back[i] = NULL;
-			found = true;
-			break;
-		} else if (front[i] == pkt) {
-			front[i] = front[i]->next;
-			front[i]->prev = NULL;
-			found = true;
-			break;
+		if (front[i] == pkt) {
+			if (back[i] == pkt) {
+				front[i] = back[i] = NULL;
+			} else {
+				front[i] = front[i]->next;
+				front[i]->prev = NULL;
+			}
+			return;
 		} else if (back[i] == pkt) {
 			back[i] = back[i]->prev;
 			back[i]->next = NULL;
-			found = true;
-			break;
+			return;
 		}
 	}
 
-	if (!found) {
-		pkt->prev->next = pkt->next;
-		pkt->next->prev = pkt->prev;
-	}
+	pkt->prev->next = pkt->next;
+	pkt->next->prev = pkt->prev;
 	return;
 }
 
@@ -75,14 +73,13 @@ Packet* PacketQueue::get(bool must_continue)
 	static int prio = 0;
 	static Packet *tmp;
 	Packet *ret;
-	bool ended = false;
 
 	if (!must_continue) {
 		prio = 0;
 		tmp = front[prio];
 	}
 	
-	while (!ended) {
+	while (1) {
 		while (tmp != NULL) {
 			ret = tmp;
 			tmp = tmp->next;
@@ -94,13 +91,10 @@ Packet* PacketQueue::get(bool must_continue)
 				prio++;
 				tmp = front[prio];
 			} else {
-				ended = true;
-				break;
+				return NULL;
 			}
 		}
 	}
-
-	return NULL;
 }
 
 Packet* PacketQueue::get(status_t status, source_t source, proto_t proto, bool must_continue) 
