@@ -1,26 +1,22 @@
-#include <iostream>
-#include <cerrno>
-using namespace std;
-#include <unistd.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <getopt.h>
-#include <assert.h>
-#include <signal.h>
-#include <sys/un.h>
-#include <fcntl.h>
-#include <sys/types.h>
 #include "sniffjoke.h"
+#include <cerrno>
+#include <cstdarg>
+#include <cstdlib>
+#include <cstdio>
+#include <ctime>
+#include <csignal>
+#include <getopt.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/un.h>
 
 /* Sniffjoke defaults config values */
-const char *default_conf_file ="/root/.sniffjoke.binconf";
+const char *default_conf_file = "/root/.sniffjoke.binconf";
 const char *default_user = "nobody";
 const char *default_group = "users";
 const char *default_chroot_dir = "/tmp/sniffjoke";
 const char *default_log_file = "sniffjoke.log"; // chroot + logpath
 const unsigned int default_debug_level = 0;
-
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
 const char *prog_version = "0.4 alpha 1";
@@ -193,11 +189,11 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 
 	/* FIXME - sanity check del comando ricevuto */
 	if (!memcmp(received_command, "stat", strlen("stat"))) {
-		output = sjconf->handle_stat_command();
+		output = sjconf->handle_cmd_stat();
 	} else if (!memcmp(received_command, "start", strlen("start"))) {
-		output = sjconf->handle_start_command();
+		output = sjconf->handle_cmd_start();
 	} else if (!memcmp(received_command, "stop", strlen("stop"))) {
-		output = sjconf->handle_stop_command();
+		output = sjconf->handle_cmd_stop();
 	} else if (!memcmp(received_command, "set", strlen("set"))) {
 		int start_port, end_port, value;
 
@@ -215,12 +211,12 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 			output = internal_buf;
 		}
 		else {
-			output = sjconf->handle_set_command(start_port, end_port, value);
+			output = sjconf->handle_cmd_set(start_port, end_port, value);
 		}
 	} else if (!memcmp(received_command, "clear", strlen("clear"))) {
-		output = sjconf->handle_set_command(1, PORTNUMBER, NONE);
+		output = sjconf->handle_cmd_set(1, PORTNUMBER, NONE);
 	} else if (!memcmp(received_command, "showport", strlen("showport"))) {
-		output = sjconf->handle_showport_command();
+		output = sjconf->handle_cmd_showport();
 	} else if (!memcmp(received_command, "loglevel", strlen("loglevel")))  {
 		int loglevel;
 
@@ -232,7 +228,7 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		} else {
-			output = sjconf->handle_log_command(loglevel);
+			output = sjconf->handle_cmd_log(loglevel);
 		}
 	} else {
 		internal_log(NULL, ALL_LEVEL, "wrong command %s", received_command);

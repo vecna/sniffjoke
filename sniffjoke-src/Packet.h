@@ -5,12 +5,15 @@
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-enum status_t { ANY_STATUS = 16, SEND = 5, KEEP = 10, YOUNG = 82 };
-enum source_t { ANY_SOURCE = 3, TUNNEL = 80, LOCAL = 5, NETWORK = 13, TTLBFORCE = 28 };
-enum proto_t { ANY_PROTO = 11, TCP = 6, ICMP = 9, OTHER_IP = 7 };
-enum judge_t { PRESCRIPTION = 10, GUILTY = 315, INNOCENT = 1 };
+enum status_t { ANY_STATUS = 0, SEND = 2, KEEP = 3, YOUNG = 4 };
+enum source_t { ANY_SOURCE = 0, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
+enum proto_t { ANY_PROTO = 0, TCP = 1, ICMP = 2, OTHER_IP = 3 };
+enum judge_t { PRESCRIPTION = 0, GUILTY = 1, INNOCENT = 2 };
 
 class Packet {
+private:
+	unsigned int make_pkt_id(const unsigned char*);
+
 public:
 
 	Packet* prev;
@@ -46,8 +49,8 @@ public:
 	void resizePayload(int);
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
-	void fixIpTcpSum();
-	unsigned int make_pkt_id(const unsigned char*);
+	void fixIpChecksum();
+	void fixTcpChecksum();
 };
 
 #endif /* SJ_PACKET_H */

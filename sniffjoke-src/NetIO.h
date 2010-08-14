@@ -6,8 +6,6 @@
 
 #include <poll.h>
 
-#include <sys/socket.h> 
-#include <sys/types.h>
 #include <netpacket/packet.h>
 
 #define MTU             1500
@@ -42,7 +40,7 @@ public:
 	 *	   --- but not killed!
 	 */
 
-	NetIO(SjConf *);
+	NetIO(SjConf*);
 	~NetIO();
 	void network_io();
 	void queue_flush();

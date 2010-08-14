@@ -5,10 +5,10 @@
 
 #define MAGICVAL	0xADECADDE
 
-#define HEAVY	   0x04
-#define NORMAL	  0x03
-#define LIGHT	   0x02
-#define NONE		0x01
+#define HEAVY	0x04
+#define NORMAL	0x03
+#define LIGHT	0x02
+#define NONE	0x01
 
 #define PORTNUMBER  65535
 
@@ -43,18 +43,18 @@ struct sj_useropt {
 struct sj_config {
 		float MAGIC;							/* integrity check for saved binary configuration */
 		bool sj_run;							/* default: false = NO RUNNING */
-		const char *user;					   /* default: nobody */
-		const char *group;					  /* default: nogroup */
-		char chroot_dir[MEDIUMBUF];			 /* default: /var/run/sniffjoke */
-		char logfname[MEDIUMBUF];			   /* default: /var/log/sniffjoke.log */
+		const char *user;						/* default: nobody */
+		const char *group;						/* default: nogroup */
+		char chroot_dir[MEDIUMBUF];				/* default: /var/run/sniffjoke */
+		char logfname[MEDIUMBUF];				/* default: /var/log/sniffjoke.log */
 		int debug_level;						/* default: 1 */
-		char local_ip_addr[SMALLBUF];		   /* default: autodetect */
-		char gw_ip_addr[SMALLBUF];			  /* default: autodetect */
-		char gw_mac_str[SMALLBUF];			  /* default: autodetect */
+		char local_ip_addr[SMALLBUF];			/* default: autodetect */
+		char gw_ip_addr[SMALLBUF];				/* default: autodetect */
+		char gw_mac_str[SMALLBUF];				/* default: autodetect */
 		unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
-		unsigned short max_ttl_probe;		   /* default: 26 */
-		unsigned char interface[SMALLBUF];	  /* default: autodetect */
-		int tun_number;						 /* tunnel interface number */
+		unsigned short max_ttl_probe;			/* default: 26 */
+		unsigned char interface[SMALLBUF];		/* default: autodetect */
+		int tun_number;							/* tunnel interface number */
 		unsigned char portconf[PORTNUMBER];
 
 		bool SjH__shift_ack;
@@ -84,12 +84,12 @@ public:
 
 		void dump_config(const char *);
 
-		char *handle_stat_command(void);
-		char *handle_stop_command(void);
-		char *handle_start_command(void);
-		char *handle_set_command(unsigned short, unsigned short, unsigned char);
-		char *handle_showport_command(void);
-		char *handle_log_command(int);
+		char *handle_cmd_stat(void);
+		char *handle_cmd_stop(void);
+		char *handle_cmd_start(void);
+		char *handle_cmd_set(unsigned short, unsigned short, unsigned char);
+		char *handle_cmd_showport(void);
+		char *handle_cmd_log(int);
 
 };
 

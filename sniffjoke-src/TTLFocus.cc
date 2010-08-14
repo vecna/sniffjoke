@@ -13,4 +13,4 @@ TTLFocus::TTLFocus(unsigned int destip)
 	puppet_port = htons((random() % 15000) + 1100);
 	rand_key = random();
 	status = TTL_BRUTALFORCE;
-} 
+}

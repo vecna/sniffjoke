@@ -4,24 +4,14 @@
  * http://www.delirandom.net/sniffjoke/sniffjoke-0.3/sniffjoke-src/TCPTrack.cc
  */
 
-#include <iostream>
-#include <cerrno>
-using namespace std;
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
-#include <sys/socket.h>
-
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/in.h>
-
-#include <arpa/inet.h>
-
 #include "SjUtils.h"
 #include "TCPTrack.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+
+#include <arpa/inet.h>
 
 #define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
 #ifdef DATADEBUG
@@ -35,12 +25,12 @@ static DataDebug *dd;
 #define HACKSDEBUG
 
 /* Max Number of options injectable */
-#define MAXOPTINJ	   12
-#define MAXHACKS		7
+#define MAXOPTINJ			12
+#define MAXHACKS			7
 
-#define STARTING_ARB_TTL 46
+#define STARTING_ARB_TTL	46
 
-#define UNCHANGED_SIZE  (-1)
+#define UNCHANGED_SIZE		(-1)
 
 enum priority_t { HIGH = 0, LOW = 1 };
 

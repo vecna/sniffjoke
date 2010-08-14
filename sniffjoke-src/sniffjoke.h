@@ -11,8 +11,6 @@
 #ifndef SNIFFJOKE_H
 #define SNIFFJOKE_H
 
-#define STRERRLEN	1024
-
 #include "SjUtils.h"
 #include "SjConf.h"
 #include "NetIO.h"

@@ -7,7 +7,7 @@
  * 
  * in ttlfocus are keep the informations for ttl bruteforcing
  */
- 
+
 TTLFocus* TTLFocusList::get(bool must_continue)
 {
 	static list<TTLFocus>::iterator i = begin();

@@ -1,20 +1,13 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include <time.h>
-#include <string.h>
-#include <stdlib.h>
+#include "Optional_DataDebug.h"
+#include <cstdarg>
+#include <ctime>
+#include <cstring>
+#include <cstdlib>
 
-#include <sys/signal.h>
-#include <sys/socket.h>
+#include <csignal>
 #include <sys/stat.h>
-#include <sys/types.h>
-
-#include <netinet/in.h>
-#include <netinet/ip.h>
 
 #include <arpa/inet.h>
-
-#include "Optional_DataDebug.h"
 
 DataDebug::DataDebug()
 {
@@ -41,48 +34,58 @@ void DataDebug::Dump_Packet(PacketQueue* list)
 	while (tmp != NULL) {
 		i++;
 
-		if (tmp->source == ANY_SOURCE)
-			source = "ANY SOURCE";
-		else if (tmp->source == TUNNEL)
-			source = "TUNNEL";
-		else if (tmp->source == LOCAL)
-			source = "LOCAL";
-		else if (tmp->source == TTLBFORCE)
-			source = "TTL BRUTAL FORCE";
-		else
-			source = "WRONG SOURCE CODE";
+		switch(tmp->source) {
+			case ANY_SOURCE:
+				source = "ANY SOURCE";
+				break;
+			case TUNNEL:
+				source = "TUNNEL";
+				break;
+			case LOCAL:
+				source = "LOCAL";
+				break;
+			case TTLBFORCE:
+				source = "TTL BRUTAL FORCE";
+				break;
+			default:
+				source = "WRONG SOURCE CODE";
+		}
 
-		if (tmp->proto == TCP) {
-			fprintf(Packet_f, "Packet [%d] %s:%d",
-					i,
-					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
-					ntohs(tmp->tcp->source)
-			);
-			fprintf(Packet_f, "Packet [%d] %s:%d id %8x orig_pktlen %d bufsize %d\n",
-					i,
-					inet_ntoa(*((struct in_addr *)&(tmp->ip->daddr))),
-					ntohs(tmp->tcp->dest),
-					tmp->packet_id,
-					tmp->orig_pktlen,
-					tmp->pbuf_size
-			);
-		} else if (tmp->proto == ICMP) {
-			fprintf(Packet_f, "Packet [%d] %s ICMP origlen %d bufsize %d packet_id %8x\n",
-					i,
-					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
-					tmp->orig_pktlen,
-					tmp->pbuf_size,
-					tmp->packet_id
-			);
-		} else if (tmp->proto == OTHER_IP)	{
-			fprintf(Packet_f, "Packet [%d] %s OTHER PROTOCOL (%d) origlen %d bufsize %d packet_id %8x\n",
-					i,
-					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
-					tmp->ip->protocol,
-					tmp->orig_pktlen,
-					tmp->pbuf_size,
-					tmp->packet_id
-			);
+		switch(tmp->proto) {
+			case TCP:
+				fprintf(Packet_f, "Packet [%d] %s:%d",
+						i,
+						inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
+						ntohs(tmp->tcp->source)
+				);
+				fprintf(Packet_f, "Packet [%d] %s:%d id %8x orig_pktlen %d bufsize %d\n",
+						i,
+						inet_ntoa(*((struct in_addr *)&(tmp->ip->daddr))),
+						ntohs(tmp->tcp->dest),
+						tmp->packet_id,
+						tmp->orig_pktlen,
+						tmp->pbuf_size
+				);
+				break;
+			case ICMP:
+				fprintf(Packet_f, "Packet [%d] %s ICMP origlen %d bufsize %d packet_id %8x\n",
+						i,
+						inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
+						tmp->orig_pktlen,
+						tmp->pbuf_size,
+						tmp->packet_id
+				);
+				break;
+			case OTHER_IP:
+				fprintf(Packet_f, "Packet [%d] %s OTHER PROTOCOL (%d) origlen %d bufsize %d packet_id %8x\n",
+						i,
+						inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
+						tmp->ip->protocol,
+						tmp->orig_pktlen,
+						tmp->pbuf_size,
+						tmp->packet_id
+				);
+				break;
 		}
 
 		tmp = list->get(true);
@@ -107,6 +110,7 @@ void DataDebug::Dump_Session(SessionTrackList *list)
 				tmp->packet_number,
 				tmp->shutdown
 		);
+
 		tmp = list->get(true);
 	}
 }
@@ -119,14 +123,19 @@ void DataDebug::Dump_TTL (TTLFocusList *list)
 	while (tmp != NULL) {
 		i++;
 
-		if (tmp->status == TTL_KNOW)
-			ttl_status = "KNOW/DETECTED";
-		else if (tmp->status == TTL_BRUTALFORCE)
-			ttl_status = "BRUTEFORCE RUNNING";
-		else if (tmp->status == TTL_UNKNOW)
-			ttl_status = "UNKNOW/UNABLE TO DETECT";
-		else
-			ttl_status = "TTL-ERROR-STATUS";
+		switch(tmp->status) {
+			case TTL_KNOW:
+				ttl_status = "KNOW/DETECTED";
+				break;
+			case TTL_BRUTALFORCE:
+				ttl_status = "BRUTEFORCE RUNNING";
+				break;
+			case TTL_UNKNOW:
+				ttl_status = "UNKNOW/UNABLE TO DETECT";
+				break;
+			default:
+				ttl_status = "TTL-ERROR-STATUS";
+		}
 
 		fprintf(TTL_f,
 				"TTLFocus [%d] %s expiring %d min working %d sent probe %d received %d status %s\n",

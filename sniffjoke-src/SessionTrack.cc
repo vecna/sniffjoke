@@ -1,7 +1,5 @@
 #include "SessionTrack.h"
 
-#include <cstdlib>
-
 SessionTrack::SessionTrack(const Packet *pkt)
 {
 	daddr = pkt->ip->daddr;

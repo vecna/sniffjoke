@@ -1,6 +1,8 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
+#include <csignal>
+
 #define SJ_SERVICE_LOCK				"/tmp/.sniffjoke_service.lock"
 #define SJ_CLIENT_LOCK				"/tmp/.sniffjoke_client.lock"
 #define SJ_SERVICE_FATHER_PID_FILE	"/tmp/sniffjoke_father.pid"

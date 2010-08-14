@@ -1,21 +1,24 @@
 #include "Packet.h"
 
 #include <cstdlib>
-#include <string.h>
+#include <cstring>
 
 Packet::Packet(int size, const unsigned char* buff, int buff_size) {
-	pbuf = (unsigned char *)calloc(1, size);
+	pbuf = new unsigned char[buff_size];
+	memset(pbuf, 0, buff_size);
 	pbuf_size = size;
 	orig_pktlen = buff_size;
 
 	memcpy(pbuf, buff, buff_size);
-	packet_id = make_pkt_id(buff);
 	
 	updatePointers();
+	
+	packet_id = make_pkt_id(buff);
 }
 
 Packet::Packet(const Packet* pkt) {
-	pbuf = (unsigned char *)calloc(1, pkt->pbuf_size);
+	pbuf = new unsigned char[pkt->pbuf_size];
+	memset(pbuf, 0, pkt->pbuf_size);
 	pbuf_size = pkt->pbuf_size;
 	orig_pktlen = pkt->orig_pktlen;
 
@@ -25,13 +28,22 @@ Packet::Packet(const Packet* pkt) {
 	wtf = pkt->wtf;
 
 	memcpy(pbuf, pkt->pbuf, pkt->pbuf_size);
-	packet_id = 0;
 	
 	updatePointers();
+	
+	packet_id = 0;
 }
 
 Packet::~Packet() {
-	free(pbuf);
+	delete[] pbuf;
+}
+
+unsigned int Packet::make_pkt_id(const unsigned char* buf)
+{
+	if (ip->protocol == IPPROTO_TCP)
+		return tcp->seq;
+	else
+		return 0; /* packet_id == 0 mean no ID check */
 }
 
 void Packet::resizePayload(int newlen) {
@@ -39,13 +51,15 @@ void Packet::resizePayload(int newlen) {
 	int tcphlen = tcp->doff * 4;
 	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
 	int newpbuf_size = pbuf_size - oldlen + newlen;
-	unsigned char *newpbuf = (unsigned char *)calloc(1, newpbuf_size);
+	unsigned char* newpbuf = new unsigned char[newpbuf_size];
+	memset(newpbuf, 0, newpbuf_size);
 	int newtotallen = iphlen + tcphlen + newlen;
 	
 	/* IP header copy , TCP header copy, Payload copy, if preserved */
 	memcpy(newpbuf, pbuf, newtotallen);
-	free(pbuf);
+	delete[] pbuf;
 	pbuf = newpbuf;
+	
 	updatePointers();
 	
 	/* fixing the new length */
@@ -79,7 +93,7 @@ unsigned int Packet::half_cksum(const void *pointed_data, int len)
 {
 	unsigned int sum = 0x00;
 	unsigned short carry = 0x00;
-	unsigned short *data =(unsigned short *)pointed_data;
+	unsigned short *data = (unsigned short *)pointed_data;
 
 	while (len > 1)
 	{
@@ -121,12 +135,8 @@ void Packet::fixIpTcpSum()
 
 unsigned int Packet::make_pkt_id(const unsigned char* buf)
 {
-	struct iphdr *ip = (struct iphdr *)pbuf;
-	struct tcphdr *tcp;
-
 	if (ip->protocol == IPPROTO_TCP)
 	{
-		tcp = (struct tcphdr *)((unsigned char *)ip + (ip->ihl * 4));
 		return tcp->seq;
 	}
 	else

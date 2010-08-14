@@ -1,8 +1,6 @@
 #ifndef SJ_TCPTRACK_H
 #define SJ_TCPTRACK_H
 
-#include <netinet/tcp.h>
-
 #include "SjConf.h"
 #include "Packet.h"
 #include "PacketQueue.h"

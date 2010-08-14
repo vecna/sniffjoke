@@ -1,14 +1,13 @@
-#include <iostream>
-#include <cerrno>
-using namespace std;
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>
-
 #include "SjUtils.h"
 #include "SjConf.h"
+
+#include <cerrno>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <csignal>
+#include <cctype>
+#include <unistd.h>
 
 SjConf::SjConf(struct sj_useropt *user_opt) 
 {
@@ -160,14 +159,14 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		memset(running->portconf, NORMAL, PORTNUMBER);
 
 		/* hacks common defaults */
-		running->SjH__fake_data = true;				 /* implemented, enabled */
-		running->SjH__fake_seq = true;				  /* implemented, enabled */
+		running->SjH__fake_data = true;					/* implemented, enabled */
+		running->SjH__fake_seq = true;					/* implemented, enabled */
 		running->SjH__fake_close = true;				/* implemented, enabled */
-		running->SjH__zero_window = true;			   /* implemented, enabled */
+		running->SjH__zero_window = true;				/* implemented, enabled */
 		running->SjH__valid_rst_fake_seq = true;		/* implemented, enabled */
-		running->SjH__fake_syn = true;				  /* implemented, enabled */
-		running->SjH__inject_ipopt = true;			  /* implemented, enabled */
-		running->SjH__inject_tcpopt = true;			 /* implemented, enabled */
+		running->SjH__fake_syn = true;					/* implemented, enabled */
+		running->SjH__inject_ipopt = true;				/* implemented, enabled */
+		running->SjH__inject_tcpopt = true;				/* implemented, enabled */
 		
 		/* hacks to be fixed */
 		running->SjH__shift_ack = false;				/* implemented, need testing */
@@ -203,6 +202,19 @@ SjConf::~SjConf() {
 	internal_log(NULL, ALL_LEVEL, "SjConf: cleaning configuration object\n");
 }
 
+/* private function useful for resolution of code/name */
+const char *SjConf::resolve_weight_name(int command_code) 
+{
+	switch(command_code) {
+		case HEAVY: return "heavy";
+		case NORMAL: return "normal";
+		case LIGHT: return "light";
+		case NONE: return "no hacks";
+		default: internal_log(NULL, ALL_LEVEL, "danger: found invalid code in ports configuration");
+			 return "VERY BAD BUFFER CORRUPTION! I WISH NO ONE EVER SEE THIS LINE";
+	}
+}
+
 void SjConf::dump_config(const char *dumpfname)
 {
 	FILE *dumpfd;
@@ -222,7 +234,7 @@ void SjConf::dump_config(const char *dumpfname)
 	check_call_ret("closing config file", errno, (ret - 1), false);
 }
 
-char *SjConf::handle_stat_command(void) 
+char *SjConf::handle_cmd_stat(void) 
 {
 	internal_log(NULL, VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, HUGEBUF, 
@@ -240,7 +252,7 @@ char *SjConf::handle_stat_command(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_set_command(unsigned short start, unsigned short end, unsigned char what)
+char *SjConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned char what)
 {
 	const char *what_weightness;
 
@@ -267,7 +279,7 @@ char *SjConf::handle_set_command(unsigned short start, unsigned short end, unsig
 	return &io_buf[0];
 }
 
-char *SjConf::handle_stop_command(void)
+char *SjConf::handle_cmd_stop(void)
 {
 	if (running->sj_run != false) {
 		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!");
@@ -280,7 +292,7 @@ char *SjConf::handle_stop_command(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_start_command(void)
+char *SjConf::handle_cmd_start(void)
 {
 	if (running->sj_run != true) {
 		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!");
@@ -293,20 +305,7 @@ char *SjConf::handle_start_command(void)
 	return &io_buf[0];
 }
 
-/* private function useful for resolution of code/name */
-const char *SjConf::resolve_weight_name(int command_code) 
-{
-	switch(command_code) {
-		case HEAVY: return "heavy";
-		case NORMAL: return "normal";
-		case LIGHT: return "light";
-		case NONE: return "no hacks";
-		default: internal_log(NULL, ALL_LEVEL, "danger: found invalid code in ports configuration");
-			 return "VERY BAD BUFFER CORRUPTION! I WISH NO ONE EVER SEE THIS LINE";
-	}
-}
-
-char *SjConf::handle_showport_command(void) 
+char *SjConf::handle_cmd_showport(void) 
 {
 	int i, acc_start = 0, acc_end = 0, kind, actual_io = 0;
 	char *index = &io_buf[0];
@@ -337,7 +336,7 @@ char *SjConf::handle_showport_command(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_log_command(int newloglevel)
+char *SjConf::handle_cmd_log(int newloglevel)
 {
 	snprintf(io_buf, HUGEBUF, "TO BE IMPLEMENTED -- new log level requested %d\n", newloglevel);
 	return &io_buf[0];

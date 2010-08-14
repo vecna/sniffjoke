@@ -1,19 +1,15 @@
-#include <iostream>
+#include "sniffjoke.h"
 #include <cerrno>
-using namespace std;
-#include <unistd.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 #include <getopt.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <grp.h>
 #include <wait.h>
-#include <assert.h>
 
 #include <sys/un.h>
-#include "sniffjoke.h"
 
 extern int errno;
 

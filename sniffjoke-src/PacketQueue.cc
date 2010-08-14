@@ -4,12 +4,16 @@
 
 PacketQueue::PacketQueue(int queue_levels)
 {
+	this->queue_levels = queue_levels;
 	front = new Packet*[queue_levels];
 	back = new Packet*[queue_levels];
 	for(int i = 0; i < queue_levels; i++) {
 		front[i] = NULL;
 		back[i] = NULL;
 	}
+	
+	int cur_prio = 0;
+	Packet *cur_pkt = NULL;
 }
 
 PacketQueue::~PacketQueue()
@@ -19,9 +23,6 @@ PacketQueue::~PacketQueue()
 		delete tmp;
 		tmp = get(true);
 	}
-
-	delete front;
-	delete back;
 }
 
 void PacketQueue::insert(int prio, Packet *pkt)
@@ -70,26 +71,24 @@ void PacketQueue::remove(const Packet *pkt)
 
 Packet* PacketQueue::get(bool must_continue)
 {
-	static int prio = 0;
-	static Packet *tmp;
 	Packet *ret;
 
 	if (!must_continue) {
-		prio = 0;
-		tmp = front[prio];
+		cur_prio = 0;
+		cur_pkt = front[cur_prio];
 	}
 	
 	while (1) {
-		while (tmp != NULL) {
-			ret = tmp;
-			tmp = tmp->next;
+		while (cur_pkt != NULL) {
+			ret = cur_pkt;
+			cur_pkt = cur_pkt->next;
 			return ret;
 		}
 		
-		while (tmp == NULL) {
-			if (prio < 1) {
-				prio++;
-				tmp = front[prio];
+		while (cur_pkt == NULL) {
+			if (cur_prio < queue_levels) {
+				cur_prio++;
+				cur_pkt = front[cur_prio];
 			} else {
 				return NULL;
 			}

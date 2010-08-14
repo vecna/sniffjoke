@@ -4,9 +4,13 @@
 #include "Packet.h"
 
 class PacketQueue {
-public:
+private:
 	Packet **front;
 	Packet **back;
+	unsigned int queue_levels;
+	unsigned int cur_prio;
+	Packet *cur_pkt;
+public:
 
 	PacketQueue(int);
 	~PacketQueue();

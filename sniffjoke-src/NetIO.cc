@@ -1,22 +1,16 @@
-#include <iostream>
-#include <cerrno>
-using namespace std;
-
-#include "NetIO.h"
 #include "SjUtils.h"
+#include "NetIO.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <cerrno>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <unistd.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <linux/if_tun.h>
-#include <linux/if_ether.h>
 
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
 #include <sys/poll.h>
 
 NetIO::NetIO(SjConf *sjconf) 
