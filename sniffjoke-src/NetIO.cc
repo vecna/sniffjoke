@@ -13,7 +13,8 @@
 
 #include <sys/poll.h>
 
-NetIO::NetIO(SjConf *sjconf) 
+NetIO::NetIO(SjConf *sjconf)
+	: conntrack(sjconf)
 {
 	struct ifreq orig_gw;
 	struct ifreq ifr;
@@ -30,8 +31,6 @@ NetIO::NetIO(SjConf *sjconf)
 		networkdown_condition = true;
 		return;
 	}
-
-	conntrack = new TCPTrack(sjconf);
 
 	/* pseudo sanity check of received data, sjconf had already make something */
 	if (strlen(runcopy->gw_ip_addr) < 7 || strlen(runcopy->gw_ip_addr) > 17) {
@@ -169,8 +168,6 @@ NetIO::~NetIO()
 {
 	char tmpsyscmd[MEDIUMBUF];
 
-	delete conntrack;
-
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));
 	
@@ -222,7 +219,7 @@ void NetIO::network_io()
 							 size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
-				if (conntrack->writepacket(NETWORK, pktbuf, size))
+				if (conntrack.writepacket(NETWORK, pktbuf, size))
 					io_happened = true;
 			}
 		}
@@ -239,7 +236,7 @@ void NetIO::network_io()
 						size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
-				if (conntrack->writepacket(TUNNEL, pktbuf, size))
+				if (conntrack.writepacket(TUNNEL, pktbuf, size))
 					io_happened = true;
 			}
 		}
@@ -248,10 +245,10 @@ void NetIO::network_io()
 	if (io_happened) {
 		if(runcopy->sj_run == true) {
 			/* when sniffjoke is running the packet are analyzed and mangled */
-			conntrack->analyze_packets_queue();
+			conntrack.analyze_packets_queue();
 		} else { /* running->sj_run == false */
 			/* all packets must be marked as SEND */
-			conntrack->force_send();
+			conntrack.force_send();
 		}	
 	}
 }
@@ -264,7 +261,7 @@ void NetIO::queue_flush()
 	 * the other source_t could be LOCAL or TUNNEL;
 	 * in both case the packets goes through the network.
 	 */
-	while ((pkt = conntrack->readpacket()) != NULL) {
+	while ((pkt = conntrack.readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
 			if ((size = write(tunfd, pkt->pbuf, pkt->pbuf_size)) == -1) {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));

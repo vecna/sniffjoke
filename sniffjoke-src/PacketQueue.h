@@ -14,8 +14,8 @@ public:
 
 	PacketQueue(int);
 	~PacketQueue();
-	void insert(int, Packet *);
-	void remove(const Packet *);
+	void insert(int, Packet &);
+	void remove(const Packet &);
 	Packet* get(bool);
 	Packet* get(status_t, source_t, proto_t, bool);
 	Packet* get(unsigned int);

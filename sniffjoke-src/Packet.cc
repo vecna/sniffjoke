@@ -16,18 +16,18 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) {
 	packet_id = make_pkt_id(buff);
 }
 
-Packet::Packet(const Packet* pkt) {
-	pbuf = new unsigned char[pkt->pbuf_size];
-	memset(pbuf, 0, pkt->pbuf_size);
-	pbuf_size = pkt->pbuf_size;
-	orig_pktlen = pkt->orig_pktlen;
+Packet::Packet(const Packet& pkt) {
+	pbuf = new unsigned char[pkt.pbuf_size];
+	memset(pbuf, 0, pkt.pbuf_size);
+	pbuf_size = pkt.pbuf_size;
+	orig_pktlen = pkt.orig_pktlen;
 
-	proto = pkt->proto;
-	source = pkt->source;
-	status = pkt->status;
-	wtf = pkt->wtf;
+	proto = pkt.proto;
+	source = pkt.source;
+	status = pkt.status;
+	wtf = pkt.wtf;
 
-	memcpy(pbuf, pkt->pbuf, pkt->pbuf_size);
+	memcpy(pbuf, pkt.pbuf, pkt.pbuf_size);
 	
 	updatePointers();
 	
@@ -131,14 +131,4 @@ void Packet::fixIpTcpSum()
 	sum += htons (IPPROTO_TCP + l4len);
 	sum += half_cksum ((void *)tcp, l4len);
 	tcp->check = compute_sum(sum);
-}
-
-unsigned int Packet::make_pkt_id(const unsigned char* buf)
-{
-	if (ip->protocol == IPPROTO_TCP)
-	{
-		return tcp->seq;
-	}
-	else
-		return 0; /* packet_id == 0 mean no ID check */
 }

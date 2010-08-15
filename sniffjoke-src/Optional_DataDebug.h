@@ -3,7 +3,7 @@
 
 #include "PacketQueue.h"
 #include "SessionTrackList.h"
-#include "TTLFocusList.h"
+#include "TTLFocus.h"
 
 #include <cstdio>
 
@@ -19,9 +19,9 @@ public:
 	DataDebug();
 	~DataDebug();
 
-	void Dump_Packet(PacketQueue *);
-	void Dump_Session(SessionTrackList *);
-	void Dump_TTL(TTLFocusList *);
+	void Dump_Packet(PacketQueue &);
+	void Dump_Session(SessionTrackList &);
+	void Dump_TTL(TTLFocusMap &);
 
 	/* "Session", "Packet", "TTL" */
 	void InfoMsg(const char *, const char *, ...);

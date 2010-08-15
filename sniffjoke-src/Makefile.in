@@ -50,10 +50,9 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_sniffjoke_OBJECTS = sniffjoke.$(OBJEXT) NetIO.$(OBJEXT) \
 	SjConf.$(OBJEXT) Packet.$(OBJEXT) PacketQueue.$(OBJEXT) \
-	TTLFocus.$(OBJEXT) TTLFocusList.$(OBJEXT) \
-	SessionTrack.$(OBJEXT) SessionTrackList.$(OBJEXT) \
-	TCPTrack.$(OBJEXT) Process.$(OBJEXT) \
-	Optional_DataDebug.$(OBJEXT)
+	TTLFocus.$(OBJEXT) SessionTrack.$(OBJEXT) \
+	SessionTrackList.$(OBJEXT) TCPTrack.$(OBJEXT) \
+	Process.$(OBJEXT) Optional_DataDebug.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -171,7 +170,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-sniffjoke_SOURCES = sniffjoke.h sniffjoke.cc NetIO.h NetIO.cc SjConf.h SjConf.cc SjList.h Packet.h Packet.cc PacketQueue.h PacketQueue.cc TTLFocus.h TTLFocus.cc TTLFocusList.h TTLFocusList.cc SessionTrack.h SessionTrack.cc SessionTrackList.h SessionTrackList.cc TCPTrack.h TCPTrack.cc Process.h Process.cc Optional_DataDebug.h Optional_DataDebug.cc
+sniffjoke_SOURCES = sniffjoke.h sniffjoke.cc NetIO.h NetIO.cc SjConf.h SjConf.cc SjList.h Packet.h Packet.cc PacketQueue.h PacketQueue.cc TTLFocus.h TTLFocus.cc SessionTrack.h SessionTrack.cc SessionTrackList.h SessionTrackList.cc TCPTrack.h TCPTrack.cc Process.h Process.cc Optional_DataDebug.h Optional_DataDebug.cc
 all: all-am
 
 .SUFFIXES:
@@ -267,7 +266,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjConf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCPTrack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TTLFocus.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TTLFocusList.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sniffjoke.Po@am__quote@
 
 .cc.o:

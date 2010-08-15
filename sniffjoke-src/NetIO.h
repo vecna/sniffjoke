@@ -19,7 +19,7 @@ private:
 	 */
 	struct sockaddr_ll send_ll;
 	struct sj_config *runcopy;
-	TCPTrack *conntrack;
+	TCPTrack conntrack;
 
 	/* tunfd/netfd: file descriptor for I/O purpose */
 	int tunfd;

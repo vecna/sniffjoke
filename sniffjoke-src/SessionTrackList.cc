@@ -1,7 +1,18 @@
-#include "SessionTrackList.h"
 #include "SjUtils.h"
+#include "SessionTrackList.h"
 
 #include <arpa/inet.h>
+
+
+SessionTrackList::SessionTrackList()
+{
+	internal_log(NULL, DEBUG_LEVEL, "SessionTrackList()");	
+}
+
+SessionTrackList::~SessionTrackList()
+{
+	internal_log(NULL, DEBUG_LEVEL, "~SessionTrackList()");
+}
 
 SessionTrack* SessionTrackList::get(bool must_continue)
 {
@@ -27,9 +38,9 @@ SessionTrack* SessionTrackList::get(unsigned int daddr, unsigned short sport, un
 }
 
 
-SessionTrack* SessionTrackList::get(const Packet *pkt)
+SessionTrack* SessionTrackList::get(const Packet &pkt)
 {
-	return get(pkt->ip->daddr, pkt->tcp->source, pkt->tcp->dest);
+	return get(pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest);
 }
 
 /* clear_session: clear a session in two step, the first RST/FIN set shutdown 

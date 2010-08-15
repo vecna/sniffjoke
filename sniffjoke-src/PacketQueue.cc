@@ -1,9 +1,11 @@
+#include "SjUtils.h"
 #include "PacketQueue.h"
 
 #include <cstdlib>
 
 PacketQueue::PacketQueue(int queue_levels)
 {
+	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");	
 	this->queue_levels = queue_levels;
 	front = new Packet*[queue_levels];
 	back = new Packet*[queue_levels];
@@ -18,6 +20,7 @@ PacketQueue::PacketQueue(int queue_levels)
 
 PacketQueue::~PacketQueue()
 {
+	internal_log(NULL, DEBUG_LEVEL, "~PacketQueue()");
 	Packet *tmp = get(false);
 	while (tmp != NULL) {
 		delete tmp;
@@ -25,47 +28,47 @@ PacketQueue::~PacketQueue()
 	}
 }
 
-void PacketQueue::insert(int prio, Packet *pkt)
+void PacketQueue::insert(int prio, Packet &pkt)
 {
-	if (pkt->packet_id) {
-		Packet* tmp = get(pkt->packet_id);
+	if (pkt.packet_id) {
+		Packet* tmp = get(pkt.packet_id);
 		if (tmp != NULL) {
-			remove(tmp);
+			remove(*tmp);
 			delete tmp;
 		}
 	}
 	if (front[prio] == NULL) {
-		pkt->prev = NULL;
-		pkt->next = NULL;
-		front[prio] = back[prio] = pkt;
+		pkt.prev = NULL;
+		pkt.next = NULL;
+		front[prio] = back[prio] = &pkt;
 	} else {
-		pkt->prev = back[prio];
-		pkt->next = NULL;
-		back[prio]->next = pkt;
-		back[prio] = pkt;
+		pkt.prev = back[prio];
+		pkt.next = NULL;
+		back[prio]->next = &pkt;
+		back[prio] = &pkt;
 	}
 }
 
-void PacketQueue::remove(const Packet *pkt)
+void PacketQueue::remove(const Packet &pkt)
 {
-	for (int i = 0; i<= 1; i++) {
-		if (front[i] == pkt) {
-			if (back[i] == pkt) {
+	for (int i = 0; i < queue_levels; i++) {
+		if (front[i] == &pkt) {
+			if (back[i] == &pkt) {
 				front[i] = back[i] = NULL;
 			} else {
 				front[i] = front[i]->next;
 				front[i]->prev = NULL;
 			}
 			return;
-		} else if (back[i] == pkt) {
+		} else if (back[i] == &pkt) {
 			back[i] = back[i]->prev;
 			back[i]->next = NULL;
 			return;
 		}
 	}
 
-	pkt->prev->next = pkt->next;
-	pkt->next->prev = pkt->prev;
+	pkt.prev->next = pkt.next;
+	pkt.next->prev = pkt.prev;
 	return;
 }
 
@@ -86,8 +89,8 @@ Packet* PacketQueue::get(bool must_continue)
 		}
 		
 		while (cur_pkt == NULL) {
+			cur_prio++;
 			if (cur_prio < queue_levels) {
-				cur_prio++;
 				cur_pkt = front[cur_prio];
 			} else {
 				return NULL;

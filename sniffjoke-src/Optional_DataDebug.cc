@@ -26,11 +26,11 @@ DataDebug::DataDebug()
 	return;
 }
 
-void DataDebug::Dump_Packet(PacketQueue* list)
+void DataDebug::Dump_Packet(PacketQueue& list)
 {
 	int i = 0;
 	const char *source;
-	Packet *tmp = list->get(false);
+	Packet *tmp = list.get(false);
 	while (tmp != NULL) {
 		i++;
 
@@ -88,15 +88,15 @@ void DataDebug::Dump_Packet(PacketQueue* list)
 				break;
 		}
 
-		tmp = list->get(true);
+		tmp = list.get(true);
 	}
 }
 
 
-void DataDebug::Dump_Session(SessionTrackList *list)
+void DataDebug::Dump_Session(SessionTrackList &list)
 {
 	int i = 0;
-	SessionTrack *tmp = list->get(false);
+	SessionTrack *tmp = list.get(false);
 	while (tmp != NULL) {
 		i++;
 
@@ -111,18 +111,19 @@ void DataDebug::Dump_Session(SessionTrackList *list)
 				tmp->shutdown
 		);
 
-		tmp = list->get(true);
+		tmp = list.get(true);
 	}
 }
 
-void DataDebug::Dump_TTL (TTLFocusList *list)
+void DataDebug::Dump_TTL (TTLFocusMap &ttlfocus_map)
 {
 	int i = 0;
+	TTLFocus *tmp;
 	const char *ttl_status;
-	TTLFocus *tmp = list->get(false);
-	while (tmp != NULL) {
+	for ( TTLFocusMap::iterator it = ttlfocus_map.begin() ; it != ttlfocus_map.end(); it++ ) {
 		i++;
 
+		tmp = &(it->second);
 		switch(tmp->status) {
 			case TTL_KNOW:
 				ttl_status = "KNOW/DETECTED";
@@ -148,7 +149,6 @@ void DataDebug::Dump_TTL (TTLFocusList *list)
 				ttl_status
 		);
 
-		tmp = list->get(true);
 	}
 }
 

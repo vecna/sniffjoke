@@ -13,7 +13,7 @@ public:
 	unsigned int packet_number;
 	bool shutdown;
 
-	SessionTrack(const Packet *pb);
+	SessionTrack(const Packet &pb);
 	bool operator==(const SessionTrack&);
 };
 
