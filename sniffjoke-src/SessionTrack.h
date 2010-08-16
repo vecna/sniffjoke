@@ -21,34 +21,14 @@ public:
 	SessionTrack(const Packet &pb);
 };
 
-struct SessionTrackKey {
+class SessionTrackKey {
 public:
 	unsigned int daddr;
 	unsigned short sport;
 	unsigned short dport;
+	bool operator<(SessionTrackKey comp) const;
 };
 
-struct SessionTrackCmp {
-	bool operator()(struct SessionTrackKey a, struct SessionTrackKey b) const {
-		if(a.daddr < b.daddr) {
-			return true;
-		} else if(a.daddr > b.daddr) {
-			return false;
-		} else if(a.daddr == b.daddr) {
-			if(a.sport < b.sport) {
-				return true;
-			} else if(a.sport > b.sport) {
-				return false;
-			} else if(a.sport == b.sport) {
-				if(a.dport < b.dport)
-					return true;
-				else
-					return false;
-			}
-		}
-	}	
-};
-
-typedef map<SessionTrackKey, SessionTrack, SessionTrackCmp> SessionTrackMap;
+typedef map<SessionTrackKey, SessionTrack> SessionTrackMap;
 
 #endif /* SJ_SESSIONTRACK_H */

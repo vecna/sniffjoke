@@ -25,8 +25,8 @@ static DataDebug *dd;
 #define HACKSDEBUG
 
 /* Max Number of options injectable */
-#define MAXOPTINJ			12
-#define MAXHACKS			7
+#define MAXOPTINJ		12
+#define MAXHACKS		7
 
 #define STARTING_ARB_TTL	46
 
@@ -309,20 +309,20 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 #ifdef PACKETDEBUG
 	if (pkt.proto == TCP) 
 		internal_log(NULL, PACKETS_DEBUG,
-					"last_pkt_fix (TCP) : id %u (lo:%d %s:%d) proto %d source %d", 
-					ntohs(pkt.ip->id), 
-					ntohs(pkt.tcp->source),
-					inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
-					ntohs(pkt.tcp->dest), 
-					pkt.ip->protocol, 
-					pkt.source
+			"last_pkt_fix (TCP) : id %u (lo:%d %s:%d) proto %d source %d", 
+			ntohs(pkt.ip->id), 
+			ntohs(pkt.tcp->source),
+			inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
+			ntohs(pkt.tcp->dest), 
+			pkt.ip->protocol, 
+			pkt.source
 		);
 	else 
 		internal_log(NULL, PACKETS_DEBUG,
-					"last_pkt_fix (!TCP): id %u proto %d source %d", 
-					ntohs(pkt.ip->id), 
-					pkt.ip->protocol, 
-					pkt.source
+			"last_pkt_fix (!TCP): id %u proto %d source %d", 
+			ntohs(pkt.ip->id), 
+			pkt.ip->protocol, 
+			pkt.source
 		);
 #endif
 
@@ -448,12 +448,12 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 
 #ifdef PACKETDEBUG
 		internal_log(NULL, PACKETS_DEBUG, "SYN/ACK (saddr %s) seq %08x seq_ack %08x - dport %d sport %d puppet %d",
-					inet_ntoa(*((struct in_addr *)&synack.ip->saddr)),
-					ntohl(synack.tcp->seq),
-					ntohl(synack.tcp->ack_seq),
-					ntohs(synack.tcp->dest), 
-					ntohs(synack.tcp->source),
-					ntohs(ttlfocus->puppet_port)
+			inet_ntoa(*((struct in_addr *)&synack.ip->saddr)),
+			ntohl(synack.tcp->seq),
+			ntohl(synack.tcp->ack_seq),
+			ntohs(synack.tcp->dest), 
+			ntohs(synack.tcp->source),
+			ntohs(ttlfocus->puppet_port)
 		);
 #endif
 
@@ -468,12 +468,12 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG,
-						"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
-						discern_ttl,
-						ttlfocus->min_working_ttl,
-						ttlfocus->expiring_ttl,
-						ttlfocus->received_probe,
-						ttlfocus->sent_probe
+				"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
+				discern_ttl,
+				ttlfocus->min_working_ttl,
+				ttlfocus->expiring_ttl,
+				ttlfocus->received_probe,
+				ttlfocus->sent_probe
 			);
 #endif
 
@@ -516,11 +516,11 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
-				"RST/FIN received (NET): ack_seq %08x, sport %d dport %d saddr %s",
-				rstfin.tcp->ack_seq, 
-				ntohs(rstfin.tcp->source),
-				ntohs(rstfin.tcp->dest),
-				inet_ntoa(*((struct in_addr *)&rstfin.ip->saddr))
+		"RST/FIN received (NET): ack_seq %08x, sport %d dport %d saddr %s",
+		rstfin.tcp->ack_seq, 
+		ntohs(rstfin.tcp->source),
+		ntohs(rstfin.tcp->dest),
+		inet_ntoa(*((struct in_addr *)&rstfin.ip->saddr))
 	);
 #endif
 
@@ -540,7 +540,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 {
 	TTLFocus *ttlfocus;
 	SessionTrack *session;
-	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->dest, pkt.tcp->source};
+	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
 	SessionTrackMap::iterator sex_map_it;
 
 	/* 
@@ -552,10 +552,10 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 
 #ifdef PACKETDEBUG
 		internal_log(NULL, PACKETS_DEBUG,
-					"SYN from TUNNEL:%d %s:%d",
-					ntohs(pkt.tcp->source),
-					inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)),
-					ntohs(pkt.tcp->dest) 
+			"SYN from TUNNEL:%d %s:%d",
+			ntohs(pkt.tcp->source),
+			inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)),
+			ntohs(pkt.tcp->dest) 
 		);
 #endif
 		/* if sniffjoke had not yet the minimum working ttl, continue the starting probe */
@@ -578,12 +578,12 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 		if (pkt.tcp->fin || pkt.tcp->rst) {
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG,
-						"FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)",
-						ntohl(pkt.tcp->seq),
-						ntohl(pkt.tcp->ack_seq),
-						pkt.tcp->rst, pkt.tcp->fin, 
-						pkt.tcp->ack,
-						ntohs(pkt.tcp->dest), ntohs(pkt.tcp->source)
+				"FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)",
+				ntohl(pkt.tcp->seq),
+				ntohl(pkt.tcp->ack_seq),
+				pkt.tcp->rst, pkt.tcp->fin, 
+				pkt.tcp->ack,
+				ntohs(pkt.tcp->dest), ntohs(pkt.tcp->source)
 			);
 #endif
 			/* 
@@ -619,6 +619,8 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *session)
 {
 	Packet *injpkt;
+	int hpool_len = 0;
+	const int payload_len = ntohs(pkt.ip->tot_len) - ((pkt.ip->ihl * 4) + (pkt.tcp->doff * 4));
 
 	/* 
 	 * for each kind of packet I apply different hacks. Not every hacks is applied:
@@ -643,9 +645,6 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		 */
 		int prcnt;
 	} chackpkto[MAXHACKS];
-
-	int hpool_len = 0;
-	const int payload_len = ntohs(pkt.ip->tot_len) - ((pkt.ip->ihl * 4) + (pkt.tcp->doff * 4));
 
 	if (runcopy->SjH__shift_ack) {
 		
@@ -782,16 +781,16 @@ sendchosenhacks:
 			(*this.*(chackpkto[i].choosen_hack))(*injpkt);
 #ifdef HACKSDEBUG
 			internal_log(NULL, HACKS_DEBUG,
-						"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
-						chackpkto[i].debug_info,
-						ntohs(injpkt->tcp->source), 
-						inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
-						ntohs(injpkt->tcp->dest), session->packet_number,
-						ntohs(injpkt->ip->id),
-						injpkt->orig_pktlen,
-						injpkt->pbuf_size, ntohs(injpkt->ip->tot_len),
-						ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
-						injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
+				"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
+				chackpkto[i].debug_info,
+				ntohs(injpkt->tcp->source), 
+				inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
+				ntohs(injpkt->tcp->dest), session->packet_number,
+				ntohs(injpkt->ip->id),
+				injpkt->orig_pktlen,
+				injpkt->pbuf_size, ntohs(injpkt->ip->tot_len),
+				ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
+				injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
 			);
 #endif
 		}
@@ -841,12 +840,12 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
-				"Injecting probe %d, tested_ttl %d [exp %d min work %d], (dport %d sport %d) daddr %s",
-				ttlfocus.sent_probe,
-				tested_ttl, 
-				ttlfocus.expiring_ttl, ttlfocus.min_working_ttl, 
-				ntohs(injpkt->tcp->dest), ntohs(injpkt->tcp->source),
-				inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr))
+		"Injecting probe %d, tested_ttl %d [exp %d min work %d], (dport %d sport %d) daddr %s",
+		ttlfocus.sent_probe,
+		tested_ttl, 
+		ttlfocus.expiring_ttl, ttlfocus.min_working_ttl, 
+		ntohs(injpkt->tcp->dest), ntohs(injpkt->tcp->source),
+		inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr))
 	);
 #endif
 }
@@ -963,7 +962,7 @@ float TCPTrack::logarithm(int packet_number)
 SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt) 
 {
 	/* pkt is the refsyn, SYN packet reference for starting ttl bruteforce */
-	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->dest, pkt.tcp->source};
+	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
 	SessionTrackMap::iterator it = sex_map.find(key);
 	if (it != sex_map.end())
 		return &(it->second);
@@ -981,17 +980,17 @@ SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it) {
 	SessionTrack& st = stm_it->second;
 	if (st.shutdown == false) {
 		internal_log(NULL, DEBUG_LEVEL,
-					"SHUTDOWN sexion sport %d dport %d daddr %u",
-					ntohs(st.sport), ntohs(st.dport), st.daddr
+			"SHUTDOWN sexion sport %d dport %d daddr %u",
+			ntohs(st.sport), ntohs(st.dport), st.daddr
 		);
 		st.shutdown = true;
 	} else {
 		internal_log(NULL, DEBUG_LEVEL,
-					"Removing session: local:%d . %s:%d #%d", 
-					ntohs(st.sport), 
-					inet_ntoa(*((struct in_addr *)&st.daddr)) ,
-					ntohs(st.dport),
-					st.packet_number
+			"Removing session: local:%d . %s:%d #%d", 
+			ntohs(st.sport), 
+			inet_ntoa(*((struct in_addr *)&st.daddr)) ,
+			ntohs(st.dport),
+			st.packet_number
 		);
 		sex_map.erase(stm_it);
 	}
@@ -1048,8 +1047,7 @@ void TCPTrack::SjH__fake_seq(Packet &hackpkt)
 		hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) - (random() % 5000));
 
 	hackpkt.tcp->window = htons((random() % 80) * 64);
-	hackpkt.tcp->ack = 0;
-	hackpkt.tcp->ack_seq = 0;
+	hackpkt.tcp->ack = hackpkt.tcp->ack_seq = 0;
 
 	SjH__fake_data(hackpkt);
 }
@@ -1068,8 +1066,7 @@ void TCPTrack::SjH__fake_syn(Packet &hackpkt)
 		hackpkt.tcp->ack = 1;
 		hackpkt.tcp->ack_seq = htonl(random());
 	} else {
-		hackpkt.tcp->ack = 0;
-		hackpkt.tcp->ack_seq = 0;
+		hackpkt.tcp->ack = hackpkt.tcp->ack_seq = 0;
 	}
 
 	/* payload is always truncated */
@@ -1091,7 +1088,7 @@ void TCPTrack::SjH__fake_close(Packet &hackpkt)
 	/* fake close could have FIN+ACK or RST+ACK */
 	hackpkt.tcp->psh = 0;
 
-	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
+	if (random() % 2)
 		hackpkt.tcp->fin = 1;
 	else
 		hackpkt.tcp->rst = 1; 
@@ -1168,16 +1165,16 @@ void TCPTrack::SjH__inject_ipopt(Packet &hackpkt)
 
 #ifdef HACKSDEBUG
 	internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}",
-				ntohs(hackpkt.tcp->source), 
-				inet_ntoa(*((struct in_addr *)&hackpkt.ip->daddr)) ,
-				ntohs(hackpkt.tcp->dest), 
-				route_n,
-				ntohs(hackpkt.ip->id),
-				l47len,
-				ntohs(hackpkt.ip->tot_len),
-				(iphlen + l47len),
-				hackpkt.tcp->syn, hackpkt.tcp->ack, hackpkt.tcp->psh, hackpkt.tcp->fin, hackpkt.tcp->rst
+		"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}",
+		ntohs(hackpkt.tcp->source), 
+		inet_ntoa(*((struct in_addr *)&hackpkt.ip->daddr)) ,
+		ntohs(hackpkt.tcp->dest), 
+		route_n,
+		ntohs(hackpkt.ip->id),
+		l47len,
+		ntohs(hackpkt.ip->tot_len),
+		(iphlen + l47len),
+		hackpkt.tcp->syn, hackpkt.tcp->ack, hackpkt.tcp->psh, hackpkt.tcp->fin, hackpkt.tcp->rst
 	);
 #endif
 
@@ -1223,15 +1220,15 @@ void TCPTrack::SjH__inject_tcpopt(Packet &hackpkt)
 
 #ifdef HACKSDEBUG
 	internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG [Fake TcpOpt] (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
-				ntohs(hackpkt.tcp->source), 
-				inet_ntoa(*((struct in_addr *)&hackpkt.ip->daddr)) ,
-				ntohs(hackpkt.tcp->dest), 
-				ntohs(hackpkt.ip->id),
-				l57len,
-				ntohs(hackpkt.ip->tot_len),
-				(iphlen + tcphlen + faketcpopt + l57len),
-				hackpkt.tcp->syn, hackpkt.tcp->ack, hackpkt.tcp->psh, hackpkt.tcp->fin, hackpkt.tcp->rst
+		"HACKSDEBUG [Fake TcpOpt] (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
+		ntohs(hackpkt.tcp->source), 
+		inet_ntoa(*((struct in_addr *)&hackpkt.ip->daddr)) ,
+		ntohs(hackpkt.tcp->dest), 
+		ntohs(hackpkt.ip->id),
+		l57len,
+		ntohs(hackpkt.ip->tot_len),
+		(iphlen + tcphlen + faketcpopt + l57len),
+		hackpkt.tcp->syn, hackpkt.tcp->ack, hackpkt.tcp->psh, hackpkt.tcp->fin, hackpkt.tcp->rst
 	);
 #endif
 	hackpkt.ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
