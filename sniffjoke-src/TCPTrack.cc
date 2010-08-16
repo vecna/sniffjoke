@@ -54,6 +54,10 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 
 TCPTrack::~TCPTrack() 
 {
+#ifdef DATADEBUG
+        delete dd;
+#endif
+	
 	internal_log(NULL, DEBUG_LEVEL, "~TCPTrack()");
 }
 
