@@ -93,13 +93,14 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 }
 
 
-void DataDebug::Dump_Session(SessionTrackList &list)
+void DataDebug::Dump_Session(SessionTrackMap &sex_map)
 {
 	int i = 0;
-	SessionTrack *tmp = list.get(false);
-	while (tmp != NULL) {
+	SessionTrack *tmp;
+	for ( SessionTrackMap::iterator it = sex_map.begin() ; it != sex_map.end(); it++ ) {
 		i++;
 
+		tmp = &(it->second);
 		fprintf(Session_f,
 				"SessionTrack [%d] %s %d:%d isn %8x packet number %d shutdown %d\n",
 				i,
@@ -110,8 +111,6 @@ void DataDebug::Dump_Session(SessionTrackList &list)
 				tmp->packet_number,
 				tmp->shutdown
 		);
-
-		tmp = list.get(true);
 	}
 }
 

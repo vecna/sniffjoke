@@ -154,6 +154,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		running->sj_run = false;
 		running->debug_level = 1;
 		running->max_ttl_probe = 26;
+		running->max_sex_track = 4096;
 
 		/* default is to set port in normal aggressivity */
 		memset(running->portconf, NORMAL, PORTNUMBER);

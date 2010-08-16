@@ -1,5 +1,7 @@
 #include "SessionTrack.h"
 
+#include <cstdio>
+
 SessionTrack::SessionTrack(const Packet &pkt)
 {
 	daddr = pkt.ip->daddr;
@@ -8,8 +10,4 @@ SessionTrack::SessionTrack(const Packet &pkt)
 	isn = pkt.tcp->seq;
 	packet_number = 1;
 	shutdown = false;
-}
-
-bool SessionTrack::operator==(const SessionTrack& st) {
-	return (st.daddr == daddr && st.sport == sport && st.dport == dport);
 }

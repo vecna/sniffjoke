@@ -2,7 +2,7 @@
 #define SJ_OPTIONAL_DATADEBUG_H
 
 #include "PacketQueue.h"
-#include "SessionTrackList.h"
+#include "SessionTrack.h"
 #include "TTLFocus.h"
 
 #include <cstdio>
@@ -20,7 +20,7 @@ public:
 	~DataDebug();
 
 	void Dump_Packet(PacketQueue &);
-	void Dump_Session(SessionTrackList &);
+	void Dump_Session(SessionTrackMap &);
 	void Dump_TTL(TTLFocusMap &);
 
 	/* "Session", "Packet", "TTL" */

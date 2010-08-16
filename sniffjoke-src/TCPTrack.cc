@@ -35,9 +35,10 @@ static DataDebug *dd;
 enum priority_t { HIGH = 0, LOW = 1 };
 
 TCPTrack::TCPTrack(SjConf *sjconf)
-	: p_queue(2), sex_list(), ttlfocus_map()
+	: p_queue(2), sex_map(), ttlfocus_map()
 {
 	runcopy = sjconf->running;
+	maxsextrack = runcopy->max_sex_track;
 	maxttlprobe = runcopy->max_ttl_probe;
 
 	/* random pool initialization */
@@ -163,7 +164,7 @@ void TCPTrack::analyze_packets_queue()
 {
 	Packet *pkt;
 	TTLFocus *ttlfocus;
-	TTLFocusMap::iterator it;
+	TTLFocusMap::iterator ttlfocus_map_it;
 
 #ifdef DATADEBUG
         dd->InfoMsg("Packet", "analyze_packets_queue");
@@ -233,11 +234,11 @@ void TCPTrack::analyze_packets_queue()
 
 	pkt = p_queue.get(KEEP, TUNNEL, TCP, false);
 	while (pkt != NULL) {
-		it = ttlfocus_map.find(pkt->ip->daddr);
-		if (it == ttlfocus_map.end())
+		ttlfocus_map_it = ttlfocus_map.find(pkt->ip->daddr);
+		if (ttlfocus_map_it == ttlfocus_map.end())
 			 check_call_ret("unforeseen bug: ttlfocus == NULL in TCPTrack.cc, contact the package mantainer, sorry. analyze_packet_queue", 0, -1, true);
 		
-		ttlfocus = &(it->second);
+		ttlfocus = &(ttlfocus_map_it->second);
 		if (ttlfocus->status == TTL_BRUTALFORCE)  {
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG, "status BRUTALFORCE for %s: %d %d pkt is KEEP (%d), send %d probe, rcvd %d probe",
@@ -297,7 +298,7 @@ void TCPTrack::force_send()
 void TCPTrack::last_pkt_fix(Packet &pkt)
 {
 	const TTLFocus *ttlfocus;
-	TTLFocusMap::iterator it;
+	TTLFocusMap::iterator ttlfocus_map_it;
 	const time_t now = time(NULL);
 	int i;
 
@@ -328,11 +329,11 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	if (pkt.proto != TCP || pkt.source == TTLBFORCE)
 		return;
 
-	it = ttlfocus_map.find(pkt.ip->daddr);
-	if (it == ttlfocus_map.end())
+	ttlfocus_map_it = ttlfocus_map.find(pkt.ip->daddr);
+	if (ttlfocus_map_it == ttlfocus_map.end())
 		return;
 
-	ttlfocus = &(it->second);
+	ttlfocus = &(ttlfocus_map_it->second);
 	/* 1st check: HOW MANY TTL GIVE TO THE PACKET ? */
 	if (ttlfocus->status == TTL_UNKNOW) {
 		if (pkt.wtf == PRESCRIPTION)
@@ -382,7 +383,7 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 {
 	const struct iphdr *badiph;
 	const struct tcphdr *badtcph;
-	TTLFocusMap::iterator it;
+	TTLFocusMap::iterator ttlfocus_map_it;
 
 #ifdef DATADEBUG
         dd->InfoMsg("TTL", "analyze_incoming_icmp");
@@ -392,9 +393,9 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 	badiph = (struct iphdr *)((unsigned char *)timeexc.icmp + sizeof(struct icmphdr));
 	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl * 4));
 
-	it = ttlfocus_map.find(badiph->daddr);
-	if (it != ttlfocus_map.end() && badiph->protocol == IPPROTO_TCP) {
-		TTLFocus *ttlfocus = &(it->second);
+	ttlfocus_map_it = ttlfocus_map.find(badiph->daddr);
+	if (ttlfocus_map_it != ttlfocus_map.end() && badiph->protocol == IPPROTO_TCP) {
+		TTLFocus *ttlfocus = &(ttlfocus_map_it->second);
 		unsigned char expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 		unsigned char exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
@@ -434,7 +435,7 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 
 #ifdef DATADEBUG
         dd->InfoMsg("Session", "analyzie_incoming_synack, from: %s", inet_ntoa(*((struct in_addr *)&synack.ip->saddr)));
-        dd->Dump_Session(sex_list);
+		dd->Dump_Session(sex_map);
 #endif
 
 	/* NETWORK is src: dest port and source port inverted and saddr are used, 
@@ -510,7 +511,8 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 
 Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 {
-	SessionTrack *session = sex_list.get(rstfin.ip->saddr, rstfin.tcp->dest, rstfin.tcp->source);
+	SessionTrackKey key = {rstfin.ip->saddr, rstfin.tcp->dest, rstfin.tcp->source};
+	SessionTrackMap::iterator stm_it = sex_map.find(key);
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
@@ -522,13 +524,13 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 	);
 #endif
 
-	if (session != NULL) {
+	if (stm_it != sex_map.end()) {
 		/* 
 		 * clear_session don't remove conntrack immediatly, at the first call
 		 * set the "shutdown" bool variable, at the second clear it, this
 		 * because of double FIN-ACK and RST-ACK happening between both hosts.
 		 */
-		sex_list.clear_session(session);
+		clear_session(stm_it);
 	}
 	
 	return &rstfin;
@@ -538,6 +540,8 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 {
 	TTLFocus *ttlfocus;
 	SessionTrack *session;
+	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->dest, pkt.tcp->source};
+	SessionTrackMap::iterator sex_map_it;
 
 	/* 
 	 * session get return an existing session or even NULL, 
@@ -566,39 +570,36 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 
 	/* all outgoing packets, exception for starting SYN, are SEND immediatly */	
 	pkt.status = SEND;
-	session = sex_list.get(pkt);
-	if (session != NULL && (pkt.tcp->rst || pkt.tcp->fin)) {
+	
+	sex_map_it = sex_map.find(key);
+	if (sex_map_it != sex_map.end()) {
+		session = &(sex_map_it->second);
+		session->packet_number++;
+		if (pkt.tcp->fin || pkt.tcp->rst) {
 #ifdef PACKETDEBUG
-		internal_log(NULL, PACKETS_DEBUG,
-					"FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)",
-					ntohl(pkt.tcp->seq),
-					ntohl(pkt.tcp->ack_seq),
-					pkt.tcp->rst, pkt.tcp->fin, 
-					pkt.tcp->ack,
-					ntohs(pkt.tcp->dest), ntohs(pkt.tcp->source)
-		);
+			internal_log(NULL, PACKETS_DEBUG,
+						"FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)",
+						ntohl(pkt.tcp->seq),
+						ntohl(pkt.tcp->ack_seq),
+						pkt.tcp->rst, pkt.tcp->fin, 
+						pkt.tcp->ack,
+						ntohs(pkt.tcp->dest), ntohs(pkt.tcp->source)
+			);
 #endif
-		/* 
-		 * clear_session don't remove conntrack immediatly, at the first 
-		 * invoke set "shutdown" variable, at the second clear it 
-		 */
-		 sex_list.clear_session(session);
-		   
-		 /* a closed or shutdown session don't require to be hacked */
+			/* 
+			 * clear_session don't remove conntrack immediatly, at the first 
+			 * invoke set "shutdown" variable, at the second clear it 
+			 */
+			 clear_session(sex_map_it);
+			   
+		} else {
+						
+			/* update_session_stat(xml_stat_root, ct); */
+
+			/* a closed or shutdown session don't require to be hacked */
+			inject_hack_in_queue(pkt, session);		
+		}
 	}
-	
-	if (session == NULL)
-		return;
-	
-	session->packet_number++;
-				
-	/* update_session_stat(xml_stat_root, ct); */
-
-	/* a closed or shutdown session don't require to be hacked */
-	if (pkt.tcp->rst || pkt.tcp->fin)
-		return;
-
-	inject_hack_in_queue(pkt, session);
 }
 
 /* 
@@ -962,13 +963,38 @@ float TCPTrack::logarithm(int packet_number)
 SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt) 
 {
 	/* pkt is the refsyn, SYN packet reference for starting ttl bruteforce */
-	SessionTrack *session = sex_list.get(pkt);
-	if (session == NULL) {
-		session = new SessionTrack(pkt);
-		sex_list.push_back(*(session));
+	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->dest, pkt.tcp->source};
+	SessionTrackMap::iterator it = sex_map.find(key);
+	if (it != sex_map.end())
+		return &(it->second);
+	else {
+		if(sex_map.size() == maxsextrack) {
+			/* if we reach sextrackmax probably we have a lot of dead sessions trackd */
+			/* we can make a complete clear() resetting sex_map without problems */
+			sex_map.clear();
+		}
+		return &(sex_map.insert(pair<SessionTrackKey, SessionTrack>(key, pkt)).first->second);
 	}
-	
-	return session;
+}
+
+SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it) {
+	SessionTrack& st = stm_it->second;
+	if (st.shutdown == false) {
+		internal_log(NULL, DEBUG_LEVEL,
+					"SHUTDOWN sexion sport %d dport %d daddr %u",
+					ntohs(st.sport), ntohs(st.dport), st.daddr
+		);
+		st.shutdown = true;
+	} else {
+		internal_log(NULL, DEBUG_LEVEL,
+					"Removing session: local:%d . %s:%d #%d", 
+					ntohs(st.sport), 
+					inet_ntoa(*((struct in_addr *)&st.daddr)) ,
+					ntohs(st.dport),
+					st.packet_number
+		);
+		sex_map.erase(stm_it);
+	}
 }
 
 TTLFocus* TCPTrack::init_ttlfocus(unsigned int daddr) 

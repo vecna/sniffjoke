@@ -5,10 +5,10 @@
 
 #define MAGICVAL	0xADECADDE
 
-#define HEAVY	0x04
-#define NORMAL	0x03
-#define LIGHT	0x02
-#define NONE	0x01
+#define HEAVY		0x04
+#define NORMAL		0x03
+#define LIGHT		0x02
+#define NONE		0x01
 
 #define PORTNUMBER  65535
 
@@ -53,6 +53,7 @@ struct sj_config {
 		char gw_mac_str[SMALLBUF];				/* default: autodetect */
 		unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
 		unsigned short max_ttl_probe;			/* default: 26 */
+		unsigned int max_sex_track;				/* default: 4096 */
 		unsigned char interface[SMALLBUF];		/* default: autodetect */
 		int tun_number;							/* tunnel interface number */
 		unsigned char portconf[PORTNUMBER];
