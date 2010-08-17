@@ -68,9 +68,9 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, int nbyte)
 		return false;
 	}
 
-	if (nbyte != ntohs(ip->tot_len)) {
+	if (nbyte < ntohs(ip->tot_len)) {
 #ifdef DATADEBUG
-		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte != ntohs(ip->tot_len))");
+		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < ntohs(ip->tot_len))");
 #endif
 		return false;
 	}
