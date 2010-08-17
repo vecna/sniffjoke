@@ -69,11 +69,11 @@ void Packet::resizePayload(int newlen) {
 	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
 	int newpbuf_size = pbuf_size - oldlen + newlen;
 	unsigned char* newpbuf = new unsigned char[newpbuf_size];
-	memset(newpbuf, 0, newpbuf_size);
 	int newtotallen = iphlen + tcphlen + newlen;
 	
 	/* IP header copy , TCP header copy, Payload copy, if preserved */
 	memcpy(newpbuf, pbuf, newtotallen);
+	memset(newpbuf + newtotallen, 0, newpbuf_size - newtotallen);
 	delete[] pbuf;
 	pbuf = newpbuf;
 	
@@ -151,7 +151,7 @@ void Packet::fixIpTcpSum()
 }
 
 HackPacket::HackPacket(const Packet& pkt)
-	: Packet(pkt.pbuf_size + MAXOPTINJ * 3, pkt.pbuf, pkt.pbuf_size)
+	: Packet(pkt.pbuf_size + MAXOPTINJ, pkt.pbuf, pkt.pbuf_size)
 {
 	packet_id = 0;
 }
@@ -179,28 +179,62 @@ void HackPacket::SjH__fake_seq()
 {
 	int what = (random() % 3);
 
-	/* 
-	 * MAXOPTINJ is used * 3 because the HackPacket can be incremented in size here,
-	 * have ipopt and tcpopt. This variable should, and is better if became random
-	 * instead of fixed value.
-	 */
 	if (!payload) {
-		tcp->seq = htonl(ntohl(tcp->seq) + MAXOPTINJ * 3);
-		ip->tot_len = htons(ntohs(ip->tot_len) + MAXOPTINJ * 3);
-	} else
-		if (what == 0)
-			what = 2;
+		tcp->seq = htonl(ntohl(tcp->seq) + MAXOPTINJ);
+		ip->tot_len = htons(ntohs(ip->tot_len) + MAXOPTINJ);
+	} else if (what == 0)
+		what = 2;
 
 	if (what == 2) 
 		tcp->seq = htonl(ntohl(tcp->seq) + (random() % 5000));
 
-	else /* what == 1 */
+	if (what == 1)
 		tcp->seq = htonl(ntohl(tcp->seq) - (random() % 5000));
 
 	tcp->window = htons((random() % 80) * 64);
 	tcp->ack = tcp->ack_seq = 0;
 
 	SjH__fake_data();
+}
+
+void HackPacket::SjH__fake_close()
+{
+	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	
+	/* fake close could have FIN+ACK or RST+ACK */
+	tcp->psh = 0;
+
+	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
+		tcp->fin = 1;
+	else
+		tcp->rst = 1; 
+
+	/* in both case, the sequence number must be shrink as no data are there.
+	 * the ack_seq is set because the ACK flag is checked to be 1 */
+	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
+}
+
+void HackPacket::SjH__zero_window()
+{
+	tcp->syn = tcp->fin = tcp->rst = 1;
+	tcp->psh = tcp->ack = 0;
+	tcp->window = 0;
+}
+
+void HackPacket::SjH__valid_rst_fake_seq()
+{
+	/* 
+	 * if the session is resetted, the remote box maybe vulnerable to:
+	 * Slipping in the window: TCP Reset attacks
+	 * http://kerneltrap.org/node/3072
+	 */
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 12345));
+	tcp->window = (unsigned short)(-1);
+	tcp->rst = tcp->ack = 1;
+	tcp->ack_seq = htonl(ntohl(tcp->seq + 1));
+	tcp->fin = tcp->psh = tcp->syn = 0;
 }
 
 /* fake syn, same more or less value, but, fake */
@@ -231,50 +265,10 @@ void HackPacket::SjH__fake_syn()
 	}
 }
 
-void HackPacket::SjH__fake_close()
-{
-	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-	
-	/* fake close could have FIN+ACK or RST+ACK */
-	tcp->psh = 0;
-
-	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
-		tcp->fin = 1;
-	else
-		tcp->rst = 1; 
-
-	/* in both case, the sequence number must be shrink as no data are there.
-	 * the ack_seq is set because the ACK flag is checked to be 1 */
-	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
-}
-
-void HackPacket::SjH__zero_window()
-{
-	tcp->syn = tcp->fin = tcp->rst = 1;
-	tcp->psh = tcp->ack = 0;
-	tcp->window = 0;
-}
-
 void HackPacket::SjH__shift_ack()
 {
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
-}
-
-void HackPacket::SjH__valid_rst_fake_seq()
-{
-	/* 
-	 * if the session is resetted, the remote box maybe vulnerable to:
-	 * Slipping in the window: TCP Reset attacks
-	 * http://kerneltrap.org/node/3072
-	 */
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 12345));
-	tcp->window = (unsigned short)(-1);
-	tcp->rst = tcp->ack = 1;
-	tcp->ack_seq = htonl(ntohl(tcp->seq + 1));
-	tcp->fin = tcp->psh = tcp->syn = 0;
 }
 
 /* ipopt IPOPT_RR inj*/
@@ -310,9 +304,8 @@ void HackPacket::SjH__inject_ipopt()
 				
 	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
 
-
-	for (int i = 4; i < fakeipopt; i++)
-		endip[i] = (char)random();
+	for (int i = 4; i < fakeipopt; i +=4)
+		endip[i] = random();
 
 #ifdef HACKSDEBUG
 	internal_log(NULL, HACKS_DEBUG,

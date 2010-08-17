@@ -41,30 +41,30 @@ struct sj_useropt {
 };
 
 struct sj_config {
-		float MAGIC;							/* integrity check for saved binary configuration */
-		bool sj_run;							/* default: false = NO RUNNING */
-		const char *user;						/* default: nobody */
-		const char *group;						/* default: nogroup */
-		char chroot_dir[MEDIUMBUF];				/* default: /var/run/sniffjoke */
-		char logfname[MEDIUMBUF];				/* default: /var/log/sniffjoke.log */
-		int debug_level;						/* default: 1 */
-		char local_ip_addr[SMALLBUF];			/* default: autodetect */
-		char gw_ip_addr[SMALLBUF];				/* default: autodetect */
-		char gw_mac_str[SMALLBUF];				/* default: autodetect */
+		float MAGIC;				/* integrity check for saved binary configuration */
+		bool sj_run;				/* default: false = NO RUNNING */
+		const char *user;			/* default: nobody */
+		const char *group;			/* default: nogroup */
+		char chroot_dir[MEDIUMBUF];		/* default: /var/run/sniffjoke */
+		char logfname[MEDIUMBUF];		/* default: /var/log/sniffjoke.log */
+		int debug_level;			/* default: 1 */
+		char local_ip_addr[SMALLBUF];		/* default: autodetect */
+		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
+		char gw_mac_str[SMALLBUF];		/* default: autodetect */
 		unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
-		unsigned short max_ttl_probe;			/* default: 26 */
-		unsigned int max_sex_track;				/* default: 4096 */
-		unsigned char interface[SMALLBUF];		/* default: autodetect */
-		int tun_number;							/* tunnel interface number */
+		unsigned short max_ttl_probe;		/* default: 30 */
+		unsigned int max_sex_track;		/* default: 4096 */
+		unsigned char interface[SMALLBUF];	/* default: autodetect */
+		int tun_number;				/* tunnel interface number */
 		unsigned char portconf[PORTNUMBER];
 
-		bool SjH__shift_ack;
 		bool SjH__fake_data;
 		bool SjH__fake_seq;
 		bool SjH__fake_close;
 		bool SjH__zero_window;
 		bool SjH__valid_rst_fake_seq;
 		bool SjH__fake_syn;
+		bool SjH__shift_ack;
 		bool SjH__half_fake_syn;
 		bool SjH__half_fake_ack;
 		bool SjH__inject_ipopt;

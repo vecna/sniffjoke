@@ -5,9 +5,9 @@
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-/* Max Number of options injectable */
-#define MAXOPTINJ		12
-#define MAXHACKS		7
+#define MAXHACKS	7   // Max num of injected hacks
+#define MAXOPTINJ	48  // Max num of byte for option injection: 8 byte ipopt, 40 byte tcpopt
+
 
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
 enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
@@ -53,8 +53,6 @@ public:
 	void resizePayload(int);
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
-	void fixIpSum();
-	void fixTcpSum();
 	void fixIpTcpSum();
 };
 
@@ -63,17 +61,14 @@ public:
 
 	HackPacket(const Packet &);
 
-	/* the sniffjoke hack apply on the packets */
+	/* sniffjoke hacks applied on the packets */
 	void SjH__fake_data();
 	void SjH__fake_seq();
-	void SjH__fake_syn();
 	void SjH__fake_close();
 	void SjH__zero_window();
-
-	/* sadly, those hacks require some analysis */
-	void SjH__shift_ack();
 	void SjH__valid_rst_fake_seq();
-
+	void SjH__fake_syn();
+	void SjH__shift_ack();
 	/* void SjH__half_fake_syn(); NOT IMPLEMENTED */
 	/* void SjH__half_fake_ack(); NOT IMPLEMENTED */
 
