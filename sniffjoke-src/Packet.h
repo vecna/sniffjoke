@@ -5,15 +5,16 @@
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-enum status_t { ANY_STATUS = 0, SEND = 1, KEEP = 2, YOUNG = 3 };
-enum source_t { ANY_SOURCE = 0, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
-enum proto_t { ANY_PROTO = 0, TCP = 1, ICMP = 2, OTHER_IP = 3 };
-enum judge_t { INNOCENT = 0, PRESCRIPTION = 1, GUILTY = 2 };
+/* Max Number of options injectable */
+#define MAXOPTINJ		12
+#define MAXHACKS		7
+
+enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
+enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
+enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3 };
+enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
 
 class Packet {
-private:
-	unsigned int make_pkt_id(const unsigned char*);
-
 public:
 
 	Packet* prev;
@@ -26,10 +27,10 @@ public:
 	 */
 	unsigned int packet_id;
 
-	proto_t proto;
 	source_t source;
 	status_t status;
 	judge_t wtf;
+	proto_t proto;
 
 	struct iphdr *ip;
 	struct tcphdr *tcp;
@@ -42,14 +43,40 @@ public:
 
 	Packet(int, const unsigned char*, int) ;
 	Packet(const Packet &);
-	~Packet();
+	virtual ~Packet();
 
+	unsigned int make_pkt_id(const unsigned char*) const;
+	void mark(source_t, status_t, judge_t);
 	void updatePointers();
 	/* functions required in TCP/IP packets forging */
 	void resizePayload(int);
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum();
+};
+
+class HackPacket : public Packet {
+public:
+
+	HackPacket(const Packet &);
+
+	/* the sniffjoke hack apply on the packets */
+	void SjH__fake_data();
+	void SjH__fake_seq();
+	void SjH__fake_syn();
+	void SjH__fake_close();
+	void SjH__zero_window();
+
+	/* sadly, those hacks require some analysis */
+	void SjH__shift_ack();
+	void SjH__valid_rst_fake_seq();
+
+	/* void SjH__half_fake_syn(); NOT IMPLEMENTED */
+	/* void SjH__half_fake_ack(); NOT IMPLEMENTED */
+
+	/* size of header to fill with wild IP/TCP options */
+	void SjH__inject_ipopt();
+	void SjH__inject_tcpopt();
 };
 
 #endif /* SJ_PACKET_H */

@@ -24,10 +24,6 @@ static DataDebug *dd;
 // define HACKSDEBUG enable dump about packet injected
 #define HACKSDEBUG
 
-/* Max Number of options injectable */
-#define MAXOPTINJ		12
-#define MAXHACKS		7
-
 #define STARTING_ARB_TTL	46
 
 #define UNCHANGED_SIZE		(-1)
@@ -126,10 +122,8 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 	 * the packets options could be modified by last_pkt_fix
 	 */
 
-	pkt = new Packet(nbyte + MAXOPTINJ*3, buff, nbyte);
-	pkt->source = source;
-	pkt->status = YOUNG;
-	pkt->wtf = INNOCENT;
+	pkt = new Packet(nbyte, buff, nbyte);
+	pkt->mark(source, YOUNG, INNOCENT);
 
 	/* 
 	 * the packet from the tunnel are put with lower priority and the
@@ -353,15 +347,16 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	}
 	
 	/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
-	if (!pkt.tcp->syn && pkt.wtf != INNOCENT) {
+	HackPacket *injpkt = dynamic_cast<HackPacket*>(&pkt);
+	if (injpkt) {
 		if (runcopy->SjH__inject_ipopt) {
 			/* we can inject if we have at least 4 bytes free
 			 * in point of fact we does not need 4 bytes, because we can strip also
 			 * options just present in the packet
 			 */
-			if ((pkt.pbuf_size - ntohs(pkt.ip->tot_len)) > 4)
+			if ((injpkt->pbuf_size - ntohs(injpkt->ip->tot_len)) > 4)
 				if (percentage(1, 100))
-					SjH__inject_ipopt(pkt);
+					injpkt->SjH__inject_ipopt();
 		}
 
 		if (runcopy->SjH__inject_tcpopt) {
@@ -369,17 +364,19 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 			 * in point of fact we does not need 8 bytes, because we can strip also
 			 * options just present in the packet
 			 */
-			if ((pkt.pbuf_size - ntohs(pkt.ip->tot_len)) > 8 && !check_uncommon_tcpopt(pkt.tcp))
+			if ((injpkt->pbuf_size - ntohs(injpkt->ip->tot_len)) > 8 && !check_uncommon_tcpopt(injpkt->tcp))
 				if (percentage(25, 100))
-					SjH__inject_tcpopt(pkt);
+					injpkt->SjH__inject_tcpopt();
 		}
 	}
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
-	pkt.fixIpTcpSum();
 
-	if (pkt.wtf == GUILTY)
-		pkt.tcp->check ^= (0xd34d * (unsigned short)random() +1);
+	Packet *packet = dynamic_cast<Packet*>(&pkt);	
+	packet->fixIpTcpSum();
+
+	if (packet->wtf == GUILTY)
+		packet->tcp->check ^= (0xd34d * (unsigned short)random() +1);
 }
 
 
@@ -622,7 +619,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
  */
 void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *session)
 {
-	Packet *injpkt;
+	HackPacket *injpkt;
 	int hpool_len = 0;
 	const int payload_len = ntohs(pkt.ip->tot_len) - ((pkt.ip->ihl * 4) + (pkt.tcp->doff * 4));
 
@@ -633,7 +630,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 	 * ~ 95%
 	 */
 	struct choosen_hack_pool {
-		void (TCPTrack::*choosen_hack)(Packet &);
+		void (HackPacket::*choosen_hack)();
 		/* percentage to be PRESCRIPTION (ttl expire), 
 		 * otherwise is GUILTY (invalid packet). 0 mean to be 
 		 * INNOCENT (valid packet) 
@@ -655,7 +652,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		/* SHIFT ack */
 		if (pkt.tcp->ack) {
 			if (percentage (logarithm (session->packet_number), 15)) {
-				chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__shift_ack;
+				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__shift_ack;
 				chackpkto[hpool_len].prcnt = 0;
 				chackpkto[hpool_len].debug_info =  (char *)"shift ack";
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
@@ -672,7 +669,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 
 		if (payload_len) {
 			if (percentage (logarithm (session->packet_number), 10)) {
-				chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__fake_data;
+				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data;
 				chackpkto[hpool_len].prcnt = 98;
 				chackpkto[hpool_len].debug_info = (char *)"fake data";
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE; 
@@ -687,7 +684,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		
 		/* fake SEQ injection */
 		if (percentage (logarithm (session->packet_number), 15)) {
-			chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__fake_seq;
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_seq;
 			chackpkto[hpool_len].prcnt = 98;
 			chackpkto[hpool_len].debug_info = (char *)"fake seq";
 
@@ -705,7 +702,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		/* fake close (FIN/RST) injection, is required a good ack_seq */
 		if (pkt.tcp->ack) {
 			if (percentage (logarithm (session->packet_number), 5)) {
-				chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__fake_close;
+				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_close;
 				chackpkto[hpool_len].prcnt = 98;
 				chackpkto[hpool_len].debug_info = (char *)"fake close";
 				chackpkto[hpool_len].resize = 0;
@@ -719,7 +716,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		
 		/* zero window, test */
 		if (percentage (logarithm (session->packet_number), 3)) {
-			chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__zero_window;
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__zero_window;
 			chackpkto[hpool_len].prcnt = 95;
 			chackpkto[hpool_len].debug_info = (char *)"zero window";
 			chackpkto[hpool_len].resize = 0;
@@ -733,7 +730,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		
 		/* valid RST with invalid SEQ */
 		if (percentage (logarithm (session->packet_number), 8)) {
-			chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__valid_rst_fake_seq;
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__valid_rst_fake_seq;
 			chackpkto[hpool_len].prcnt = 0;
 			chackpkto[hpool_len].debug_info = (char *)"valid rst fake seq";
 			chackpkto[hpool_len].resize = 0;
@@ -746,7 +743,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		
 		/* fake SYN */
 		if (percentage (logarithm (session->packet_number), 11)) {
-			chackpkto[hpool_len].choosen_hack = &TCPTrack::SjH__fake_syn;
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_syn;
 			chackpkto[hpool_len].prcnt = 94;
 			chackpkto[hpool_len].debug_info = (char *)"fake syn";
 			chackpkto[hpool_len].resize = 0;
@@ -768,21 +765,19 @@ sendchosenhacks:
 					court_word = PRESCRIPTION;
 				else 
 					court_word = GUILTY;
-			}
-			else 
+			} else 
 				court_word = INNOCENT;
 
 			/*
 			 * packet_orphanotropy create the new packet with a length 
 			 * regrow (for supply to fake data and ip/tcp options)
+			 * 
+			 * what the fuck do with the packets ? its the Court to choose
 			 */
-			injpkt = packet_orphanotrophy(pkt, chackpkto[i].resize);
-
-			/* what the fuck do with the packets ? its the Court to choose */
-			injpkt->wtf = court_word;
+			injpkt = packet_orphanotrophy(pkt, chackpkto[i].resize, court_word);
 
 			/* calling finally the first kind of hack in the packet injected */
-			(*this.*(chackpkto[i].choosen_hack))(*injpkt);
+			(injpkt->*(chackpkto[i].choosen_hack))();
 #ifdef HACKSDEBUG
 			internal_log(NULL, HACKS_DEBUG,
 				"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
@@ -815,17 +810,13 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	 * between our peer and the remote peer. the packet
 	 * is lighty modify (ip->id change) and checksum fixed
 	 */
-	Packet *injpkt;
 
 	if (analyze_ttl_stats(ttlfocus))
 		return;
 
-	/* create a new packet
-	 * the copy is done to keep refsyn ORIGINAL */
-	injpkt = new Packet(delayed_syn_pkt);
-	injpkt->proto = TCP;
-	injpkt->source = TTLBFORCE;
-	injpkt->status = SEND;
+	/* create a new packet; the copy is done to keep refsyn ORIGINAL */
+	Packet *injpkt = new Packet(delayed_syn_pkt);
+	injpkt->mark(TTLBFORCE, SEND, INNOCENT);
 
 	/* 
 	 * if TTL expire and is generated and ICMP TIME EXCEEDED,
@@ -903,12 +894,10 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 }
 
 /* packet orphanotrophy, create the oraphans packet and raise them correctly */
-Packet* TCPTrack::packet_orphanotrophy(const Packet &pkt, int resize)
+HackPacket* TCPTrack::packet_orphanotrophy(const Packet &pkt, int resize, judge_t court_word)
 {
-	Packet *ret = new Packet(pkt);
-	ret->proto = TCP;
-	ret->source = LOCAL;
-	ret->status = SEND;
+	HackPacket *ret = new HackPacket(pkt);
+	ret->mark(LOCAL, SEND, court_word);
 
 	/* 
 	 * the packets generated could be resized, for the sniffjoke hack
@@ -1007,235 +996,4 @@ TTLFocus* TCPTrack::init_ttlfocus(unsigned int daddr)
 		return &(it->second);	
 	else
 		return &(ttlfocus_map.insert(pair<const unsigned int, TTLFocus>(daddr, daddr)).first->second);
-}
-
-/*
- * TCP/IP hacks, focus:
- *
- *  suppose the sniffer reconstruction flow, suppose which variable they use, make them
- *  variables fake and send a packet that don't ruin the real flow.
- *
- * SjH__ = sniffjoke hack
- *
- */
-void TCPTrack::SjH__fake_data(Packet &hackpkt)
-{
-	const int diff = ntohs(hackpkt.ip->tot_len) - ((hackpkt.ip->ihl * 4) + (hackpkt.tcp->doff * 4));
-
-	hackpkt.ip->id = htons(ntohs(hackpkt.ip->id) + (random() % 10));
-
-	for (int i = 0; i < diff - 3; i += 4)
-		*(long int *)&(hackpkt.payload[i]) = random();
-}
-
-void TCPTrack::SjH__fake_seq(Packet &hackpkt)
-{
-	int what = (random() % 3);
-
-	/* 
-	 * MAXOPTINJ is used * 3 because the packet can be incremented in size here,
-	 * have ipopt and tcpopt. This variable should, and is better if became random
-	 * instead of fixed value.
-	 */
-	if (!hackpkt.payload) {
-		hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) + MAXOPTINJ * 3);
-		hackpkt.ip->tot_len = htons(ntohs(hackpkt.ip->tot_len) + MAXOPTINJ * 3);
-	} else
-		if (what == 0)
-			what = 2;
-
-	if (what == 2) 
-		hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) + (random() % 5000));
-
-	else /* what == 1 */
-		hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) - (random() % 5000));
-
-	hackpkt.tcp->window = htons((random() % 80) * 64);
-	hackpkt.tcp->ack = hackpkt.tcp->ack_seq = 0;
-
-	SjH__fake_data(hackpkt);
-}
-
-/* fake syn, same more or less value, but, fake */
-void TCPTrack::SjH__fake_syn(Packet &hackpkt)
-{
-	hackpkt.tcp->psh = 0;
-	hackpkt.tcp->syn = 1;
-
-	hackpkt.ip->id = htons(ntohs(hackpkt.ip->id) + (random() % 10));
-	hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) + 65535 + (random() % 5000));
-
-	/* 20% is a SYN ACK */
-	if ((random() % 5) == 0) {
-		hackpkt.tcp->ack = 1;
-		hackpkt.tcp->ack_seq = htonl(random());
-	} else {
-		hackpkt.tcp->ack = hackpkt.tcp->ack_seq = 0;
-	}
-
-	/* payload is always truncated */
-	hackpkt.ip->tot_len = htons((hackpkt.ip->ihl * 4) + (hackpkt.tcp->doff * 4));
-
-	/* 20% had source and dest port reversed */
-	if ((random() % 5) == 0) {
-		unsigned short swap = hackpkt.tcp->source;
-		hackpkt.tcp->source = hackpkt.tcp->dest;
-		hackpkt.tcp->dest = swap;
-	}
-}
-
-void TCPTrack::SjH__fake_close(Packet &hackpkt)
-{
-	const int original_size = hackpkt.orig_pktlen - (hackpkt.ip->ihl * 4) - (hackpkt.tcp->doff * 4);
-	hackpkt.ip->id = htons(ntohs(hackpkt.ip->id) + (random() % 10));
-	
-	/* fake close could have FIN+ACK or RST+ACK */
-	hackpkt.tcp->psh = 0;
-
-	if (random() % 2)
-		hackpkt.tcp->fin = 1;
-	else
-		hackpkt.tcp->rst = 1; 
-
-	/* in both case, the sequence number must be shrink as no data are there.
-	 * the ack_seq is set because the ACK flag is checked to be 1 */
-	hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) - original_size + 1);
-}
-
-void TCPTrack::SjH__zero_window(Packet &hackpkt)
-{
-	hackpkt.tcp->syn = hackpkt.tcp->fin = hackpkt.tcp->rst = 1;
-	hackpkt.tcp->psh = hackpkt.tcp->ack = 0;
-	hackpkt.tcp->window = 0;
-}
-
-void TCPTrack::SjH__shift_ack(Packet &hackpkt)
-{
-	hackpkt.ip->id = htons(ntohs(hackpkt.ip->id) + (random() % 10));
-	hackpkt.tcp->ack_seq = htonl(ntohl(hackpkt.tcp->ack_seq) + 65535);
-}
-
-void TCPTrack::SjH__valid_rst_fake_seq(Packet &hackpkt)
-{
-	/* 
-	 * if the session is resetted, the remote box maybe vulnerable to:
-	 * Slipping in the window: TCP Reset attacks
-	 * http://kerneltrap.org/node/3072
-	 */
-	hackpkt.ip->id = htons(ntohs(hackpkt.ip->id) + (random() % 10));
-	hackpkt.tcp->seq = htonl(ntohl(hackpkt.tcp->seq) + 65535 + (random() % 12345));
-	hackpkt.tcp->window = (unsigned short)(-1);
-	hackpkt.tcp->rst = hackpkt.tcp->ack = 1;
-	hackpkt.tcp->ack_seq = htonl(ntohl(hackpkt.tcp->seq + 1));
-	hackpkt.tcp->fin = hackpkt.tcp->psh = hackpkt.tcp->syn = 0;
-}
-
-/* ipopt IPOPT_RR inj*/
-void TCPTrack::SjH__inject_ipopt(Packet &hackpkt)
-{
-	int iphlen = hackpkt.ip->ihl * 4;
-	int tcphlen = hackpkt.tcp->doff * 4;
-	const int l47len = ntohs(hackpkt.ip->tot_len) - iphlen;
-	const int max_route_n = (hackpkt.pbuf_size - ntohs(hackpkt.ip->tot_len)) / 4 - 1;
-	const int route_n = max_route_n > 9 ? (random() % 10) : max_route_n;
-	
-	const unsigned fakeipopt = ((route_n + 1) * 4);
-	unsigned char *endip = hackpkt.pbuf + sizeof(struct iphdr);
-	const int startipopt = hackpkt.ip->ihl * 4 - sizeof(struct iphdr);
-
-	/* 1: strip the original ip options, if present, copying payload over */	
-	if (iphlen > sizeof(struct iphdr)) 
-		memmove(endip, endip + startipopt, l47len);
-
-	iphlen = sizeof(struct iphdr) + fakeipopt;
-
-	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
-	memmove(endip + fakeipopt, endip, l47len);
-
-	endip[0] = IPOPT_NOP;
-	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
-	
-	/* Here comes the tha hack, 4 more or 4 less the right value*/
-	if (random() % 2)
-		endip[2] = fakeipopt - 1 - (4 * (random() % 5));	/* IPOPT_OLEN   */
-	else
-		endip[2] = fakeipopt - 1 + (4 * (random() % 5));	/* IPOPT_OLEN   */
-				
-	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
-
-
-	for (int i = 4; i < fakeipopt; i++)
-		endip[i] = (char)random();
-
-#ifdef HACKSDEBUG
-	internal_log(NULL, HACKS_DEBUG,
-		"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}",
-		ntohs(hackpkt.tcp->source), 
-		inet_ntoa(*((struct in_addr *)&hackpkt.ip->daddr)) ,
-		ntohs(hackpkt.tcp->dest), 
-		route_n,
-		ntohs(hackpkt.ip->id),
-		l47len,
-		ntohs(hackpkt.ip->tot_len),
-		(iphlen + l47len),
-		hackpkt.tcp->syn, hackpkt.tcp->ack, hackpkt.tcp->psh, hackpkt.tcp->fin, hackpkt.tcp->rst
-	);
-#endif
-
-	hackpkt.ip->ihl = iphlen / 4;
-	hackpkt.ip->tot_len = htons(iphlen + l47len);
-	hackpkt.tcp = (struct tcphdr *)((unsigned char*)(hackpkt.ip) + iphlen);
-	hackpkt.payload = (unsigned char *)(hackpkt.tcp) + tcphlen;
-}
-
-
-/* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
-void TCPTrack::SjH__inject_tcpopt(Packet &hackpkt) 
-{
-	int iphlen = hackpkt.ip->ihl * 4;
-	int tcphlen = hackpkt.tcp->doff * 4;
-	const int l57len = ntohs(hackpkt.ip->tot_len) - (iphlen + tcphlen);
-	const int faketcpopt = 8;
-	unsigned char *endtcp = hackpkt.pbuf + iphlen + sizeof(struct tcphdr);
-	const int starttcpopt = tcphlen - sizeof(struct tcphdr);
-	const time_t now = time(NULL);
-
-	/* 1: strip the original tcp options, if present, copying payload over */
-	if (tcphlen > sizeof(struct tcphdr))
-		memmove(endtcp, endtcp + starttcpopt, l57len);
-
-	tcphlen = sizeof(struct tcphdr) + faketcpopt;
-	
-	/* 2: shift the payload after the reserved space to faketcpopt */
-	memmove(endtcp + faketcpopt, endtcp, l57len);
-
-	endtcp[0] = TCPOPT_NOP;
-	endtcp[1] = TCPOPT_NOP;
-	endtcp[2] = TCPOPT_TIMESTAMP;
-	endtcp[3] = 6;
-
-	/*  6 is an invalid value;
-	 *  from: /usr/include/netinet/tcp.h:
-	 *  # define TCPOLEN_TIMESTAMP	  10
-	 */
-
-	/* time_t, 4 byte of time stamp value */
-	memcpy(&endtcp[4], &now, sizeof(time_t));
-
-#ifdef HACKSDEBUG
-	internal_log(NULL, HACKS_DEBUG,
-		"HACKSDEBUG [Fake TcpOpt] (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
-		ntohs(hackpkt.tcp->source), 
-		inet_ntoa(*((struct in_addr *)&hackpkt.ip->daddr)) ,
-		ntohs(hackpkt.tcp->dest), 
-		ntohs(hackpkt.ip->id),
-		l57len,
-		ntohs(hackpkt.ip->tot_len),
-		(iphlen + tcphlen + faketcpopt + l57len),
-		hackpkt.tcp->syn, hackpkt.tcp->ack, hackpkt.tcp->psh, hackpkt.tcp->fin, hackpkt.tcp->rst
-	);
-#endif
-	hackpkt.ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
-	hackpkt.tcp->doff = (sizeof(struct tcphdr) + 2) & 0xf;
-	hackpkt.payload = (unsigned char *)(hackpkt.tcp) + tcphlen;
 }

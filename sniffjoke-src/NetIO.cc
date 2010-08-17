@@ -189,7 +189,6 @@ NetIO::~NetIO()
 
 void NetIO::network_io()
 {
-	bool io_happened = false;
 	int burst = BURSTSIZE;
 	int nfds;
 
@@ -219,8 +218,7 @@ void NetIO::network_io()
 							 size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
-				if (conntrack.writepacket(NETWORK, pktbuf, size))
-					io_happened = true;
+				conntrack.writepacket(NETWORK, pktbuf, size);
 			}
 		}
 
@@ -236,20 +234,17 @@ void NetIO::network_io()
 						size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
-				if (conntrack.writepacket(TUNNEL, pktbuf, size))
-					io_happened = true;
+				conntrack.writepacket(TUNNEL, pktbuf, size);
 			}
 		}
 	}
 
-	if (io_happened) {
-		if(runcopy->sj_run == true) {
-			/* when sniffjoke is running the packet are analyzed and mangled */
-			conntrack.analyze_packets_queue();
-		} else { /* running->sj_run == false */
-			/* all packets must be marked as SEND */
-			conntrack.force_send();
-		}	
+	if(runcopy->sj_run == true) {
+		/* when sniffjoke is running the packet are analyzed and mangled */
+		conntrack.analyze_packets_queue();
+	} else { /* running->sj_run == false */
+		/* all packets must be marked as SEND */
+		conntrack.force_send();
 	}
 }
 

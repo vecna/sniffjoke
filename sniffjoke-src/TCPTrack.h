@@ -10,7 +10,7 @@
 
 class TCPTrack {
 private:
-	int maxsextrack;		/* max sessions to track */
+	int maxsextrack;	/* max sessions to track */
 	int maxttlprobe;	/* max probe for discern ttl */
 
 	PacketQueue p_queue;
@@ -35,27 +35,9 @@ private:
 
 	/* functions for decrete which, and if, inject hacks */
 	bool check_uncommon_tcpopt(const struct tcphdr*);
-	Packet* packet_orphanotrophy(const Packet&, int);
+	HackPacket* packet_orphanotrophy(const Packet&, int, judge_t);
 	bool percentage(float, int);
 	float logarithm(int);
-
-	/* the sniffjoke hack apply on the packets */
-	void SjH__fake_data(Packet&);
-	void SjH__fake_seq(Packet&);
-	void SjH__fake_syn(Packet&);
-	void SjH__fake_close(Packet&);
-	void SjH__zero_window(Packet&);
-
-	/* sadly, those hacks require some analysis */
-	void SjH__shift_ack(Packet&);
-	void SjH__valid_rst_fake_seq(Packet&);
-
-	/* void SjH__half_fake_syn(Packet&); NOT IMPLEMENTED */
-	/* void SjH__half_fake_ack(Packet&); NOT IMPLEMENTED */
-
-	/* size of header to fill with wild IP/TCP options */
-	void SjH__inject_ipopt(Packet&);
-	void SjH__inject_tcpopt(Packet&);
 
 	/* functions for working on queues and lists */
 	SessionTrack* init_sessiontrack(const Packet&);

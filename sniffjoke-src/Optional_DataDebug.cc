@@ -47,6 +47,9 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 			case TTLBFORCE:
 				source = "TTL BRUTAL FORCE";
 				break;
+			case SOURCEUNASSIGNED:
+				source = "SOURCE UNASSIGNED (this wouldn't be happen)";
+				break;
 			default:
 				source = "WRONG SOURCE CODE";
 		}

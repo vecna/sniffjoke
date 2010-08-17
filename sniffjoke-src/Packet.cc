@@ -2,35 +2,45 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
+#include <ctime>
 
 Packet::Packet(int size, const unsigned char* buff, int buff_size) {
-	pbuf = new unsigned char[buff_size];
-	memset(pbuf, 0, buff_size);
+	pbuf = new unsigned char[size];
 	pbuf_size = size;
 	orig_pktlen = buff_size;
 
 	memcpy(pbuf, buff, buff_size);
+	if(size - buff_size)
+		memset(pbuf+buff_size, 0, size - buff_size);
+	
+	source = SOURCEUNASSIGNED;
+	status = STATUSUNASSIGNED;
+	wtf = JUDGEUNASSIGNED;
+	proto = PROTOUNASSIGNED;
 	
 	updatePointers();
 	
 	packet_id = make_pkt_id(buff);
 }
 
-Packet::Packet(const Packet& pkt) {
+Packet::Packet(const Packet& pkt) 
+{
 	pbuf = new unsigned char[pkt.pbuf_size];
-	memset(pbuf, 0, pkt.pbuf_size);
 	pbuf_size = pkt.pbuf_size;
-	orig_pktlen = pkt.orig_pktlen;
-
-	proto = pkt.proto;
-	source = pkt.source;
-	status = pkt.status;
-	wtf = pkt.wtf;
+	orig_pktlen = pkt.pbuf_size;
 
 	memcpy(pbuf, pkt.pbuf, pkt.pbuf_size);
-	
+
+	orig_pktlen = pkt.orig_pktlen;
+
+	source = SOURCEUNASSIGNED;
+	status = STATUSUNASSIGNED;
+	wtf = JUDGEUNASSIGNED;
+	proto = PROTOUNASSIGNED;
+
 	updatePointers();
-	
+
 	packet_id = 0;
 }
 
@@ -38,12 +48,19 @@ Packet::~Packet() {
 	delete[] pbuf;
 }
 
-unsigned int Packet::make_pkt_id(const unsigned char* buf)
+unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 {
 	if (ip->protocol == IPPROTO_TCP)
 		return tcp->seq;
 	else
 		return 0; /* packet_id == 0 mean no ID check */
+}
+
+void Packet::mark(source_t source, status_t status, judge_t judge)
+{
+	this->source = source;
+	this->status = status;
+	this->wtf = judge;
 }
 
 void Packet::resizePayload(int newlen) {
@@ -131,4 +148,241 @@ void Packet::fixIpTcpSum()
 	sum += htons (IPPROTO_TCP + l4len);
 	sum += half_cksum ((void *)tcp, l4len);
 	tcp->check = compute_sum(sum);
+}
+
+HackPacket::HackPacket(const Packet& pkt)
+	: Packet(pkt.pbuf_size + MAXOPTINJ * 3, pkt.pbuf, pkt.pbuf_size)
+{
+	packet_id = 0;
+}
+
+/*
+ * TCP/IP hacks, focus:
+ *
+ *  suppose the sniffer reconstruction flow, suppose which variable they use, make them
+ *  variables fake and send a HackPacket that don't ruin the real flow.
+ *
+ * SjH__ = sniffjoke hack
+ *
+ */
+void HackPacket::SjH__fake_data()
+{
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+
+	for (int i = 0; i < diff - 3; i += 4)
+		*(long int *)&(payload[i]) = random();
+}
+
+void HackPacket::SjH__fake_seq()
+{
+	int what = (random() % 3);
+
+	/* 
+	 * MAXOPTINJ is used * 3 because the HackPacket can be incremented in size here,
+	 * have ipopt and tcpopt. This variable should, and is better if became random
+	 * instead of fixed value.
+	 */
+	if (!payload) {
+		tcp->seq = htonl(ntohl(tcp->seq) + MAXOPTINJ * 3);
+		ip->tot_len = htons(ntohs(ip->tot_len) + MAXOPTINJ * 3);
+	} else
+		if (what == 0)
+			what = 2;
+
+	if (what == 2) 
+		tcp->seq = htonl(ntohl(tcp->seq) + (random() % 5000));
+
+	else /* what == 1 */
+		tcp->seq = htonl(ntohl(tcp->seq) - (random() % 5000));
+
+	tcp->window = htons((random() % 80) * 64);
+	tcp->ack = tcp->ack_seq = 0;
+
+	SjH__fake_data();
+}
+
+/* fake syn, same more or less value, but, fake */
+void HackPacket::SjH__fake_syn()
+{
+	tcp->psh = 0;
+	tcp->syn = 1;
+
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 5000));
+
+	/* 20% is a SYN ACK */
+	if ((random() % 5) == 0) {
+		tcp->ack = 1;
+		tcp->ack_seq = htonl(random());
+	} else {
+		tcp->ack = tcp->ack_seq = 0;
+	}
+
+	/* payload is always truncated */
+	ip->tot_len = htons((ip->ihl * 4) + (tcp->doff * 4));
+
+	/* 20% had source and dest port reversed */
+	if ((random() % 5) == 0) {
+		unsigned short swap = tcp->source;
+		tcp->source = tcp->dest;
+		tcp->dest = swap;
+	}
+}
+
+void HackPacket::SjH__fake_close()
+{
+	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	
+	/* fake close could have FIN+ACK or RST+ACK */
+	tcp->psh = 0;
+
+	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
+		tcp->fin = 1;
+	else
+		tcp->rst = 1; 
+
+	/* in both case, the sequence number must be shrink as no data are there.
+	 * the ack_seq is set because the ACK flag is checked to be 1 */
+	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
+}
+
+void HackPacket::SjH__zero_window()
+{
+	tcp->syn = tcp->fin = tcp->rst = 1;
+	tcp->psh = tcp->ack = 0;
+	tcp->window = 0;
+}
+
+void HackPacket::SjH__shift_ack()
+{
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
+}
+
+void HackPacket::SjH__valid_rst_fake_seq()
+{
+	/* 
+	 * if the session is resetted, the remote box maybe vulnerable to:
+	 * Slipping in the window: TCP Reset attacks
+	 * http://kerneltrap.org/node/3072
+	 */
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 12345));
+	tcp->window = (unsigned short)(-1);
+	tcp->rst = tcp->ack = 1;
+	tcp->ack_seq = htonl(ntohl(tcp->seq + 1));
+	tcp->fin = tcp->psh = tcp->syn = 0;
+}
+
+/* ipopt IPOPT_RR inj*/
+void HackPacket::SjH__inject_ipopt()
+{
+	int iphlen = ip->ihl * 4;
+	int tcphlen = tcp->doff * 4;
+	const int l47len = ntohs(ip->tot_len) - iphlen;
+	const int max_route_n = (pbuf_size - ntohs(ip->tot_len)) / 4 - 1;
+	const int route_n = max_route_n > 9 ? (random() % 10) : max_route_n;
+	
+	const unsigned fakeipopt = ((route_n + 1) * 4);
+	unsigned char *endip = pbuf + sizeof(struct iphdr);
+	const int startipopt = ip->ihl * 4 - sizeof(struct iphdr);
+
+	/* 1: strip the original ip options, if present, copying payload over */	
+	if (iphlen > sizeof(struct iphdr)) 
+		memmove(endip, endip + startipopt, l47len);
+
+	iphlen = sizeof(struct iphdr) + fakeipopt;
+
+	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
+	memmove(endip + fakeipopt, endip, l47len);
+
+	endip[0] = IPOPT_NOP;
+	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
+	
+	/* Here comes the tha hack, 4 more or 4 less the right value*/
+	if (random() % 2)
+		endip[2] = fakeipopt - 1 - (4 * (random() % 5));	/* IPOPT_OLEN   */
+	else
+		endip[2] = fakeipopt - 1 + (4 * (random() % 5));	/* IPOPT_OLEN   */
+				
+	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
+
+
+	for (int i = 4; i < fakeipopt; i++)
+		endip[i] = (char)random();
+
+#ifdef HACKSDEBUG
+	internal_log(NULL, HACKS_DEBUG,
+		"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}",
+		ntohs(tcp->source), 
+		inet_ntoa(*((struct in_addr *)&ip->daddr)) ,
+		ntohs(tcp->dest), 
+		route_n,
+		ntohs(ip->id),
+		l47len,
+		ntohs(ip->tot_len),
+		(iphlen + l47len),
+		tcp->syn, tcp->ack, tcp->psh, tcp->fin, tcp->rst
+	);
+#endif
+
+	ip->ihl = iphlen / 4;
+	ip->tot_len = htons(iphlen + l47len);
+	tcp = (struct tcphdr *)((unsigned char*)(ip) + iphlen);
+	payload = (unsigned char *)(tcp) + tcphlen;
+}
+
+
+/* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
+void HackPacket::SjH__inject_tcpopt() 
+{
+	int iphlen = ip->ihl * 4;
+	int tcphlen = tcp->doff * 4;
+	const int l57len = ntohs(ip->tot_len) - (iphlen + tcphlen);
+	const int faketcpopt = 8;
+	unsigned char *endtcp = pbuf + iphlen + sizeof(struct tcphdr);
+	const int starttcpopt = tcphlen - sizeof(struct tcphdr);
+	const time_t now = time(NULL);
+
+	/* 1: strip the original tcp options, if present, copying payload over */
+	if (tcphlen > sizeof(struct tcphdr))
+		memmove(endtcp, endtcp + starttcpopt, l57len);
+
+	tcphlen = sizeof(struct tcphdr) + faketcpopt;
+	
+	/* 2: shift the payload after the reserved space to faketcpopt */
+	memmove(endtcp + faketcpopt, endtcp, l57len);
+
+	endtcp[0] = TCPOPT_NOP;
+	endtcp[1] = TCPOPT_NOP;
+	endtcp[2] = TCPOPT_TIMESTAMP;
+	endtcp[3] = 6;
+
+	/*  6 is an invalid value;
+	 *  from: /usr/include/netinet/tcp.h:
+	 *  # define TCPOLEN_TIMESTAMP	  10
+	 */
+
+	/* time_t, 4 byte of time stamp value */
+	memcpy(&endtcp[4], &now, sizeof(time_t));
+
+#ifdef HACKSDEBUG
+	internal_log(NULL, HACKS_DEBUG,
+		"HACKSDEBUG [Fake TcpOpt] (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
+		ntohs(tcp->source), 
+		inet_ntoa(*((struct in_addr *)&ip->daddr)) ,
+		ntohs(tcp->dest), 
+		ntohs(ip->id),
+		l57len,
+		ntohs(ip->tot_len),
+		(iphlen + tcphlen + faketcpopt + l57len),
+		tcp->syn, tcp->ack, tcp->psh, tcp->fin, tcp->rst
+	);
+#endif
+	ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
+	tcp->doff = (sizeof(struct tcphdr) + 2) & 0xf;
+	payload = (unsigned char *)(tcp) + tcphlen;
 }
