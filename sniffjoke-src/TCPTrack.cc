@@ -698,7 +698,6 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 	}
 
 	if (runcopy->SjH__fake_close) {
-		
 		/* fake close (FIN/RST) injection, is required a good ack_seq */
 		if (pkt.tcp->ack) {
 			if (percentage (logarithm (session->packet_number), 5)) {
@@ -742,7 +741,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 	if (runcopy->SjH__fake_syn) {
 		
 		/* fake SYN */
-		if (percentage (logarithm (session->packet_number), 11)) {
+		//if (percentage (logarithm (session->packet_number), 11)) {
 			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_syn;
 			chackpkto[hpool_len].prcnt = 94;
 			chackpkto[hpool_len].debug_info = (char *)"fake syn";
@@ -750,7 +749,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			
 			/* if (++hpool_len == MAXHACKS) goto sendchosenhacks; */
 			/* this is the last hack, remember this line on reaorder or new hacks add */
-		}
+		//}
 	}
 
 sendchosenhacks:
@@ -830,7 +829,6 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	injpkt->ip->id = (ttlfocus.rand_key % 64) + tested_ttl;
 
 	injpkt->fixIpTcpSum();
-
 	p_queue.insert(HIGH, *injpkt);
 
 #ifdef PACKETDEBUG

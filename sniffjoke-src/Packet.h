@@ -13,6 +13,7 @@ enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NET
 enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
 enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3 };
 enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
+enum checksum_fix_t { NO = 0, FIX_IP_CHECKSUM = 1, FIX_TCP_CHECKSUM = 2, FIX_BOTH_CHECKSUM = 3 };
 
 class Packet {
 public:
@@ -40,7 +41,7 @@ public:
 	unsigned char *pbuf;
 	int pbuf_size;  
 	int orig_pktlen;
-
+	
 	Packet(int, const unsigned char*, int) ;
 	Packet(const Packet &);
 	virtual ~Packet();
@@ -52,6 +53,8 @@ public:
 	void resizePayload(int);
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
+	void fixIpSum();
+	void fixTcpSum();
 	void fixIpTcpSum();
 };
 

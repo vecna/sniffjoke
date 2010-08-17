@@ -160,8 +160,8 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		memset(running->portconf, NORMAL, PORTNUMBER);
 
 		/* hacks common defaults */
-		running->SjH__fake_data = true;			/* implemented, enabled */
-		running->SjH__fake_seq = true;				/* implemented, enabled */
+		running->SjH__fake_data = true;				/* implemented, enabled */
+		running->SjH__fake_seq = false;				/* implemented, enabled */
 		running->SjH__fake_close = true;			/* implemented, enabled */
 		running->SjH__zero_window = true;			/* implemented, enabled */
 		running->SjH__valid_rst_fake_seq = true;		/* implemented, enabled */
