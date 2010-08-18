@@ -277,7 +277,6 @@ void NetIO::queue_flush()
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
 							 size, runcopy->sj_run == true ? "running" : "stopped");
 			}
-			
 		}
 		delete pkt;
 	}

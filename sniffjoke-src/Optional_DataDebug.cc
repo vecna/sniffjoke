@@ -127,14 +127,14 @@ void DataDebug::Dump_TTL (TTLFocusMap &ttlfocus_map)
 
 		tmp = &(it->second);
 		switch(tmp->status) {
-			case TTL_KNOW:
+			case TTL_KNOWN:
 				ttl_status = "KNOW/DETECTED";
 				break;
 			case TTL_BRUTALFORCE:
 				ttl_status = "BRUTEFORCE RUNNING";
 				break;
-			case TTL_UNKNOW:
-				ttl_status = "UNKNOW/UNABLE TO DETECT";
+			case TTL_UNKNOWN:
+				ttl_status = "UNKNOWN/UNABLE TO DETECT";
 				break;
 			default:
 				ttl_status = "TTL-ERROR-STATUS";

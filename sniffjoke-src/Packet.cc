@@ -66,17 +66,34 @@ void Packet::mark(source_t source, status_t status, judge_t judge)
 	this->wtf = judge;
 }
 
-void Packet::resizePayload(int newlen) {
+void Packet::increasePbuf(unsigned int morespace) {
+	/* the pbuf can only be incremented safaly, not decremented */
+	unsigned int newpbuf_size = pbuf_size + morespace;
+	unsigned char* newpbuf = new unsigned char[newpbuf_size];
+	memcpy(newpbuf, pbuf, pbuf_size);
+	memset(newpbuf + pbuf_size, 0, newpbuf_size - pbuf_size);
+	delete[] pbuf;
+	pbuf = newpbuf;
+	
+	updatePointers();
+	
+	/* fixing the new length */
+	pbuf_size = newpbuf_size;
+}
+
+void Packet::resizePayload(unsigned int newlen) {
+	/* the payload can be incremented or decremented safely */
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
-	int newpbuf_size = pbuf_size - oldlen + newlen;
+	unsigned int newpbuf_size = pbuf_size - oldlen + newlen;
 	unsigned char* newpbuf = new unsigned char[newpbuf_size];
-	int newtotallen = iphlen + tcphlen + newlen;
+	unsigned newtotallen = iphlen + tcphlen + newlen;
 	
 	/* IP header copy , TCP header copy, Payload copy, if preserved */
-	memcpy(newpbuf, pbuf, newtotallen);
-	memset(newpbuf + newtotallen, 0, newpbuf_size - newtotallen);
+	int copysize = newtotallen > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newtotallen;
+	memcpy(newpbuf, pbuf, copysize );
+	memset(newpbuf + copysize, 0, newpbuf_size - copysize);
 	delete[] pbuf;
 	pbuf = newpbuf;
 	
@@ -212,7 +229,7 @@ void HackPacket::SjH__fake_close()
 	else
 		tcp->rst = 1; 
 
-	/* in both case, the sequence number must be shrink as no data are there.
+	/* in both case, the sequence number must be shrink as no data is there.
 	 * the ack_seq is set because the ACK flag is checked to be 1 */
 	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
 }
@@ -239,13 +256,12 @@ void HackPacket::SjH__valid_rst_fake_seq()
 	tcp->fin = tcp->psh = tcp->syn = 0;
 }
 
-/* fake syn, same more or less value, but, fake */
 void HackPacket::SjH__fake_syn()
 {
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	
 	tcp->psh = 0;
 	tcp->syn = 1;
-
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 5000));
 
 	/* 20% is a SYN ACK */
@@ -265,7 +281,6 @@ void HackPacket::SjH__fake_syn()
 		tcp->source = tcp->dest;
 		tcp->dest = swap;
 	}
-	
 }
 
 void HackPacket::SjH__shift_ack()
@@ -277,19 +292,24 @@ void HackPacket::SjH__shift_ack()
 /* ipopt IPOPT_RR inj*/
 void HackPacket::SjH__inject_ipopt()
 {
+	const int route_n = random() % 10;
+	const unsigned fakeipopt = ((route_n + 1) * 4);
+	
+	const int needed_space = fakeipopt;
+	const int free_space = pbuf_size - ntohs(ip->tot_len);
+	if(free_space < needed_space)
+		increasePbuf(needed_space - free_space);	
+
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	const int l47len = ntohs(ip->tot_len) - iphlen;
-	const int max_route_n = (pbuf_size - ntohs(ip->tot_len)) / 4 - 1;
-	const int route_n = max_route_n > 9 ? (random() % 10) : max_route_n;
 	
-	const unsigned fakeipopt = ((route_n + 1) * 4);
 	unsigned char *endip = pbuf + sizeof(struct iphdr);
 	const int startipopt = ip->ihl * 4 - sizeof(struct iphdr);
 
 	/* 1: strip the original ip options, if present, copying payload over */	
 	if (iphlen > sizeof(struct iphdr)) 
-		memmove(endip, endip + startipopt, l47len);
+		memmove(endip, pbuf + iphlen, l47len);
 
 	iphlen = sizeof(struct iphdr) + fakeipopt;
 
@@ -310,21 +330,6 @@ void HackPacket::SjH__inject_ipopt()
 	for (int i = 4; i < fakeipopt; i +=4)
 		endip[i] = random();
 
-#ifdef HACKSDEBUG
-	internal_log(NULL, HACKS_DEBUG,
-		"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) (route_n %d) id %u l47 %d tot_len %d -> %d {%d%d%d%d%d}",
-		ntohs(tcp->source), 
-		inet_ntoa(*((struct in_addr *)&ip->daddr)) ,
-		ntohs(tcp->dest), 
-		route_n,
-		ntohs(ip->id),
-		l47len,
-		ntohs(ip->tot_len),
-		(iphlen + l47len),
-		tcp->syn, tcp->ack, tcp->psh, tcp->fin, tcp->rst
-	);
-#endif
-
 	ip->ihl = iphlen / 4;
 	ip->tot_len = htons(iphlen + l47len);
 	tcp = (struct tcphdr *)((unsigned char*)(ip) + iphlen);
@@ -335,17 +340,22 @@ void HackPacket::SjH__inject_ipopt()
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
 void HackPacket::SjH__inject_tcpopt() 
 {
+	const int faketcpopt = 4;
+	const int needed_space = faketcpopt;
+	const int free_space = pbuf_size - ntohs(ip->tot_len);
+	if(free_space < needed_space)
+		increasePbuf(needed_space - free_space);
+	
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	const int l57len = ntohs(ip->tot_len) - (iphlen + tcphlen);
-	const int faketcpopt = 8;
 	unsigned char *endtcp = pbuf + iphlen + sizeof(struct tcphdr);
 	const int starttcpopt = tcphlen - sizeof(struct tcphdr);
 	const time_t now = time(NULL);
 
 	/* 1: strip the original tcp options, if present, copying payload over */
 	if (tcphlen > sizeof(struct tcphdr))
-		memmove(endtcp, endtcp + starttcpopt, l57len);
+		memmove(endtcp, pbuf + tcphlen, l57len);
 
 	tcphlen = sizeof(struct tcphdr) + faketcpopt;
 	
@@ -355,30 +365,19 @@ void HackPacket::SjH__inject_tcpopt()
 	endtcp[0] = TCPOPT_NOP;
 	endtcp[1] = TCPOPT_NOP;
 	endtcp[2] = TCPOPT_TIMESTAMP;
-	endtcp[3] = 6;
+	endtcp[3] = random() % 11;
 
-	/*  6 is an invalid value;
+	/*
 	 *  from: /usr/include/netinet/tcp.h:
 	 *  # define TCPOLEN_TIMESTAMP	  10
-	 */
+	 *  NOP (1) + NOP (1) + Timestamp Value (TSval) (4) + Timestamp Echo Reply (TSecr) (4)
+	 * 
+	 *  so the hacks are two:
+	 *   - the size indicated could be different than 10
+	 *   - there is no space reserved for timestamps
+	 */ 
 
-	/* time_t, 4 byte of time stamp value */
-	memcpy(&endtcp[4], &now, sizeof(time_t));
-
-#ifdef HACKSDEBUG
-	internal_log(NULL, HACKS_DEBUG,
-		"HACKSDEBUG [Fake TcpOpt] (lo:%d %s:%d) id %u l57 %d tot_len %d -> %d {%d%d%d%d%d}",
-		ntohs(tcp->source), 
-		inet_ntoa(*((struct in_addr *)&ip->daddr)) ,
-		ntohs(tcp->dest), 
-		ntohs(ip->id),
-		l57len,
-		ntohs(ip->tot_len),
-		(iphlen + tcphlen + faketcpopt + l57len),
-		tcp->syn, tcp->ack, tcp->psh, tcp->fin, tcp->rst
-	);
-#endif
 	ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
-	tcp->doff = htons(sizeof(struct tcphdr) + 2);
+	tcp->doff = (sizeof(struct tcphdr) + faketcpopt) & 0xf;
 	payload = (unsigned char *)(tcp) + tcphlen;
 }

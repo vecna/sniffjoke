@@ -333,16 +333,16 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 
 	ttlfocus = &(ttlfocus_map_it->second);
 	/* 1st check: HOW MANY TTL GIVE TO THE PACKET ? */
-	if (ttlfocus->status == TTL_UNKNOW) {
+	if (ttlfocus->status == TTL_UNKNOWN) {
 		if (pkt.wtf == PRESCRIPTION)
 			pkt.wtf = GUILTY;
 
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
 	} else {
 		if (pkt.wtf == PRESCRIPTION) 
-			pkt.ip->ttl = ttlfocus->expiring_ttl; 
+			pkt.ip->ttl = ttlfocus->expiring_ttl;
 		else	/* GUILTY or INNOCENT */
-			pkt.ip->ttl = (ttlfocus->expiring_ttl + (random() % 5) + 1);
+			pkt.ip->ttl = ttlfocus->expiring_ttl + (random() % 5) + 1;
 
 	}
 	
@@ -350,23 +350,33 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	HackPacket *injpkt = dynamic_cast<HackPacket*>(&pkt);
 	if (injpkt) {
 		if (runcopy->SjH__inject_ipopt) {
-			/* we can inject if we have at least 4 bytes free
-			 * in point of fact we does not need 4 bytes, because we can strip also
-			 * options just present in the packet
-			 */
-			if ((injpkt->pbuf_size - ntohs(injpkt->ip->tot_len)) > 4)
-				if (percentage(1, 100))
-					injpkt->SjH__inject_ipopt();
+			if (percentage(1, 100)) {
+				injpkt->SjH__inject_ipopt();
+#ifdef HACKSDEBUG
+				internal_log(NULL, HACKS_DEBUG,
+					"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) id %d",
+					ntohs(injpkt->tcp->source), 
+					inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
+					ntohs(injpkt->tcp->dest), 
+					ntohs(injpkt->ip->id)
+				);
+#endif
+			}
 		}
 
 		if (runcopy->SjH__inject_tcpopt) {
-			/* we can inject if we have 8 bytes free
-			 * in point of fact we does not need 8 bytes, because we can strip also
-			 * options just present in the packet
-			 */
-			if ((injpkt->pbuf_size - ntohs(injpkt->ip->tot_len)) > 8 && !check_uncommon_tcpopt(injpkt->tcp))
+			if (!check_uncommon_tcpopt(injpkt->tcp))
 				if (percentage(25, 100))
 					injpkt->SjH__inject_tcpopt();
+#ifdef HACKSDEBUG
+				internal_log(NULL, HACKS_DEBUG,
+					"HACKSDEBUG [Inj Fake TcpOpt] (lo:%d %s:%d) id %d",
+					ntohs(injpkt->tcp->source), 
+					inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
+					ntohs(injpkt->tcp->dest), 
+					ntohs(injpkt->ip->id)
+				);
+#endif
 		}
 	}
 
@@ -400,7 +410,7 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 		unsigned char expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 		unsigned char exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
-		if (ttlfocus->status != TTL_KNOW && expired_ttl == exp_double_check) {
+		if (ttlfocus->status != TTL_KNOWN && expired_ttl == exp_double_check) {
 			ttlfocus->received_probe++;
 
 			if (expired_ttl > ttlfocus->expiring_ttl) {
@@ -462,7 +472,7 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 			unsigned char discern_ttl =  ntohl(synack.tcp->ack_seq) - ttlfocus->rand_key - 1;
 
 			ttlfocus->received_probe++;
-			ttlfocus->status = TTL_KNOW;
+			ttlfocus->status = TTL_KNOWN;
 
 			if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) 
 				ttlfocus->min_working_ttl = discern_ttl;
@@ -651,17 +661,19 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 
 		/* fake DATA injection in stream */
 
-		if (payload_len) {
-			if (percentage (logarithm (session->packet_number), 10)) {
-				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data;
-				chackpkto[hpool_len].prcnt = 98;
-				chackpkto[hpool_len].debug_info = (char *)"fake data";
-				chackpkto[hpool_len].resize = UNCHANGED_SIZE; 
-				
-				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-			}
-
+		if (percentage (logarithm (session->packet_number), 10)) {
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data;
+			chackpkto[hpool_len].prcnt = 98;
+			chackpkto[hpool_len].debug_info = (char *)"fake data";
+			
+			if (payload_len)
+				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
+			else
+				chackpkto[hpool_len].resize =  random() % 512;
+			
+			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
+
 	}
 
 	if (runcopy->SjH__fake_seq) {
@@ -843,7 +855,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 bool TCPTrack::analyze_ttl_stats(TTLFocus &ttlfocus)
 {
 	if (ttlfocus.sent_probe == maxttlprobe) {
-		ttlfocus.status = TTL_UNKNOW;
+		ttlfocus.status = TTL_UNKNOWN;
 		return true;
 	}
 	return false;

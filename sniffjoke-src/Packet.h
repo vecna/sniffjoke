@@ -8,7 +8,6 @@
 #define MAXHACKS	7   // Max num of injected hacks
 #define MAXOPTINJ	48  // Max num of byte for option injection: 8 byte ipopt, 40 byte tcpopt
 
-
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
 enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
 enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3 };
@@ -50,7 +49,8 @@ public:
 	void mark(source_t, status_t, judge_t);
 	void updatePointers();
 	/* functions required in TCP/IP packets forging */
-	void resizePayload(int);
+	void increasePbuf(unsigned int);
+	void resizePayload(unsigned int);
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum();
@@ -69,10 +69,10 @@ public:
 	void SjH__valid_rst_fake_seq();
 	void SjH__fake_syn();
 	void SjH__shift_ack();
+
 	/* void SjH__half_fake_syn(); NOT IMPLEMENTED */
 	/* void SjH__half_fake_ack(); NOT IMPLEMENTED */
 
-	/* size of header to fill with wild IP/TCP options */
 	void SjH__inject_ipopt();
 	void SjH__inject_tcpopt();
 };

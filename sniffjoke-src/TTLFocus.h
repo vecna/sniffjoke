@@ -4,7 +4,7 @@
 #include <map>
 using namespace std;
 
-enum ttlsearch_t { TTL_KNOW = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOW = 9 };
+enum ttlsearch_t { TTL_KNOWN = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOWN = 9 };
 
 class TTLFocus {
 public:
