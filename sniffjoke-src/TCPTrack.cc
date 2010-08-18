@@ -647,22 +647,6 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		int prcnt;
 	} chackpkto[MAXHACKS];
 
-	if (runcopy->SjH__shift_ack) {
-		
-		/* SHIFT ack */
-		if (pkt.tcp->ack) {
-			if (percentage (logarithm (session->packet_number), 15)) {
-				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__shift_ack;
-				chackpkto[hpool_len].prcnt = 0;
-				chackpkto[hpool_len].debug_info =  (char *)"shift ack";
-				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
-				
-				hpool_len++;
-				if (hpool_len == MAXHACKS) goto sendchosenhacks; 
-			}
-		}
-	}
-
 	if (runcopy->SjH__fake_data) {
 
 		/* fake DATA injection in stream */
@@ -681,7 +665,6 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 	}
 
 	if (runcopy->SjH__fake_seq) {
-		
 		/* fake SEQ injection */
 		if (percentage (logarithm (session->packet_number), 15)) {
 			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_seq;
@@ -747,8 +730,22 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			chackpkto[hpool_len].debug_info = (char *)"fake syn";
 			chackpkto[hpool_len].resize = 0;
 			
-			/* if (++hpool_len == MAXHACKS) goto sendchosenhacks; */
-			/* this is the last hack, remember this line on reaorder or new hacks add */
+			if (++hpool_len == MAXHACKS) goto sendchosenhacks;
+		}
+	}
+
+	if (runcopy->SjH__shift_ack) {
+		
+		/* SHIFT ack */
+		if (pkt.tcp->ack) {
+			if (percentage (logarithm (session->packet_number), 15)) {
+				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__shift_ack;
+				chackpkto[hpool_len].prcnt = 0;
+				chackpkto[hpool_len].debug_info =  (char *)"shift ack";
+				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
+				
+				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
+			}
 		}
 	}
 

@@ -165,7 +165,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		running->SjH__fake_close = true;		/* implemented, commented out the rst version */
 		running->SjH__zero_window = true;		/* implemented, enabled */
 		running->SjH__valid_rst_fake_seq = true;	/* implemented, enabled */
-		running->SjH__fake_syn = true;			/* implemented, enabled */
+		running->SjH__fake_syn = false;			/* implemented, seems to break connections */
 		running->SjH__shift_ack = false;		/* implemented, need testing */
 		running->SjH__half_fake_syn = false;		/* currently not implemented */
 		running->SjH__half_fake_ack = false;		/* currently not implemented */

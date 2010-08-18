@@ -8,7 +8,6 @@
 Packet::Packet(int size, const unsigned char* buff, int buff_size) {
 	pbuf = new unsigned char[size];
 	pbuf_size = size;
-	orig_pktlen = buff_size;
 
 	memcpy(pbuf, buff, buff_size);
 	if(size - buff_size)
@@ -21,6 +20,11 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) {
 	
 	updatePointers();
 	
+	/* we need to set the orig_pktlen;
+	/* this must be done here using ip->total_len and
+	 * not buff_size cause this could be greater due to padding */
+	orig_pktlen = ntohs(ip->tot_len);
+	
 	packet_id = make_pkt_id(buff);
 }
 
@@ -28,7 +32,6 @@ Packet::Packet(const Packet& pkt)
 {
 	pbuf = new unsigned char[pkt.pbuf_size];
 	pbuf_size = pkt.pbuf_size;
-	orig_pktlen = pkt.pbuf_size;
 
 	memcpy(pbuf, pkt.pbuf, pkt.pbuf_size);
 
@@ -81,7 +84,6 @@ void Packet::resizePayload(int newlen) {
 	
 	/* fixing the new length */
 	pbuf_size = newpbuf_size;
-	orig_pktlen = ntohs(ip->tot_len);
 	ip->tot_len = htons(newtotallen);
 }
 
@@ -190,7 +192,7 @@ void HackPacket::SjH__fake_seq()
 
 	if (what == 1)
 		tcp->seq = htonl(ntohl(tcp->seq) - (random() % 5000));
-
+		
 	tcp->window = htons((random() % 80) * 64);
 	tcp->ack = tcp->ack_seq = 0;
 
@@ -231,9 +233,9 @@ void HackPacket::SjH__valid_rst_fake_seq()
 	 */
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 12345));
-	tcp->window = (unsigned short)(-1);
+	tcp->window = htons((unsigned short)(-1));
 	tcp->rst = tcp->ack = 1;
-	tcp->ack_seq = htonl(ntohl(tcp->seq + 1));
+	tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
 	tcp->fin = tcp->psh = tcp->syn = 0;
 }
 
@@ -247,9 +249,9 @@ void HackPacket::SjH__fake_syn()
 	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 5000));
 
 	/* 20% is a SYN ACK */
-	if ((random() % 5) == 0) {
+	if ((random() % 5) == 10) {
 		tcp->ack = 1;
-		tcp->ack_seq = htonl(random());
+		tcp->ack_seq = random();
 	} else {
 		tcp->ack = tcp->ack_seq = 0;
 	}
@@ -263,6 +265,7 @@ void HackPacket::SjH__fake_syn()
 		tcp->source = tcp->dest;
 		tcp->dest = swap;
 	}
+	
 }
 
 void HackPacket::SjH__shift_ack()
@@ -376,6 +379,6 @@ void HackPacket::SjH__inject_tcpopt()
 	);
 #endif
 	ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
-	tcp->doff = (sizeof(struct tcphdr) + 2) & 0xf;
+	tcp->doff = htons(sizeof(struct tcphdr) + 2);
 	payload = (unsigned char *)(tcp) + tcphlen;
 }
