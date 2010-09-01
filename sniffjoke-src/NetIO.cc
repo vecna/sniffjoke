@@ -113,7 +113,8 @@ NetIO::NetIO(SjConf *sjconf)
 
 	strcpy(orig_gw.ifr_name, (const char *)runcopy->interface);
 	tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-		if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
+#if 1
+	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
 	{
 		internal_log(NULL, ALL_LEVEL, 
 			"fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand", 
@@ -121,6 +122,7 @@ NetIO::NetIO(SjConf *sjconf)
 		);
 		check_call_ret("unable to SIOCGIFINDEX network interface", errno, ret, true);
 	}
+#endif
 	close(tmpfd);
 
 	if ((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) == -1) {

@@ -19,7 +19,7 @@ const char *default_log_file = "sniffjoke.log"; // chroot + logpath
 const unsigned int default_debug_level = 0;
 const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
 const char *help_url = "http://www.delirandom.net/sniffjoke";
-const char *prog_version = "0.4 alpha 1";
+const char *prog_version = "0.4 alpha 2";
 
 /* process configuration, data struct defined in sniffjoke.h */
 static struct sj_useropt useropt;
@@ -52,7 +52,7 @@ static NetIO *mitm;
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 
-// FIXME - non va messo globale !
+// FIXME - not global
 Process *SjProc;
 
 static void sj_help(const char *pname) {
@@ -80,7 +80,7 @@ static void sj_forced_clean_exit(pid_t pid) {
 			exit(0);
 		} else /* (errno == ESRCH) */ {
 			dead = true;
-			internal_log(NULL, ALL_LEVEL, "process (%d) is dead", pid);
+			internal_log(NULL, ALL_LEVEL, "forced quit of previous process: (%d) is dead", pid);
 		}
 		
 		/* test if the pid is running again */
@@ -88,19 +88,22 @@ static void sj_forced_clean_exit(pid_t pid) {
 	}
 }
 
-static void sj_sigtrap(int signal) {
+static void sj_sigtrap(int signal) 
+{
 	if (signal)
 		internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
-		
-	SjProc->CleanExit(); //(false);
-		
+
+	delete mitm;
+	delete sjconf;
+
+	SjProc->CleanExit();
+
 	raise(SIGKILL);
 }
 
 /* internal routine called in client_send_command and sj_srv_child_check_local_unixserv */
-static int service_listener(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg) {
-
-//  assert(sj_process_type == SJ_PROCESS_TYPE_SRV_CHILD || sj_process_type == SJ_PROCESS_TYPE_CLI);
+static int 
+service_listener(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg) {
 
 	memset(databuf, 0x00, bufsize);
 
@@ -126,60 +129,54 @@ static int sj_bind_unixsocket()
 	struct sockaddr_un sjsrv;
 	int sock;
 
-//  assert(sj_process_type == SJ_PROCESS_TYPE_SRV_CHILD);
-	if (SjProc->ProcessType == Process::SJ_PROCESS_SERVICE_CHILD)
-		printf("Process::SJ PROCESS SERVICE CHILD!!\n");
-	else
-		printf("Problema!!\n");
+//	assert(SjProc->ProcessType == Process::SJ_PROCESS_SERVICE_CHILD);
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: : unable to open unix socket: %s", strerror(errno));
 		SjProc->CleanExit(true);
 	}
 
-		memset(&sjsrv, 0x00, sizeof(sjsrv));
-		sjsrv.sun_family = AF_UNIX;
-		memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
+	memset(&sjsrv, 0x00, sizeof(sjsrv));
+	sjsrv.sun_family = AF_UNIX;
+	memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
 
-		if (!access(sniffjoke_socket_path, F_OK)) {
-			if (unlink(sniffjoke_socket_path)) {
-				internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to unlink previous instance of %s: %s", 
-				sniffjoke_socket_path, strerror(errno));
-				SjProc->CleanExit(true);
-			}
+	if (!access(sniffjoke_socket_path, F_OK)) {
+		if (unlink(sniffjoke_socket_path)) {
+			internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to unlink previous instance of %s: %s", 
+			sniffjoke_socket_path, strerror(errno));
+			SjProc->CleanExit(true);
 		}
+	}
 								
-		if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
-			close(sock);
-			internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
-						 sniffjoke_socket_path, strerror(errno)
-			);
-			SjProc->CleanExit(true);
-		}
+	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
+		close(sock);
+		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
+					 sniffjoke_socket_path, strerror(errno)
+		);
+		SjProc->CleanExit(true);
+	}
 
-		if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
-			close(sock);
-			internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
-						sniffjoke_socket_path, strerror(errno)
-			);
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
+		close(sock);
+		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
+					sniffjoke_socket_path, strerror(errno)
+		);
 
-			SjProc->CleanExit(true);
-		}
-		internal_log(NULL, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
-		
-		return sock;
+		SjProc->CleanExit(true);
+	}
+	internal_log(NULL, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
+	
+	return sock;
 }
 
 /* function used in in order to receive command and modify the running conf, display stats and so on */
 static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 
-//  assert(sj_process_type == SJ_PROCESS_TYPE_SRV_CHILD);
-
 	char received_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
 	int i, rlen, cmdlen;
 	struct sockaddr_un fromaddr;
 
-	if ((rlen = service_listener(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1)  // questa stranezza è il comando che c'è sopra
+	if ((rlen = service_listener(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
 		SjProc->CleanExit(true);
 
 	if (!rlen)
@@ -187,7 +184,7 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 
 	internal_log(NULL, VERBOSE_LEVEL, "received command from the client: %s", received_command);
 
-	/* FIXME - sanity check del comando ricevuto */
+	/* FIXME - sanity check require */
 	if (!memcmp(received_command, "stat", strlen("stat"))) {
 		output = sjconf->handle_cmd_stat();
 	} else if (!memcmp(received_command, "start", strlen("start"))) {
@@ -197,7 +194,7 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 	} else if (!memcmp(received_command, "set", strlen("set"))) {
 		int start_port, end_port, value;
 
-		/* FIXME - magari supportare set portasingola TIPO, set start:end TIPO, set porta1,porta2,porta3,... TIPO */
+		/* TODO - support ports rangeSTART-rangeEND or port,another,again,sookiestackhouse,billcarson,65535 */
 		/* FIXME - at the moment only integer value are accepted: 0 1 2 3 4 */
 		sscanf(received_command, "set %d %d %d", &start_port, &end_port, &value);
 
@@ -465,38 +462,23 @@ int main(int argc, char **argv) {
 	
 	}
 
-	if (SjProc->isServiceRunning()) 
-		printf("*** is running! debug\n");
-	else
-		printf("*** is not running !?\n");
-
-//  if (SjProc->failure)
-//	  delete SjProc;
-// da togliere, vero ? 
-	/* SjCheckLock set an internal state of locking */
-
 	/* importing configuration: contains both service and client user options */
 	sjconf = new SjConf(&useropt);
 
 	/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
 	if (command_input != NULL) 
 	{
-// ??? spostare tutto in un:	handle_command_sending(SjProc, sjconf, useropt);
-		printf("command input presente! [%s]\n", command_input);
+		internal_log(NULL, VERBOSE_LEVEL, "command input [%s]", command_input);
 
 		if (SjProc->isServiceRunning() == false) {
 			internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
 			return 0;
 		}
-		else
-			printf("service is running at pid %d\n", SjProc->isServiceRunning());
 		
 		if (SjProc->isClientRunning() == true) {
 			internal_log(NULL, ALL_LEVEL, "an other client is active, exiting");
 			return 0;
 		}
-		else
-			printf("client is running at pid %d\n", SjProc->isServiceRunning());
 
 		SjProc->SetProcType(Process::SJ_PROCESS_CLIENT);
 		SjProc->setLocktoExist(SJ_CLIENT_LOCK);
@@ -505,12 +487,11 @@ int main(int argc, char **argv) {
 
 		SjProc->Jail(useropt.chroot_dir, sjconf->running);
 		if (SjProc->failure == true) {
-			printf("fucking warning da trappare!\n");
+			internal_log(NULL, ALL_LEVEL, "error in process handling, closing");
 			delete SjProc;
 		}
 
 		SjProc->PrivilegesDowngrade(sjconf->running);
-// TODO:		CHECK_ERROR(SjProc, NULL, ALL_LEVEL, FATAL);
 
 		internal_log(NULL, VERBOSE_LEVEL, "sending command: [%s] to sniffjoke service", command_input);
 		client_send_command(command_input);
@@ -532,11 +513,7 @@ int main(int argc, char **argv) {
 		int sj_srv_father_pid = SjProc->readPidfile(SJ_SERVICE_FATHER_PID_FILE);
 		int sj_srv_child_pid = SjProc->readPidfile(SJ_SERVICE_CHILD_PID_FILE);
 
-		printf("@@@ service running and the pid readed are %d %d \n", sj_srv_father_pid, sj_srv_child_pid);
-
-		int double_check = SjProc->isServiceRunning();
 		if ((sj_srv_father_pid || sj_srv_child_pid) && (!useropt.force_restart)) {
-			internal_log(NULL, ALL_LEVEL, "YYY --is running %d father %d child lock-pid %d", sj_srv_father_pid, sj_srv_child_pid, double_check);
 			internal_log(stderr, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
 			return 0;
 		}
@@ -554,22 +531,21 @@ int main(int argc, char **argv) {
 		} 
 	} 
 
-	printf("OH DEBRA HOLY SHIT!!!\n");
-
 	SjProc->setLocktoExist(SJ_SERVICE_LOCK);
 
-	if (!useropt.go_foreground)
+	if (!useropt.go_foreground) 
+	{
 		SjProc->SjBackground();
+		SjProc->processIsolation();
+
+		if (SjProc->failure) 
+			delete SjProc;
+	}
 	else {
 		useropt.logstream = stdout;
 		internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 	}
 
-	SjProc->processIsolation();
-	if (SjProc->failure) {
-		printf("calling of destructor\n");
-		delete SjProc;
-	}
 
 	/* checking config file */
 	if (useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
@@ -588,9 +564,7 @@ int main(int argc, char **argv) {
 		SjProc->CleanExit(true);
 	}
 
-	printf("MAIN _ pid %d ppid va ora detach: \n", getpid(), getppid());
 	SjProc->processDetach();
-	printf("MAIN _ ora chroot con pid %d ppid %d \n ", getpid(), getppid());
 	SjProc->Jail(useropt.chroot_dir, sjconf->running);
 
 	if (!useropt.go_foreground) {	
@@ -622,13 +596,10 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	printf("siamo al Pdown\n");
 	SjProc->PrivilegesDowngrade(sjconf->running);
 
-	printf("sj_bind_unix\n");   
 	listening_unix_socket = sj_bind_unixsocket();
 
-	printf("binding done\n");   
 	if (sjconf->running->sj_run == false)
 		internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it\n");
 

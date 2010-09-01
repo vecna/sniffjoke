@@ -265,7 +265,7 @@ void HackPacket::SjH__fake_syn()
 	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 5000));
 
 	/* 20% is a SYN ACK */
-	if ((random() % 5) == 10) {
+	if ((random() % 5) == 0) { 
 		tcp->ack = 1;
 		tcp->ack_seq = random();
 	} else {
