@@ -69,6 +69,9 @@ public:
 	void SjH__valid_rst_fake_seq();
 	void SjH__fake_syn();
 	void SjH__shift_ack();
+	/* implemented since 0.4alpha2 */
+	void SjH__fake_data_anticipation();
+	void SjH__fake_data_posticipation();
 
 	/* void SjH__half_fake_syn(); NOT IMPLEMENTED */
 	/* void SjH__half_fake_ack(); NOT IMPLEMENTED */

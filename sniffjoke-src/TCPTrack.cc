@@ -655,6 +655,9 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		 * by the choosen hack
 		 */
 		int prcnt;
+		/* priority is related on queue injection: the fake packet neet to be send
+		 * before or after the real one ? */	
+		int priority;
 	} chackpkto[MAXHACKS];
 
 	if (runcopy->SjH__fake_data) {
@@ -665,6 +668,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data;
 			chackpkto[hpool_len].prcnt = 98;
 			chackpkto[hpool_len].debug_info = (char *)"fake data";
+			chackpkto[hpool_len].priority = HIGH;
 			
 			if (payload_len)
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
@@ -682,6 +686,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_seq;
 			chackpkto[hpool_len].prcnt = 98;
 			chackpkto[hpool_len].debug_info = (char *)"fake seq";
+			chackpkto[hpool_len].priority = HIGH;
 
 			if (payload_len > 312)
 				chackpkto[hpool_len].resize = (random() % 200);
@@ -689,6 +694,29 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
 
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
+		}
+	}
+
+	if (runcopy->SjH__fake_data_anticipation || runcopy->SjH__fake_data_posticipation) 
+	{
+		/* those hacks works only together */
+		if (percentage (logarithm (session->packet_number), 50)) 
+		{
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data_posticipation;
+			chackpkto[hpool_len].prcnt = 100;
+			chackpkto[hpool_len].debug_info = (char *)"data posticipation";
+			chackpkto[hpool_len].resize = 0;
+			chackpkto[hpool_len].priority = LOW;
+
+			++hpool_len;
+
+			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data_anticipation;
+			chackpkto[hpool_len].prcnt = 100;
+			chackpkto[hpool_len].debug_info = (char *)"data anticipation";
+			chackpkto[hpool_len].resize = 0;
+			chackpkto[hpool_len].priority = HIGH;
+
+			if (++hpool_len >= MAXHACKS) goto sendchosenhacks;
 		}
 	}
 
@@ -700,6 +728,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 				chackpkto[hpool_len].prcnt = 98;
 				chackpkto[hpool_len].debug_info = (char *)"fake close";
 				chackpkto[hpool_len].resize = 0;
+				chackpkto[hpool_len].priority = HIGH;
 				
 				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 			}
@@ -714,6 +743,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			chackpkto[hpool_len].prcnt = 95;
 			chackpkto[hpool_len].debug_info = (char *)"zero window";
 			chackpkto[hpool_len].resize = 0;
+			chackpkto[hpool_len].priority = HIGH;
 			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
@@ -728,6 +758,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			chackpkto[hpool_len].prcnt = 0;
 			chackpkto[hpool_len].debug_info = (char *)"valid rst fake seq";
 			chackpkto[hpool_len].resize = 0;
+			chackpkto[hpool_len].priority = HIGH;
 			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
@@ -741,6 +772,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 			chackpkto[hpool_len].prcnt = 94;
 			chackpkto[hpool_len].debug_info = (char *)"fake syn";
 			chackpkto[hpool_len].resize = 0;
+			chackpkto[hpool_len].priority = HIGH;
 			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks;
 		}
@@ -755,6 +787,7 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 				chackpkto[hpool_len].prcnt = 0;
 				chackpkto[hpool_len].debug_info =  (char *)"shift ack";
 				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
+				chackpkto[hpool_len].priority = HIGH;
 				
 				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 			}
@@ -782,7 +815,7 @@ sendchosenhacks:
 			 * 
 			 * what the fuck do with the packets ? its the Court to choose
 			 */
-			injpkt = packet_orphanotrophy(pkt, chackpkto[i].resize, court_word);
+			injpkt = packet_orphanotrophy(pkt, chackpkto[i].resize, court_word, chackpkto[i].priority);
 
 			/* calling finally the first kind of hack in the packet injected */
 			(injpkt->*(chackpkto[i].choosen_hack))();
@@ -901,7 +934,7 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 }
 
 /* packet orphanotrophy, create the oraphans packet and raise them correctly */
-HackPacket* TCPTrack::packet_orphanotrophy(const Packet &pkt, int resize, judge_t court_word)
+HackPacket* TCPTrack::packet_orphanotrophy(const Packet &pkt, int resize, judge_t court_word, int priority)
 {
 	HackPacket *ret = new HackPacket(pkt);
 	ret->mark(LOCAL, SEND, court_word);
@@ -915,8 +948,9 @@ HackPacket* TCPTrack::packet_orphanotrophy(const Packet &pkt, int resize, judge_
 		default:
 			ret->resizePayload(resize);
 	}
-	
-	p_queue.insert(HIGH, *ret);
+
+	/* priority must be HIGH or LOW, and usually are always HIGH */
+	p_queue.insert(priority, *ret);
 	
 	return ret;
 }

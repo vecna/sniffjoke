@@ -172,6 +172,9 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		running->SjH__inject_ipopt = true;		/* implemented, enabled */
 		running->SjH__inject_tcpopt = true;		/* implemented, enabled */
 
+		/* Sj0.4 alpha2 testing hacks */
+		running->SjH__fake_data_anticipation = true;
+		running->SjH__fake_data_posticipation = true;
 	}
 	
 	/* Read command line values if present */

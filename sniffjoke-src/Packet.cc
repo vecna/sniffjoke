@@ -21,7 +21,7 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) {
 	updatePointers();
 	
 	/* we need to set the orig_pktlen;
-	/* this must be done here using ip->total_len and
+	 * this must be done here using ip->total_len and
 	 * not buff_size cause this could be greater due to padding */
 	orig_pktlen = ntohs(ip->tot_len);
 	
@@ -214,6 +214,30 @@ void HackPacket::SjH__fake_seq()
 	tcp->ack = tcp->ack_seq = 0;
 
 	SjH__fake_data();
+}
+
+/* SjH__fake_data_anticipation and SjH__fake_data_posticipation
+ * are both the same hack, and need to be used together, anyway for 
+ * design pourpose, every injected packet require a dedicated 
+ * function.
+ *
+ * -- note: this should not me true, anyway, this is the 0.4alpha2
+ *  developing, so optimization is not require 
+ */
+void HackPacket::SjH__fake_data_anticipation()
+{
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+
+	for (int i = 0; i < diff; i++)
+                payload[i] = 'A';
+}
+
+void HackPacket::SjH__fake_data_posticipation()
+{
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+
+	for (int i = 0; i < diff; i++)
+                payload[i] = 'B';
 }
 
 void HackPacket::SjH__fake_close()
