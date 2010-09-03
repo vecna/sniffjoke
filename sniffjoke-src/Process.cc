@@ -91,8 +91,18 @@ void Process::processDetach()
 		ProcessType = SJ_PROCESS_SERVICE_FATHER; 
 		writePidfile(SJ_SERVICE_FATHER_PID_FILE, pidval);
 
+		/* be sure that the child has runned */
+		usleep(500);
+		pid_t child = readPidfile(SJ_SERVICE_CHILD_PID_FILE);
+
+		if(child <= 0) {
+			internal_log(NULL, ALL_LEVEL, "child is not running, received pid %d", child);
+			// FIXME - found a congruent way for closing process 
+			Process::CleanExit(true);
+		}
+
 		/* waitpid wait until the userprocess - child pid, run */
-		waitpid(-1, &deadtrace, 0);
+		waitpid(child, &deadtrace, WUNTRACED);
 
 		if (WIFEXITED(deadtrace))
 			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFEXITED", pidval);
@@ -171,7 +181,7 @@ void Process::CleanExit(bool boh) {
 void Process::CleanExit(void) 
 {
 	// FIXME - getpid + lock and process tracking should and must unify unificare getpid con lock + estendere lock ai due processi
-	int sj_srv_child_pid_FIXME = -1; 
+	int sj_srv_child_pid_FIXME = readPidfile(SJ_SERVICE_CHILD_PID_FILE); 
 
 	switch(ProcessType) {
 		case Process::SJ_PROCESS_SERVICE_FATHER:
@@ -184,7 +194,7 @@ void Process::CleanExit(void)
 				internal_log(stdout, VERBOSE_LEVEL, "sniffjoke-service father is killing the child");
 				kill(sj_srv_child_pid_FIXME, SIGTERM);
 				/* let the child express his last desire */
-				waitpid(sj_srv_child_pid_FIXME, NULL, 0);
+				waitpid(sj_srv_child_pid_FIXME, NULL, WUNTRACED);
 			}
 			break;
 
@@ -270,13 +280,14 @@ void Process::SjBackground()
 }
 
 void Process::processIsolation() {
-
+/* -- is failing !!?
 	if (setsid()) {
 		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to setsid: %s", strerror(errno));
 		failure = true;
 //		check_call_ret("unable to setsid", errno, -1, true);
 	}
+*/
 	umask(0);
 }
 
