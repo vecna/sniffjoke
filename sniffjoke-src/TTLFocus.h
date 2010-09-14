@@ -19,6 +19,7 @@ public:
 	ttlsearch_t status;
 
 	TTLFocus(unsigned int);
+	TTLFocus(const TTLFocus& cpy);
 };
 
 class TTLFocusMap : public map<const unsigned int, TTLFocus> {

@@ -87,7 +87,7 @@ public:
 		SjConf(struct sj_useropt *);
 		~SjConf();
 
-		void dump_config(struct sj_config *);
+		void dump(struct sj_config *);
 
 		char *handle_cmd_stat(void);
 		char *handle_cmd_stop(void);

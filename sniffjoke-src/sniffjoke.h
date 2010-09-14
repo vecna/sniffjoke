@@ -16,6 +16,6 @@
 #include "NetIO.h"
 #include "TCPTrack.h"
 #include "Process.h"
-#include "user-def.h"
+#include "defines.h"
 
 #endif /* SNIFFJOKE_H */

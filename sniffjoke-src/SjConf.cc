@@ -223,7 +223,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	if(running->debug_level == 0)
 		running->debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
-	dump_config(running);
+	dump(running);
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(completefname, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -246,7 +246,7 @@ const char *SjConf::resolve_weight_name(int command_code)
 	}
 }
 
-void SjConf::dump_config(struct sj_config *running)
+void SjConf::dump(struct sj_config *running)
 {
 	char completefname[LARGEBUF];
 	FILE *dumpfd;
@@ -281,7 +281,7 @@ void SjConf::dump_config(struct sj_config *running)
 char *SjConf::handle_cmd_quit(void)
 {
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
-	dump_config(running);
+	dump(running);
 
 	if(!fork()) {
 		usleep(500); 
