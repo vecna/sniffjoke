@@ -21,6 +21,13 @@ public:
 	TTLFocus(unsigned int);
 };
 
-typedef map<const unsigned int, TTLFocus> TTLFocusMap;
+class TTLFocusMap : public map<const unsigned int, TTLFocus> {
+public:
+	TTLFocusMap();
+        ~TTLFocusMap();
+        void dump();
+        void load();
+};
+
 
 #endif /* SJ_TTLFOCUS_H */

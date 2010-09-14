@@ -3,8 +3,6 @@
 
 #include <net/ethernet.h>
 
-#define MAGICVAL	0xADECADDE
-
 #define HEAVY		0x04
 #define NORMAL		0x03
 #define LIGHT		0x02

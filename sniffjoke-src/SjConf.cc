@@ -1,6 +1,6 @@
 #include "SjUtils.h"
 #include "SjConf.h"
-#include "user-def.h"
+#include "defines.h"
 
 #include <cerrno>
 #include <cstdlib>
