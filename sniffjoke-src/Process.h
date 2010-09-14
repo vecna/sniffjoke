@@ -2,6 +2,7 @@
 #define PROCESS_H
 
 #include "defines.h"
+
 #include <csignal>
 
 class Process {

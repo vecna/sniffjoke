@@ -11,8 +11,6 @@
 
 #include <unistd.h>
 
-#include "defines.h"
-
 /* not used ATM */
 #define SUPPRESS_LOG		1
 

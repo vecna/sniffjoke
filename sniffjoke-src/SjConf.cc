@@ -1,6 +1,7 @@
+#include "defines.h"
+
 #include "SjUtils.h"
 #include "SjConf.h"
-#include "defines.h"
 
 #include <csignal>
 #include <cctype>

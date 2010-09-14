@@ -2,6 +2,7 @@
 #define SJ_PACKET_QUEUE_H
 
 #include "defines.h"
+
 #include "Packet.h"
 
 class PacketQueue {

@@ -1,6 +1,8 @@
 #ifndef SJ_CONF_H
 #define SJ_CONF_H
 
+#include "defines.h"
+
 #include "SjUtils.h"
 #include <net/ethernet.h>
 
