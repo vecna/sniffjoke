@@ -1,7 +1,7 @@
 #ifndef SJ_SESSIONTRACK_H
 #define SJ_SESSIONTRACK_H
 
-#include "user-def.h"
+#include "defines.h"
 
 #include "Packet.h"
 #include "TTLFocus.h"

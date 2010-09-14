@@ -11,7 +11,7 @@
 #include "Process.h"
 
 #include "SjUtils.h"
-#include "user-def.h"
+#include "defines.h"
 
 #include <csignal>
 #include <getopt.h>

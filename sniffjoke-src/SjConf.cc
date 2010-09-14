@@ -257,11 +257,7 @@ const char *SjConf::resolve_weight_name(int command_code)
 	}
 }
 
-<<<<<<< HEAD
-void SjConf::dump(struct sj_config *running)
-=======
-void SjConf::dump_config(void)
->>>>>>> upstream/master
+void SjConf::dump(void)
 {
 	char completefname[LARGEBUF];
 	FILE *dumpfd;
@@ -296,11 +292,8 @@ void SjConf::dump_config(void)
 char *SjConf::handle_cmd_quit(void)
 {
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
-<<<<<<< HEAD
-	dump(running);
-=======
-	dump_config();
->>>>>>> upstream/master
+	/* dump the configuration in the binconf file */
+	dump();
 
 	if(!fork()) {
 		usleep(500); 

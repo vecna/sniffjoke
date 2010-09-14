@@ -1,7 +1,7 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
-#include "user-def.h"
+#include "defines.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>

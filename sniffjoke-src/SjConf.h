@@ -42,11 +42,11 @@ struct sj_useropt {
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool sj_run;				/* default: false = NO RUNNING */
-		char user[MEDIUMBUF];		/* default: check user-def.h */
-		char group[MEDIUMBUF];		/* default: check user-def.h */
-		char chroot_dir[MEDIUMBUF];		/* default: check user-def.h */
-		char logfname[MEDIUMBUF];		/* default: check user-def.h */
-		int debug_level;			/* default: check user-def.h */
+		char user[MEDIUMBUF];		/* default: check defines.h */
+		char group[MEDIUMBUF];		/* default: check defines.h */
+		char chroot_dir[MEDIUMBUF];		/* default: check defines.h */
+		char logfname[MEDIUMBUF];		/* default: check defines.h */
+		int debug_level;			/* default: check defines.h */
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
@@ -92,7 +92,7 @@ public:
 		SjConf(struct sj_useropt *);
 		~SjConf();
 
-		void dump(struct sj_config *);
+		void dump(void);
 		void setup_active_hacks(void);
 
 		char *handle_cmd_stat(void);
