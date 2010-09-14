@@ -1,5 +1,5 @@
 /*
- * sniffjoke.h, October 2008: 
+ * sniffjoke.h; 2008,2009,2010
  * 
  * "does public key and web of trust could create a trustable peer to peer network ?"
  * "yes."
@@ -11,11 +11,15 @@
 #ifndef SNIFFJOKE_H
 #define SNIFFJOKE_H
 
-#include "SjUtils.h"
+/*
+ * Those following are the include that define the C++ classess called from the main() function
+ *
+ * this file is included only in sniffjoke.cc
+ */
+
 #include "SjConf.h"
 #include "NetIO.h"
 #include "TCPTrack.h"
 #include "Process.h"
-#include "user-def.h"
 
 #endif /* SNIFFJOKE_H */

@@ -1,11 +1,6 @@
 #include "SjUtils.h"
 #include "NetIO.h"
 
-#include <cerrno>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <unistd.h>
 #include <fcntl.h>
 #include <net/if.h>
 #include <sys/ioctl.h>

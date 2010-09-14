@@ -1,6 +1,8 @@
 #ifndef SJ_TTLFOCUS_H
 #define SJ_TTLFOCUS_H
 
+#include "user-def.h"
+
 #include <map>
 using namespace std;
 

@@ -1,6 +1,7 @@
 #ifndef SJ_PACKET_QUEUE_H
 #define SJ_PACKET_QUEUE_H
 
+#include "user-def.h"
 #include "Packet.h"
 
 class PacketQueue {

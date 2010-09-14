@@ -1,6 +1,8 @@
 #ifndef SJ_NETIO_H
 #define SJ_NETIO_H
 
+#include "user-def.h"
+
 #include "TCPTrack.h"
 #include "SjConf.h"
 

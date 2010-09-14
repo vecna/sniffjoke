@@ -1,14 +1,8 @@
 #include "SjUtils.h"
 #include "SjConf.h"
-#include "user-def.h"
 
-#include <cerrno>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
 #include <csignal>
 #include <cctype>
-#include <unistd.h>
 
 #include <sys/stat.h>
 
@@ -28,6 +22,29 @@ void SjConf::compare_check_copy(char *target, int tlen, const char *useropt, int
 
 	/* second choice: take the useropt/default remaining */
 	memcpy(target, useropt, ulen > tlen ? tlen : ulen);
+}
+
+/* WARNING: change this function require a change in sniffjoke.cc sj_hacking_help() */
+void SjConf::setup_active_hacks(void) 
+{
+	/* default is set to false */
+	if(running->hacks[0]  == 'Y') { running->SjH__fake_data = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data] hack type"); }
+	if(running->hacks[1]  == 'Y') { running->SjH__fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake seq] hack type"); }
+	if(running->hacks[2]  == 'Y') { running->SjH__fake_close = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake close] hack type"); }
+	if(running->hacks[3]  == 'Y') { running->SjH__zero_window = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [zero window] hack type"); }
+	if(running->hacks[4]  == 'Y') { running->SjH__valid_rst_fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [valid rst fake seq] hack type"); }
+	if(running->hacks[5]  == 'Y') { running->SjH__fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake syn] hack type"); }
+	if(running->hacks[6]  == 'Y') { running->SjH__shift_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [shift ack] hack type"); }
+	if(running->hacks[7]  == 'Y') { running->SjH__half_fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake syn] hack type"); }
+	if(running->hacks[8]  == 'Y') { running->SjH__half_fake_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake fin] hack type"); }
+	if(running->hacks[9]  == 'Y') { running->SjH__inject_ipopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject ipopt] hack type"); }
+	if(running->hacks[10] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
+
+	if(running->hacks[11] == 'Y') {
+		running->SjH__fake_data_anticipation = true;
+		running->SjH__fake_data_posticipation = true; 
+		internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data anticipation|posticipation] hack type"); 
+	}
 }
 
 SjConf::SjConf(struct sj_useropt *user_opt) 
@@ -57,13 +74,18 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 
 		memset(&readed, 0x00, sizeof(struct sj_config));
 
-		i = fread((void *)&readed, sizeof(struct sj_config), 1, cF);
-		check_call_ret("fread of config file", errno, (i - 1), false);
+		if((i = fread((void *)&readed, sizeof(struct sj_config), 1, cF)) != 1) {
+			internal_log(NULL, ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
+				sizeof(readed), completefname, strerror(errno)
+			);
+			check_call_ret("unable to read config file, check your parm or the default", EINVAL, -1, true);
+		}
+
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", completefname, i * sizeof(struct sj_config));
 
 		if (readed.MAGIC != magic_check) {
-			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seem to be corrupted - delete and will be rebuild at the next start", 
-				user_opt->cfgfname
+			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seem to be corrupted - delete or check the argument",
+				completefname
 			);
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
 		}
@@ -83,10 +105,10 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		fclose(cF);
 
 		memcpy(running, &readed, sizeof(struct sj_config));
-
 		
 	} else {
 
+skipping_conf_file:
 		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found, initialization...", completefname);
 		memset(running, 0x00, sizeof(sj_config));
 
@@ -190,22 +212,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		/* default is to set port in normal aggressivity */
 		memset(running->portconf, NORMAL, PORTNUMBER);
 
-		/* hacks common defaults */
-		running->SjH__fake_data = true;			/* implemented, enabled */
-		running->SjH__fake_seq = false;			/* implemented, seems to break connections */
-		running->SjH__fake_close = true;		/* implemented, commented out the rst version */
-		running->SjH__zero_window = true;		/* implemented, enabled */
-		running->SjH__valid_rst_fake_seq = true;	/* implemented, enabled */
-		running->SjH__fake_syn = false;			/* implemented, seems to break connections */
-		running->SjH__shift_ack = false;		/* implemented, need testing */
-		running->SjH__half_fake_syn = false;		/* currently not implemented */
-		running->SjH__half_fake_ack = false;		/* currently not implemented */
-		running->SjH__inject_ipopt = true;		/* implemented, enabled */
-		running->SjH__inject_tcpopt = true;		/* implemented, enabled */
-
-		/* Sj0.4 alpha2 testing hacks */
-		running->SjH__fake_data_anticipation = true;
-		running->SjH__fake_data_posticipation = true;
 	}
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
@@ -223,7 +229,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	if(running->debug_level == 0)
 		running->debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
-	dump_config(running);
+	/* making the same analysis with the --hacking [YES|NO STRING] */
+	compare_check_copy(running->hacks, CONFIGURABLE_HACKS_N, user_opt->requested_hacks, CONFIGURABLE_HACKS_N, ASSURED_HACKS);
+	setup_active_hacks();
+
+	dump_config();
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(completefname, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -246,7 +256,7 @@ const char *SjConf::resolve_weight_name(int command_code)
 	}
 }
 
-void SjConf::dump_config(struct sj_config *running)
+void SjConf::dump_config(void)
 {
 	char completefname[LARGEBUF];
 	FILE *dumpfd;
@@ -281,7 +291,7 @@ void SjConf::dump_config(struct sj_config *running)
 char *SjConf::handle_cmd_quit(void)
 {
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
-	dump_config(running);
+	dump_config();
 
 	if(!fork()) {
 		usleep(500); 
@@ -289,7 +299,7 @@ char *SjConf::handle_cmd_quit(void)
 		raise(SIGTERM);
 	}
 
-	snprintf(io_buf, HUGEBUF, "dumped configuration, waiting for SIGTERM for SniffJoke exit\n");
+	snprintf(io_buf, HUGEBUF, "dumped configuration, selfkilling with SIGTERM\n");
 	return &io_buf[0];
 }
 

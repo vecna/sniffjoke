@@ -1,13 +1,21 @@
-#include "sniffjoke.h"
-#include <cerrno>
-#include <cstdarg>
-#include <cstdlib>
-#include <cstdio>
-#include <ctime>
+/*
+ * SniffJoke project, version 0.4 
+ * http://www.delirandom.net/sniffjoke
+ *
+ * -- THIS IS A GPL2 LICENSED SOFTWARE --
+ */
+
+#include "SjConf.h"
+#include "NetIO.h"
+#include "TCPTrack.h"
+#include "Process.h"
+
+#include "SjUtils.h"
+#include "user-def.h"
+
 #include <csignal>
 #include <getopt.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/un.h>
 
 /* process configuration, data struct defined in sniffjoke.h */
@@ -30,7 +38,7 @@ static Process *SjProc;
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --foreground\t\trunning in foreground\n"\
 	" --version\t\tshow sniffjoke version\n"\
-	" --help\t\t\tshow this help\n\n"\
+	" --help\t\t\tshow this help (special --help hacking)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
@@ -47,22 +55,23 @@ static Process *SjProc;
 #define SNIFFJOKE_HACKING_HELP \
 	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
 	" usage: --hacking 0123456789AB (12 positions: \"Y\" enable, \"N\" disable) 12 hacks:\n\n"\
-	"  1] fake data (default: YES)\n"\
-	"  2] fake seq (default: YES - need check)\n"\
-	"  3] fake close (default: YES - verify FIN/RST diffs)\n"\
-	"  4] fake zero window (default: YES)\n"\
-	"  5] valid rst fake seq (default: YES)\n"\
-	"  6] fake syn (default: NO - cause a troblue ?)\n"\
-	"  7] shift ack (default: NO - need testing, cause ack storm, cwnd downgrade)\n"\
-	"  8] half fake syn (default: NO - not implemented)\n"\
-	"  9] half fake ack (default: NO - not implemented)\n"\
-	" 10] inject IPOPT (default: YES - need a lot of research)\n"\
-	" 11] inject TCPOPT (default: YES - need research too)\n"\
-	" 12] fake data (ant|post)icipation (default: YES)\n\n"\
-	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED\n"
+	"  1] fake data\t\t\t\t(default: YES)\n"\
+	"  2] fake seq\t\t\t\t(default: YES - need check)\n"\
+	"  3] fake close\t\t\t\t(default: YES - verify FIN/RST diffs)\n"\
+	"  4] fake zero window\t\t\t(default: YES)\n"\
+	"  5] valid rst fake seq\t\t\t(default: YES)\n"\
+	"  6] fake syn\t\t\t\t(default: NO - cause a troblue ?)\n"\
+	"  7] shift ack\t\t\t\t(default: NO - need testing, cause ack storm, cwnd downgrade)\n"\
+	"  8] half fake syn\t\t\t(default: NO - not implemented)\n"\
+	"  9] half fake ack\t\t\t(default: NO - not implemented)\n"\
+	" 10] inject IPOPT\t\t\t(default: YES - need a lot of research)\n"\
+	" 11] inject TCPOPT\t\t\t(default: YES - need research too)\n"\
+	" 12] fake data (ant|post)icipation\t(default: YES)\n\n"\
+	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED)\n"
 
 static void sj_hacking_help(void) {
 	printf(SNIFFJOKE_HACKING_HELP);
+	printf(" default: --hacking %s\n", ASSURED_HACKS);
 }
 
 static void sj_help(const char *pname) {
@@ -77,7 +86,6 @@ static void sj_forced_clean_exit(pid_t pid) {
 	/* the function return when the process is dead */  
 	bool dead = false;
 	int killret;
-	internal_log(NULL, ALL_LEVEL, "killing process (%d)", pid);
 
 	/* kill! */
 	killret = kill(pid, SIGTERM);
@@ -90,7 +98,7 @@ static void sj_forced_clean_exit(pid_t pid) {
 			exit(0);
 		} else /* (errno == ESRCH) */ {
 			dead = true;
-			internal_log(NULL, ALL_LEVEL, "forced quit of previous process: (%d) is dead", pid);
+			internal_log(NULL, ALL_LEVEL, "Termination of process: (%d) success (process is dead)", pid);
 		}
 		
 		/* test if the pid is running again */
@@ -203,8 +211,6 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 	} else if (!memcmp(received_command, "set", strlen("set"))) {
 		int start_port, end_port, value;
 
-		/* TODO - support ports rangeSTART-rangeEND or port,another,again,sookiestackhouse,billcarson,65535 */
-		/* FIXME - at the moment only integer value are accepted: 0 1 2 3 4 */
 		sscanf(received_command, "set %d %d %d", &start_port, &end_port, &value);
 
 		if (start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER || 
@@ -288,7 +294,7 @@ static void client_send_command(char *cmdstring)
 
 	/* We receive a max of HUGEBUF -1 saving us from segfault during printf */
 	if ((rlen = service_listener(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1) 
-		exit(0); // the error message has been delivered 
+		exit(0); 
 
 	if (rlen == 0)
 		internal_log(NULL, ALL_LEVEL, "unreceived response for the command [%s]", cmdstring);
@@ -298,26 +304,28 @@ static void client_send_command(char *cmdstring)
 	close(sock);
 }
 
-void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) {
-		char errbuf[STRERRLEN];
-		int my_ret = 0;
+void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
+{
+#define MSGBUF	512
+	char errbuf[MSGBUF];
+	int my_ret = 0;
 
-		internal_log(NULL, DEBUG_LEVEL, "checking errno %d message of [%s], return value: %d fatal %d", objerrno, umsg, ret, fatal);
+	internal_log(NULL, DEBUG_LEVEL, "checking errno %d message of [%s], return value: %d fatal %d", objerrno, umsg, ret, fatal);
 
-		if (ret != -1)
-				return;
+	if (ret != -1)
+		return;
 
-		if (objerrno)
-				snprintf(errbuf, STRERRLEN, "%s: %s", umsg, strerror(objerrno));
-		else
-				snprintf(errbuf, STRERRLEN, "%s ", umsg);
+	if (objerrno)
+		snprintf(errbuf, MSGBUF, "%s: %s", umsg, strerror(objerrno));
+	else
+		snprintf(errbuf, MSGBUF, "%s ", umsg);
 
-		if (fatal) {
-				internal_log(NULL, ALL_LEVEL, "fatal error: %s", errbuf);
-				SjProc->CleanExit(true);
-		} else {
-				internal_log(NULL, ALL_LEVEL, "error: %s", errbuf);
-		}
+	if (fatal) {
+		internal_log(NULL, ALL_LEVEL, "fatal error: %s", errbuf);
+		SjProc->CleanExit(true);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "error: %s", errbuf);
+	}
 }
 
 /* forceflow is almost useless, use NULL in the normal logging options */
@@ -370,6 +378,7 @@ int main(int argc, char **argv) {
 	useropt.logfname = LOGFILE;
 	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
 	useropt.cfgfname = CONF_FILE;
+	useropt.requested_hacks = ASSURED_HACKS;
 
 	useropt.go_foreground = false;
 	useropt.force_restart = false;
@@ -387,8 +396,9 @@ int main(int argc, char **argv) {
 		{ "logfile", required_argument, NULL, 'l' },
 		{ "foreground", optional_argument, NULL, 'x' },
 		{ "force", optional_argument, NULL, 'r' },
+		{ "hacking", required_argument, NULL, 'k' },
+		{ "help", required_argument, NULL, 'h' },
 		{ "version", optional_argument, NULL, 'v' },
-		{ "help", optional_argument, NULL, 'h' },
 		{ NULL, 0, NULL, 0 }
 	};
 
@@ -427,15 +437,8 @@ int main(int argc, char **argv) {
 		command_input = command_buffer;
 	}
 
-	SjProc = new Process(&useropt);
-	if (SjProc->failure) {
-		sj_help(argv[0]);
-		delete SjProc;
-		return 0;
-	}
-
 	if (command_input == NULL) {
-		while ((charopt = getopt_long(argc, argv, "f:u:g:c:l:d:xrvh", sj_option, NULL)) != -1) {
+		while ((charopt = getopt_long(argc, argv, "f:u:g:c:l:d:xrv:h:k", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
 					useropt.cfgfname = strdup(optarg);
@@ -464,7 +467,18 @@ int main(int argc, char **argv) {
 				case 'v':
 					sj_version(argv[0]);
 					return 0;
+				case 'k':
+					if(strlen(optarg) != CONFIGURABLE_HACKS_N) {
+						sj_hacking_help();
+						return -1;
+					}
+					useropt.requested_hacks = strdup(optarg);
+					break;
 				case 'h':
+					if(optarg != NULL && !strcmp(optarg, "hacking")) {
+						sj_hacking_help();
+						return -1;
+					}
 				default:
 					sj_help(argv[0]);
 					return -1;
@@ -474,6 +488,13 @@ int main(int argc, char **argv) {
 			}
 		}
 	
+	}
+
+	SjProc = new Process(&useropt);
+	if (SjProc->failure) {
+		sj_help(argv[0]);
+		delete SjProc;
+		return 0;
 	}
 
 	/* importing configuration: contains both service and client user options */
@@ -507,16 +528,6 @@ int main(int argc, char **argv) {
 
 		client_send_command(command_input);
 
-#if 0
-		/* if the command sent was "quit", we need to kill the father. should not be
-		 * self killed with raise(), and so we need another string check */
-		if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
-			int sj_srv_father_pid = SjProc->readPidfile(SJ_SERVICE_FATHER_PID_FILE);
-			kill(sj_srv_father_pid, SIGTERM);
-			printf("mah ?\n");
-		}
-#endif
-
 		SjProc->ReleaseLock(SJ_CLIENT_LOCK);
 		SjProc->CleanExit();
 	}
@@ -547,6 +558,7 @@ int main(int argc, char **argv) {
 			sj_forced_clean_exit(sj_srv_child_pid); 
 			internal_log(NULL, VERBOSE_LEVEL, "forced kill of service child %d process...", sj_srv_child_pid);
 		}
+		internal_log(NULL, ALL_LEVEL, "A new instance of sniffjoke is going running in background");
 	} 
 
 	SjProc->setLocktoExist(SJ_SERVICE_LOCK);

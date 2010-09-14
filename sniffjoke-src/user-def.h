@@ -15,6 +15,8 @@
 #define DEFAULT_DEBUG_LEVEL		ALL_LEVEL
 #define SW_NAME				"SniffJoke"
 #define SW_VERSION			"0.4 alpha 3"
+#define ASSURED_HACKS			"YYYYYNNNNYYY"
+#define CONFIGURABLE_HACKS_N		12
 
 #define SJ_SERVICE_LOCK			"/tmp/.sniffjoke_service.lock"
 #define SJ_CLIENT_LOCK               	"/tmp/.sniffjoke_client.lock"
