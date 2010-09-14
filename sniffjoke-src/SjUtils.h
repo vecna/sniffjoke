@@ -5,16 +5,19 @@
 
 #define STRERRLEN	1024
 
-/* loglevels */
-#define ALL_LEVEL		0
+/* this value is not used, but I need to keep in mind if useful */
+#define SUPPRESS_LOG		1
+
+/* loglevel in the internal_log */
+#define ALL_LEVEL		2
 #define ALL_LEVEL_NAME		"default"
-#define VERBOSE_LEVEL		1
+#define VERBOSE_LEVEL		3
 #define VERBOSE_LEVEL_NAME	"verbose"
-#define DEBUG_LEVEL		2
+#define DEBUG_LEVEL		4
 #define DEBUG_LEVEL_NAME	"debug"
-#define PACKETS_DEBUG		3
+#define PACKETS_DEBUG		5
 #define PACKETS_DEBUG_NAME	"packets"
-#define HACKS_DEBUG		4
+#define HACKS_DEBUG		6
 #define HACKS_DEBUG_NAME	"hacks"
 
 void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal);

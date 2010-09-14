@@ -44,7 +44,26 @@ static Process *SjProc;
 	" loglevel\t\t0 = normal, 1 = verbose, 2 = debug\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
+#define SNIFFJOKE_HACKING_HELP \
+	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
+	" usage: --hacking 0123456789AB (12 positions: \"Y\" enable, \"N\" disable) 12 hacks:\n\n"\
+	"  1] fake data (default: YES)\n"\
+	"  2] fake seq (default: YES - need check)\n"\
+	"  3] fake close (default: YES - verify FIN/RST diffs)\n"\
+	"  4] fake zero window (default: YES)\n"\
+	"  5] valid rst fake seq (default: YES)\n"\
+	"  6] fake syn (default: NO - cause a troblue ?)\n"\
+	"  7] shift ack (default: NO - need testing, cause ack storm, cwnd downgrade)\n"\
+	"  8] half fake syn (default: NO - not implemented)\n"\
+	"  9] half fake ack (default: NO - not implemented)\n"\
+	" 10] inject IPOPT (default: YES - need a lot of research)\n"\
+	" 11] inject TCPOPT (default: YES - need research too)\n"\
+	" 12] fake data (ant|post)icipation (default: YES)\n\n"\
+	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED\n"
 
+static void sj_hacking_help(void) {
+	printf(SNIFFJOKE_HACKING_HELP);
+}
 
 static void sj_help(const char *pname) {
 	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, LOGFILE, "127.0.0.1");
@@ -273,8 +292,8 @@ static void client_send_command(char *cmdstring)
 
 	if (rlen == 0)
 		internal_log(NULL, ALL_LEVEL, "unreceived response for the command [%s]", cmdstring);
-	else	/* the output */
-		printf("answer reiceved from sniffjoke service:\n\n%s\n", received_buf);
+	else	/* the output */ 
+		printf("<sniffjoke service>: %s", received_buf);
 	
 	close(sock);
 }
@@ -302,37 +321,38 @@ void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) {
 }
 
 /* forceflow is almost useless, use NULL in the normal logging options */
-void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...) {
-		va_list arguments;
-		time_t now = time(NULL);
-		FILE *output_flow;
+void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...) 
+{
+	va_list arguments;
+	time_t now = time(NULL);
+	FILE *output_flow;
 
-		if (forceflow == NULL && useropt.logstream == NULL)
-				return;
+	if (forceflow == NULL && useropt.logstream == NULL)
+		return;
 
-		if (forceflow != NULL)
-				output_flow = forceflow;
-		else
-				output_flow = useropt.logstream;
+	if (forceflow != NULL)
+		output_flow = forceflow;
+	else
+		output_flow = useropt.logstream;
 
-		if (errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
-				output_flow = useropt.packet_logstream;
+	if (errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
+		output_flow = useropt.packet_logstream;
 
-		if (errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
-				output_flow = useropt.hacks_logstream;
+	if (errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
+		output_flow = useropt.hacks_logstream;
 
-		if (errorlevel <= useropt.debug_level) {
-				char *time = strdup(asctime(localtime(&now)));
+	if (errorlevel <= useropt.debug_level) {
+		char *time = strdup(asctime(localtime(&now)));
 
-				va_start(arguments, msg);
-				time[strlen(time) -1] = ' ';
-				fprintf(output_flow, "%s ", time);
-				vfprintf(output_flow, msg, arguments);
-				fprintf(output_flow, "\n");
-				fflush(output_flow);
-				va_end(arguments);
-				free(time);
-		}
+		va_start(arguments, msg);
+		time[strlen(time) -1] = ' ';
+		fprintf(output_flow, "%s ", time);
+		vfprintf(output_flow, msg, arguments);
+		fprintf(output_flow, "\n");
+		fflush(output_flow);
+		va_end(arguments);
+		free(time);
+	}
 }
 
 int main(int argc, char **argv) {
@@ -462,8 +482,6 @@ int main(int argc, char **argv) {
 	/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
 	if (command_input != NULL) 
 	{
-		internal_log(NULL, VERBOSE_LEVEL, "command input [%s]", command_input);
-
 		if (SjProc->isServiceRunning() == false) {
 			internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command  %s ignored", command_input);
 			return 0;
@@ -487,11 +505,19 @@ int main(int argc, char **argv) {
 
 		SjProc->PrivilegesDowngrade(sjconf->running);
 
-		internal_log(NULL, VERBOSE_LEVEL, "sending command: [%s] to sniffjoke service", command_input);
 		client_send_command(command_input);
 
-		SjProc->ReleaseLock(SJ_CLIENT_LOCK);
+#if 0
+		/* if the command sent was "quit", we need to kill the father. should not be
+		 * self killed with raise(), and so we need another string check */
+		if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
+			int sj_srv_father_pid = SjProc->readPidfile(SJ_SERVICE_FATHER_PID_FILE);
+			kill(sj_srv_father_pid, SIGTERM);
+			printf("mah ?\n");
+		}
+#endif
 
+		SjProc->ReleaseLock(SJ_CLIENT_LOCK);
 		SjProc->CleanExit();
 	}
 
@@ -512,17 +538,15 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 
-		if ((sj_srv_father_pid || sj_srv_child_pid)) 
-		{
-			if (sj_srv_father_pid) {
-				sj_forced_clean_exit(sj_srv_father_pid); // XXX da verificare 
-				internal_log(NULL, VERBOSE_LEVEL, "forced kill of srv father %d process...", sj_srv_father_pid);
-			}
-			if (sj_srv_child_pid) {
-				sj_forced_clean_exit(sj_srv_child_pid); // XXX da verificare 
-				internal_log(NULL, VERBOSE_LEVEL, "forced kill of srv child %d process...", sj_srv_child_pid);
-			}
-		} 
+		if (sj_srv_father_pid) {
+			sj_forced_clean_exit(sj_srv_father_pid); 
+			internal_log(NULL, VERBOSE_LEVEL, "forced kill of service father %d process...", sj_srv_father_pid);
+		}
+
+		if (sj_srv_child_pid) {
+			sj_forced_clean_exit(sj_srv_child_pid); 
+			internal_log(NULL, VERBOSE_LEVEL, "forced kill of service child %d process...", sj_srv_child_pid);
+		}
 	} 
 
 	SjProc->setLocktoExist(SJ_SERVICE_LOCK);
