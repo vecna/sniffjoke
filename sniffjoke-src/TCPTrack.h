@@ -1,6 +1,8 @@
 #ifndef SJ_TCPTRACK_H
 #define SJ_TCPTRACK_H
 
+#include "user-def.h"
+
 #include "SjConf.h"
 #include "Packet.h"
 #include "PacketQueue.h"

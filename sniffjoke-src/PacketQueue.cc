@@ -1,8 +1,6 @@
 #include "SjUtils.h"
 #include "PacketQueue.h"
 
-#include <cstdlib>
-
 PacketQueue::PacketQueue(int queue_levels)
 {
 	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");	

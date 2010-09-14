@@ -1,9 +1,5 @@
+#include "SjUtils.h"
 #include "Packet.h"
-
-#include <cstdlib>
-#include <cstring>
-#include <cstdio>
-#include <ctime>
 
 Packet::Packet(int size, const unsigned char* buff, int buff_size) {
 	pbuf = new unsigned char[size];

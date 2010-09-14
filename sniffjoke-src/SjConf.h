@@ -1,6 +1,7 @@
 #ifndef SJ_CONF_H
 #define SJ_CONF_H
 
+#include "SjUtils.h"
 #include <net/ethernet.h>
 
 #define HEAVY		0x04
@@ -29,6 +30,7 @@ struct sj_useropt {
 		const char *group;
 		const char *chroot_dir;
 		const char *logfname;
+		const char *requested_hacks;
 		unsigned int debug_level;
 		bool go_foreground;
 		bool force_restart;
@@ -56,6 +58,9 @@ struct sj_config {
 		unsigned int port_conf_set_n;		/* number of "set" usage */
 		unsigned char portconf[PORTNUMBER];
 		char fileconfname[MEDIUMBUF];
+
+		/* hacks support */
+		char hacks[CONFIGURABLE_HACKS_N];
 
 		bool SjH__fake_data;
 		bool SjH__fake_seq;
@@ -88,6 +93,7 @@ public:
 		~SjConf();
 
 		void dump(struct sj_config *);
+		void setup_active_hacks(void);
 
 		char *handle_cmd_stat(void);
 		char *handle_cmd_stop(void);

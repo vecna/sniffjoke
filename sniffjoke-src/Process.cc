@@ -1,9 +1,9 @@
-#include "sniffjoke.h"
-#include <cerrno>
-#include <cstdlib>
-#include <cstdio>
+#include "SjUtils.h"
+#include "Process.h"
+
+#include "SjConf.h" /* struct sj_config */
+
 #include <getopt.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <grp.h>

@@ -1,8 +1,5 @@
+#include "SjUtils.h"
 #include "Optional_DataDebug.h"
-#include <cstdarg>
-#include <ctime>
-#include <cstring>
-#include <cstdlib>
 
 #include <csignal>
 #include <sys/stat.h>

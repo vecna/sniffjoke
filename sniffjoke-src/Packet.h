@@ -1,11 +1,13 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
+#include "user-def.h"
+
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-#define MAXHACKS	7   // Max num of injected hacks
+#define MAXHACKS	7   // Max num of injected hacks for each packet
 #define MAXOPTINJ	48  // Max num of byte for option injection: 8 byte ipopt, 40 byte tcpopt
 
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };

@@ -1,6 +1,8 @@
 #ifndef SJ_OPTIONAL_DATADEBUG_H
 #define SJ_OPTIONAL_DATADEBUG_H
 
+#include "user-def.h"
+
 #include "PacketQueue.h"
 #include "SessionTrack.h"
 #include "TTLFocus.h"
