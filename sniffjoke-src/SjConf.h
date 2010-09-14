@@ -12,7 +12,6 @@
 
 #define PORTNUMBER  65535
 
-
 struct port_range {
 		unsigned short start;
 		unsigned short end;
@@ -90,7 +89,7 @@ public:
 		SjConf(struct sj_useropt *);
 		~SjConf();
 
-		void dump_config(char *);
+		void dump_config(struct sj_config *);
 
 		char *handle_cmd_stat(void);
 		char *handle_cmd_stop(void);

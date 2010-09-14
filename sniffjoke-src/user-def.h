@@ -7,12 +7,12 @@
 #define USERDEF_H
 
 /* Sniffjoke defaults config values */
-#define CONF_FILE 			"/root/.sniffjoke.binconf"
+#define CONF_FILE 			"sniffjoke.binconf" // it is used INSIDE chroot
 #define DROP_USER 			"nobody"
 #define DROP_GROUP			"users"
 #define CHROOT_DIR			"/tmp/sniffjoke"
-#define LOGFILE				"sniffjoke.log" // it is used INSIDE chroot if not otherwise specified 
-#define DEFAULT_DEBUG_LEVEL		2
+#define LOGFILE				"sniffjoke.log" // it is used INSIDE chroot 
+#define DEFAULT_DEBUG_LEVEL		ALL_LEVEL
 #define SW_NAME				"SniffJoke"
 #define SW_VERSION			"0.4 alpha 3"
 

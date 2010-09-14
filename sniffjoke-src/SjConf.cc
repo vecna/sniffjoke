@@ -10,6 +10,8 @@
 #include <cctype>
 #include <unistd.h>
 
+#include <sys/stat.h>
+
 /* Read command line values if present, preserve the previous options, and otherwise import default */
 void SjConf::compare_check_copy(char *target, int tlen, const char *useropt, int ulen, const char *sjdefault)
 {
@@ -45,8 +47,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 
-	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", user_opt->cfgfname);
-	if (user_opt != NULL && ((cF = fopen(user_opt->cfgfname, "r")) != NULL)) 
+	char completefname[LARGEBUF];
+	snprintf(completefname, LARGEBUF, "%s/%s", user_opt->chroot_dir, user_opt->cfgfname);
+	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", completefname);
+
+	if ((cF = fopen(completefname, "r")) != NULL) 
 	{
 		struct sj_config readed;
 
@@ -54,7 +59,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 
 		i = fread((void *)&readed, sizeof(struct sj_config), 1, cF);
 		check_call_ret("fread of config file", errno, (i - 1), false);
-		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", user_opt->cfgfname, i * sizeof(struct sj_config));
+		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", completefname, i * sizeof(struct sj_config));
 
 		if (readed.MAGIC != magic_check) {
 			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seem to be corrupted - delete and will be rebuild at the next start", 
@@ -63,7 +68,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
 		}
 
-		internal_log(NULL, VERBOSE_LEVEL, "readed configuration settings in %s", user_opt->cfgfname);
+		internal_log(NULL, VERBOSE_LEVEL, "readed configuration settings from %s", completefname); 
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke running: %s", readed.sj_run == true ? "TRUE" : "FALSE");
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway mac address: %s", readed.gw_mac_str);
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway ip address: %s", readed.gw_ip_addr);
@@ -78,10 +83,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		fclose(cF);
 
 		memcpy(running, &readed, sizeof(struct sj_config));
+
 		
 	} else {
 
-		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found, initialization...", user_opt->cfgfname);
+		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found, initialization...", completefname);
 		memset(running, 0x00, sizeof(sj_config));
 
 		/* begin autodetecting interface */
@@ -213,14 +219,18 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	/* because write a sepecific "unsinged int" version of compare_check_copy was dirty ... */
 	if(user_opt->debug_level != DEFAULT_DEBUG_LEVEL)
 		running->debug_level = user_opt->debug_level;
-	if(running->debug_level == 0)
-		running->debug_level = DEFAULT_DEBUG_LEVEL;
 
-	dump_config(running->fileconfname);
+	if(running->debug_level == 0)
+		running->debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
+
+	dump_config(running);
+
+	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
+	chmod(completefname, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 }
 
 SjConf::~SjConf() {
-	internal_log(NULL, ALL_LEVEL, "SjConf: cleaning configuration object\n");
+	internal_log(NULL, ALL_LEVEL, "SjConf: pid %d cleaning configuration object", getpid());
 }
 
 /* private function useful for resolution of code/name */
@@ -236,42 +246,62 @@ const char *SjConf::resolve_weight_name(int command_code)
 	}
 }
 
-void SjConf::dump_config(char *dumpfname)
+void SjConf::dump_config(struct sj_config *running)
 {
+	char completefname[LARGEBUF];
 	FILE *dumpfd;
 	int ret;
 	float magic_value = (MAGICVAL * 28.26);
 
 	running->MAGIC = magic_value;
 
-	dumpfd = fopen(dumpfname, "w");
+	/* FIXME - we need to query Process object for understand which process we are, ATM, I'm using getuid */
+	if(getuid()) {
+		snprintf(completefname, LARGEBUF, "%s", running->fileconfname);
+	}
+	else {
+		snprintf(completefname, LARGEBUF, "%s/%s", running->chroot_dir, running->fileconfname);
+	}
+	dumpfd = fopen(completefname, "w");
+	internal_log(NULL, VERBOSE_LEVEL, "dumping running configuration to %s",  completefname);
 	check_call_ret("open config file in writing", errno, dumpfd == NULL ? -1 : 0, false);
 
 	ret = fwrite(running, sizeof(struct sj_config), 1, dumpfd);
-	/* ret - 1 because fwrite return the number of written item */
-	check_call_ret("writing config file", errno, (ret - 1), false);
 
+	if(ret != 1) /* ret - 1 because fwrite return the number of written item */
+	{
+		internal_log(NULL, ALL_LEVEL, "unable to write configuration to %s: %s", 
+			completefname, strerror(errno)
+		);
+		check_call_ret("writing config file", errno, (ret - 1), false);
+	}
 	fclose(dumpfd);
-	check_call_ret("closing config file", errno, (ret - 1), false);
 }
 
 char *SjConf::handle_cmd_quit(void)
 {
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
-	dump_config(running->fileconfname);
-	raise(SIGTERM);
-	return const_cast<char *>("dumped configuration, sending SIGTERM to selfprocess for start SniffJoke exit");
+	dump_config(running);
+
+	if(!fork()) {
+		usleep(500); 
+		kill(getppid(), SIGTERM); 
+		raise(SIGTERM);
+	}
+
+	snprintf(io_buf, HUGEBUF, "dumped configuration, waiting for SIGTERM for SniffJoke exit\n");
+	return &io_buf[0];
 }
 
 char *SjConf::handle_cmd_stat(void) 
 {
 	internal_log(NULL, VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, HUGEBUF, 
-		"sniffjoke running:\t\t%s\n" \
+		"\nsniffjoke running:\t\t%s\n" \
 		"gateway mac address:\t\t%s\n" \
 		"gateway ip address:\t\t%s\n" \
 		"local interface:\t\t%s, %s address\n" \
-		"dynamic tunnel interface:\ttun%d",
+		"dynamic tunnel interface:\ttun%d\n",
 		running->sj_run == true ? "TRUE" : "FALSE",
 		running->gw_mac_str,
 		running->gw_ip_addr,
@@ -291,13 +321,13 @@ char *SjConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned 
 		case LIGHT: what_weightness = "light"; break;
 		case NONE: what_weightness = "no hacking"; break;
 		default: 
-			snprintf(io_buf, HUGEBUF, "ERROR!! invalid code (0x%2x) in %s:%s:%d", what, __FILE__, __func__, __LINE__);
+			snprintf(io_buf, HUGEBUF, "ERROR!! invalid code (0x%2x) in %s:%s:%d\n", what, __FILE__, __func__, __LINE__);
 			internal_log(NULL, ALL_LEVEL, "BAD ERROR: %s", io_buf);
 			return &io_buf[0];
 			break;
 	}
 
-	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level", start, end, what_weightness);
+	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
 	internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 
 	do {
@@ -311,11 +341,11 @@ char *SjConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned 
 char *SjConf::handle_cmd_stop(void)
 {
 	if (running->sj_run != false) {
-		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!");
+		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
 		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 		running->sj_run = false;
 	} else /* sniffjoke is already stopped */ {
-		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!");
+		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
 		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 	}
 	return &io_buf[0];
@@ -324,11 +354,11 @@ char *SjConf::handle_cmd_stop(void)
 char *SjConf::handle_cmd_start(void)
 {
 	if (running->sj_run != true) {
-		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!");
+		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
 		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 		running->sj_run = true;
 	} else /* sniffjoke is already running */ {
-		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!");
+		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
 		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 	}
 	return &io_buf[0];
