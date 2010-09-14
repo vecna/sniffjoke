@@ -2,7 +2,7 @@
  * SniffJoke project, version 0.4 
  * http://www.delirandom.net/sniffjoke
  *
- * -- THIS IS A GPL2 LICENSED SOFTWARE --
+ * -- THIS IS A GPL3 LICENSED SOFTWARE --
  */
 
 #include "SjConf.h"
@@ -306,7 +306,6 @@ static void client_send_command(char *cmdstring)
 
 void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
 {
-#define MSGBUF	512
 	char errbuf[MSGBUF];
 	int my_ret = 0;
 

@@ -135,7 +135,6 @@ void Process::ReleaseLock(const char *lockpath)
 
 void Process::Jail(const char *chroot_dir, struct sj_config *running) 
 {
-
 	mkdir(chroot_dir, 700);
 
 	userinfo = getpwnam(running->user);

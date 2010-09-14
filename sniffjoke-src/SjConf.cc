@@ -274,20 +274,22 @@ void SjConf::dump(void)
 	else {
 		snprintf(completefname, LARGEBUF, "%s/%s", running->chroot_dir, running->fileconfname);
 	}
-	dumpfd = fopen(completefname, "w");
-	internal_log(NULL, VERBOSE_LEVEL, "dumping running configuration to %s",  completefname);
-	check_call_ret("open config file in writing", errno, dumpfd == NULL ? -1 : 0, false);
+	
+	if((dumpfd = fopen(completefname, "w")) != NULL) {	
+		internal_log(NULL, VERBOSE_LEVEL, "dumping running configuration to %s",  completefname);
+		check_call_ret("open config file for writing", errno, dumpfd == NULL ? -1 : 0, false);
 
-	ret = fwrite(running, sizeof(struct sj_config), 1, dumpfd);
+		ret = fwrite(running, sizeof(struct sj_config), 1, dumpfd);
 
-	if(ret != 1) /* ret - 1 because fwrite return the number of written item */
-	{
-		internal_log(NULL, ALL_LEVEL, "unable to write configuration to %s: %s", 
-			completefname, strerror(errno)
-		);
-		check_call_ret("writing config file", errno, (ret - 1), false);
+		if(ret != 1) /* ret - 1 because fwrite return the number of written item */
+		{
+			internal_log(NULL, ALL_LEVEL, "unable to write configuration to %s: %s", 
+				completefname, strerror(errno)
+			);
+			check_call_ret("writing config file", errno, (ret - 1), false);
+		}
+		fclose(dumpfd);
 	}
-	fclose(dumpfd);
 }
 
 char *SjConf::handle_cmd_quit(void)

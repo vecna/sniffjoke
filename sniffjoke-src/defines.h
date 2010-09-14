@@ -26,6 +26,9 @@
 #define SJ_SERVICE_CHILD_PID_FILE	"/tmp/sniffjoke_child.pid"
 /* those are used under chroot */
 #define SJ_SERVICE_UNIXSOCK		"sniffjoke_service" 
-#define SJ_CLIENT_UNIXSOCK		"sniffjoke_client" 
+#define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
+
+#define MSGBUF				512
+
 
 #endif /* DEFINES_H */
