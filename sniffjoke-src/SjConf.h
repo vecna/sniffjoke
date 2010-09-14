@@ -43,11 +43,11 @@ struct sj_useropt {
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool sj_run;				/* default: false = NO RUNNING */
-		const char *user;			/* default: nobody */
-		const char *group;			/* default: nogroup */
-		char chroot_dir[MEDIUMBUF];		/* default: /var/run/sniffjoke */
-		char logfname[MEDIUMBUF];		/* default: /var/log/sniffjoke.log */
-		int debug_level;			/* default: 1 */
+		char user[MEDIUMBUF];		/* default: check user-def.h */
+		char group[MEDIUMBUF];		/* default: check user-def.h */
+		char chroot_dir[MEDIUMBUF];		/* default: check user-def.h */
+		char logfname[MEDIUMBUF];		/* default: check user-def.h */
+		int debug_level;			/* default: check user-def.h */
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
@@ -56,7 +56,9 @@ struct sj_config {
 		unsigned int max_sex_track;		/* default: 4096 */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
 		int tun_number;				/* tunnel interface number */
+		unsigned int port_conf_set_n;		/* number of "set" usage */
 		unsigned char portconf[PORTNUMBER];
+		char fileconfname[MEDIUMBUF];
 
 		bool SjH__fake_data;
 		bool SjH__fake_seq;
@@ -80,17 +82,20 @@ class SjConf {
 private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
+		void compare_check_copy(char *, int, const char *, int , const char *);
+
 public:
 		struct sj_config *running;
 
 		SjConf(struct sj_useropt *);
 		~SjConf();
 
-		void dump_config(const char *);
+		void dump_config(char *);
 
 		char *handle_cmd_stat(void);
 		char *handle_cmd_stop(void);
 		char *handle_cmd_start(void);
+		char *handle_cmd_quit(void);
 		char *handle_cmd_set(unsigned short, unsigned short, unsigned char);
 		char *handle_cmd_showport(void);
 		char *handle_cmd_log(int);

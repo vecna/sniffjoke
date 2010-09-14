@@ -12,7 +12,7 @@
 #define DROP_GROUP			"users"
 #define CHROOT_DIR			"/tmp/sniffjoke"
 #define LOGFILE				"sniffjoke.log" // it is used INSIDE chroot if not otherwise specified 
-#define DEFAULT_DEBUG_LEVEL		0
+#define DEFAULT_DEBUG_LEVEL		2
 #define SW_NAME				"SniffJoke"
 #define SW_VERSION			"0.4 alpha 3"
 

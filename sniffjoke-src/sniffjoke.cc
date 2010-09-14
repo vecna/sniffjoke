@@ -10,17 +10,6 @@
 #include <unistd.h>
 #include <sys/un.h>
 
-/* Sniffjoke defaults config values */
-const char *default_conf_file = "/root/.sniffjoke.binconf";
-const char *default_user = "nobody";
-const char *default_group = "users";
-const char *default_chroot_dir = "/tmp/sniffjoke";
-const char *default_log_file = "sniffjoke.log"; // chroot + logpath
-const unsigned int default_debug_level = 0;
-const char *prog_name = "SniffJoke, http://www.delirandom.net/sniffjoke";
-const char *help_url = "http://www.delirandom.net/sniffjoke";
-const char *prog_version = "0.4 alpha 2";
-
 /* process configuration, data struct defined in sniffjoke.h */
 static struct sj_useropt useropt;
 
@@ -28,6 +17,8 @@ static struct sj_useropt useropt;
 static SjConf *sjconf;
 /* Sniffjoke man in the middle class and functions */
 static NetIO *mitm;
+/* process tracking, handling, killing, breeding, ecc... */
+static Process *SjProc;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
@@ -43,24 +34,24 @@ static NetIO *mitm;
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
-	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
+	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
+	" stat\t\t\tget statistics about sniffjoke configuration and network\n\n"\
 	" set start end value\tset per tcp ports the strongness of injection\n"\
-	"\t\t\tthe values are: [heavy|normal|light|none]\n"\
+	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
+	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
 	" loglevel\t\t0 = normal, 1 = verbose, 2 = debug\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 
-// FIXME - not global
-Process *SjProc;
 
 static void sj_help(const char *pname) {
-	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, default_log_file, "127.0.0.1");
+	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, LOGFILE, "127.0.0.1");
 }
 
 static void sj_version(const char *pname) {
-	printf("%s %s\n", prog_name, prog_version);
+	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
 static void sj_forced_clean_exit(pid_t pid) {
@@ -129,8 +120,6 @@ static int sj_bind_unixsocket()
 	struct sockaddr_un sjsrv;
 	int sock;
 
-//	assert(SjProc->ProcessType == Process::SJ_PROCESS_SERVICE_CHILD);
-
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: : unable to open unix socket: %s", strerror(errno));
 		SjProc->CleanExit(true);
@@ -184,13 +173,14 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 
 	internal_log(NULL, VERBOSE_LEVEL, "received command from the client: %s", received_command);
 
-	/* FIXME - sanity check require */
 	if (!memcmp(received_command, "stat", strlen("stat"))) {
 		output = sjconf->handle_cmd_stat();
 	} else if (!memcmp(received_command, "start", strlen("start"))) {
 		output = sjconf->handle_cmd_start();
 	} else if (!memcmp(received_command, "stop", strlen("stop"))) {
 		output = sjconf->handle_cmd_stop();
+	} else if (!memcmp(received_command, "quit", strlen("quit"))) {
+		output = sjconf->handle_cmd_quit();
 	} else if (!memcmp(received_command, "set", strlen("set"))) {
 		int start_port, end_port, value;
 
@@ -239,10 +229,8 @@ static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
 		free(internal_buf);
 }
 
-static void client_send_command(char *cmdstring)  {
-
-//  assert(sj_process_type == SJ_PROCESS_TYPE_CLI);
-
+static void client_send_command(char *cmdstring)
+{
 	int sock;
 	char received_buf[HUGEBUF];
 	struct sockaddr_un servaddr;/* address of server */
@@ -355,12 +343,14 @@ int main(int argc, char **argv) {
 	int listening_unix_socket;
 	
 	/* set the default values in the configuration struct */
-	useropt.cfgfname = default_conf_file;
-	useropt.user = default_user;
-	useropt.group = default_group;
-	useropt.chroot_dir = default_chroot_dir;
-	useropt.logfname = default_log_file;
-	useropt.debug_level = default_debug_level;
+	useropt.cfgfname = CONF_FILE;
+	useropt.user = DROP_USER;
+	useropt.group = DROP_GROUP;
+	useropt.chroot_dir = CHROOT_DIR;
+	useropt.logfname = LOGFILE;
+	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
+	useropt.cfgfname = CONF_FILE;
+
 	useropt.go_foreground = false;
 	useropt.force_restart = false;
 	useropt.logstream = stdout;
@@ -408,6 +398,10 @@ int main(int argc, char **argv) {
 		snprintf(command_buffer, MEDIUMBUF, "showport");
 		command_input = command_buffer;
 	} 
+	if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
+		snprintf(command_buffer, MEDIUMBUF, "quit");
+		command_input = command_buffer;
+	}
 	if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
 		snprintf(command_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
 		command_input = command_buffer;

@@ -697,7 +697,8 @@ void TCPTrack::inject_hack_in_queue(const Packet &pkt, const SessionTrack *sessi
 		}
 	}
 
-	if (runcopy->SjH__fake_data_anticipation || runcopy->SjH__fake_data_posticipation) 
+	/* > 52 byte mean avoit to do data anticipation where no data is present! */
+	if ( (runcopy->SjH__fake_data_anticipation || runcopy->SjH__fake_data_posticipation) && pkt.orig_pktlen > 52)
 	{
 		/* those hacks works only together */
 		if (percentage (logarithm (session->packet_number), 50)) 

@@ -89,7 +89,7 @@ void Process::processDetach()
 		 * process for restore the network */
 		int deadtrace;
 		ProcessType = SJ_PROCESS_SERVICE_FATHER; 
-		writePidfile(SJ_SERVICE_FATHER_PID_FILE, pidval);
+		writePidfile(SJ_SERVICE_FATHER_PID_FILE, getpid() );
 
 		/* be sure that the child has runned */
 		usleep(500);
@@ -119,12 +119,11 @@ void Process::processDetach()
 		/* 
 		 * Sniffjoke SERVICE CHILD: I/O, user privileges, 
 		 * networking process */
-		int retval = getpid();
 		ReleaseLock(SJ_SERVICE_LOCK);
 
 		processIsolation();
 		ProcessType = SJ_PROCESS_SERVICE_CHILD; 
-		writePidfile(SJ_SERVICE_CHILD_PID_FILE, retval);
+		writePidfile(SJ_SERVICE_CHILD_PID_FILE, getpid() );
 	}
 }
 
@@ -138,11 +137,6 @@ void Process::Jail(const char *chroot_dir, struct sj_config *running)
 {
 
 	mkdir(chroot_dir, 700);
-
-	if (running->user == NULL) 
-		running->user = static_cast<const char *>("nobody"); 
-	if (running->group == NULL)
-		running->group = static_cast<const char *>("nogroup");
 
 	userinfo = getpwnam(running->user);
 	groupinfo = getgrnam(running->group);

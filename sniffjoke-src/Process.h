@@ -3,14 +3,6 @@
 
 #include <csignal>
 
-#define SJ_SERVICE_LOCK				"/tmp/.sniffjoke_service.lock"
-#define SJ_CLIENT_LOCK				"/tmp/.sniffjoke_client.lock"
-#define SJ_SERVICE_FATHER_PID_FILE		"/tmp/sniffjoke_father.pid"
-#define SJ_SERVICE_CHILD_PID_FILE		"/tmp/sniffjoke_child.pid"
-/* those are used under chroot */
-#define SJ_SERVICE_UNIXSOCK			"sniffjoke_service" 
-#define SJ_CLIENT_UNIXSOCK			"sniffjoke_client" 
-
 class Process {
 private:
 	struct passwd *userinfo;

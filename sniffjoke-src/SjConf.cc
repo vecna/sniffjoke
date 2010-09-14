@@ -1,5 +1,6 @@
 #include "SjUtils.h"
 #include "SjConf.h"
+#include "user-def.h"
 
 #include <cerrno>
 #include <cstdlib>
@@ -8,6 +9,24 @@
 #include <csignal>
 #include <cctype>
 #include <unistd.h>
+
+/* Read command line values if present, preserve the previous options, and otherwise import default */
+void SjConf::compare_check_copy(char *target, int tlen, const char *useropt, int ulen, const char *sjdefault)
+{
+	int blen = ulen > strlen(sjdefault) ? strlen(sjdefault) : ulen;
+
+	/* zero choice: if running->data[0] == 0x00, is the first start: write the default in the empty buffer */
+	memcpy(target, sjdefault, strlen(sjdefault));
+
+	/* first choice: if the user had specify an option (!= default), is used immediatly */
+	if(memcmp(useropt, sjdefault, blen)) {
+		memcpy(target, useropt, ulen > tlen ? tlen : ulen );
+		return;
+	}
+
+	/* second choice: take the useropt/default remaining */
+	memcpy(target, useropt, ulen > tlen ? tlen : ulen);
+}
 
 SjConf::SjConf(struct sj_useropt *user_opt) 
 {
@@ -38,7 +57,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", user_opt->cfgfname, i * sizeof(struct sj_config));
 
 		if (readed.MAGIC != magic_check) {
-			internal_log(NULL, ALL_LEVEL, "magic number of sniffjoke cfg: %s file seem to be corrupted -- delete them", 
+			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seem to be corrupted - delete and will be rebuild at the next start", 
 				user_opt->cfgfname
 			);
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
@@ -50,6 +69,11 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway ip address: %s", readed.gw_ip_addr);
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke local interface: %s, %s address", readed.interface, readed.local_ip_addr);
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke dynamic tunnel interface: tun%d", readed.tun_number);
+		if(readed.port_conf_set_n) {
+			internal_log(NULL, VERBOSE_LEVEL,"-- readed %d TCP port set, verify them with sniffjoke stat",
+				readed.port_conf_set_n
+			);
+		}
 
 		fclose(cF);
 
@@ -57,6 +81,7 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		
 	} else {
 
+		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found, initialization...", user_opt->cfgfname);
 		memset(running, 0x00, sizeof(sj_config));
 
 		/* begin autodetecting interface */
@@ -176,29 +201,22 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		running->SjH__fake_data_anticipation = true;
 		running->SjH__fake_data_posticipation = true;
 	}
-	
-	/* Read command line values if present */
-	if (user_opt->user != NULL) {
-		running->user = user_opt->user;
-	} /* FIXME - else default ? */
 
-	if (user_opt->group != NULL) {
-		running->group = user_opt->group;
-	} /* FIXME - else default ? */
+	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
+	 * we need only to check if the previous value was different from the default */
+	compare_check_copy(running->user, MEDIUMBUF, user_opt->user, strlen(user_opt->user), DROP_USER);
+	compare_check_copy(running->group, MEDIUMBUF, user_opt->group, strlen(user_opt->group), DROP_GROUP);
+	compare_check_copy(running->chroot_dir, MEDIUMBUF, user_opt->chroot_dir, strlen(user_opt->chroot_dir), CHROOT_DIR);
+	compare_check_copy(running->logfname, MEDIUMBUF, user_opt->logfname, strlen(user_opt->logfname), LOGFILE);
+	compare_check_copy(running->fileconfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
 
-	if (user_opt->chroot_dir != NULL) {
-		strncpy(running->chroot_dir, user_opt->chroot_dir, MEDIUMBUF);
-		running->chroot_dir[MEDIUMBUF - 1] = '\0';
-	} /* IDEM COME SOPRA, I DEFAULT SONO CONST CHAR NEL TEXT, GLI ARGOMENTI SONO PARAMETRI SU ENV... TANTO VALE NON USARE MEMCPY MA L'ASSEGNAMENTO TRA CONST -- FIXME REVIEW */
-
-	if (user_opt->logfname != NULL) {
-		strncpy(running->logfname, user_opt->logfname, MEDIUMBUF);
-		running->logfname[MEDIUMBUF - 1] = '\0';	
-	}
-	if (user_opt->debug_level != -1)
+	/* because write a sepecific "unsinged int" version of compare_check_copy was dirty ... */
+	if(user_opt->debug_level != DEFAULT_DEBUG_LEVEL)
 		running->debug_level = user_opt->debug_level;
+	if(running->debug_level == 0)
+		running->debug_level = DEFAULT_DEBUG_LEVEL;
 
-	dump_config(user_opt->cfgfname);
+	dump_config(running->fileconfname);
 }
 
 SjConf::~SjConf() {
@@ -218,7 +236,7 @@ const char *SjConf::resolve_weight_name(int command_code)
 	}
 }
 
-void SjConf::dump_config(const char *dumpfname)
+void SjConf::dump_config(char *dumpfname)
 {
 	FILE *dumpfd;
 	int ret;
@@ -235,6 +253,14 @@ void SjConf::dump_config(const char *dumpfname)
 
 	fclose(dumpfd);
 	check_call_ret("closing config file", errno, (ret - 1), false);
+}
+
+char *SjConf::handle_cmd_quit(void)
+{
+	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
+	dump_config(running->fileconfname);
+	raise(SIGTERM);
+	return const_cast<char *>("dumped configuration, sending SIGTERM to selfprocess for start SniffJoke exit");
 }
 
 char *SjConf::handle_cmd_stat(void) 
