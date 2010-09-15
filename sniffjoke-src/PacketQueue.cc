@@ -16,7 +16,7 @@ PacketQueue::PacketQueue(int queue_levels)
 	Packet *cur_pkt = NULL;
 }
 
-PacketQueue::~PacketQueue()
+PacketQueue::~PacketQueue(void)
 {
 	internal_log(NULL, DEBUG_LEVEL, "~PacketQueue()");
 	Packet *tmp = get(false);

@@ -87,6 +87,11 @@ private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
 		void compare_check_copy(char *, int, const char *, int , const char *);
+		void autodetect_local_interface(void);
+		void autodetect_local_interface_ip_address(void);
+		void autodetect_gw_ip_address(void);
+		void autodetect_gw_mac_address(void);
+		void autodetect_first_available_tunnel_interface(void);
 
 public:
 		struct sj_config *running;
@@ -96,7 +101,7 @@ public:
 
 		void dump(void);
 		void setup_active_hacks(void);
-
+		
 		char *handle_cmd_stat(void);
 		char *handle_cmd_stop(void);
 		char *handle_cmd_start(void);
@@ -104,7 +109,6 @@ public:
 		char *handle_cmd_set(unsigned short, unsigned short, unsigned char);
 		char *handle_cmd_showport(void);
 		char *handle_cmd_log(int);
-
 };
 
 #endif /* SJ_CONF_H */

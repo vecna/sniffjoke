@@ -161,7 +161,7 @@ NetIO::NetIO(SjConf *sjconf)
 	fds[1].events = POLLIN;
 }
 
-NetIO::~NetIO() 
+NetIO::~NetIO(void) 
 {
 	char tmpsyscmd[MEDIUMBUF];
 
@@ -184,7 +184,7 @@ NetIO::~NetIO()
 	system(tmpsyscmd);
 }
 
-void NetIO::network_io()
+void NetIO::network_io(void)
 {
 	int burst = BURSTSIZE;
 	int nfds;
@@ -246,7 +246,7 @@ void NetIO::network_io()
 }
 
 /* this method send all the packets sets as "SEND" */
-void NetIO::queue_flush()
+void NetIO::queue_flush(void)
 {
 	/* 
 	 * the NETWORK are flushed on the tunnel.
@@ -279,6 +279,6 @@ void NetIO::queue_flush()
 	}
 }
 
-bool NetIO::is_network_down() {
+bool NetIO::is_network_down(void) {
 	return networkdown_condition;
 }

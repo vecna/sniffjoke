@@ -26,27 +26,141 @@ void SjConf::compare_check_copy(char *target, int tlen, const char *useropt, int
 	memcpy(target, useropt, ulen > tlen ? tlen : ulen);
 }
 
-/* WARNING: change this function require a change in sniffjoke.cc sj_hacking_help() */
-void SjConf::setup_active_hacks(void) 
+/* private function useful for resolution of code/name */
+const char *SjConf::resolve_weight_name(int command_code) 
 {
-	/* default is set to false */
-	if(running->hacks[0]  == 'Y') { running->SjH__fake_data = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data] hack type"); }
-	if(running->hacks[1]  == 'Y') { running->SjH__fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake seq] hack type"); }
-	if(running->hacks[2]  == 'Y') { running->SjH__fake_close = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake close] hack type"); }
-	if(running->hacks[3]  == 'Y') { running->SjH__zero_window = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [zero window] hack type"); }
-	if(running->hacks[4]  == 'Y') { running->SjH__valid_rst_fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [valid rst fake seq] hack type"); }
-	if(running->hacks[5]  == 'Y') { running->SjH__fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake syn] hack type"); }
-	if(running->hacks[6]  == 'Y') { running->SjH__shift_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [shift ack] hack type"); }
-	if(running->hacks[7]  == 'Y') { running->SjH__half_fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake syn] hack type"); }
-	if(running->hacks[8]  == 'Y') { running->SjH__half_fake_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake fin] hack type"); }
-	if(running->hacks[9]  == 'Y') { running->SjH__inject_ipopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject ipopt] hack type"); }
-	if(running->hacks[10] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
-
-	if(running->hacks[11] == 'Y') {
-		running->SjH__fake_data_anticipation = true;
-		running->SjH__fake_data_posticipation = true; 
-		internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data anticipation|posticipation] hack type"); 
+	switch(command_code) {
+		case HEAVY: return "heavy";
+		case NORMAL: return "normal";
+		case LIGHT: return "light";
+		case NONE: return "no hacks";
+		default: internal_log(NULL, ALL_LEVEL, "danger: found invalid code in ports configuration");
+			 return "VERY BAD BUFFER CORRUPTION! I WISH NO ONE EVER SEE THIS LINE";
 	}
+}
+
+void SjConf::autodetect_local_interface()
+{
+	const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
+	FILE *foca;
+	char imp_str[SMALLBUF];
+	int i;
+
+	internal_log(NULL, ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd);
+
+	foca = popen(cmd, "r");
+	fgets(imp_str, SMALLBUF, foca);
+	pclose(foca);
+
+	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
+		running->interface[i] = imp_str[i];
+
+	if (i < 3) {
+		internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
+		raise(SIGTERM);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running->interface);
+	}
+}
+
+
+void SjConf::autodetect_local_interface_ip_address()
+{
+	char cmd[MEDIUMBUF];
+	FILE *foca;
+	char imp_str[SMALLBUF];
+	int i;
+	snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
+		running->interface
+	);
+
+	internal_log(NULL, ALL_LEVEL, "++ detecting interface %s ip address with [%s]", running->interface, cmd);
+
+	foca = popen(cmd, "r");
+	fgets(imp_str, SMALLBUF, foca);
+	pclose(foca);
+
+	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++)
+		running->local_ip_addr[i] = imp_str[i];
+
+	internal_log(NULL, ALL_LEVEL, "  == acquired local ip address: %s", running->local_ip_addr);
+}
+
+
+void SjConf::autodetect_gw_ip_address()
+{
+	const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
+	FILE *foca;
+	char imp_str[SMALLBUF];
+	int i;
+
+	internal_log(NULL, ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd);
+
+	foca = popen(cmd, "r");
+	fgets(imp_str, SMALLBUF, foca);
+	pclose(foca);
+
+	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++) 
+		running->gw_ip_addr[i] = imp_str[i];
+	if (strlen(running->gw_ip_addr) < 7) {
+		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
+		raise(SIGTERM);
+	} else  {
+		internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running->gw_ip_addr);
+	}
+}
+
+void SjConf::autodetect_gw_mac_address()
+{
+	char cmd[MEDIUMBUF];
+	FILE *foca;
+	char imp_str[SMALLBUF];
+	int i;
+	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", running->gw_ip_addr);
+
+	internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running->gw_ip_addr, cmd);
+	
+	system(cmd);
+	usleep(50000);
+	memset(cmd, 0x00, MEDIUMBUF);
+	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running->gw_ip_addr);
+	internal_log(NULL, ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
+	foca = popen(cmd, "r");
+	fgets(imp_str, SMALLBUF, foca);
+	pclose(foca);
+
+	for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); i++)
+		running->gw_mac_str[i] = imp_str[i];
+	if (i != 17) {
+		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
+		raise(SIGTERM);
+	} else {
+		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
+		sscanf(running->gw_mac_str, "%hX:%hX:%hX:%hX:%hX:%hX",
+			&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
+			&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
+			&running->gw_mac_addr[4], &running->gw_mac_addr[5]
+		);
+	}	
+}
+
+void SjConf::autodetect_first_available_tunnel_interface() {
+	const char *cmd = "ifconfig -a | grep tun | cut -b -7";
+	FILE *foca;
+	char imp_str[SMALLBUF];
+
+	internal_log(NULL, ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd);
+	
+	foca = popen(cmd, "r");
+	for (running->tun_number = 0; ; running->tun_number++)
+	{
+		memset(imp_str, 0x00, SMALLBUF);
+		fgets(imp_str, SMALLBUF, foca);
+		if (imp_str[0] == 0x00)
+			break;
+	}
+	pclose(foca);
+	internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
 }
 
 SjConf::SjConf(struct sj_useropt *user_opt) 
@@ -54,15 +168,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
 	int i;
-	
-	FILE *foca;
-	char imp_str[SMALLBUF];
-
-	const char *cmd0 = "ifconfig -a | grep tun | cut -b -7";
-	const char *cmd1 = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
-	char cmd2[MEDIUMBUF];
-	const char *cmd3 = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
-	char cmd4[MEDIUMBUF];
 
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 
@@ -114,95 +219,17 @@ skipping_conf_file:
 		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found, initialization...", completefname);
 		memset(running, 0x00, sizeof(sj_config));
 
-		/* begin autodetecting interface */
-		internal_log(NULL, ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd1);
-		foca = popen(cmd1, "r");
-		fgets(imp_str, SMALLBUF, foca);
-		pclose(foca);
 
-		for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
-			running->interface[i] = imp_str[i];
-
-		if (i < 3) {
-			internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
-			raise(SIGTERM);
-		} else {
-			internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running->interface);
-		}
-		/* end autodetect interface */
+		autodetect_local_interface();
 			
-		/* begin autodect interface local ip address */
-		snprintf(cmd2, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
-		running->interface
-		);
-		internal_log(NULL, ALL_LEVEL, "++ detecting interface %s ip address with [%s]", running->interface, cmd2);
-		foca = popen(cmd2, "r");
-		fgets(imp_str, SMALLBUF, foca);
-		pclose(foca);
+		autodetect_local_interface_ip_address();
 
-		for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++)
-			running->local_ip_addr[i] = imp_str[i];
+		autodetect_gw_ip_address();
 
-		internal_log(NULL, ALL_LEVEL, "  == acquired local ip address: %s", running->local_ip_addr);
-		/* end autodetect interface local ip address */
-
-		/* begin autodetect gw ip addr */
-		internal_log(NULL, ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd3);
-		foca = popen(cmd3, "r");
-		fgets(imp_str, SMALLBUF, foca);
-		pclose(foca);
-
-		for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++) 
-			running->gw_ip_addr[i] = imp_str[i];
-
-		if (strlen(running->gw_ip_addr) < 7) {
-			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
-			raise(SIGTERM);
-		} else  {
-			internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running->gw_ip_addr);
-		}
-		/* end autodetect gw ip addr */
-
-		/* begin autodetect gw mac address */
-		snprintf(cmd4, MEDIUMBUF, "ping -W 1 -c 1 %s", running->gw_ip_addr);
-		internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running->gw_ip_addr, cmd4);
-		system(cmd4);
-		usleep(50000);
-		memset(cmd4, 0x00, MEDIUMBUF);
-		snprintf(cmd4, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running->gw_ip_addr);
-		internal_log(NULL, ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd4);
-		foca = popen(cmd4, "r");
-		fgets(imp_str, SMALLBUF, foca);
-		pclose(foca);
-
-		for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); i++)
-			running->gw_mac_str[i] = imp_str[i];
-		if (i != 17) {
-			internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
-			raise(SIGTERM);
-		} else {
-			internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
-			sscanf(running->gw_mac_str, "%hX:%hX:%hX:%hX:%hX:%hX",
-				&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
-				&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
-				&running->gw_mac_addr[4], &running->gw_mac_addr[5]
-			);
-		}
-		/* end autodect gw mac address */
+		autodetect_gw_mac_address();
 		
-		/* autodetecting first tunnel device free */
-		internal_log(NULL, ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd0);
-		foca = popen(cmd0, "r");
-		for (running->tun_number = 0; ; running->tun_number++)
-		{
-			memset(imp_str, 0x00, SMALLBUF);
-			fgets(imp_str, SMALLBUF, foca);
-			if (imp_str[0] == 0x00)
-				break;
-		}
-		pclose(foca);
-		internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
-		/* end autodetect first tunnel device free */
+		autodetect_first_available_tunnel_interface();
+
 
 		/* set up defaults */	   
 		running->MAGIC = magic_check;
@@ -224,7 +251,7 @@ skipping_conf_file:
 	compare_check_copy(running->logfname, MEDIUMBUF, user_opt->logfname, strlen(user_opt->logfname), LOGFILE);
 	compare_check_copy(running->fileconfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
 
-	/* because write a sepecific "unsinged int" version of compare_check_copy was dirty ... */
+	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(user_opt->debug_level != DEFAULT_DEBUG_LEVEL)
 		running->debug_level = user_opt->debug_level;
 
@@ -243,19 +270,6 @@ skipping_conf_file:
 
 SjConf::~SjConf() {
 	internal_log(NULL, ALL_LEVEL, "SjConf: pid %d cleaning configuration object", getpid());
-}
-
-/* private function useful for resolution of code/name */
-const char *SjConf::resolve_weight_name(int command_code) 
-{
-	switch(command_code) {
-		case HEAVY: return "heavy";
-		case NORMAL: return "normal";
-		case LIGHT: return "light";
-		case NONE: return "no hacks";
-		default: internal_log(NULL, ALL_LEVEL, "danger: found invalid code in ports configuration");
-			 return "VERY BAD BUFFER CORRUPTION! I WISH NO ONE EVER SEE THIS LINE";
-	}
 }
 
 void SjConf::dump(void)
@@ -289,6 +303,29 @@ void SjConf::dump(void)
 			check_call_ret("writing config file", errno, (ret - 1), false);
 		}
 		fclose(dumpfd);
+	}
+}
+
+/* WARNING: change this function require a change in sniffjoke.cc sj_hacking_help() */
+void SjConf::setup_active_hacks(void) 
+{
+	/* default is set to false */
+	if(running->hacks[0]  == 'Y') { running->SjH__fake_data = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data] hack type"); }
+	if(running->hacks[1]  == 'Y') { running->SjH__fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake seq] hack type"); }
+	if(running->hacks[2]  == 'Y') { running->SjH__fake_close = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake close] hack type"); }
+	if(running->hacks[3]  == 'Y') { running->SjH__zero_window = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [zero window] hack type"); }
+	if(running->hacks[4]  == 'Y') { running->SjH__valid_rst_fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [valid rst fake seq] hack type"); }
+	if(running->hacks[5]  == 'Y') { running->SjH__fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake syn] hack type"); }
+	if(running->hacks[6]  == 'Y') { running->SjH__shift_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [shift ack] hack type"); }
+	if(running->hacks[7]  == 'Y') { running->SjH__half_fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake syn] hack type"); }
+	if(running->hacks[8]  == 'Y') { running->SjH__half_fake_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake fin] hack type"); }
+	if(running->hacks[9]  == 'Y') { running->SjH__inject_ipopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject ipopt] hack type"); }
+	if(running->hacks[10] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
+
+	if(running->hacks[11] == 'Y') {
+		running->SjH__fake_data_anticipation = true;
+		running->SjH__fake_data_posticipation = true; 
+		internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data anticipation|posticipation] hack type"); 
 	}
 }
 

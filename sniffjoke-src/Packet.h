@@ -45,17 +45,17 @@ public:
 	
 	Packet(int, const unsigned char*, int) ;
 	Packet(const Packet &);
-	virtual ~Packet();
+	virtual ~Packet(void);
 
 	unsigned int make_pkt_id(const unsigned char*) const;
 	void mark(source_t, status_t, judge_t);
-	void updatePointers();
+	void updatePointers(void);
 	/* functions required in TCP/IP packets forging */
 	void increasePbuf(unsigned int);
 	void resizePayload(unsigned int);
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
-	void fixIpTcpSum();
+	void fixIpTcpSum(void);
 };
 
 class HackPacket : public Packet {
@@ -64,22 +64,22 @@ public:
 	HackPacket(const Packet &);
 
 	/* sniffjoke hacks applied on the packets */
-	void SjH__fake_data();
-	void SjH__fake_seq();
-	void SjH__fake_close();
-	void SjH__zero_window();
-	void SjH__valid_rst_fake_seq();
-	void SjH__fake_syn();
-	void SjH__shift_ack();
+	void SjH__fake_data(void);
+	void SjH__fake_seq(void);
+	void SjH__fake_close(void);
+	void SjH__zero_window(void);
+	void SjH__valid_rst_fake_seq(void);
+	void SjH__fake_syn(void);
+	void SjH__shift_ack(void);
 	/* implemented since 0.4alpha2 */
-	void SjH__fake_data_anticipation();
-	void SjH__fake_data_posticipation();
+	void SjH__fake_data_anticipation(void);
+	void SjH__fake_data_posticipation(void);
 
-	/* void SjH__half_fake_syn(); NOT IMPLEMENTED */
-	/* void SjH__half_fake_ack(); NOT IMPLEMENTED */
+	/* void SjH__half_fake_syn(void); NOT IMPLEMENTED */
+	/* void SjH__half_fake_ack(void); NOT IMPLEMENTED */
 
-	void SjH__inject_ipopt();
-	void SjH__inject_tcpopt();
+	void SjH__inject_ipopt(void);
+	void SjH__inject_tcpopt(void);
 };
 
 #endif /* SJ_PACKET_H */

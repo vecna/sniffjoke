@@ -6,7 +6,7 @@
 
 #include <arpa/inet.h>
 
-DataDebug::DataDebug()
+DataDebug::DataDebug(void)
 {
 	mkdir("/tmp/datadump", 777);
 	Session_f = fopen(SESSION_FILE_DEBUG, "a+");
@@ -21,6 +21,13 @@ DataDebug::DataDebug()
 	}
 
 	return;
+}
+
+DataDebug::~DataDebug(void)
+{
+	fclose(Session_f);
+	fclose(Packet_f);
+	fclose(TTL_f);
 }
 
 void DataDebug::Dump_Packet(PacketQueue& list)
@@ -114,7 +121,7 @@ void DataDebug::Dump_Session(SessionTrackMap &sex_map)
 	}
 }
 
-void DataDebug::Dump_TTL (TTLFocusMap &ttlfocus_map)
+void DataDebug::Dump_TTL(TTLFocusMap &ttlfocus_map)
 {
 	int i = 0;
 	TTLFocus *tmp;
@@ -173,11 +180,4 @@ void DataDebug::InfoMsg(const char *where, const char *msg, ...)
 	fflush(dest);
 	free(time);
 	va_end(arguments);
-}
-
-DataDebug::~DataDebug()
-{
-	fclose(Session_f);
-	fclose(Packet_f);
-	fclose(TTL_f);
 }

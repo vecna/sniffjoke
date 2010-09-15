@@ -396,8 +396,8 @@ int main(int argc, char **argv) {
 		{ "foreground", optional_argument, NULL, 'x' },
 		{ "force", optional_argument, NULL, 'r' },
 		{ "hacking", required_argument, NULL, 'k' },
-		{ "help", required_argument, NULL, 'h' },
-		{ "version", optional_argument, NULL, 'v' },
+		{ "help", no_argument, NULL, 'h' },
+		{ "version", no_argument, NULL, 'v' },
 		{ NULL, 0, NULL, 0 }
 	};
 
@@ -437,7 +437,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (command_input == NULL) {
-		while ((charopt = getopt_long(argc, argv, "f:u:g:c:l:d:xrv:h:k", sj_option, NULL)) != -1) {
+		while ((charopt = getopt_long(argc, argv, "f:u:g:c:l:d:xrvhk", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
 					useropt.cfgfname = strdup(optarg);

@@ -18,8 +18,8 @@ class DataDebug
 private:
 	FILE *Session_f, *Packet_f, *TTL_f;
 public:
-	DataDebug();
-	~DataDebug();
+	DataDebug(void);
+	~DataDebug(void);
 
 	void Dump_Packet(PacketQueue &);
 	void Dump_Session(SessionTrackMap &);

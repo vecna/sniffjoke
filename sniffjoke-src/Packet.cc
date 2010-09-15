@@ -43,7 +43,7 @@ Packet::Packet(const Packet& pkt)
 	packet_id = 0;
 }
 
-Packet::~Packet() {
+Packet::~Packet(void) {
 	delete[] pbuf;
 }
 
@@ -100,7 +100,7 @@ void Packet::resizePayload(unsigned int newlen) {
 	ip->tot_len = htons(newtotallen);
 }
 
-void Packet::updatePointers() {
+void Packet::updatePointers(void) {
 	
 	ip = (struct iphdr *)pbuf;
 	if (ip->protocol == IPPROTO_TCP) {
@@ -150,7 +150,7 @@ unsigned short Packet::compute_sum(unsigned int sum)
 	return (unsigned short) ~sum;
 }
 
-void Packet::fixIpTcpSum()
+void Packet::fixIpTcpSum(void)
 {
 	unsigned int sum;
 	unsigned int l4len = ntohs(ip->tot_len) - (ip->ihl * 4);
@@ -180,7 +180,7 @@ HackPacket::HackPacket(const Packet& pkt)
  * SjH__ = sniffjoke hack
  *
  */
-void HackPacket::SjH__fake_data()
+void HackPacket::SjH__fake_data(void)
 {
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 
@@ -190,7 +190,7 @@ void HackPacket::SjH__fake_data()
 		*(long int *)&(payload[i]) = random();
 }
 
-void HackPacket::SjH__fake_seq()
+void HackPacket::SjH__fake_seq(void)
 {
 	int what = (random() % 3);
 
@@ -220,7 +220,7 @@ void HackPacket::SjH__fake_seq()
  * -- note: this should not me true, anyway, this is the 0.4alpha2
  *  developing, so optimization is not require 
  */
-void HackPacket::SjH__fake_data_anticipation()
+void HackPacket::SjH__fake_data_anticipation(void)
 {
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 
@@ -228,7 +228,7 @@ void HackPacket::SjH__fake_data_anticipation()
                 payload[i] = 'A';
 }
 
-void HackPacket::SjH__fake_data_posticipation()
+void HackPacket::SjH__fake_data_posticipation(void)
 {
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 
@@ -236,7 +236,7 @@ void HackPacket::SjH__fake_data_posticipation()
                 payload[i] = 'B';
 }
 
-void HackPacket::SjH__fake_close()
+void HackPacket::SjH__fake_close(void)
 {
 	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
@@ -254,7 +254,7 @@ void HackPacket::SjH__fake_close()
 	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
 }
 
-void HackPacket::SjH__zero_window()
+void HackPacket::SjH__zero_window(void)
 {
 	tcp->syn = tcp->fin = tcp->rst = 1;
 	tcp->psh = tcp->ack = 0;
@@ -276,7 +276,7 @@ void HackPacket::SjH__valid_rst_fake_seq()
 	tcp->fin = tcp->psh = tcp->syn = 0;
 }
 
-void HackPacket::SjH__fake_syn()
+void HackPacket::SjH__fake_syn(void)
 {
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	
@@ -303,14 +303,14 @@ void HackPacket::SjH__fake_syn()
 	}
 }
 
-void HackPacket::SjH__shift_ack()
+void HackPacket::SjH__shift_ack(void)
 {
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
 }
 
 /* ipopt IPOPT_RR inj*/
-void HackPacket::SjH__inject_ipopt()
+void HackPacket::SjH__inject_ipopt(void)
 {
 	const int route_n = random() % 10;
 	const unsigned fakeipopt = ((route_n + 1) * 4);
@@ -358,7 +358,7 @@ void HackPacket::SjH__inject_ipopt()
 
 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
-void HackPacket::SjH__inject_tcpopt() 
+void HackPacket::SjH__inject_tcpopt(void)
 {
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;

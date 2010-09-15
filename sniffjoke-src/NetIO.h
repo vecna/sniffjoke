@@ -43,10 +43,10 @@ public:
 	 */
 
 	NetIO(SjConf*);
-	~NetIO();
-	void network_io();
-	void queue_flush();
-	bool is_network_down();
+	~NetIO(void);
+	void network_io(void);
+	void queue_flush(void);
+	bool is_network_down(void);
 	void set_running(bool);
 };
 

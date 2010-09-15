@@ -15,7 +15,7 @@ private:
 public:
 
 	PacketQueue(int);
-	~PacketQueue();
+	~PacketQueue(void);
 	void insert(int, Packet &);
 	void remove(const Packet &);
 	Packet* get(bool);

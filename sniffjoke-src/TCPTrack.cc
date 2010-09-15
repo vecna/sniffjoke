@@ -44,7 +44,7 @@ TCPTrack::TCPTrack(SjConf *sjconf)
 	internal_log(NULL, DEBUG_LEVEL, "TCPTrack()");
 }
 
-TCPTrack::~TCPTrack() 
+TCPTrack::~TCPTrack(void) 
 {
 #ifdef DATADEBUG
         delete dd;
@@ -154,7 +154,7 @@ Packet* TCPTrack::readpacket() {
  *
  * analyze_packets_queue is called from the main.cc select() block
  */
-void TCPTrack::analyze_packets_queue() 
+void TCPTrack::analyze_packets_queue(void)
 {
 	Packet *pkt;
 	TTLFocus *ttlfocus;
@@ -260,7 +260,7 @@ void TCPTrack::analyze_packets_queue()
  * this function set SEND stats to all packets, is used when sniffjoke must not 
  * mangle the packets 
  */
-void TCPTrack::force_send()
+void TCPTrack::force_send(void)
 {
 #ifdef PACKETDEBUG
 	int counter = 0;

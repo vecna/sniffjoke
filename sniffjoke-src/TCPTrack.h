@@ -48,11 +48,11 @@ private:
 
 public:
 	TCPTrack(SjConf*);
-	~TCPTrack();
+	~TCPTrack(void);
 
 	bool writepacket(const source_t, const unsigned char*, int);
-	Packet* readpacket();
-	void analyze_packets_queue();
+	Packet* readpacket(void);
+	void analyze_packets_queue(void);
 
 	/* force all packets sendable, used from NetIO for avoid Sn mangling */
 	void force_send(void);
