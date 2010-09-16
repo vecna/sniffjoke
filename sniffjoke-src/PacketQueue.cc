@@ -3,17 +3,16 @@
 
 PacketQueue::PacketQueue(int queue_levels) :
 	queue_levels(queue_levels),
+	cur_prio(0),
+	cur_pkt(NULL),
+	front(new Packet*[queue_levels]),
+	back(new Packet*[queue_levels])
 {
 	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");	
-	front = new Packet*[queue_levels];
-	back = new Packet*[queue_levels];
 	for(int i = 0; i < queue_levels; i++) {
 		front[i] = NULL;
 		back[i] = NULL;
 	}
-	
-	int cur_prio = 0;
-	Packet *cur_pkt = NULL;
 }
 
 PacketQueue::~PacketQueue(void)
@@ -24,6 +23,8 @@ PacketQueue::~PacketQueue(void)
 		delete tmp;
 		tmp = get(true);
 	}
+	delete[] front;
+	delete[] back;
 }
 
 void PacketQueue::insert(int prio, Packet &pkt)

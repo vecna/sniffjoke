@@ -30,6 +30,16 @@ TTLFocus::TTLFocus(const TTLFocus& cpy) :
 	status(cpy.status)
 {}
 
+TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
+	daddr(cpy.daddr),
+	min_working_ttl(cpy.min_working_ttl),
+	expiring_ttl(cpy.expiring_ttl),
+	sent_probe(cpy.sent_probe),
+	received_probe(cpy.received_probe),
+	puppet_port(cpy.puppet_port),
+	rand_key(cpy.rand_key),
+	status(cpy.status)
+{}
 
 TTLFocusMap::TTLFocusMap() {
 	load();
@@ -40,8 +50,9 @@ TTLFocusMap::~TTLFocusMap() {
 
 void TTLFocusMap::load() {
 	FILE *loadfd;
-	int i, ret;
-	TTLFocus *tmp = (TTLFocus*)malloc(sizeof(TTLFocus));
+	int i = 0;
+	int ret;
+	struct ttlfocus_cache_record tmp;
 
 	internal_log(NULL, VERBOSE_LEVEL, "loading ttlfocusmap from %s",  TTLFOCUSMAP_FILE);
 	
@@ -51,8 +62,10 @@ void TTLFocusMap::load() {
         	return;
         }
 
-	while( ret = (fread(tmp, sizeof(TTLFocus), 1, loadfd) == sizeof(TTLFocus)) ) {
-		insert(pair<int, TTLFocus>(tmp->daddr, *tmp));
+	while( (ret = fread(&tmp, sizeof(struct ttlfocus_cache_record), 1, loadfd)) == 1 ) {
+		i++;
+		TTLFocus *ttlfocus = new TTLFocus(tmp);
+		insert(pair<int, TTLFocus>(ttlfocus->daddr, *ttlfocus));
 	}
 
 	fclose(loadfd);
@@ -64,13 +77,16 @@ void TTLFocusMap::load() {
 		);
 		check_call_ret("reading ttlfocus file", errno, (ret - 1), false);
 	}
+	internal_log(NULL, VERBOSE_LEVEL, "ttlfocusmap load completed: %d records loaded", i);
 }
 
 
 void TTLFocusMap::dump() {
 	FILE *dumpfd;
-	int i, ret;
-	TTLFocus *tmp;
+	int i = 0;
+	int ret;
+	TTLFocus* tmp;
+	struct ttlfocus_cache_record cache_record;
 
 	internal_log(NULL, VERBOSE_LEVEL, "dumping ttlfocusmap to %s",  TTLFOCUSMAP_FILE);
 
@@ -83,9 +99,17 @@ void TTLFocusMap::dump() {
 
 	for ( TTLFocusMap::iterator it = this->begin(); it != this->end(); it++ ) {
 		i++;
-
 		tmp = &(it->second);
-		ret = fwrite(tmp, sizeof(TTLFocus), 1, dumpfd);
+		cache_record.daddr = tmp->daddr;
+		cache_record.expiring_ttl = tmp->expiring_ttl;
+		cache_record.min_working_ttl = tmp->min_working_ttl;
+		cache_record.sent_probe = tmp->sent_probe;
+		cache_record.received_probe = tmp->received_probe;
+		cache_record.puppet_port = tmp->puppet_port;
+		cache_record.rand_key = tmp->rand_key;
+		cache_record.status = tmp->status;
+
+		ret = fwrite(&cache_record, sizeof(struct ttlfocus_cache_record), 1, dumpfd);
 		if(ret != 1)
 		{
 			fclose(dumpfd);
@@ -98,4 +122,6 @@ void TTLFocusMap::dump() {
 		}
 	}
 	fclose(dumpfd);
+
+	internal_log(NULL, VERBOSE_LEVEL, "ttlfocusmap dump completed: %d records dumped", i);
 }

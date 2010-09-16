@@ -163,7 +163,7 @@ void SjConf::autodetect_first_available_tunnel_interface() {
 	internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
 }
 
-SjConf::SjConf(struct sj_useropt *user_opt) 
+SjConf::SjConf(struct sj_useropt *user_opt)
 {
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
