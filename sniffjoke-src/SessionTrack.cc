@@ -1,15 +1,14 @@
 #include "SjUtils.h"
 #include "SessionTrack.h"
 
-SessionTrack::SessionTrack(const Packet &pkt)
-{
-	daddr = pkt.ip->daddr;
-	sport = pkt.tcp->source;
-	dport = pkt.tcp->dest;
-	isn = pkt.tcp->seq;
-	packet_number = 1;
-	shutdown = false;
-}
+SessionTrack::SessionTrack(const Packet &pkt) :
+	daddr(pkt.ip->daddr),
+	sport(pkt.tcp->source),
+	dport(pkt.tcp->dest),
+	isn(pkt.tcp->seq),
+	packet_number(1),
+	shutdown(false)
+{}
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const {
 	if (daddr < comp.daddr) {

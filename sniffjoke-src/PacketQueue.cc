@@ -1,10 +1,10 @@
 #include "SjUtils.h"
 #include "PacketQueue.h"
 
-PacketQueue::PacketQueue(int queue_levels)
+PacketQueue::PacketQueue(int queue_levels) :
+	queue_levels(queue_levels),
 {
 	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");	
-	this->queue_levels = queue_levels;
 	front = new Packet*[queue_levels];
 	back = new Packet*[queue_levels];
 	for(int i = 0; i < queue_levels; i++) {

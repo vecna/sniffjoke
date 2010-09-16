@@ -26,13 +26,10 @@ static DataDebug *dd;
 
 enum priority_t { HIGH = 0, LOW = 1 };
 
-TCPTrack::TCPTrack(SjConf *sjconf)
-	: p_queue(2), sex_map(), ttlfocus_map()
+TCPTrack::TCPTrack(SjConf *sjconf) :
+	p_queue(2),
+	runcopy(sjconf->running)
 {
-	runcopy = sjconf->running;
-	maxsextrack = runcopy->max_sex_track;
-	maxttlprobe = runcopy->max_ttl_probe;
-
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
 		srandom((unsigned int)time(NULL) ^ random());
@@ -884,7 +881,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 
 bool TCPTrack::analyze_ttl_stats(TTLFocus &ttlfocus)
 {
-	if (ttlfocus.sent_probe == maxttlprobe) {
+	if (ttlfocus.sent_probe == runcopy->max_ttl_probe) {
 		ttlfocus.status = TTL_UNKNOWN;
 		return true;
 	}
@@ -998,7 +995,7 @@ SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt)
 	if (it != sex_map.end())
 		return &(it->second);
 	else {
-		if(sex_map.size() == maxsextrack) {
+		if(sex_map.size() == runcopy->max_sex_track) {
 			/* if we reach sextrackmax probably we have a lot of dead sessions trackd */
 			/* we can make a complete clear() resetting sex_map without problems */
 			sex_map.clear();

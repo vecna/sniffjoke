@@ -8,29 +8,27 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-TTLFocus::TTLFocus(unsigned int destip)
-{
-	daddr = destip;
-	min_working_ttl = 0xff;
-	expiring_ttl = 0;
-	sent_probe = 0;
-	received_probe = 0;
-	puppet_port = htons((random() % 15000) + 1100);
-	rand_key = random();
-	status = TTL_BRUTALFORCE;
-}
+TTLFocus::TTLFocus(unsigned int destip) :
+	daddr(destip),
+	min_working_ttl(0xff),
+	expiring_ttl(0),
+	sent_probe(0),
+	received_probe(0),
+	puppet_port(htons((random() % 15000) + 1100)),
+	rand_key(random()),
+	status(TTL_BRUTALFORCE)
+{}
 
-TTLFocus::TTLFocus(const TTLFocus& cpy)
-{
-	daddr = cpy.daddr;
-	min_working_ttl = cpy.min_working_ttl;
-	expiring_ttl = cpy.expiring_ttl;
-	sent_probe = cpy.sent_probe;
-	received_probe = cpy.received_probe;
-	puppet_port = cpy.puppet_port;
-	rand_key = cpy.rand_key;
-	status = cpy.status;
-}
+TTLFocus::TTLFocus(const TTLFocus& cpy) :
+	daddr(cpy.daddr),
+	min_working_ttl(cpy.min_working_ttl),
+	expiring_ttl(cpy.expiring_ttl),
+	sent_probe(cpy.sent_probe),
+	received_probe(cpy.received_probe),
+	puppet_port(cpy.puppet_port),
+	rand_key(cpy.rand_key),
+	status(cpy.status)
+{}
 
 
 TTLFocusMap::TTLFocusMap() {

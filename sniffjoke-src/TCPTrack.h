@@ -12,9 +12,6 @@
 
 class TCPTrack {
 private:
-	int maxsextrack;	/* max sessions to track */
-	int maxttlprobe;	/* max probe for discern ttl */
-
 	PacketQueue p_queue;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;

@@ -1,57 +1,44 @@
 #include "SjUtils.h"
 #include "Packet.h"
 
-Packet::Packet(int size, const unsigned char* buff, int buff_size) {
-	pbuf = new unsigned char[size];
-	pbuf_size = size;
-
-	memcpy(pbuf, buff, buff_size);
-	if(size - buff_size)
-		memset(pbuf+buff_size, 0, size - buff_size);
-	
-	source = SOURCEUNASSIGNED;
-	status = STATUSUNASSIGNED;
-	wtf = JUDGEUNASSIGNED;
-	proto = PROTOUNASSIGNED;
-	
-	updatePointers();
-	
-	/* we need to set the orig_pktlen;
-	 * this must be done here using ip->total_len and
-	 * not buff_size cause this could be greater due to padding */
-	orig_pktlen = ntohs(ip->tot_len);
-	
-	packet_id = make_pkt_id(buff);
-}
-
-Packet::Packet(const Packet& pkt) 
+Packet::Packet(int size, const unsigned char* buff, int buff_size) :
+	pbuf(size, 0),
+	pbuf_size(size),
+	packet_id(make_pkt_id(buff)),
+	source(SOURCEUNASSIGNED),
+	status(STATUSUNASSIGNED),
+	wtf(JUDGEUNASSIGNED),
+	proto(PROTOUNASSIGNED)
 {
-	pbuf = new unsigned char[pkt.pbuf_size];
-	pbuf_size = pkt.pbuf_size;
-
-	memcpy(pbuf, pkt.pbuf, pkt.pbuf_size);
-
-	orig_pktlen = pkt.orig_pktlen;
-
-	source = SOURCEUNASSIGNED;
-	status = STATUSUNASSIGNED;
-	wtf = JUDGEUNASSIGNED;
-	proto = PROTOUNASSIGNED;
-
+	memcpy(&(pbuf[0]), buff, buff_size);	
 	updatePointers();
-
-	packet_id = 0;
+	orig_pktlen = ntohs(ip->tot_len);
 }
 
-Packet::~Packet(void) {
-	delete[] pbuf;
+Packet::Packet(const Packet& pkt) :
+	pbuf(pkt.pbuf_size),
+	pbuf_size(pkt.pbuf_size),
+	orig_pktlen(pkt.orig_pktlen),
+	packet_id(0),
+	source(SOURCEUNASSIGNED),
+	status(STATUSUNASSIGNED),
+	wtf(JUDGEUNASSIGNED),
+	proto(PROTOUNASSIGNED)
+{
+	memcpy(&(pbuf[0]), &(pkt.pbuf[0]), pkt.pbuf_size);
+	updatePointers();
 }
+
+Packet::~Packet() {}
 
 unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 {
-	if (ip->protocol == IPPROTO_TCP)
+	struct iphdr *ip = (struct iphdr *)buf;
+	struct tcphdr *tcp;
+	if (ip->protocol == IPPROTO_TCP) {
+		tcp = (struct tcphdr *)((unsigned char *)(ip) + (ip->ihl * 4));
 		return tcp->seq;
-	else
+	} else
 		return 0; /* packet_id == 0 mean no ID check */
 }
 
@@ -65,10 +52,8 @@ void Packet::mark(source_t source, status_t status, judge_t judge)
 void Packet::increasePbuf(unsigned int morespace) {
 	/* the pbuf can only be incremented safaly, not decremented */
 	unsigned int newpbuf_size = pbuf_size + morespace;
-	unsigned char* newpbuf = new unsigned char[newpbuf_size];
-	memcpy(newpbuf, pbuf, pbuf_size);
-	memset(newpbuf + pbuf_size, 0, newpbuf_size - pbuf_size);
-	delete[] pbuf;
+	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
+	memcpy(&(newpbuf[0]), &(pbuf[0]), pbuf_size);
 	pbuf = newpbuf;
 	
 	updatePointers();
@@ -83,14 +68,12 @@ void Packet::resizePayload(unsigned int newlen) {
 	int tcphlen = tcp->doff * 4;
 	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
 	unsigned int newpbuf_size = pbuf_size - oldlen + newlen;
-	unsigned char* newpbuf = new unsigned char[newpbuf_size];
+	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
 	unsigned newtotallen = iphlen + tcphlen + newlen;
 	
 	/* IP header copy , TCP header copy, Payload copy, if preserved */
 	int copysize = newtotallen > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newtotallen;
-	memcpy(newpbuf, pbuf, copysize );
-	memset(newpbuf + copysize, 0, newpbuf_size - copysize);
-	delete[] pbuf;
+	memcpy(&(newpbuf[0]), &(pbuf[0]), copysize );
 	pbuf = newpbuf;
 	
 	updatePointers();
@@ -102,7 +85,7 @@ void Packet::resizePayload(unsigned int newlen) {
 
 void Packet::updatePointers(void) {
 	
-	ip = (struct iphdr *)pbuf;
+	ip = (struct iphdr *)&(pbuf[0]);
 	if (ip->protocol == IPPROTO_TCP) {
 		proto = TCP;
 		tcp = (struct tcphdr *)((unsigned char *)(ip) + (ip->ihl * 4));
@@ -166,7 +149,7 @@ void Packet::fixIpTcpSum(void)
 }
 
 HackPacket::HackPacket(const Packet& pkt)
-	: Packet(pkt.pbuf_size + MAXOPTINJ, pkt.pbuf, pkt.pbuf_size)
+	: Packet(pkt.pbuf_size + MAXOPTINJ, &(pkt.pbuf[0]), pkt.pbuf_size)
 {
 	packet_id = 0;
 }
@@ -324,12 +307,12 @@ void HackPacket::SjH__inject_ipopt(void)
 	int tcphlen = tcp->doff * 4;
 	const int l47len = ntohs(ip->tot_len) - iphlen;
 	
-	unsigned char *endip = pbuf + sizeof(struct iphdr);
+	unsigned char *endip = &(pbuf[0]) + sizeof(struct iphdr);
 	const int startipopt = ip->ihl * 4 - sizeof(struct iphdr);
 
 	/* 1: strip the original ip options, if present, copying payload over */	
 	if (iphlen > sizeof(struct iphdr)) 
-		memmove(endip, pbuf + iphlen, l47len);
+		memmove(endip, &(pbuf[0]) + iphlen, l47len);
 
 	iphlen = sizeof(struct iphdr) + fakeipopt;
 
@@ -369,13 +352,13 @@ void HackPacket::SjH__inject_tcpopt(void)
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	const int l57len = ntohs(ip->tot_len) - (iphlen + tcphlen);
-	unsigned char *endtcp = pbuf + iphlen + sizeof(struct tcphdr);
+	unsigned char *endtcp = &(pbuf[0]) + iphlen + sizeof(struct tcphdr);
 	const int starttcpopt = tcphlen - sizeof(struct tcphdr);
 	const time_t now = time(NULL);
 
 	/* 1: strip the original tcp options, if present, copying payload over */
 	if (tcphlen > sizeof(struct tcphdr))
-		memmove(endtcp, pbuf + tcphlen, l57len);
+		memmove(endtcp, &(pbuf[0]) + tcphlen, l57len);
 
 	tcphlen = sizeof(struct tcphdr) + faketcpopt;
 	

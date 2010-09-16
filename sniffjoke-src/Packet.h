@@ -3,6 +3,9 @@
 
 #include "defines.h"
 
+#include <vector>
+using namespace std;
+
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
@@ -39,7 +42,7 @@ public:
 	struct icmphdr *icmp;
 	unsigned char *payload;
 
-	unsigned char *pbuf;
+	vector<unsigned char> pbuf;
 	int pbuf_size;  
 	int orig_pktlen;
 	

@@ -255,7 +255,7 @@ void NetIO::queue_flush(void)
 	 */
 	while ((pkt = conntrack.readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
-			if ((size = write(tunfd, pkt->pbuf, pkt->pbuf_size)) == -1) {
+			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf_size)) == -1) {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, size, false);
@@ -264,7 +264,7 @@ void NetIO::queue_flush(void)
 							size, runcopy->sj_run == true ? "running" : "stopped");
 			}
 		} else {
-			if ((size = sendto(netfd, pkt->pbuf, 
+			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
 				ntohs(pkt->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network error: %s", strerror(errno));
