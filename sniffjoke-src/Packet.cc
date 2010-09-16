@@ -16,7 +16,7 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) :
 }
 
 Packet::Packet(const Packet& pkt) :
-	pbuf(pkt.pbuf_size),
+	pbuf(pkt.pbuf),
 	pbuf_size(pkt.pbuf_size),
 	orig_pktlen(pkt.orig_pktlen),
 	packet_id(0),
@@ -25,7 +25,6 @@ Packet::Packet(const Packet& pkt) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED)
 {
-	memcpy(&(pbuf[0]), &(pkt.pbuf[0]), pkt.pbuf_size);
 	updatePointers();
 }
 
@@ -52,9 +51,7 @@ void Packet::mark(source_t source, status_t status, judge_t judge)
 void Packet::increasePbuf(unsigned int morespace) {
 	/* the pbuf can only be incremented safaly, not decremented */
 	unsigned int newpbuf_size = pbuf_size + morespace;
-	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
-	memcpy(&(newpbuf[0]), &(pbuf[0]), pbuf_size);
-	pbuf = newpbuf;
+	pbuf.resize(newpbuf_size);
 	
 	updatePointers();
 	
@@ -139,12 +136,12 @@ void Packet::fixIpTcpSum(void)
 	unsigned int l4len = ntohs(ip->tot_len) - (ip->ihl * 4);
 
 	ip->check = 0;
-	sum = half_cksum ((void *)ip, (ip->ihl * 4));
+	sum = half_cksum((void *)ip, (ip->ihl * 4));
 	ip->check = compute_sum(sum);
 	tcp->check = 0;
-	sum = half_cksum ((void *) &ip->saddr, 8);
+	sum = half_cksum((void *) &ip->saddr, 8);
 	sum += htons (IPPROTO_TCP + l4len);
-	sum += half_cksum ((void *)tcp, l4len);
+	sum += half_cksum((void *)tcp, l4len);
 	tcp->check = compute_sum(sum);
 }
 
@@ -312,7 +309,7 @@ void HackPacket::SjH__inject_ipopt(void)
 
 	/* 1: strip the original ip options, if present, copying payload over */	
 	if (iphlen > sizeof(struct iphdr)) 
-		memmove(endip, &(pbuf[0]) + iphlen, l47len);
+		memmove(endip, &pbuf[0] + iphlen, l47len);
 
 	iphlen = sizeof(struct iphdr) + fakeipopt;
 

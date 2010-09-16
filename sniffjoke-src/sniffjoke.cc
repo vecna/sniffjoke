@@ -56,7 +56,7 @@ static Process *SjProc;
 	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
 	" usage: --hacking 0123456789AB (12 positions: \"Y\" enable, \"N\" disable) 12 hacks:\n\n"\
 	"  1] fake data\t\t\t\t(default: YES)\n"\
-	"  2] fake seq\t\t\t\t(default: YES - need check)\n"\
+	"  2] fake seq\t\t\t\t(default: NO - need check)\n"\
 	"  3] fake close\t\t\t\t(default: YES - verify FIN/RST diffs)\n"\
 	"  4] fake zero window\t\t\t(default: YES)\n"\
 	"  5] valid rst fake seq\t\t\t(default: YES)\n"\
