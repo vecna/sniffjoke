@@ -211,8 +211,12 @@ void NetIO::network_io(void)
 					break;
 				}
 			} else {
+				/* this is too heavy to log -- I remove because also on heavy debug I don't care about
+				 * the size of the FORWARED packet (this function is used when sniffjoke is not injecting, 
+				 * in "stop" command)
 				internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network correctly: %d bytes [sniffjoke %s]", 
 							 size, runcopy->sj_run == true ? "running" : "stopped");
+				 */
 
 				/* add packet in connection tracking queue */
 				conntrack.writepacket(NETWORK, pktbuf, size);
@@ -227,8 +231,11 @@ void NetIO::network_io(void)
 					break;
 				}
 			} else {
+				/*
+				 * I've keep the line because, if you're making debug, should be helpful decomment those lines
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes [sniffjoke %s]", 
 						size, runcopy->sj_run == true ? "running" : "stopped");
+				 */
 
 				/* add packet in connection tracking queue */
 				conntrack.writepacket(TUNNEL, pktbuf, size);
@@ -260,8 +267,11 @@ void NetIO::queue_flush(void)
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, size, false);
 			} else {
+				/*
+				 * if no error occour, log every line is too heavy also in debug mode
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
 							size, runcopy->sj_run == true ? "running" : "stopped");
+				 */
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
@@ -271,8 +281,12 @@ void NetIO::queue_flush(void)
 				networkdown_condition = true;
 				check_call_ret("Writing in network", errno, size, false);
 			} else {
+				/* 
+				 * same reason as explained before
+				 *
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
 							 size, runcopy->sj_run == true ? "running" : "stopped");
+				 */
 			}
 		}
 		delete pkt;

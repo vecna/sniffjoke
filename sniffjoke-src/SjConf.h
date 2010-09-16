@@ -101,6 +101,7 @@ public:
 
 		void dump(void);
 		void setup_active_hacks(void);
+		void network_setup(void);
 		
 		char *handle_cmd_stat(void);
 		char *handle_cmd_stop(void);

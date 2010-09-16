@@ -163,6 +163,37 @@ void SjConf::autodetect_first_available_tunnel_interface() {
 	internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
 }
 
+/* this method is used only in the ProcessType = SERVICE CHILD */
+void SjConf::network_setup(void)
+{
+	internal_log(NULL, DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
+
+	if(running->sj_run)
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke loaded to run immediatly");
+	else
+		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke loaded and stopped at the moment, waiting for \"sniffjoke start\" command");
+
+	/* checking only one string: if not set, defaults was loaded, we need autodetect */
+	if(running->interface[0] == 0x00) {
+		autodetect_local_interface();
+		autodetect_local_interface_ip_address();
+		autodetect_gw_ip_address();
+		autodetect_gw_mac_address();
+		autodetect_first_available_tunnel_interface();
+	}
+
+	internal_log(NULL, VERBOSE_LEVEL, "-- system local interface: %s, %s address", running->interface, running->local_ip_addr);
+	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway mac address: %s", running->gw_mac_str);
+	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway ip address: %s", running->gw_ip_addr);
+	internal_log(NULL, VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", running->tun_number);
+
+	if(running->port_conf_set_n) {
+		internal_log(NULL, VERBOSE_LEVEL,"-- readed %d TCP port set, verify them with sniffjoke stat",
+			running->port_conf_set_n
+		);
+	}
+}
+
 SjConf::SjConf(struct sj_useropt *user_opt)
 {
 	float magic_check = (MAGICVAL * 28.26);
@@ -196,19 +227,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 			);
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
 		}
-
-		internal_log(NULL, VERBOSE_LEVEL, "readed configuration settings from %s", completefname); 
-		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke running: %s", readed.sj_run == true ? "TRUE" : "FALSE");
-		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway mac address: %s", readed.gw_mac_str);
-		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke gateway ip address: %s", readed.gw_ip_addr);
-		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke local interface: %s, %s address", readed.interface, readed.local_ip_addr);
-		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke dynamic tunnel interface: tun%d", readed.tun_number);
-		if(readed.port_conf_set_n) {
-			internal_log(NULL, VERBOSE_LEVEL,"-- readed %d TCP port set, verify them with sniffjoke stat",
-				readed.port_conf_set_n
-			);
-		}
-
 		fclose(cF);
 
 		memcpy(running, &readed, sizeof(struct sj_config));
@@ -216,31 +234,17 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	} else {
 
 skipping_conf_file:
-		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found, initialization...", completefname);
+		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found: using defaults", completefname);
 		memset(running, 0x00, sizeof(sj_config));
-
-
-		autodetect_local_interface();
-			
-		autodetect_local_interface_ip_address();
-
-		autodetect_gw_ip_address();
-
-		autodetect_gw_mac_address();
-		
-		autodetect_first_available_tunnel_interface();
-
 
 		/* set up defaults */	   
 		running->MAGIC = magic_check;
 		running->sj_run = false;
-		running->debug_level = 1;
 		running->max_ttl_probe = 30;
 		running->max_sex_track = 4096;
 
-		/* default is to set port in normal aggressivity */
+		/* default is to set all TCP ports in "NORMAL" aggressivity level */
 		memset(running->portconf, NORMAL, PORTNUMBER);
-
 	}
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options

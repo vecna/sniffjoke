@@ -30,13 +30,15 @@ static Process *SjProc;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
-	" --debug [level 1-4]\tenable debug and set the verbosity [default:1]\n"\
-	" --logfile [file]\tset a logfile, [default %s]\n"\
-	" --user [username]\tdowngrade priviledge to the specified user [default:nobody]\n"\
-	" --group [groupname]\tdowngrade priviledge to the specified group [default:users]\n"\
-	" --chroot-dir [dir]\truns chroted into the specified dir [default:disabled]\n"\
+	" --debug [level 1-6]\tset up verbosoty level [default: %d]\n"\
+	"\t\t\t1: suppress log, 2: few, 3: verbose, 4: debug, 5: packet, 6: tcp hacks\n"\
+	" --logfile [file]\tset a logfile, [default: %s/%s]\n"\
+	" --user [username]\tdowngrade priviledge to the specified user [default: %s]\n"\
+	" --group [groupname]\tdowngrade priviledge to the specified group [default: %s]\n"\
+	" --chroot-dir [dir]\truns chroted into the specified dir [default: %s]\n"\
 	" --force\t\tforce restart if sniffjoke service\n"\
-	" --foreground\t\trunning in foreground\n"\
+	" --foreground\t\trunning in foreground [default:background]\n"\
+	" --config [filename]\tconfig file[default: %s/%s]\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
@@ -49,7 +51,7 @@ static Process *SjProc;
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
-	" loglevel\t\t0 = normal, 1 = verbose, 2 = debug\n\n"\
+	" loglevel\t\t[1-6] change the loglevel\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 #define SNIFFJOKE_HACKING_HELP \
@@ -75,7 +77,10 @@ static void sj_hacking_help(void) {
 }
 
 static void sj_help(const char *pname) {
-	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, LOGFILE, "127.0.0.1");
+	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, DEFAULT_DEBUG_LEVEL, 
+		CHROOT_DIR, LOGFILE, 
+		DROP_USER, DROP_GROUP, 
+		CHROOT_DIR, CHROOT_DIR, CONF_FILE, "127.0.0.1");
 }
 
 static void sj_version(const char *pname) {
@@ -148,7 +153,7 @@ static int sj_bind_unixsocket()
 	int sock;
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: : unable to open unix socket: %s", strerror(errno));
+		internal_log(NULL, ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
 		SjProc->CleanExit(true);
 	}
 
@@ -158,7 +163,7 @@ static int sj_bind_unixsocket()
 
 	if (!access(sniffjoke_socket_path, F_OK)) {
 		if (unlink(sniffjoke_socket_path)) {
-			internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to unlink previous instance of %s: %s", 
+			internal_log(NULL, ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
 			sniffjoke_socket_path, strerror(errno));
 			SjProc->CleanExit(true);
 		}
@@ -169,6 +174,8 @@ static int sj_bind_unixsocket()
 		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
 					 sniffjoke_socket_path, strerror(errno)
 		);
+		delete sjconf;
+		delete mitm;
 		SjProc->CleanExit(true);
 	}
 
@@ -180,8 +187,8 @@ static int sj_bind_unixsocket()
 
 		SjProc->CleanExit(true);
 	}
-	internal_log(NULL, VERBOSE_LEVEL, "opened unix socket %s", sniffjoke_socket_path);
-	
+	internal_log(NULL, VERBOSE_LEVEL, "Successful binding of unix socket in %s", sniffjoke_socket_path);
+
 	return sock;
 }
 
@@ -265,7 +272,7 @@ static void client_send_command(char *cmdstring)
 	
 	/* Create a UNIX datagram socket for client */
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to open UNIX socket for connect to sniffjoke service: %s", strerror(errno));
+		internal_log(NULL, ALL_LEVEL, "FATAL: unable to open UNIX/DGRAM socket for connect to sniffjoke service: %s", strerror(errno));
 		exit(0);
 	}
 		
@@ -278,7 +285,7 @@ static void client_send_command(char *cmdstring)
 
 	unlink(SJ_CLIENT_UNIXSOCK);
 	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind client to %s: %s", SJ_CLIENT_UNIXSOCK, strerror(errno));
+		internal_log(NULL, ALL_LEVEL, "FATAL: unable to bind client to %s: %s", SJ_CLIENT_UNIXSOCK, strerror(errno));
 		exit(0);
 	}
 
@@ -288,7 +295,7 @@ static void client_send_command(char *cmdstring)
 	strcpy(servaddr.sun_path, SJ_SERVICE_UNIXSOCK);
 
 	if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to send message [%s]: %s", cmdstring, strerror(errno));
+		internal_log(NULL, ALL_LEVEL, "FATAL: unable to send message [%s]: %s. Rembember: if you are using a specific --chroot-dir or --config parameters in your sniffjoke service, you need to pass the same options in the client too (the unix socket used in communication reside under chroot dir)", cmdstring, strerror(errno));
 		exit(0);
 	}
 
@@ -387,7 +394,7 @@ int main(int argc, char **argv) {
 	
 	struct option sj_option[] =
 	{
-		{ "conf", required_argument, NULL, 'f' },
+		{ "config", required_argument, NULL, 'f' },
 		{ "user", required_argument, NULL, 'u' },
 		{ "group", required_argument, NULL, 'g' },
 		{ "chroot-dir", required_argument, NULL, 'c' },
@@ -562,6 +569,9 @@ int main(int argc, char **argv) {
 
 	SjProc->setLocktoExist(SJ_SERVICE_LOCK);
 
+	/* running the network setup before the background, for keep the software output visible on the console */
+	sjconf->network_setup();
+
 	if (!useropt.go_foreground) 
 	{
 		SjProc->SjBackground();
@@ -576,13 +586,26 @@ int main(int argc, char **argv) {
 	}
 
 
-	/* checking config file */
-	if (useropt.cfgfname != NULL && access(useropt.cfgfname, W_OK)) {
-		internal_log(NULL, ALL_LEVEL, "unable to access %s: sniffjoke will use the defaults", useropt.cfgfname);
-	}
-	
 	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
 	SjProc->sigtrapSetup(sj_sigtrap);
+
+	/* DEBUG CHECK */
+	switch(SjProc->ProcessType) {
+		case Process::SJ_PROCESS_UNASSIGNED: 
+			internal_log(NULL, ALL_LEVEL, "process %d in sniffjoke.cc, main:%d is a PROCESS UNASSIGNED", getpid(), __LINE__);
+			break;
+                case Process::SJ_PROCESS_SERVICE_FATHER:
+			internal_log(NULL, ALL_LEVEL, "process %d in sniffjoke.cc, main:%d is a PROCESS SERVICE FATHER", getpid(), __LINE__);
+			break;
+                case Process::SJ_PROCESS_SERVICE_CHILD:
+			internal_log(NULL, ALL_LEVEL, "process %d in sniffjoke.cc, main:%d is a PROCESS SERVICE CHILD", getpid(), __LINE__);
+			break;
+                case Process::SJ_PROCESS_CLIENT:
+			internal_log(NULL, ALL_LEVEL, "process %d in sniffjoke.cc, main:%d is a PROCESS CLIENT", getpid(), __LINE__);
+			break;
+		default:
+			internal_log(NULL, ALL_LEVEL, "process %d in sniffjoke.cc, main:%d is a ABSURD ERROR!!", getpid(), __LINE__);
+	}
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = new NetIO(sjconf);
