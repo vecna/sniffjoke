@@ -10,8 +10,8 @@
 #define MAGICVAL			0xADECADDE
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
 #define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
-#define DROP_USER 			"nobody"
-#define DROP_GROUP			"users"
+#define DROP_USER 			"sniffjoke"
+#define DROP_GROUP			"sniffjoke"
 #define CHROOT_DIR			"/tmp/sniffjoke"
 #define LOGFILE				"sniffjoke.log"  //used INSIDE chroot
 #define DEFAULT_DEBUG_LEVEL		2
