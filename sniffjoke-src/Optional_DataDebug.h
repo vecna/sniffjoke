@@ -28,9 +28,9 @@
 
 #include <cstdio>
 
-#define SESSION_FILE_DEBUG	"/datadump/session.log"
-#define PACKET_FILE_DEBUG	"/datadump/packet.log"
-#define TTL_FILE_DEBUG		"/datadump/ttl.log"
+#define SESSION_FILE_DEBUG	"datadump/session.log"
+#define PACKET_FILE_DEBUG	"datadump/packet.log"
+#define TTL_FILE_DEBUG		"datadump/ttl.log"
 
 class DataDebug 
 {
