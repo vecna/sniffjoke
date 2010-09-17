@@ -1,7 +1,27 @@
-#include "SjUtils.h"
+/*
+ *   SniffJoke is a software able to confuse the Internet traffic analysis,
+ *   developed with the aim to improve digital privacy in communications and
+ *   to show and test some securiy weakness in traffic analysis software.
+ *   
+ *   Copyright (C) 2010 vecna <vecna@delirandom.net>
+ *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include "Process.h"
-
-#include "SjConf.h" /* struct sj_config */
+#include "SjUtils.h"
+#include "SjConf.h"
 
 #include <getopt.h>
 #include <fcntl.h>
@@ -82,7 +102,7 @@ void Process::processDetach()
 		failure = true;
 	}
 
-	if (pidval) 
+	if (pidval)
 	{ 
 		/* 
 		 * Sniffjoke SERVICE FATHER: the sleeping root 
@@ -91,18 +111,8 @@ void Process::processDetach()
 		ProcessType = SJ_PROCESS_SERVICE_FATHER; 
 		writePidfile(SJ_SERVICE_FATHER_PID_FILE, getpid() );
 
-		/* be sure that the child has runned */
-		usleep(500);
-		pid_t child = readPidfile(SJ_SERVICE_CHILD_PID_FILE);
-
-		if(child <= 0) {
-			internal_log(NULL, ALL_LEVEL, "child is not running, received pid %d", child);
-			// FIXME - found a congruent way for closing process 
-			Process::CleanExit(true);
-		}
-
 		/* waitpid wait until the userprocess - child pid, run */
-		waitpid(child, &deadtrace, WUNTRACED);
+		waitpid(pidval, &deadtrace, WUNTRACED);
 
 		if (WIFEXITED(deadtrace))
 			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFEXITED", pidval);
@@ -273,14 +283,11 @@ void Process::SjBackground()
 }
 
 void Process::processIsolation() {
-/* -- is failing !!?
 	if (setsid()) {
 		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to setsid: %s", strerror(errno));
 		failure = true;
-//		check_call_ret("unable to setsid", errno, -1, true);
 	}
-*/
 	umask(0);
 }
 
@@ -292,8 +299,6 @@ void Process::SetProcType(sj_process_t ProcType) {
 /* startup of the process */
 Process::Process(struct sj_useropt *useropt) 
 {
-	// logstream_ptr = &(useropt->logstream);
-
 	if (getuid() || geteuid())  {
 		printf("required root privileges\n");
 		failure = true;
