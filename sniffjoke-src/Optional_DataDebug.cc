@@ -38,6 +38,9 @@ DataDebug::DataDebug(void)
 		fprintf(stderr, "unable to open file(s) %s %s %s - check your system or remove #define DATADEBUG\n",
 			SESSION_FILE_DEBUG, PACKET_FILE_DEBUG, TTL_FILE_DEBUG
 		);
+		if(Session_f == NULL) fclose(Session_f);
+		if(Packet_f == NULL) fclose(Packet_f);
+		if(TTL_f == NULL) fclose(TTL_f);
 		raise(SIGTERM);
 	}
 
