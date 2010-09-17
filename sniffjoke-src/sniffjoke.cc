@@ -37,11 +37,13 @@
 static struct sj_useropt useropt;
 
 /* Sniffjoke networking and feature configuration */
-static SjConf *sjconf;
+static SjConf *sjconf = NULL;
 /* Sniffjoke man in the middle class and functions */
-static NetIO *mitm;
+static NetIO *mitm = NULL;
+/* Sniffjoke connection tracking class and functions */
+static TCPTrack *conntrack = NULL;
 /* process tracking, handling, killing, breeding, ecc... */
-static Process *SjProc;
+static Process *SjProc = NULL;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
@@ -86,12 +88,14 @@ static Process *SjProc;
 	" 12] fake data (ant|post)icipation\t(default: YES)\n\n"\
 	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED)\n"
 
-static void sj_hacking_help(void) {
+static void sj_hacking_help(void)
+{
 	printf(SNIFFJOKE_HACKING_HELP);
 	printf(" default: --hacking %s\n", ASSURED_HACKS);
 }
 
-static void sj_help(const char *pname) {
+static void sj_help(const char *pname)
+{
 	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, DEFAULT_DEBUG_LEVEL, 
 		CHROOT_DIR, LOGFILE, 
 		DROP_USER, DROP_GROUP, 
@@ -102,7 +106,8 @@ static void sj_version(const char *pname) {
 	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
-static void sj_forced_clean_exit(pid_t pid) {
+static void sj_forced_clean_exit(pid_t pid)
+{
 	/* the function return when the process is dead */  
 	bool dead = false;
 	int killret;
@@ -131,8 +136,12 @@ static void sj_sigtrap(int signal)
 	if (signal)
 		internal_log(NULL, ALL_LEVEL, "received signal %d, cleaning sniffjoke objects...", signal);
 
-	delete mitm;
-	delete sjconf;
+	if (mitm != NULL)
+		delete mitm;
+	if (conntrack != NULL)
+		delete conntrack;
+	if (sjconf != NULL)
+		delete sjconf;
 
 	SjProc->CleanExit();
 
@@ -140,9 +149,8 @@ static void sj_sigtrap(int signal)
 }
 
 /* internal routine called in client_send_command and sj_srv_child_check_local_unixserv */
-static int 
-service_listener(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg) {
-
+static int service_listener(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
+{
 	memset(databuf, 0x00, bufsize);
 
 	/* we receive up to bufsize -1 having databuf[bufsize] = 0 and saving us from future segfaults */
@@ -208,8 +216,8 @@ static int sj_bind_unixsocket()
 }
 
 /* function used in in order to receive command and modify the running conf, display stats and so on */
-static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj) {
-
+static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj)
+{
 	char received_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
 	int i, rlen, cmdlen;
 	struct sockaddr_un fromaddr;
@@ -291,7 +299,8 @@ static void client_send_command(char *cmdstring)
 		exit(0);
 	}
 		
-	/* Client will bind to an address so the server/service will get an address in its recvfrom call and use it to
+	/*
+	 * Client will bind to an address so the server/service will get an address in its recvfrom call and use it to
 	 * send data back to the client.  
 	 */
 	memset(&clntaddr, 0x00, sizeof(clntaddr));
@@ -384,7 +393,8 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
 	}
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 	int i, charopt, local_input = 0;
 	bool restart_on_restore = false;
 	char command_buffer[MEDIUMBUF], *command_input = NULL;
@@ -670,6 +680,8 @@ int main(int argc, char **argv) {
 	if (sjconf->running->sj_run == false)
 		internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it\n");
 
+	conntrack = new TCPTrack(sjconf);
+	mitm->prepare_conntrack(conntrack);
 	/* main block */
 	while (1) {
 		mitm->network_io();

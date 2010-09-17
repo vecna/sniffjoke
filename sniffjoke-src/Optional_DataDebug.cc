@@ -29,7 +29,7 @@
 
 DataDebug::DataDebug(void)
 {
-	mkdir("/tmp/datadump", 777);
+	mkdir("/datadump", 0700);
 	Session_f = fopen(SESSION_FILE_DEBUG, "a+");
 	Packet_f = fopen(PACKET_FILE_DEBUG, "a+");
 	TTL_f = fopen(TTL_FILE_DEBUG, "a+");

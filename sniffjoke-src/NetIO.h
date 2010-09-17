@@ -42,14 +42,15 @@ private:
 	 */
 	struct sockaddr_ll send_ll;
 	struct sj_config *runcopy;
-	TCPTrack conntrack;
 
 	/* tunfd/netfd: file descriptor for I/O purpose */
 	int tunfd;
 	int netfd;
 
-	/* poll variables, two file descriptors */
-	struct pollfd fds[2];
+        /* poll variables, two file descriptors */
+        struct pollfd fds[2];
+
+	TCPTrack *conntrack;
 
 	unsigned char pktbuf[MTU];
 	int size;
@@ -65,6 +66,7 @@ public:
 
 	NetIO(SjConf*);
 	~NetIO(void);
+	void prepare_conntrack(TCPTrack*);
 	void network_io(void);
 	void queue_flush(void);
 	bool is_network_down(void);

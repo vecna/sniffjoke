@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
+    
  *   Copyright (C) 2010 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
@@ -38,8 +38,9 @@ bool Process::setLocktoExist(const char *lockfname) {
 	struct flock fl;
 
 	if ((fd = open(lockfname, O_RDWR|O_CREAT)) == -1) {
-		/* ERROR msg */
+		internal_log(NULL, ALL_LEVEL, "unable to open lock file: %s", lockfname);
 		failure = true;
+		return false;
 	}
 
 	memset(&fl, 0x00, sizeof(fl));
@@ -53,7 +54,7 @@ bool Process::setLocktoExist(const char *lockfname) {
 		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to lock %s", lockfname);
 		failure = true;
-//		check_call_ret("unable to lock", saved_errno, -1, true);
+		return false;
 	}
 }
 
@@ -66,8 +67,8 @@ pid_t Process::CheckLockExist(const char *lockfname)
 	if ((fd = open(lockfname, O_RDWR|O_CREAT)) == -1) {
 		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to open lock file: %s", lockfname);
-		failure = true; return -1;
-//		check_call_ret("unable to open", saved_errno, -1, true);
+		failure = true;
+		return -1;
 	}
 
 	memset(&fl, 0x00, sizeof(fl));
@@ -76,7 +77,7 @@ pid_t Process::CheckLockExist(const char *lockfname)
 		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to get lock from file: %s", lockfname);
 		failure = true;
-//		check_call_ret("unable to get lock", saved_errno, -1, true);
+		return -1;
 	}
 
 	/* if the pid is present, lock is present too */
@@ -94,46 +95,60 @@ pid_t Process::CheckLockExist(const char *lockfname)
 
 void Process::processDetach() 
 {
-	pid_t pidval;
+	pid_t pid, pid_child;
+	int pdes[2];
+	pipe(pdes);
 
-	if ((pidval = fork()) == -1) {
+	if ((pid_child = fork()) == -1) {
 		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to fork (calling pid %d, parent %d)", getpid(), getppid());
 		failure = true;
+		return;;
 	}
 
-	if (pidval)
+	if (pid_child)
 	{ 
 		/* 
 		 * Sniffjoke SERVICE FATHER: the sleeping root 
-		 * process for restore the network */
+		 * process for restore the network
+		 */
 		int deadtrace;
-		ProcessType = SJ_PROCESS_SERVICE_FATHER; 
-		writePidfile(SJ_SERVICE_FATHER_PID_FILE, getpid() );
+		ProcessType = SJ_PROCESS_SERVICE_FATHER;
+		pid = getpid();
+		writePidfile(SJ_SERVICE_FATHER_PID_FILE, pid);
 
-		/* waitpid wait until the userprocess - child pid, run */
-		waitpid(pidval, &deadtrace, WUNTRACED);
+		close(pdes[1]);
+	        read(pdes[0], &pid_child, sizeof(pid_t));
+		close(pdes[0]);
+
+		waitpid(pid_child, &deadtrace, WUNTRACED);
 
 		if (WIFEXITED(deadtrace))
-			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFEXITED", pidval);
+			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFEXITED", pid);
 		if (WIFSIGNALED(deadtrace))
-			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFSIGNALED", pidval);
+			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFSIGNALED", pid);
 		if (WIFSTOPPED(deadtrace))
-			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFSTOPPED", pidval);
+			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFSTOPPED", pid);
 
 		/* whenever the child die, the father restore the network */
 		Process::CleanExit(true);
 	} 
 	else 
-	{ 
+	{
 		/* 
 		 * Sniffjoke SERVICE CHILD: I/O, user privileges, 
-		 * networking process */
+		 * networking process
+		 */
 		ReleaseLock(SJ_SERVICE_LOCK);
 
 		processIsolation();
-		ProcessType = SJ_PROCESS_SERVICE_CHILD; 
-		writePidfile(SJ_SERVICE_CHILD_PID_FILE, getpid() );
+		ProcessType = SJ_PROCESS_SERVICE_CHILD;
+		pid = getpid();
+		writePidfile(SJ_SERVICE_CHILD_PID_FILE, pid);
+
+		close(pdes[0]);
+        	write(pdes[1], &pid, sizeof(pid_t)); 
+		close(pdes[1]);
 	}
 }
 
@@ -145,16 +160,21 @@ void Process::ReleaseLock(const char *lockpath)
 
 void Process::Jail(const char *chroot_dir, struct sj_config *running) 
 {
-	mkdir(chroot_dir, 700);
-
 	userinfo = getpwnam(running->user);
 	groupinfo = getgrnam(running->group);
+
+	mkdir(chroot_dir, 0700);
+
+	if (chown(chroot_dir, userinfo->pw_uid, groupinfo->gr_gid)) {
+                internal_log(stderr, ALL_LEVEL, "chown of %s to %s:%s failed: %s: unable to start sniffjoke", chroot_dir, running->user, running->group, strerror(errno));
+		failure = true;
+		return;
+	}
 
 	if (chdir(chroot_dir) || chroot(chroot_dir)) {
 		internal_log(stderr, ALL_LEVEL, "chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
 		failure = true;
-		// check_call_ret ... 
-		CleanExit(true);
+		return;
 	}
 	internal_log(NULL, VERBOSE_LEVEL, "chroot'ed process %d in %s", getpid(), chroot_dir);
 }
@@ -272,7 +292,6 @@ void Process::SjBackground()
 	internal_log(NULL, DEBUG_LEVEL, "the pid %d, uid %d is going background and closing std*", getpid(), getuid());
 	if (fork())
 		exit(0);
-
 	for (i = getdtablesize(); i >= 0; --i)
 		close(i);
 
@@ -283,12 +302,8 @@ void Process::SjBackground()
 }
 
 void Process::processIsolation() {
-	if (setsid()) {
-		int saved_errno = errno;
-		internal_log(NULL, ALL_LEVEL, "unable to setsid: %s", strerror(errno));
-		failure = true;
-	}
-	umask(0);
+	setsid();
+	umask(027);
 }
 
 void Process::SetProcType(sj_process_t ProcType) {
@@ -304,7 +319,4 @@ Process::Process(struct sj_useropt *useropt)
 		failure = true;
 	}
 
-}
-
-Process::~Process() {
 }

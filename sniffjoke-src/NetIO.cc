@@ -30,7 +30,6 @@
 #include <sys/poll.h>
 
 NetIO::NetIO(SjConf *sjconf)
-	: conntrack(sjconf)
 {
 	struct ifreq orig_gw;
 	struct ifreq ifr;
@@ -205,6 +204,10 @@ NetIO::~NetIO(void)
 	system(tmpsyscmd);
 }
 
+void NetIO::prepare_conntrack(TCPTrack *ct) {
+	conntrack = ct;
+}
+
 void NetIO::network_io(void)
 {
 	int burst = BURSTSIZE;
@@ -240,7 +243,7 @@ void NetIO::network_io(void)
 				 */
 
 				/* add packet in connection tracking queue */
-				conntrack.writepacket(NETWORK, pktbuf, size);
+				conntrack->writepacket(NETWORK, pktbuf, size);
 			}
 		}
 
@@ -259,17 +262,17 @@ void NetIO::network_io(void)
 				 */
 
 				/* add packet in connection tracking queue */
-				conntrack.writepacket(TUNNEL, pktbuf, size);
+				conntrack->writepacket(TUNNEL, pktbuf, size);
 			}
 		}
 	}
 
 	if(runcopy->sj_run == true) {
 		/* when sniffjoke is running the packet are analyzed and mangled */
-		conntrack.analyze_packets_queue();
+		conntrack->analyze_packets_queue();
 	} else { /* running->sj_run == false */
 		/* all packets must be marked as SEND */
-		conntrack.force_send();
+		conntrack->force_send();
 	}
 }
 
@@ -281,7 +284,7 @@ void NetIO::queue_flush(void)
 	 * the other source_t could be LOCAL or TUNNEL;
 	 * in both case the packets goes through the network.
 	 */
-	while ((pkt = conntrack.readpacket()) != NULL) {
+	while ((pkt = conntrack->readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
 			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf_size)) == -1) {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));

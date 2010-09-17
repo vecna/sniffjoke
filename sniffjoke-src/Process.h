@@ -42,7 +42,6 @@ public:
 	bool failure;
 
 	Process(struct sj_useropt *useropt);
-	~Process();
 	pid_t readPidfile(const char *pidfile);
 	void processDetach() ;
 	void ReleaseLock(const char *lockpath);
