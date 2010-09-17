@@ -166,8 +166,8 @@ void Packet::fixIpTcpSum(void)
 	tcp->check = compute_sum(sum);
 }
 
-HackPacket::HackPacket(const Packet& pkt)
-	: Packet(pkt.pbuf_size + MAXOPTINJ, &(pkt.pbuf[0]), pkt.pbuf_size)
+HackPacket::HackPacket(const Packet& pkt) :
+	Packet(pkt.pbuf_size + MAXOPTINJ, &(pkt.pbuf[0]), pkt.pbuf_size)
 {
 	packet_id = 0;
 }
@@ -224,17 +224,13 @@ void HackPacket::SjH__fake_seq(void)
 void HackPacket::SjH__fake_data_anticipation(void)
 {
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-
-	for (int i = 0; i < diff; i++)
-                payload[i] = 'A';
+	memset(payload, 'A', diff);
 }
 
 void HackPacket::SjH__fake_data_posticipation(void)
 {
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-
-	for (int i = 0; i < diff; i++)
-                payload[i] = 'B';
+	memset(payload, 'B', diff);
 }
 
 void HackPacket::SjH__fake_close(void)

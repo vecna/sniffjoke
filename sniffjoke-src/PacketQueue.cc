@@ -29,11 +29,9 @@ PacketQueue::PacketQueue(int queue_levels) :
 	front(new Packet*[queue_levels]),
 	back(new Packet*[queue_levels])
 {
-	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");	
-	for(int i = 0; i < queue_levels; i++) {
-		front[i] = NULL;
-		back[i] = NULL;
-	}
+	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");
+	memset(front, NULL, sizeof(Packet*)*queue_levels);
+	memset(back, NULL, sizeof(Packet*)*queue_levels);
 }
 
 PacketQueue::~PacketQueue(void)
@@ -58,8 +56,7 @@ void PacketQueue::insert(int prio, Packet &pkt)
 		}
 	}
 	if (front[prio] == NULL) {
-		pkt.prev = NULL;
-		pkt.next = NULL;
+		pkt.prev = pkt.next = NULL;
 		front[prio] = back[prio] = &pkt;
 	} else {
 		pkt.prev = back[prio];
