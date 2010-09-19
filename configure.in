@@ -1,0 +1,14 @@
+VERSION=`grep SW_VERSION\  ./include/defines.h | cut -f2 -d"\""`
+
+AC_INIT
+AC_CONFIG_SRCDIR(src)
+AM_INIT_AUTOMAKE(sniffjoke, $VERSION)
+
+AC_PROG_CXX
+AC_PROG_INSTALL
+AC_LANG_CPLUSPLUS
+
+AC_CONFIG_FILES( Makefile
+                 src/Makefile)
+
+AC_OUTPUT
