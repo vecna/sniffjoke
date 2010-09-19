@@ -44,11 +44,10 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_sniffjoke_OBJECTS = sj_main.$(OBJEXT) sj_netio.$(OBJEXT) \
-	sj_conf.$(OBJEXT) sj_packet.$(OBJEXT) sj_packetqueue.$(OBJEXT) \
-	sj_ttlfocus.$(OBJEXT) sj_sessiontrack.$(OBJEXT) \
-	sj_tcptrack.$(OBJEXT) sj_process.$(OBJEXT) \
-	sj_optional_datadebug.$(OBJEXT)
+am_sniffjoke_OBJECTS = sj_main.$(OBJEXT) sj_conf.$(OBJEXT) \
+	sj_process.$(OBJEXT) sj_netio.$(OBJEXT) sj_packet.$(OBJEXT) \
+	sj_packetqueue.$(OBJEXT) sj_ttlfocus.$(OBJEXT) \
+	sj_sessiontrack.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -60,6 +59,10 @@ CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(sniffjoke_SOURCES)
 DIST_SOURCES = $(sniffjoke_SOURCES)
 ETAGS = etags
@@ -149,15 +152,23 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 sniffjoke_SOURCES = sj_main.cc \
-                    sj_netio.cc \
+                    sj_utils.h \
+                    sj_defines.h \
+                    sj_conf.h \
                     sj_conf.cc \
-                    sj_packet.cc \
-                    sj_packetqueue.cc \
-                    sj_ttlfocus.cc \
-                    sj_sessiontrack.cc \
-                    sj_tcptrack.cc \
+                    sj_process.h \
                     sj_process.cc \
-                    sj_optional_datadebug.cc
+                    sj_netio.h \
+                    sj_netio.cc \
+                    sj_packet.h \
+                    sj_packet.cc \
+                    sj_packetqueue.h \
+                    sj_packetqueue.cc \
+                    sj_ttlfocus.h \
+                    sj_ttlfocus.cc \
+                    sj_sessiontrack.h \
+                    sj_sessiontrack.cc \
+                    sj_tcptrack.h
 
 all: all-am
 
@@ -243,12 +254,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_conf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_netio.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_optional_datadebug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_packet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_packetqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_process.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_sessiontrack.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_tcptrack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_ttlfocus.Po@am__quote@
 
 .cc.o:
@@ -463,6 +472,9 @@ uninstall-am: uninstall-binPROGRAMS
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-binPROGRAMS
 
+                    sj_tcptrack.cc \
+                    sj_optional_datadebug.h \
+                    sj_optional_datadebug.cc
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
