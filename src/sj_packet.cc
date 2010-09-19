@@ -243,7 +243,7 @@ void HackPacket::SjH__fake_close(void)
 	/* fake close could have FIN+ACK or RST+ACK */
 	tcp->psh = 0;
 
-	if (0)/* if (random() % 2) FIXME, a fake rst seems to break connection */
+	if (1)/* if (random() % 2) FIXME, a fake rst seems to break connection */
 		tcp->fin = 1;
 	else
 		tcp->rst = 1; 

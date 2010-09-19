@@ -315,7 +315,7 @@ void Process::SetProcType(sj_process_t ProcType) {
 Process::Process(struct sj_useropt *useropt) 
 {
 	if (getuid() || geteuid())  {
-		internal_log(stderr, ALL_LEVEL, "required root privileges: unable to start sniffjoke");
+		printf("required root privileges\n");
 		failure = true;
 	}
 

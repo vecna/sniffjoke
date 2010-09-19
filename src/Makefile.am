@@ -17,7 +17,7 @@ sniffjoke_SOURCES = sj_main.cc \
                     sj_ttlfocus.cc \
                     sj_sessiontrack.h \
                     sj_sessiontrack.cc \
-                    sj_tcptrack.h
+                    sj_tcptrack.h \
                     sj_tcptrack.cc \
                     sj_optional_datadebug.h \
                     sj_optional_datadebug.cc
