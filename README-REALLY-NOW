@@ -50,12 +50,5 @@ FEW TECHNICAL INFO:
    read the sniffjoke algorithm and commands in:
    http://www.delirandom.net/sniffjoke/network_commands
 
-pub   1024D/C6765430 2009-08-25 [expires: 2011-08-25]
-      Key fingerprint = 341F 1A8C E2B4 F4F4 174D  7C21 B842 093D C676 5430
-uid                  vecna <vecna@s0ftpj.org>
-uid                  vecna <vecna@delirandom.net>
-sub   3072g/E8157737 2009-08-25 [expires: 2011-08-25]
-
-
 Feel free to contribute in the code: GIT= http://github.com/vecna/sniffjoke
 Feel free to contribute in the wiki: http://www.delirandom.net/sniffjoke
