@@ -19,9 +19,14 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_tcptrack.h"
 #include "sj_utils.h"
+#include "sj_tcptrack.h"
 
+#include "hackpkts/sj_hackpkts.h"
+
+
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
@@ -645,7 +650,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	 * ~ 95%
 	 */
 	struct choosen_hack_pool {
-		void (HackPacket::*choosen_hack)();
+		HackPacket *choosen_hack;
 		/* percentage to be PRESCRIPTION (ttl expire), 
 		 * otherwise is GUILTY (invalid packet). 0 mean to be 
 		 * INNOCENT (valid packet) 
@@ -654,11 +659,6 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		 * bad checksum cause, in TCP congestion algorithm, to decrase CWND
 		 *
 		 * */
-		const char *debug_info;
-		int resize;
-		/* otherwise, the size is 0 for non-payload-pkt, or a new size required 
-		 * by the choosen hack
-		 */
 		int prcnt;
 	} chackpkto[MAXHACKS];
 
@@ -667,15 +667,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		/* fake DATA injection in stream */
 
 		if (percentage(logarithm(session->packet_number), 10)) {
-			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data;
+			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data(pkt);
 			chackpkto[hpool_len].prcnt = 98;
-			chackpkto[hpool_len].debug_info = (char *)"fake data";
-			
-			if (pkt.payload != NULL)
-				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
-			else
-				chackpkto[hpool_len].resize =  random() % 512;
-			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 
@@ -684,12 +677,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	if (runcopy->SjH__fake_seq) {
 		/* fake SEQ injection */
 		if (percentage(logarithm(session->packet_number), 15)) {
-			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_seq;
+			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_seq(pkt);
 			chackpkto[hpool_len].prcnt = 98;
-			chackpkto[hpool_len].debug_info = (char *)"fake seq";
-
-			chackpkto[hpool_len].resize =  random() % 200;
-			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 	}
@@ -700,17 +689,12 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		/* those hacks works only together */
 		if (pkt.payload != NULL && (hpool_len + 2 <= MAXHACKS) && percentage(logarithm (session->packet_number), 50))
 		{
-
-                        chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data_anticipation;
+                        chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data_anticipation(pkt);
                         chackpkto[hpool_len].prcnt = 100;
-                        chackpkto[hpool_len].debug_info = (char *)"data anticipation";
-                        chackpkto[hpool_len].resize = 0;
 			++hpool_len;
 
-			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_data_posticipation;
+			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data_posticipation(pkt);
 			chackpkto[hpool_len].prcnt = 100;
-			chackpkto[hpool_len].debug_info = (char *)"data posticipation";
-			chackpkto[hpool_len].resize = 0;
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks;
 		}
 	}
@@ -719,11 +703,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		/* fake close (FIN/RST) injection, is required a good ack_seq */
 		if (pkt.tcp->ack) {
 			if (percentage(logarithm(session->packet_number), 5)) {
-				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_close;
+				chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_close(pkt);
 				chackpkto[hpool_len].prcnt = 98;
-				chackpkto[hpool_len].debug_info = (char *)"fake close";
-				chackpkto[hpool_len].resize = 0;
-				
 				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 			}
 		}
@@ -733,11 +714,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		
 		/* zero window, test */
 		if (percentage(logarithm(session->packet_number), 3)) {
-			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__zero_window;
+			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__zero_window(pkt);
 			chackpkto[hpool_len].prcnt = 95;
-			chackpkto[hpool_len].debug_info = (char *)"zero window";
-			chackpkto[hpool_len].resize = 0;
-			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 	
@@ -747,11 +725,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		
 		/* valid RST with invalid SEQ */
 		if (percentage(logarithm(session->packet_number), 8)) {
-			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__valid_rst_fake_seq;
+			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__valid_rst_fake_seq(pkt);
 			chackpkto[hpool_len].prcnt = 0;
-			chackpkto[hpool_len].debug_info = (char *)"valid rst fake seq";
-			chackpkto[hpool_len].resize = 0;
-			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 		}
 	}
@@ -760,11 +735,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		
 		/* fake SYN */
 		if (percentage(logarithm(session->packet_number), 11)) {
-			chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__fake_syn;
+			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_syn(pkt);
 			chackpkto[hpool_len].prcnt = 94;
-			chackpkto[hpool_len].debug_info = (char *)"fake syn";
-			chackpkto[hpool_len].resize = 0;
-			
 			if (++hpool_len == MAXHACKS) goto sendchosenhacks;
 		}
 	}
@@ -774,11 +746,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		/* SHIFT ack */
 		if (pkt.tcp->ack) {
 			if (percentage(logarithm(session->packet_number), 15)) {
-				chackpkto[hpool_len].choosen_hack = &HackPacket::SjH__shift_ack;
+				chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__shift_ack(pkt);
 				chackpkto[hpool_len].prcnt = 0;
-				chackpkto[hpool_len].debug_info =  (char *)"shift ack";
-				chackpkto[hpool_len].resize = UNCHANGED_SIZE;
-				
 				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
 			}
 		}
@@ -797,16 +766,11 @@ sendchosenhacks:
 					court_word = GUILTY;
 			} else 
 				court_word = INNOCENT;
-			/*
-			 * packet_orphanotropy create the new packet with a length 
-			 * regrow (for supply to fake data and ip/tcp options)
-			 * 
-			 * what the fuck do with the packets ? its the Court to choose
-			 */
-			injpkt = packet_orphanotrophy(pkt, chackpkto[i].resize, court_word);
 
-			(injpkt->*(chackpkto[i].choosen_hack))();
-			
+			injpkt->mark(LOCAL, SEND, court_word);
+			injpkt = chackpkto[i].choosen_hack;
+
+			/* priority must be HIGH or LOW, and usually are always HIGH */
 			switch(injpkt->position) {
 				case ANTICIPATION:
 					p_queue.insert_before(LOW, *injpkt, pkt);
@@ -824,7 +788,7 @@ sendchosenhacks:
 #ifdef HACKSDEBUG
 			internal_log(NULL, HACKS_DEBUG,
 				"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
-				chackpkto[i].debug_info,
+				injpkt->debug_info,
 				ntohs(injpkt->tcp->source), 
 				inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
 				ntohs(injpkt->tcp->dest), session->packet_number,
@@ -934,26 +898,6 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 	}
 	return false;
 }
-
-/* packet orphanotrophy, create the oraphans packet and raise them correctly */
-HackPacket* TCPTrack::packet_orphanotrophy(const Packet &pkt, int resize, judge_t court_word)
-{
-	HackPacket *ret = new HackPacket(pkt);
-	ret->mark(LOCAL, SEND, court_word);
-
-	/* 
-	 * the packets generated could be resized, for the sniffjoke hack
-	 */
-	switch(resize) {
-		case UNCHANGED_SIZE:
-			break;
-		default:
-			ret->resizePayload(resize);
-	}
-
-	return ret;
-}
-
 
 /* 
  * this two functions is required on hacking injection, because that 

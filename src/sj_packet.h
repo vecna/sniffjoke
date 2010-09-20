@@ -69,7 +69,6 @@ public:
 	int orig_pktlen;
 	
 	Packet(int, const unsigned char*, int) ;
-	Packet(const Packet &);
 	virtual ~Packet(void);
 
 	unsigned int make_pkt_id(const unsigned char*) const;
@@ -86,22 +85,9 @@ public:
 class HackPacket : public Packet {
 public:
 	position_t position;
+	char *debug_info;
 
 	HackPacket(const Packet &);
-
-	/* sniffjoke hacks applied on the packets */
-	void SjH__fake_data(void);
-	void SjH__fake_seq(void);
-	void SjH__fake_close(void);
-	void SjH__zero_window(void);
-	void SjH__valid_rst_fake_seq(void);
-	void SjH__fake_syn(void);
-	void SjH__shift_ack(void);
-	void SjH__fake_data_anticipation(void);
-	void SjH__fake_data_posticipation(void);
-
-	/* void SjH__half_fake_syn(void); NOT IMPLEMENTED */
-	/* void SjH__half_fake_ack(void); NOT IMPLEMENTED */
 
 	void SjH__inject_ipopt(void);
 	void SjH__inject_tcpopt(void);

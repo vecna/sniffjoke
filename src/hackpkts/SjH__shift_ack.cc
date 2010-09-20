@@ -19,29 +19,12 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_PACKET_QUEUE_H
-#define SJ_PACKET_QUEUE_H
-
-#include "sj_defines.h"
-#include "sj_packet.h"
-
-class PacketQueue {
-private:
-	Packet **front;
-	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
-	Packet *cur_pkt;
-public:
-
-	PacketQueue(int);
-	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, HackPacket &, Packet &);
-	void insert_after(int, HackPacket &, Packet &);
-	void remove(const Packet &);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
-};
-
-#endif /* SJ_PACKET_QUEUE_H */
+#include "sj_hackpkts.h"
+#include <cstdlib>
+SjH__shift_ack::SjH__shift_ack(Packet& pkt) :
+	HackPacket(pkt)
+{
+	debug_info = (char *)"shift ack";
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
+}

@@ -19,29 +19,22 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_PACKET_QUEUE_H
-#define SJ_PACKET_QUEUE_H
 
-#include "sj_defines.h"
-#include "sj_packet.h"
-
-class PacketQueue {
-private:
-	Packet **front;
-	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
-	Packet *cur_pkt;
-public:
-
-	PacketQueue(int);
-	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, HackPacket &, Packet &);
-	void insert_after(int, HackPacket &, Packet &);
-	void remove(const Packet &);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
-};
-
-#endif /* SJ_PACKET_QUEUE_H */
+/* 
+ * SjH__fake_data_anticipation and SjH__fake_data_posticipation
+ * are both the same hack, and need to be used together, anyway for 
+ * design pourpose, every injected packet require a dedicated 
+ * function.
+ */
+#include "sj_hackpkts.h"
+#include <cstdlib>
+#include <cstring>
+SjH__fake_data_anticipation::SjH__fake_data_anticipation(Packet& pkt) :
+	HackPacket(pkt)
+{
+	debug_info = (char *)"fake data anticipation";
+	resizePayload(random() % 512);
+	
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	memset(payload, 'A', diff);
+}

@@ -19,29 +19,15 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_PACKET_QUEUE_H
-#define SJ_PACKET_QUEUE_H
+#include "sj_hackpkts.h"
+SjH__zero_window::SjH__zero_window(Packet& pkt) :
+	HackPacket(pkt)
+{
+	debug_info = (char *)"zero window";
+	
+	resizePayload(0);
 
-#include "sj_defines.h"
-#include "sj_packet.h"
-
-class PacketQueue {
-private:
-	Packet **front;
-	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
-	Packet *cur_pkt;
-public:
-
-	PacketQueue(int);
-	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, HackPacket &, Packet &);
-	void insert_after(int, HackPacket &, Packet &);
-	void remove(const Packet &);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
-};
-
-#endif /* SJ_PACKET_QUEUE_H */
+	tcp->syn = tcp->fin = tcp->rst = 1;
+	tcp->psh = tcp->ack = 0;
+	tcp->window = 0;
+}

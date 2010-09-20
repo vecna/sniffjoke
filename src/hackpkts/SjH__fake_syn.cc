@@ -19,29 +19,35 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_PACKET_QUEUE_H
-#define SJ_PACKET_QUEUE_H
+#include "sj_hackpkts.h"
+#include <cstdlib>
+SjH__fake_syn::SjH__fake_syn(Packet& pkt) :
+	HackPacket(pkt)
+{
+	debug_info = (char *)"fake syn";
+	resizePayload(0);
+		
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+		
+	tcp->psh = 0;
+	tcp->syn = 1;
+	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 5000));
 
-#include "sj_defines.h"
-#include "sj_packet.h"
+	/* 20% is a SYN ACK */
+	if ((random() % 5) == 0) { 
+		tcp->ack = 1;
+		tcp->ack_seq = random();
+	} else {
+		tcp->ack = tcp->ack_seq = 0;
+	}
 
-class PacketQueue {
-private:
-	Packet **front;
-	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
-	Packet *cur_pkt;
-public:
+	/* payload is always truncated */
+	ip->tot_len = htons((ip->ihl * 4) + (tcp->doff * 4));
 
-	PacketQueue(int);
-	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, HackPacket &, Packet &);
-	void insert_after(int, HackPacket &, Packet &);
-	void remove(const Packet &);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
-};
-
-#endif /* SJ_PACKET_QUEUE_H */
+	/* 20% had source and dest port reversed */
+	if ((random() % 5) == 0) {
+		unsigned short swap = tcp->source;
+		tcp->source = tcp->dest;
+		tcp->dest = swap;
+	}
+}

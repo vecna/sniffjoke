@@ -19,29 +19,31 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_PACKET_QUEUE_H
-#define SJ_PACKET_QUEUE_H
+#include "sj_hackpkts.h"
+#include <cstdlib>
+SjH__fake_seq::SjH__fake_seq(Packet& pkt) :
+	HackPacket(pkt)
+{
+	debug_info = (char *)"fake seq";
+	resizePayload(random() % 200);
 
-#include "sj_defines.h"
-#include "sj_packet.h"
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	int what = (random() % 3);
 
-class PacketQueue {
-private:
-	Packet **front;
-	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
-	Packet *cur_pkt;
-public:
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
 
-	PacketQueue(int);
-	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, HackPacket &, Packet &);
-	void insert_after(int, HackPacket &, Packet &);
-	void remove(const Packet &);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
-};
+	if (what == 0)
+		what = 2;
 
-#endif /* SJ_PACKET_QUEUE_H */
+	if (what == 1) 
+		tcp->seq = htonl(ntohl(tcp->seq) - (random() % 5000));
+
+	if (what == 2)
+		tcp->seq = htonl(ntohl(tcp->seq) + (random() % 5000));
+			
+	tcp->window = htons((random() % 80) * 64);
+	tcp->ack = tcp->ack_seq = 0;
+
+	for (int i = 0; i < diff - 3; i += 4)
+		*(long int *)&(payload[i]) = random();
+}

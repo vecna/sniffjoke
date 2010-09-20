@@ -19,29 +19,29 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_PACKET_QUEUE_H
-#define SJ_PACKET_QUEUE_H
+#include "sj_hackpkts.h"
+#include <cstdlib>
+SjH__fake_close::SjH__fake_close(Packet& pkt) :
+	HackPacket(pkt)
+{
+	debug_info = (char *)"fake close";
+	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
+		
+	resizePayload(0);
+		
+	ip->id = htons(ntohs(ip->id) + (random() % 10));
+		
+	/* fake close could have FIN+ACK or RST+ACK */
+	tcp->psh = 0;
 
-#include "sj_defines.h"
-#include "sj_packet.h"
+	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
+		tcp->fin = 1;
+	else
+		tcp->rst = 1; 
 
-class PacketQueue {
-private:
-	Packet **front;
-	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
-	Packet *cur_pkt;
-public:
-
-	PacketQueue(int);
-	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, HackPacket &, Packet &);
-	void insert_after(int, HackPacket &, Packet &);
-	void remove(const Packet &);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
-};
-
-#endif /* SJ_PACKET_QUEUE_H */
+	/* 
+	 * in both case, the sequence number must be shrink as no data is there.
+	 * the ack_seq is set because the ACK flag is checked to be 1
+	 */
+	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
+}

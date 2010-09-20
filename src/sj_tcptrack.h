@@ -52,7 +52,6 @@ private:
 
 	/* functions for decrete which, and if, inject hacks */
 	bool check_uncommon_tcpopt(const struct tcphdr*);
-	HackPacket* packet_orphanotrophy(const Packet&, int, judge_t);
 	bool percentage(float, int);
 	float logarithm(int);
 

@@ -33,20 +33,8 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) :
 {
 	memcpy(&(pbuf[0]), buff, buff_size);	
 	updatePointers();
+	
 	orig_pktlen = ntohs(ip->tot_len);
-}
-
-Packet::Packet(const Packet& pkt) :
-	pbuf(pkt.pbuf),
-	pbuf_size(pkt.pbuf_size),
-	orig_pktlen(pkt.orig_pktlen),
-	packet_id(0),
-	source(SOURCEUNASSIGNED),
-	status(STATUSUNASSIGNED),
-	wtf(JUDGEUNASSIGNED),
-	proto(PROTOUNASSIGNED)
-{
-	updatePointers();
 }
 
 Packet::~Packet() {}
@@ -175,124 +163,7 @@ HackPacket::HackPacket(const Packet& pkt) :
 	Packet(pkt.pbuf_size + MAXOPTINJ, &(pkt.pbuf[0]), pkt.pbuf_size)
 {
 	packet_id = 0;
-}
-
-/*
- * TCP/IP hacks, focus:
- *
- *  suppose the sniffer reconstruction flow, suppose which variable they use, make them
- *  variables fake and send a HackPacket that don't ruin the real flow.
- *
- * SjH__ = sniffjoke hack
- *
- */
-void HackPacket::SjH__fake_data(void)
-{
 	position = ANTICIPATION;
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-
-	for (int i = 0; i < diff - 3; i += 4)
-		*(long int *)&(payload[i]) = random();
-}
-
-void HackPacket::SjH__fake_seq(void)
-{
-	position = ANTICIPATION;
-	int what = (random() % 3);
-
-	if (what == 0)
-		what = 2;
-
-	if (what == 1) 
-		tcp->seq = htonl(ntohl(tcp->seq) - (random() % 5000));
-
-	if (what == 2)
-		tcp->seq = htonl(ntohl(tcp->seq) + (random() % 5000));
-		
-	tcp->window = htons((random() % 80) * 64);
-	tcp->ack = tcp->ack_seq = 0;
-
-	SjH__fake_data();
-}
-
-void HackPacket::SjH__fake_close(void)
-{
-	position = ANTICIPATION;
-	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-	
-	/* fake close could have FIN+ACK or RST+ACK */
-	tcp->psh = 0;
-
-	if (1)/* if (random() % 2) FIXME, a fake rst seems to break connection */
-		tcp->fin = 1;
-	else
-		tcp->rst = 1; 
-
-	/* in both case, the sequence number must be shrink as no data is there.
-	 * the ack_seq is set because the ACK flag is checked to be 1 */
-	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
-}
-
-void HackPacket::SjH__zero_window(void)
-{
-	position = ANTICIPATION;
-	tcp->syn = tcp->fin = tcp->rst = 1;
-	tcp->psh = tcp->ack = 0;
-	tcp->window = 0;
-}
-
-void HackPacket::SjH__valid_rst_fake_seq()
-{
-	/* 
-	 * if the session is resetted, the remote box maybe vulnerable to:
-	 * Slipping in the window: TCP Reset attacks
-	 * http://kerneltrap.org/node/3072
-	 */
-	position = ANTICIPATION;
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 12345));
-	tcp->window = htons((unsigned short)(-1));
-	tcp->rst = tcp->ack = 1;
-	tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
-	tcp->fin = tcp->psh = tcp->syn = 0;
-}
-
-void HackPacket::SjH__fake_syn(void)
-{
-	position = ANTICIPATION;
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-	
-	tcp->psh = 0;
-	tcp->syn = 1;
-	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 5000));
-
-	/* 20% is a SYN ACK */
-	if ((random() % 5) == 0) { 
-		tcp->ack = 1;
-		tcp->ack_seq = random();
-	} else {
-		tcp->ack = tcp->ack_seq = 0;
-	}
-
-	/* payload is always truncated */
-	ip->tot_len = htons((ip->ihl * 4) + (tcp->doff * 4));
-
-	/* 20% had source and dest port reversed */
-	if ((random() % 5) == 0) {
-		unsigned short swap = tcp->source;
-		tcp->source = tcp->dest;
-		tcp->dest = swap;
-	}
-}
-
-void HackPacket::SjH__shift_ack(void)
-{
-	position = ANTICIPATION;
-	ip->id = htons(ntohs(ip->id) + (random() % 10));
-	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
 }
 
 /* ipopt IPOPT_RR inj*/
@@ -388,26 +259,4 @@ void HackPacket::SjH__inject_tcpopt(void)
 	ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
 	tcp->doff = (sizeof(struct tcphdr) + faketcpopt) & 0xf;
 	payload = (unsigned char *)(tcp) + tcphlen;
-}
-
-/* SjH__fake_data_anticipation and SjH__fake_data_posticipation
- * are both the same hack, and need to be used together, anyway for 
- * design pourpose, every injected packet require a dedicated 
- * function.
- *
- * -- note: this should not me true, anyway, this is the 0.4alpha2
- *  developing, so optimization is not require 
- */
-void HackPacket::SjH__fake_data_anticipation(void)
-{
-	position = ANTICIPATION;
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	memset(payload, 'A', diff);
-}
-
-void HackPacket::SjH__fake_data_posticipation(void)
-{
-	position = POSTICIPATION;
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	memset(payload, 'B', diff);
 }

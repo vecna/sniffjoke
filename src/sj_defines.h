@@ -19,7 +19,7 @@
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
 #define DEFAULT_DEBUG_LEVEL             2
 #define CONFIGURABLE_HACKS_N            12
-#define ASSURED_HACKS                   "YNYYYNNYYYYY"
+#define ASSURED_HACKS                   "YNYYYNNYYYYN"
 
 
 #define SJ_SERVICE_LOCK			"/tmp/.sniffjoke_service.lock"
@@ -31,6 +31,5 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 #define MSGBUF				512
-
 
 #endif /* SJ_DEFINES_H */
