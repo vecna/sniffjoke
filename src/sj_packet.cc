@@ -188,6 +188,7 @@ HackPacket::HackPacket(const Packet& pkt) :
  */
 void HackPacket::SjH__fake_data(void)
 {
+	position = ANTICIPATION;
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
@@ -198,6 +199,7 @@ void HackPacket::SjH__fake_data(void)
 
 void HackPacket::SjH__fake_seq(void)
 {
+	position = ANTICIPATION;
 	int what = (random() % 3);
 
 	if (what == 0)
@@ -215,28 +217,9 @@ void HackPacket::SjH__fake_seq(void)
 	SjH__fake_data();
 }
 
-/* SjH__fake_data_anticipation and SjH__fake_data_posticipation
- * are both the same hack, and need to be used together, anyway for 
- * design pourpose, every injected packet require a dedicated 
- * function.
- *
- * -- note: this should not me true, anyway, this is the 0.4alpha2
- *  developing, so optimization is not require 
- */
-void HackPacket::SjH__fake_data_anticipation(void)
-{
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	memset(payload, 'A', diff);
-}
-
-void HackPacket::SjH__fake_data_posticipation(void)
-{
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	memset(payload, 'B', diff);
-}
-
 void HackPacket::SjH__fake_close(void)
 {
+	position = ANTICIPATION;
 	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	
@@ -255,6 +238,7 @@ void HackPacket::SjH__fake_close(void)
 
 void HackPacket::SjH__zero_window(void)
 {
+	position = ANTICIPATION;
 	tcp->syn = tcp->fin = tcp->rst = 1;
 	tcp->psh = tcp->ack = 0;
 	tcp->window = 0;
@@ -267,6 +251,7 @@ void HackPacket::SjH__valid_rst_fake_seq()
 	 * Slipping in the window: TCP Reset attacks
 	 * http://kerneltrap.org/node/3072
 	 */
+	position = ANTICIPATION;
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->seq = htonl(ntohl(tcp->seq) + 65535 + (random() % 12345));
 	tcp->window = htons((unsigned short)(-1));
@@ -277,6 +262,7 @@ void HackPacket::SjH__valid_rst_fake_seq()
 
 void HackPacket::SjH__fake_syn(void)
 {
+	position = ANTICIPATION;
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	
 	tcp->psh = 0;
@@ -304,6 +290,7 @@ void HackPacket::SjH__fake_syn(void)
 
 void HackPacket::SjH__shift_ack(void)
 {
+	position = ANTICIPATION;
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
 }
@@ -311,6 +298,7 @@ void HackPacket::SjH__shift_ack(void)
 /* ipopt IPOPT_RR inj*/
 void HackPacket::SjH__inject_ipopt(void)
 {
+	position = ANTICIPATION;
 	const int route_n = random() % 10;
 	const unsigned fakeipopt = ((route_n + 1) * 4);
 	
@@ -359,6 +347,7 @@ void HackPacket::SjH__inject_ipopt(void)
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
 void HackPacket::SjH__inject_tcpopt(void)
 {
+	position = ANTICIPATION;
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
 	const int free_space = pbuf_size - ntohs(ip->tot_len);
@@ -399,4 +388,26 @@ void HackPacket::SjH__inject_tcpopt(void)
 	ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
 	tcp->doff = (sizeof(struct tcphdr) + faketcpopt) & 0xf;
 	payload = (unsigned char *)(tcp) + tcphlen;
+}
+
+/* SjH__fake_data_anticipation and SjH__fake_data_posticipation
+ * are both the same hack, and need to be used together, anyway for 
+ * design pourpose, every injected packet require a dedicated 
+ * function.
+ *
+ * -- note: this should not me true, anyway, this is the 0.4alpha2
+ *  developing, so optimization is not require 
+ */
+void HackPacket::SjH__fake_data_anticipation(void)
+{
+	position = ANTICIPATION;
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	memset(payload, 'A', diff);
+}
+
+void HackPacket::SjH__fake_data_posticipation(void)
+{
+	position = POSTICIPATION;
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	memset(payload, 'B', diff);
 }

@@ -37,6 +37,8 @@ public:
 	PacketQueue(int);
 	~PacketQueue(void);
 	void insert(int, Packet &);
+	void insert_before(int, Packet &, Packet &);
+	void insert_after(int, Packet &, Packet &);
 	void remove(const Packet &);
 	Packet* get(bool);
 	Packet* get(status_t, source_t, proto_t, bool);

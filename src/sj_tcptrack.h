@@ -44,7 +44,7 @@ private:
 
 	/* functions forging/mangling packets que, ttl analysis */
 	bool check_evil_packet(const unsigned char*, int);
-	void inject_hack_in_queue(const Packet&, const SessionTrack*);
+	void inject_hack_in_queue(Packet&, const SessionTrack*);
 	void enque_ttl_probe(const Packet&, TTLFocus&);
 	bool analyze_ttl_stats(TTLFocus&);
 	void mark_real_syn_packets_SEND(unsigned int);
@@ -52,7 +52,7 @@ private:
 
 	/* functions for decrete which, and if, inject hacks */
 	bool check_uncommon_tcpopt(const struct tcphdr*);
-	HackPacket* packet_orphanotrophy(const Packet&, int, judge_t, int);
+	HackPacket* packet_orphanotrophy(const Packet&, int, judge_t);
 	bool percentage(float, int);
 	float logarithm(int);
 
