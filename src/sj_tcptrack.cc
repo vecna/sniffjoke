@@ -687,7 +687,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	if ((runcopy->SjH__fake_data_anticipation || runcopy->SjH__fake_data_posticipation) && pkt.payload != NULL)
 	{
 		/* those hacks works only together */
-		if (pkt.payload != NULL && (hpool_len + 2 <= MAXHACKS) && percentage(logarithm (session->packet_number), 50))
+		if ((hpool_len + 2 <= MAXHACKS) && percentage(logarithm (session->packet_number), 50))
 		{
                         chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data_anticipation(pkt);
                         chackpkto[hpool_len].prcnt = 100;
