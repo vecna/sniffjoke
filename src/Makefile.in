@@ -189,6 +189,7 @@ sniffjoke_SOURCES = sj_main.cc \
                     sj_optional_datadebug.h \
                     sj_optional_datadebug.cc
 
+CLEANFILES = *~
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -419,6 +420,7 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)

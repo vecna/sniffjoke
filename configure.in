@@ -1,9 +1,9 @@
 AC_INIT(sniffjoke)
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/sj_defines.h | cut -f2 -d"\""`
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/sj_defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 AC_SUBST(PACKAGE_VERSION)
-AM_INIT_AUTOMAKE(sniffjoke,$VERSION)
+AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
 
-AC_CONFIG_SRCDIR(src)
+AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
 AC_CANONICAL_HOST

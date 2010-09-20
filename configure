@@ -2002,7 +2002,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/sj_defines.h | cut -f2 -d"\""`
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/sj_defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 
 am__api_version='1.11'
 
@@ -2471,7 +2471,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=sniffjoke
- VERSION=$VERSION
+ VERSION=$PACKAGE_VERSION
 
 
 cat >>confdefs.h <<_ACEOF

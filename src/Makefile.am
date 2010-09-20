@@ -22,3 +22,4 @@ sniffjoke_SOURCES = sj_main.cc \
                     sj_optional_datadebug.h \
                     sj_optional_datadebug.cc
 
+CLEANFILES = *~
