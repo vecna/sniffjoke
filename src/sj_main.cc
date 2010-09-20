@@ -28,8 +28,8 @@
 #include "sj_tcptrack.h"
 
 #include <csignal>
-#include <getopt.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <sys/un.h>
 
 /* process configuration, data struct defined in sniffjoke.h */

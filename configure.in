@@ -1,12 +1,91 @@
-VERSION=`grep SW_VERSION\  ./include/defines.h | cut -f2 -d"\""`
+AC_INIT(sniffjoke)
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/sj_defines.h | cut -f2 -d"\""`
+AC_SUBST(PACKAGE_VERSION)
+AM_INIT_AUTOMAKE(sniffjoke,$VERSION)
 
-AC_INIT
 AC_CONFIG_SRCDIR(src)
-AM_INIT_AUTOMAKE(sniffjoke, $VERSION)
+AC_CONFIG_HEADERS([src/config.h])
+
+AC_CANONICAL_HOST
+AH_TEMPLATE(OS_LINUX, [compiling under linux])
+AH_TEMPLATE(OS_BSD, [compiling under bsd])
+AH_TEMPLATE(OS_BSD_FREE, [compiling under free bsd])
+AH_TEMPLATE(OS_BSD_OPEN, [compiling under open bsd])
+AH_TEMPLATE(OS_BSD_NET, [compiling under net bsd])
+AH_TEMPLATE(OS_DARWIN, [compiling under macosx])
+AM_CONDITIONAL(LINUX, false)
+AM_CONDITIONAL(BSD, false)
+AM_CONDITIONAL(DARWIN, false)
+
+case "$host_os" in
+*linux*)
+   AC_DEFINE(OS_LINUX)
+   AM_CONDITIONAL(LINUX, true)
+   OS="LINUX"
+   ;;
+*freebsd*)
+   AC_DEFINE(OS_BSD)
+   AC_DEFINE(OS_BSD_FREE)
+   AM_CONDITIONAL(BSD, true)
+   OS="FREEBSD"
+   ;;
+*openbsd*)
+   AC_DEFINE(OS_BSD)
+   AC_DEFINE(OS_BSD_OPEN)
+   AM_CONDITIONAL(BSD, true)
+   OS="OPENBSD"
+   ;;
+*netbsd*)
+   AC_DEFINE(OS_BSD)
+   AC_DEFINE(OS_BSD_NET)
+   AM_CONDITIONAL(BSD, true)
+   OS="NETBSD"
+   ;;
+*darwin*)
+   AC_DEFINE(OS_DARWIN)
+   AM_CONDITIONAL(DARWIN, true)
+   OS="DARWIN"
+   ;;
+*)
+   echo
+   echo "NOT A SUPPORTED SYSTEM / OR SYSTEM NOT RECOGNIZED"
+   echo
+   ;;
+esac
 
 AC_PROG_CXX
-AC_PROG_INSTALL
 AC_LANG_CPLUSPLUS
+AC_PROG_INSTALL
+
+AC_CHECK_HEADERS(cerrno,,exit 1)
+AC_CHECK_HEADERS(csignal,,exit 1)
+AC_CHECK_HEADERS(cstdarg,,exit 1)
+AC_CHECK_HEADERS(cstdio,,exit 1)
+AC_CHECK_HEADERS(cstdlib,,exit 1)
+AC_CHECK_HEADERS(cstring,,exit 1)
+AC_CHECK_HEADERS(ctime,,exit 1)
+AC_CHECK_HEADERS(cctype,,exit 1)
+AC_CHECK_HEADERS(map,,exit 1)
+AC_CHECK_HEADERS(vector,,exit 1)
+AC_CHECK_HEADERS(fcntl.h,,exit 1)
+AC_CHECK_HEADERS(getopt.h,,exit 1)
+AC_CHECK_HEADERS(grp.h,,exit 1)
+AC_CHECK_HEADERS(poll.h,,exit 1)
+AC_CHECK_HEADERS(pwd.h,,exit 1)
+AC_CHECK_HEADERS(unistd.h,,exit 1)
+AC_CHECK_HEADERS(wait.h,,exit 1)
+AC_CHECK_HEADERS(arpa/inet.h,,exit 1)
+AC_CHECK_HEADERS(linux/if_tun.h,,exit 1)
+AC_CHECK_HEADERS(net/ethernet.h,,exit 1)
+AC_CHECK_HEADERS(net/if.h,,exit 1)
+AC_CHECK_HEADERS(netinet/ip.h,,exit 1)
+AC_CHECK_HEADERS(netinet/ip_icmp.h,,exit 1)
+AC_CHECK_HEADERS(netinet/tcp.h,,exit 1)
+AC_CHECK_HEADERS(netpacket/packet.h,,exit 1)
+AC_CHECK_HEADERS(sys/ioctl.h,,exit 1)
+AC_CHECK_HEADERS(sys/poll.h,,exit 1)
+AC_CHECK_HEADERS(sys/stat.h,,exit 1)
+AC_CHECK_HEADERS(sys/un.h,,exit 1)
 
 AC_CONFIG_FILES( Makefile
                  src/Makefile)

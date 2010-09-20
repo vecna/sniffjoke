@@ -23,8 +23,8 @@
 #include "sj_utils.h"
 
 #include <csignal>
-#include <sys/stat.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 
 DataDebug::DataDebug(void)
 {

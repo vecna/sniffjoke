@@ -22,8 +22,8 @@
 #include "sj_conf.h"
 #include "sj_utils.h"
 
-#include <csignal>
 #include <cctype>
+#include <csignal>
 
 #include <sys/stat.h>
 

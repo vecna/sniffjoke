@@ -28,7 +28,6 @@
 #include "sj_sessiontrack.h"
 #include "sj_ttlfocus.h"
 
-
 class TCPTrack {
 private:
 	PacketQueue p_queue;

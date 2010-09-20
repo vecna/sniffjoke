@@ -23,12 +23,11 @@
 #include "sj_conf.h"
 #include "sj_utils.h"
 
-#include <getopt.h>
 #include <fcntl.h>
-#include <pwd.h>
+#include <getopt.h>
 #include <grp.h>
+#include <pwd.h>
 #include <wait.h>
-
 #include <sys/un.h>
 
 extern int errno;

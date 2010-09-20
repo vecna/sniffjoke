@@ -1,8 +1,8 @@
 SUBDIRS = src
 
 EXTRA_DIST = AUTHORS \
-             CHANGELOG \
-             LICENSE \
+             ChangeLog \
+             COPYING \
              README \
              README-REALLY-NOW \
              scripts/*

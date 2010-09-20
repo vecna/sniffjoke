@@ -24,8 +24,8 @@
 #include "sj_utils.h"
 
 #include <cerrno>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
 

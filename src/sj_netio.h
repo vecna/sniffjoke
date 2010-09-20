@@ -27,7 +27,6 @@
 #include "sj_tcptrack.h"
 
 #include <poll.h>
-
 #include <netpacket/packet.h>
 
 #define MTU             1500

@@ -23,11 +23,10 @@
 #include "sj_utils.h"
 
 #include <fcntl.h>
+#include <poll.h>
+#include <linux/if_tun.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
-#include <linux/if_tun.h>
-
-#include <sys/poll.h>
 
 NetIO::NetIO(SjConf *sjconf)
 {
