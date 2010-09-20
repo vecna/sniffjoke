@@ -34,6 +34,7 @@ PacketQueue::PacketQueue(int queue_levels) :
 	memset(back, NULL, sizeof(Packet*)*queue_levels);
 }
 
+
 PacketQueue::~PacketQueue(void)
 {
 	internal_log(NULL, DEBUG_LEVEL, "~PacketQueue()");
@@ -61,42 +62,35 @@ void PacketQueue::insert(int prio, Packet &pkt)
 
 void PacketQueue::insert_before(int prio, HackPacket &pkt, Packet &ref)
 {
-	for (int i = 0; i < queue_levels; i++) {
-		if (front[i] == &ref) {
-			pkt.prev = NULL;
-			pkt.next = &ref;
-			ref.prev = &pkt;
-			front[i] == &pkt;
-			return;
-		}
+	if (front[prio] == &ref) {
+		pkt.prev = NULL;
+		pkt.next = &ref;
+		ref.prev = &pkt;
+		front[prio] = &pkt;
+	} else {
+		pkt.prev = ref.prev;
+		if(ref.prev != NULL)
+			ref.prev->next = &pkt;
+		pkt.next = &ref;
+		ref.prev = &pkt;
 	}
-
-	pkt.prev = ref.prev;
-	if(ref.prev != NULL)
-		ref.prev->next = &pkt;
-	pkt.next = &ref;
-	ref.prev = &pkt;
-	return;
 }
 
 void PacketQueue::insert_after(int prio, HackPacket &pkt, Packet &ref)
 {
-	for (int i = 0; i < queue_levels; i++) {
-		if (back[i] == &ref) {
-			pkt.prev = &ref;
-			pkt.next = NULL;
-			ref.next = &pkt;
-			back[i] == &pkt;
-			return;
-		}
+	if (back[prio] == &ref) {
+		pkt.prev = &ref;
+		pkt.next = NULL;
+		ref.next = &pkt;
+		back[prio] = &pkt;
+		return;
+	} else {
+		pkt.next = ref.next;
+		if(ref.next != NULL)
+			ref.next->prev = &pkt;
+		pkt.prev = &ref;
+		ref.next = &pkt;
 	}
-
-	pkt.next = ref.next;
-	if(ref.next != NULL)
-		ref.next->prev = &pkt;
-	pkt.prev = &ref;
-	ref.next = &pkt;
-	return;
 }
 
 void PacketQueue::remove(const Packet &pkt)

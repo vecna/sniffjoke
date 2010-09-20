@@ -683,11 +683,10 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		}
 	}
 
-	/* > 52 byte mean avoid to do data anticipation where no data is present! */
 	if ((runcopy->SjH__fake_data_anticipation || runcopy->SjH__fake_data_posticipation) && pkt.payload != NULL)
 	{
 		/* those hacks works only together */
-		if ((hpool_len + 2 <= MAXHACKS) && percentage(logarithm (session->packet_number), 50))
+		if ((hpool_len + 2 <= MAXHACKS) && percentage(logarithm(session->packet_number), 50))
 		{
                         chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data_anticipation(pkt);
                         chackpkto[hpool_len].prcnt = 100;
@@ -770,7 +769,6 @@ sendchosenhacks:
 			injpkt->mark(LOCAL, SEND, court_word);
 			injpkt = chackpkto[i].choosen_hack;
 
-			/* priority must be HIGH or LOW, and usually are always HIGH */
 			switch(injpkt->position) {
 				case ANTICIPATION:
 					p_queue.insert_before(LOW, *injpkt, pkt);

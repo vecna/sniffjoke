@@ -25,7 +25,7 @@ SjH__fake_data::SjH__fake_data(Packet& pkt) :
 	HackPacket(pkt)
 {
 	debug_info = (char *)"fake data";
-	resizePayload(random() % 512);
+	resizePayload(random() % 512 + 1);
 
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 	ip->id = htons(ntohs(ip->id) + (random() % 10));

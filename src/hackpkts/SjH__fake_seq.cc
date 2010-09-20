@@ -25,7 +25,7 @@ SjH__fake_seq::SjH__fake_seq(Packet& pkt) :
 	HackPacket(pkt)
 {
 	debug_info = (char *)"fake seq";
-	resizePayload(random() % 200);
+	resizePayload(random() % 200 + 1);
 
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 	int what = (random() % 3);
