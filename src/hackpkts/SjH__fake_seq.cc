@@ -25,9 +25,13 @@ SjH__fake_seq::SjH__fake_seq(Packet& pkt) :
 	HackPacket(pkt)
 {
 	debug_info = (char *)"fake seq";
-	resizePayload(random() % 200 + 1);
-
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	
+	if(diff > 200) {
+		diff = random() % 200;
+		resizePayload(diff);
+	}	
+	
 	int what = (random() % 3);
 
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
@@ -44,6 +48,5 @@ SjH__fake_seq::SjH__fake_seq(Packet& pkt) :
 	tcp->window = htons((random() % 80) * 64);
 	tcp->ack = tcp->ack_seq = 0;
 
-	for (int i = 0; i < diff - 3; i += 4)
-		*(long int *)&(payload[i]) = random();
+	fillRandomPayload();
 }

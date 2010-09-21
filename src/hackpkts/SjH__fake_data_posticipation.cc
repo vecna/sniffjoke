@@ -34,8 +34,6 @@ SjH__fake_data_posticipation::SjH__fake_data_posticipation(Packet& pkt) :
 {
 	position = POSTICIPATION;
 	debug_info = (char *)"fake data posticipation";
-	resizePayload(random() % 512 + 1);
 		
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	memset(payload, 'P', diff);
+	fillRandomPayload();
 }

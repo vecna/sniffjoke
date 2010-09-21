@@ -49,6 +49,13 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(int prio, Packet &pkt)
 {
+	if (pkt.packet_id) { /* HackPackets packets bypass this */
+		Packet* tmp = get(pkt.packet_id);
+		if (tmp != NULL) {
+			remove(*tmp);
+			delete tmp;
+		}
+	}
 	if (front[prio] == NULL) {
 		pkt.prev = pkt.next = NULL;
 		front[prio] = back[prio] = &pkt;
@@ -60,8 +67,15 @@ void PacketQueue::insert(int prio, Packet &pkt)
 	}
 }
 
-void PacketQueue::insert_before(int prio, HackPacket &pkt, Packet &ref)
+void PacketQueue::insert_before(int prio, Packet &pkt, Packet &ref)
 {
+	if (pkt.packet_id) { /* HackPacket packets bypass this */
+		Packet* tmp = get(pkt.packet_id);
+		if (tmp != NULL) {
+			remove(*tmp);
+			delete tmp;
+		}
+	}
 	if (front[prio] == &ref) {
 		pkt.prev = NULL;
 		pkt.next = &ref;
@@ -76,8 +90,15 @@ void PacketQueue::insert_before(int prio, HackPacket &pkt, Packet &ref)
 	}
 }
 
-void PacketQueue::insert_after(int prio, HackPacket &pkt, Packet &ref)
+void PacketQueue::insert_after(int prio, Packet &pkt, Packet &ref)
 {
+	if (pkt.packet_id) { /* HackPacket packets bypass this */
+		Packet* tmp = get(pkt.packet_id);
+		if (tmp != NULL) {
+			remove(*tmp);
+			delete tmp;
+		}
+	}
 	if (back[prio] == &ref) {
 		pkt.prev = &ref;
 		pkt.next = NULL;
@@ -164,5 +185,16 @@ Packet* PacketQueue::get(status_t status, source_t source, proto_t proto, bool m
 
 	} while ((tmp = get(true)) != NULL);
 
+	return NULL;
+}
+
+Packet* PacketQueue::get(unsigned int packet_id)
+{
+	Packet *tmp = get(false);
+	while (tmp != NULL) {
+		if (tmp->packet_id == packet_id)
+			return tmp;    
+		tmp = get(true);
+	}
 	return NULL;
 }

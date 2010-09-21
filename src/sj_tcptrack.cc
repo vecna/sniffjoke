@@ -355,7 +355,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		if (pkt.wtf == PRESCRIPTION) 
 			pkt.ip->ttl = ttlfocus->expiring_ttl;
 		else	/* GUILTY or INNOCENT */
-			pkt.ip->ttl = ttlfocus->expiring_ttl + (random() % 5) + 1;
+			pkt.ip->ttl = ttlfocus->expiring_ttl + 1 + (random() % 5);
 
 	}
 
@@ -662,7 +662,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		int prcnt;
 	} chackpkto[MAXHACKS];
 
-	if (runcopy->SjH__fake_data) {
+	if (runcopy->SjH__fake_data && pkt.payload != NULL) {
 
 		/* fake DATA injection in stream */
 
@@ -766,8 +766,8 @@ sendchosenhacks:
 			} else 
 				court_word = INNOCENT;
 
-			injpkt->mark(LOCAL, SEND, court_word);
 			injpkt = chackpkto[i].choosen_hack;
+			injpkt->mark(LOCAL, SEND, court_word);
 
 			switch(injpkt->position) {
 				case ANTICIPATION:

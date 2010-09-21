@@ -48,9 +48,13 @@ public:
 	Packet* next;
 
 	/* 
-	 * this packet_id are useful for avoid packet duplication
+	 * this packet_id are useful to avoid packet duplication
 	 * due to sniffjoke queue, I don't want avoid packet 
-	 * retrasmission (one of TCP best feature :) 
+	 * retrasmission, one of TCP best features :) 
+	 * 
+	 * example of this are duplicated SYN that can happens
+	 * when the first SYN is blocked for TTL bruteforce routine. 
+	 * 
 	 */
 	unsigned int packet_id;
 
@@ -68,7 +72,8 @@ public:
 	int pbuf_size;  
 	int orig_pktlen;
 	
-	Packet(int, const unsigned char*, int) ;
+	Packet(int, const unsigned char*, int);
+	Packet(const Packet &);
 	virtual ~Packet(void);
 
 	unsigned int make_pkt_id(const unsigned char*) const;
@@ -82,12 +87,17 @@ public:
 	void fixIpTcpSum(void);
 };
 
+/* Abstract class used to create hacks */
 class HackPacket : public Packet {
 public:
 	position_t position;
 	char *debug_info;
 
 	HackPacket(const Packet &);
+	virtual ~HackPacket() {};
+	
+	void desyncSeq();
+	void fillRandomPayload();
 
 	void SjH__inject_ipopt(void);
 	void SjH__inject_tcpopt(void);

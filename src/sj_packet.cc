@@ -37,6 +37,19 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) :
 	orig_pktlen = ntohs(ip->tot_len);
 }
 
+Packet::Packet(const Packet& pkt) :
+	pbuf(pkt.pbuf),
+	pbuf_size(pkt.pbuf_size),
+	orig_pktlen(pkt.orig_pktlen),
+	packet_id(0),
+	source(SOURCEUNASSIGNED),
+	status(STATUSUNASSIGNED),
+	wtf(JUDGEUNASSIGNED),
+	proto(PROTOUNASSIGNED)
+{
+	updatePointers();
+}
+
 Packet::~Packet() {}
 
 unsigned int Packet::make_pkt_id(const unsigned char* buf) const
@@ -161,15 +174,22 @@ void Packet::fixIpTcpSum(void)
 
 HackPacket::HackPacket(const Packet& pkt) :
 	Packet(pkt.pbuf_size + MAXOPTINJ, &(pkt.pbuf[0]), pkt.pbuf_size),
+	debug_info(NULL),
 	position(ANTICIPATION)
 {
 	packet_id = 0;
 }
 
+void HackPacket::fillRandomPayload()
+{
+	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	for (int i = 0; i < diff; i++)
+		payload[i] = (char)random();
+}
+
 /* ipopt IPOPT_RR inj*/
 void HackPacket::SjH__inject_ipopt(void)
 {
-	position = ANTICIPATION;
 	const int route_n = random() % 10;
 	const unsigned fakeipopt = ((route_n + 1) * 4);
 	
@@ -218,7 +238,6 @@ void HackPacket::SjH__inject_ipopt(void)
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
 void HackPacket::SjH__inject_tcpopt(void)
 {
-	position = ANTICIPATION;
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
 	const int free_space = pbuf_size - ntohs(ip->tot_len);

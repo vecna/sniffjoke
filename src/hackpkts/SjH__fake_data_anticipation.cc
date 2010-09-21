@@ -33,8 +33,6 @@ SjH__fake_data_anticipation::SjH__fake_data_anticipation(Packet& pkt) :
 	HackPacket(pkt)
 {
 	debug_info = (char *)"fake data anticipation";
-	resizePayload(random() % 512 + 1);
 	
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	memset(payload, 'A', diff);
+	fillRandomPayload();
 }

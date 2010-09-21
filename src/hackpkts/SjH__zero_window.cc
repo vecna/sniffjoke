@@ -23,8 +23,6 @@
 SjH__zero_window::SjH__zero_window(Packet& pkt) :
 	HackPacket(pkt)
 {
-	debug_info = (char *)"zero window";
-	
 	resizePayload(0);
 
 	tcp->syn = tcp->fin = tcp->rst = 1;
