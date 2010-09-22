@@ -28,11 +28,35 @@
 #include "sj_sessiontrack.h"
 #include "sj_ttlfocus.h"
 
+#include <vector>
+using namespace std;
+
+class HackPacketPoolElem {
+public:
+	bool *config;
+	bool enabled;
+	HackPacket *dummy;
+	int hack_frequency;
+	/* probability to be PRESCRIPTION (ttl expire), 
+	* otherwise is GUILTY (invalid packet). 0 mean to be 
+	* INNOCENT (valid packet) 
+	*/
+	int prescription_probability;
+	
+	HackPacketPoolElem(bool*, HackPacket*, int, int);
+};
+
+class HackPacketPool : public vector<HackPacketPoolElem> {
+public:
+	HackPacketPool(struct sj_config*);
+};
+
 class TCPTrack {
 private:
 	PacketQueue p_queue;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
+	HackPacketPool hack_pool;
 
 	struct sj_config *runcopy;
 

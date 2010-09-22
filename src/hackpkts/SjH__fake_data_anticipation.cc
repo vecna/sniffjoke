@@ -27,10 +27,12 @@
  * function.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
-#include <cstring>
-SjH__fake_data_anticipation::SjH__fake_data_anticipation(Packet& pkt) :
-	HackPacket(pkt)
+bool SjH__fake_data_anticipation::condition(const Packet &pkt)
+{
+	return (pkt.payload != NULL);		
+}
+
+void SjH__fake_data_anticipation::hack()
 {
 	debug_info = (char *)"fake data anticipation";
 	

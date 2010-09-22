@@ -173,7 +173,7 @@ void Packet::fixIpTcpSum(void)
 }
 
 HackPacket::HackPacket(const Packet& pkt) :
-	Packet(pkt.pbuf_size + MAXOPTINJ, &(pkt.pbuf[0]), pkt.pbuf_size),
+	Packet(pkt),
 	debug_info(NULL),
 	position(ANTICIPATION)
 {

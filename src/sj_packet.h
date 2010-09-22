@@ -31,7 +31,9 @@ using namespace std;
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-#define MAXHACKS	7   // Max num of injected hacks for each packet
+#include <cstdio>
+#include <cstdlib>
+
 #define MAXOPTINJ	48  // Max num of byte for option injection: 8 byte ipopt, 40 byte tcpopt
 
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
@@ -94,7 +96,9 @@ public:
 	char *debug_info;
 
 	HackPacket(const Packet &);
-	virtual ~HackPacket() {};
+	virtual HackPacket* create_hack(const Packet& pkt) = 0;
+	virtual bool condition(const Packet &) = 0;
+	virtual void hack() = 0;
 	
 	void desyncSeq();
 	void fillRandomPayload();

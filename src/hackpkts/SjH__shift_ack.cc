@@ -20,9 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
-SjH__shift_ack::SjH__shift_ack(Packet& pkt) :
-	HackPacket(pkt)
+bool SjH__shift_ack::condition(const Packet &pkt)
+{
+	return (pkt.tcp->ack != 0);
+}
+
+void SjH__shift_ack::hack()
 {
 	debug_info = (char *)"shift ack";
 	ip->id = htons(ntohs(ip->id) + (random() % 10));

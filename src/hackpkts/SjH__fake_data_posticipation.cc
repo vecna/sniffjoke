@@ -27,10 +27,12 @@
  * function.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
-#include <cstring>
-SjH__fake_data_posticipation::SjH__fake_data_posticipation(Packet& pkt) :
-	HackPacket(pkt)
+bool SjH__fake_data_posticipation::condition(const Packet &pkt)
+{
+	return (pkt.payload != NULL);		
+}
+
+void SjH__fake_data_posticipation::hack()
 {
 	position = POSTICIPATION;
 	debug_info = (char *)"fake data posticipation";

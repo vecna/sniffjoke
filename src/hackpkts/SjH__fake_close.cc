@@ -20,9 +20,13 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
-SjH__fake_close::SjH__fake_close(Packet& pkt) :
-	HackPacket(pkt)
+
+bool SjH__fake_close::condition(const Packet &pkt)
+{
+	return (pkt.tcp->ack != 0);
+}
+
+void SjH__fake_close::hack()
 {
 	debug_info = (char *)"fake close";
 	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);

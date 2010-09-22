@@ -20,10 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
-#include <cstdio>
-SjH__fake_data::SjH__fake_data(Packet& pkt) :
-	HackPacket(pkt)
+bool SjH__fake_data::condition(const Packet &pkt)
+{
+	return (pkt.payload != NULL);
+}
+
+void SjH__fake_data::hack()
 {
 	debug_info = (char *)"fake data";
 

@@ -20,9 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
-SjH__fake_syn::SjH__fake_syn(Packet& pkt) :
-	HackPacket(pkt)
+bool SjH__fake_syn::condition(const Packet &pkt)
+{
+	return true;
+}
+
+void SjH__fake_syn::hack()
 {
 	debug_info = (char *)"fake syn";
 	resizePayload(0);

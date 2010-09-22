@@ -20,14 +20,17 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-#include <cstdlib>
 /* 
  * if the session is resetted, the remote box maybe vulnerable to:
  * Slipping in the window: TCP Reset attacks
  * http://kerneltrap.org/node/3072
  */
-SjH__valid_rst_fake_seq::SjH__valid_rst_fake_seq(Packet& pkt) :
-	HackPacket(pkt)
+bool SjH__valid_rst_fake_seq::condition(const Packet &pkt)
+{
+	return true;
+}
+ 
+void SjH__valid_rst_fake_seq::hack()
 {
 	debug_info = (char *)"valid rst fake seq";
 	resizePayload(0);

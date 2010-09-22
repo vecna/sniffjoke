@@ -24,7 +24,6 @@
 
 #include "hackpkts/sj_hackpkts.h"
 
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -46,15 +45,42 @@ static DataDebug *dd;
 
 enum priority_t { HIGH = 0, LOW = 1 };
 
+HackPacketPoolElem::HackPacketPoolElem(bool* c, HackPacket* d, int hf, int pp) {
+	config = c;
+	enabled = *c;
+	dummy = d;
+	hack_frequency = hf;
+	prescription_probability = pp;
+}
+
+HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
+	void* dummydata = calloc(1, 512);
+	const Packet dummy = Packet(512, (const unsigned char*)dummydata, 512);
+
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy), 10, 98));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy), 15, 98));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy), 50, 100));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_posticipation, new SjH__fake_data_posticipation(dummy), 50, 100));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy), 5, 98));
+	push_back(HackPacketPoolElem(&sjconf->SjH__zero_window, new SjH__zero_window(dummy), 5, 95));
+	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy), 8, 0));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_syn, new SjH__fake_syn(dummy), 11, 94));
+	push_back(HackPacketPoolElem(&sjconf->SjH__shift_ack, new SjH__shift_ack(dummy), 15, 0));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy), 15, 98));
+	
+	free(dummydata);
+}
+
 TCPTrack::TCPTrack(SjConf *sjconf) :
 	p_queue(2),
-	runcopy(sjconf->running)
+	runcopy(sjconf->running),
+	hack_pool(sjconf->running)
 {
 
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
 		srandom((unsigned int)time(NULL) ^ random());
-
+	
 #ifdef DATADEBUG
         dd = new DataDebug();
 #endif
@@ -192,7 +218,6 @@ void TCPTrack::analyze_packets_queue(void)
 		if (pkt->icmp->type == ICMP_TIME_EXCEEDED) {
 			pkt = analyze_incoming_icmp(*pkt);
 			p_queue.remove(*pkt);
-			delete pkt;
 		}
 
 		pkt = p_queue.get(YOUNG, NETWORK, ICMP, true);
@@ -641,163 +666,65 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 {
 	HackPacket *injpkt;
-	int hpool_len = 0;
-
-	/* 
-	 * for each kind of packet I apply different hacks. Not every hacks is applied:
-	 * some kind of modification cause CWND degrade, for this reason the percentage
-	 * requested is < 15, and other hacks with sure effect and less drowback are
-	 * ~ 95%
-	 */
-	struct choosen_hack_pool {
-		HackPacket *choosen_hack;
-		/* percentage to be PRESCRIPTION (ttl expire), 
-		 * otherwise is GUILTY (invalid packet). 0 mean to be 
-		 * INNOCENT (valid packet) 
-		 *
-		 * WARNING: before stable sniffjoke 1.0, the precentage is 95% because 
-		 * bad checksum cause, in TCP congestion algorithm, to decrase CWND
-		 *
-		 * */
-		int prcnt;
-	} chackpkto[MAXHACKS];
-
-	if (runcopy->SjH__fake_data && pkt.payload != NULL) {
-
-		/* fake DATA injection in stream */
-
-		if (percentage(logarithm(session->packet_number), 10)) {
-			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data(pkt);
-			chackpkto[hpool_len].prcnt = 98;
-			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-		}
-
-	}
-
-	if (runcopy->SjH__fake_seq) {
-		/* fake SEQ injection */
-		if (percentage(logarithm(session->packet_number), 15)) {
-			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_seq(pkt);
-			chackpkto[hpool_len].prcnt = 98;
-			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-		}
-	}
-
-	if ((runcopy->SjH__fake_data_anticipation || runcopy->SjH__fake_data_posticipation) && pkt.payload != NULL)
-	{
-		/* those hacks works only together */
-		if ((hpool_len + 2 <= MAXHACKS) && percentage(logarithm(session->packet_number), 50))
-		{
-                        chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data_anticipation(pkt);
-                        chackpkto[hpool_len].prcnt = 100;
-			++hpool_len;
-
-			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_data_posticipation(pkt);
-			chackpkto[hpool_len].prcnt = 100;
-			if (++hpool_len == MAXHACKS) goto sendchosenhacks;
-		}
-	}
-
-	if (runcopy->SjH__fake_close) {
-		/* fake close (FIN/RST) injection, is required a good ack_seq */
-		if (pkt.tcp->ack) {
-			if (percentage(logarithm(session->packet_number), 5)) {
-				chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_close(pkt);
-				chackpkto[hpool_len].prcnt = 98;
-				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-			}
-		}
-	}
-		
-	if (runcopy->SjH__zero_window) {
-		
-		/* zero window, test */
-		if (percentage(logarithm(session->packet_number), 3)) {
-			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__zero_window(pkt);
-			chackpkto[hpool_len].prcnt = 95;
-			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-		}
+	vector<HackPacketPoolElem>::iterator it;
+	HackPacketPoolElem *hppe;
 	
-	}
-
-	if (runcopy->SjH__valid_rst_fake_seq) {
-		
-		/* valid RST with invalid SEQ */
-		if (percentage(logarithm(session->packet_number), 8)) {
-			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__valid_rst_fake_seq(pkt);
-			chackpkto[hpool_len].prcnt = 0;
-			if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-		}
-	}
-
-	if (runcopy->SjH__fake_syn) {
-		
-		/* fake SYN */
-		if (percentage(logarithm(session->packet_number), 11)) {
-			chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__fake_syn(pkt);
-			chackpkto[hpool_len].prcnt = 94;
-			if (++hpool_len == MAXHACKS) goto sendchosenhacks;
-		}
-	}
-
-	if (runcopy->SjH__shift_ack) {
-		
-		/* SHIFT ack */
-		if (pkt.tcp->ack) {
-			if (percentage(logarithm(session->packet_number), 15)) {
-				chackpkto[hpool_len].choosen_hack = (HackPacket*)new SjH__shift_ack(pkt);
-				chackpkto[hpool_len].prcnt = 0;
-				if (++hpool_len == MAXHACKS) goto sendchosenhacks; 
-			}
-		}
+	HackPacketPool applicable_hacks = hack_pool;
+	for ( it = applicable_hacks.begin(); it < applicable_hacks.end(); it++ ) {
+		hppe = &(*it);
+		hppe->enabled &= *(hppe->config);
+		hppe->enabled &= hppe->dummy->condition(pkt);
+		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->hack_frequency);
 	}
 
 sendchosenhacks:
 
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
-	if (hpool_len) {
-		judge_t court_word;
-		for (int i = 0; i < hpool_len; i++) {
-			if (chackpkto[i].prcnt) {
-				if (percentage(chackpkto[i].prcnt, 100)) 
-					court_word = PRESCRIPTION;
-				else 
-					court_word = GUILTY;
-			} else 
-				court_word = INNOCENT;
+	judge_t court_word;
+	for ( it = applicable_hacks.begin(); it < applicable_hacks.end(); it++ ) {
+		hppe = &(*it);
+		if(!hppe->enabled) continue;
+		if (hppe->prescription_probability) {
+			if (percentage(hppe->prescription_probability, 100)) 
+				court_word = PRESCRIPTION;
+			else 
+				court_word = GUILTY;
+		} else 
+			court_word = INNOCENT;
 
-			injpkt = chackpkto[i].choosen_hack;
-			injpkt->mark(LOCAL, SEND, court_word);
+		injpkt = hppe->dummy->create_hack(pkt);
+		injpkt->hack();
+		injpkt->mark(LOCAL, SEND, court_word);
 
-			switch(injpkt->position) {
-				case ANTICIPATION:
+		switch(injpkt->position) {
+			case ANTICIPATION:
+				p_queue.insert_before(LOW, *injpkt, pkt);
+				break;
+			case POSTICIPATION:
+				p_queue.insert_after(LOW, *injpkt, pkt);
+				break;
+			case ANY_POSITION:
+				if(random() % 2)
 					p_queue.insert_before(LOW, *injpkt, pkt);
-					break;
-				case POSTICIPATION:
+				else
 					p_queue.insert_after(LOW, *injpkt, pkt);
-					break;
-				case ANY_POSITION:
-					if(random() % 2)
-						p_queue.insert_before(LOW, *injpkt, pkt);
-					else
-						p_queue.insert_after(LOW, *injpkt, pkt);
-					break;
-			}
-#ifdef HACKSDEBUG
-			internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
-				injpkt->debug_info,
-				ntohs(injpkt->tcp->source), 
-				inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
-				ntohs(injpkt->tcp->dest), session->packet_number,
-				ntohs(injpkt->ip->id),
-				injpkt->orig_pktlen,
-				injpkt->pbuf_size, ntohs(injpkt->ip->tot_len),
-				ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
-				injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
-			);
-#endif
+				break;
 		}
+
+#ifdef HACKSDEBUG
+		internal_log(NULL, HACKS_DEBUG,
+			"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
+			injpkt->debug_info,
+			ntohs(injpkt->tcp->source), 
+			inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
+			ntohs(injpkt->tcp->dest), session->packet_number,
+			ntohs(injpkt->ip->id),
+			injpkt->orig_pktlen,
+			injpkt->pbuf_size, ntohs(injpkt->ip->tot_len),
+			ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
+			injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
+		);
+#endif
 	}
 }
 

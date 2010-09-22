@@ -23,17 +23,80 @@
 #define SJ_HACKPKTS_H
 
 #include "../sj_packet.h"
-class SjH__fake_close : public HackPacket { public: SjH__fake_close(Packet& ); };
-class SjH__fake_data : public HackPacket { public: SjH__fake_data(Packet& ); };
-class SjH__fake_seq : public HackPacket { public: SjH__fake_seq(Packet& ); };
-class SjH__shift_ack : public HackPacket { public: SjH__shift_ack(Packet& ); };
-class SjH__zero_window : public HackPacket { public: SjH__zero_window(Packet& ); };
-class SjH__fake_data_anticipation : public HackPacket { public: SjH__fake_data_anticipation(Packet& ); };
-class SjH__fake_data_posticipation : public HackPacket { public: SjH__fake_data_posticipation(Packet& ); };
-class SjH__fake_syn : public HackPacket { public: SjH__fake_syn(Packet& ); };
-class SjH__valid_rst_fake_seq : public HackPacket { public: SjH__valid_rst_fake_seq(Packet& ); };
+
+class SjH__fake_close : public HackPacket {
+public:
+	SjH__fake_close(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_close* create_hack(const Packet& pkt) { return new SjH__fake_close(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_data : public HackPacket {
+public:
+	SjH__fake_data(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_data* create_hack(const Packet& pkt) { return new SjH__fake_data(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_seq : public HackPacket {
+public:
+	SjH__fake_seq(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_seq* create_hack(const Packet& pkt) { return new SjH__fake_seq(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__shift_ack : public HackPacket {
+public: 
+	SjH__shift_ack(Packet pkt) : HackPacket(pkt) {};
+	SjH__shift_ack* create_hack(const Packet& pkt) { return new SjH__shift_ack(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__zero_window : public HackPacket {
+public:
+	SjH__zero_window(Packet pkt) : HackPacket(pkt) {};
+	SjH__zero_window* create_hack(const Packet& pkt) { return new SjH__zero_window(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_data_anticipation : public HackPacket {
+public:
+	SjH__fake_data_anticipation(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_data_anticipation* create_hack(const Packet& pkt) { return new SjH__fake_data_anticipation(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_data_posticipation : public HackPacket {
+public:
+	SjH__fake_data_posticipation(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_data_posticipation* create_hack(const Packet& pkt) { return new SjH__fake_data_posticipation(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_syn : public HackPacket {
+public:
+	SjH__fake_syn(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_syn* create_hack(const Packet& pkt) { return new SjH__fake_syn(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__valid_rst_fake_seq : public HackPacket {
+public:
+	SjH__valid_rst_fake_seq(Packet pkt) : HackPacket(pkt) {};
+	SjH__valid_rst_fake_seq* create_hack(const Packet& pkt) { return new SjH__valid_rst_fake_seq(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
 /*
- * class SjH__half_fake_syn : public HackPacket { public: SjH__half_fake_syn(Packet& ); };
- * class SjH__half_fake_ack : public HackPacket { public: SjH__half_fake_ack(Packet& ); };
+ * class SjH__half_fake_syn : ...
+ * class SjH__half_fake_ack : ...
 */
 #endif /* SJ_HACKPKTS_H */
