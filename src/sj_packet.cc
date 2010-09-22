@@ -195,6 +195,11 @@ void HackPacket::SjH__inject_ipopt(void)
 	
 	const int needed_space = fakeipopt;
 	const int free_space = pbuf_size - ntohs(ip->tot_len);
+	
+	/* safe ip size check */
+	if(pbuf_size + needed_space - free_space > 576)
+		return;
+	
 	if(free_space < needed_space)
 		increasePbuf(needed_space - free_space);	
 
@@ -225,8 +230,8 @@ void HackPacket::SjH__inject_ipopt(void)
 				
 	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
 
-	for (int i = 4; i < fakeipopt; i +=4)
-		endip[i] = random();
+	for (int i = 4; i < fakeipopt; i++)
+		endip[i] = (char)random();
 
 	ip->ihl = iphlen / 4;
 	ip->tot_len = htons(iphlen + l47len);
@@ -241,6 +246,11 @@ void HackPacket::SjH__inject_tcpopt(void)
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
 	const int free_space = pbuf_size - ntohs(ip->tot_len);
+	
+	/* safe ip size check */
+	if(pbuf_size + needed_space - free_space > 576)
+		return;
+	
 	if(free_space < needed_space)
 		increasePbuf(needed_space - free_space);
 	

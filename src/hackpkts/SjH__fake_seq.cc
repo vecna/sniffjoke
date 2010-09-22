@@ -22,7 +22,7 @@
 #include "sj_hackpkts.h"
 bool SjH__fake_seq::condition(const Packet &pkt)
 {
-	return true;
+	return (pkt.payload != NULL);
 }
 
 void SjH__fake_seq::hack()

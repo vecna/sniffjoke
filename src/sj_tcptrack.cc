@@ -24,6 +24,9 @@
 
 #include "hackpkts/sj_hackpkts.h"
 
+#include <algorithm>
+using namespace std;
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -57,16 +60,15 @@ HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
 	const Packet dummy = Packet(512, (const unsigned char*)dummydata, 512);
 
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy), 5, 98));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy), 10, 98));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy), 15, 98));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy), 50, 100));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_posticipation, new SjH__fake_data_posticipation(dummy), 50, 100));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy), 5, 98));
-	push_back(HackPacketPoolElem(&sjconf->SjH__zero_window, new SjH__zero_window(dummy), 5, 95));
-	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy), 8, 0));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy), 15, 98));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_syn, new SjH__fake_syn(dummy), 11, 94));
 	push_back(HackPacketPoolElem(&sjconf->SjH__shift_ack, new SjH__shift_ack(dummy), 15, 0));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy), 15, 98));
+	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy), 8, 0));
+	push_back(HackPacketPoolElem(&sjconf->SjH__zero_window, new SjH__zero_window(dummy), 5, 95));
 	
 	free(dummydata);
 }
@@ -670,6 +672,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	HackPacketPoolElem *hppe;
 	
 	HackPacketPool applicable_hacks = hack_pool;
+	
+	/* SELECT APPLICABLE HACKS */
 	for ( it = applicable_hacks.begin(); it < applicable_hacks.end(); it++ ) {
 		hppe = &(*it);
 		hppe->enabled &= *(hppe->config);
@@ -677,7 +681,8 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->hack_frequency);
 	}
 
-sendchosenhacks:
+	/* -- RANDOMIZE HACKS APPLICATION */
+	random_shuffle( applicable_hacks.begin(), applicable_hacks.end() );
 
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
 	judge_t court_word;

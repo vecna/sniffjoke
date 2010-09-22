@@ -40,30 +40,6 @@ public:
 	void hack();
 };
 
-class SjH__fake_seq : public HackPacket {
-public:
-	SjH__fake_seq(Packet pkt) : HackPacket(pkt) {};
-	SjH__fake_seq* create_hack(const Packet& pkt) { return new SjH__fake_seq(pkt); };
-	bool condition(const Packet&);
-	void hack();
-};
-
-class SjH__shift_ack : public HackPacket {
-public: 
-	SjH__shift_ack(Packet pkt) : HackPacket(pkt) {};
-	SjH__shift_ack* create_hack(const Packet& pkt) { return new SjH__shift_ack(pkt); };
-	bool condition(const Packet&);
-	void hack();
-};
-
-class SjH__zero_window : public HackPacket {
-public:
-	SjH__zero_window(Packet pkt) : HackPacket(pkt) {};
-	SjH__zero_window* create_hack(const Packet& pkt) { return new SjH__zero_window(pkt); };
-	bool condition(const Packet&);
-	void hack();
-};
-
 class SjH__fake_data_anticipation : public HackPacket {
 public:
 	SjH__fake_data_anticipation(Packet pkt) : HackPacket(pkt) {};
@@ -80,6 +56,14 @@ public:
 	void hack();
 };
 
+class SjH__fake_seq : public HackPacket {
+public:
+	SjH__fake_seq(Packet pkt) : HackPacket(pkt) {};
+	SjH__fake_seq* create_hack(const Packet& pkt) { return new SjH__fake_seq(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
 class SjH__fake_syn : public HackPacket {
 public:
 	SjH__fake_syn(Packet pkt) : HackPacket(pkt) {};
@@ -88,10 +72,26 @@ public:
 	void hack();
 };
 
+class SjH__shift_ack : public HackPacket {
+public: 
+	SjH__shift_ack(Packet pkt) : HackPacket(pkt) {};
+	SjH__shift_ack* create_hack(const Packet& pkt) { return new SjH__shift_ack(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
 class SjH__valid_rst_fake_seq : public HackPacket {
 public:
 	SjH__valid_rst_fake_seq(Packet pkt) : HackPacket(pkt) {};
 	SjH__valid_rst_fake_seq* create_hack(const Packet& pkt) { return new SjH__valid_rst_fake_seq(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__zero_window : public HackPacket {
+public:
+	SjH__zero_window(Packet pkt) : HackPacket(pkt) {};
+	SjH__zero_window* create_hack(const Packet& pkt) { return new SjH__zero_window(pkt); };
 	bool condition(const Packet&);
 	void hack();
 };
