@@ -40,6 +40,7 @@ public:
 	void insert_before(int, Packet &, Packet &);
 	void insert_after(int, Packet &, Packet &);
 	void remove(const Packet &);
+	void delete_if_present(unsigned int);
 	Packet* get(bool);
 	Packet* get(status_t, source_t, proto_t, bool);
 	Packet* get(unsigned int);

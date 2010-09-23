@@ -34,8 +34,6 @@ using namespace std;
 #include <cstdio>
 #include <cstdlib>
 
-#define MAXOPTINJ	48  // Max num of byte for option injection: 8 byte ipopt, 40 byte tcpopt
-
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
 enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
 enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3 };
@@ -81,9 +79,7 @@ public:
 	unsigned int make_pkt_id(const unsigned char*) const;
 	void mark(source_t, status_t, judge_t);
 	void updatePointers(void);
-	/* functions required in TCP/IP packets forging */
-	void increasePbuf(unsigned int);
-	void resizePayload(unsigned int);
+	
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
@@ -100,7 +96,9 @@ public:
 	virtual bool condition(const Packet &) = 0;
 	virtual void hack() = 0;
 	
-	void desyncSeq();
+	/* functions required in TCP/IP packets forging */
+	void increasePbuf(unsigned int);
+	void resizePayload(unsigned int);
 	void fillRandomPayload();
 
 	void SjH__inject_ipopt(void);

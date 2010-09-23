@@ -70,40 +70,6 @@ void Packet::mark(source_t source, status_t status, judge_t judge)
 	this->wtf = judge;
 }
 
-void Packet::increasePbuf(unsigned int morespace) {
-	/* the pbuf can only be incremented safaly, not decremented */
-	unsigned int newpbuf_size = pbuf_size + morespace;
-	pbuf.resize(newpbuf_size);
-	
-	updatePointers();
-	
-	/* fixing the new length */
-	pbuf_size = newpbuf_size;
-}
-
-void Packet::resizePayload(unsigned int newlen) {
-	/* the payload can be incremented or decremented safely */
-	int iphlen = ip->ihl * 4;
-	int tcphlen = tcp->doff * 4;
-	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
-	unsigned int newpbuf_size = pbuf_size - oldlen + newlen;
-	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
-	unsigned newtotallen = iphlen + tcphlen + newlen;
-	
-	/* IP header copy , TCP header copy, Payload copy, if preserved */
-	int copysize = newtotallen > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newtotallen;
-	memcpy(&(newpbuf[0]), &(pbuf[0]), copysize );
-	pbuf = newpbuf;
-
-        ip = (struct iphdr *)&(pbuf[0]);
-        ip->tot_len = htons(newtotallen);
-
-        /* fixing the new length */
-        pbuf_size = newpbuf_size;
-	
-	updatePointers();
-}
-
 void Packet::updatePointers(void) {
 	
 	ip = (struct iphdr *)&(pbuf[0]);
@@ -178,6 +144,40 @@ HackPacket::HackPacket(const Packet& pkt) :
 	position(ANTICIPATION)
 {
 	packet_id = 0;
+}
+
+void HackPacket::increasePbuf(unsigned int morespace) {
+	/* the pbuf can only be incremented safaly, not decremented */
+	unsigned int newpbuf_size = pbuf_size + morespace;
+	pbuf.resize(newpbuf_size);
+	
+	updatePointers();
+	
+	/* fixing the new length */
+	pbuf_size = newpbuf_size;
+}
+
+void HackPacket::resizePayload(unsigned int newlen) {
+	/* the payload can be incremented or decremented safely */
+	int iphlen = ip->ihl * 4;
+	int tcphlen = tcp->doff * 4;
+	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
+	unsigned int newpbuf_size = pbuf_size - oldlen + newlen;
+	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
+	unsigned newtotallen = iphlen + tcphlen + newlen;
+	
+	/* IP header copy , TCP header copy, Payload copy, if preserved */
+	int copysize = newtotallen > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newtotallen;
+	memcpy(&(newpbuf[0]), &(pbuf[0]), copysize );
+	pbuf = newpbuf;
+
+        ip = (struct iphdr *)&(pbuf[0]);
+        ip->tot_len = htons(newtotallen);
+
+        /* fixing the new length */
+        pbuf_size = newpbuf_size;
+	
+	updatePointers();
 }
 
 void HackPacket::fillRandomPayload()

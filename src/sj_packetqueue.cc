@@ -49,13 +49,8 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(int prio, Packet &pkt)
 {
-	if (pkt.packet_id) { /* HackPackets packets bypass this */
-		Packet* tmp = get(pkt.packet_id);
-		if (tmp != NULL) {
-			remove(*tmp);
-			delete tmp;
-		}
-	}
+	delete_if_present(pkt.packet_id);
+
 	if (front[prio] == NULL) {
 		pkt.prev = pkt.next = NULL;
 		front[prio] = back[prio] = &pkt;
@@ -69,13 +64,8 @@ void PacketQueue::insert(int prio, Packet &pkt)
 
 void PacketQueue::insert_before(int prio, Packet &pkt, Packet &ref)
 {
-	if (pkt.packet_id) { /* HackPacket packets bypass this */
-		Packet* tmp = get(pkt.packet_id);
-		if (tmp != NULL) {
-			remove(*tmp);
-			delete tmp;
-		}
-	}
+	delete_if_present(pkt.packet_id);
+
 	if (front[prio] == &ref) {
 		pkt.prev = NULL;
 		pkt.next = &ref;
@@ -92,13 +82,8 @@ void PacketQueue::insert_before(int prio, Packet &pkt, Packet &ref)
 
 void PacketQueue::insert_after(int prio, Packet &pkt, Packet &ref)
 {
-	if (pkt.packet_id) { /* HackPacket packets bypass this */
-		Packet* tmp = get(pkt.packet_id);
-		if (tmp != NULL) {
-			remove(*tmp);
-			delete tmp;
-		}
-	}
+	delete_if_present(pkt.packet_id);
+
 	if (back[prio] == &ref) {
 		pkt.prev = &ref;
 		pkt.next = NULL;
@@ -135,6 +120,16 @@ void PacketQueue::remove(const Packet &pkt)
 	pkt.prev->next = pkt.next;
 	pkt.next->prev = pkt.prev;
 	return;
+}
+
+void PacketQueue::delete_if_present(unsigned int packet_id) {
+	if (packet_id) { /* HackPackets packets bypass this */
+		Packet* tmp = get(packet_id);
+		if (tmp != NULL) {
+			remove(*tmp);
+			delete tmp;
+		}
+	}	
 }
 
 Packet* PacketQueue::get(bool must_continue)

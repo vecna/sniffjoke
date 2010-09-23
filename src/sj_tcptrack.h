@@ -36,14 +36,14 @@ public:
 	bool *config;
 	bool enabled;
 	HackPacket *dummy;
-	int hack_frequency;
+	unsigned int hack_frequency;
 	/* probability to be PRESCRIPTION (ttl expire), 
 	* otherwise is GUILTY (invalid packet). 0 mean to be 
 	* INNOCENT (valid packet) 
 	*/
-	int prescription_probability;
+	unsigned int prescription_probability;
 	
-	HackPacketPoolElem(bool*, HackPacket*, int, int);
+	HackPacketPoolElem(bool*, HackPacket*, unsigned int, unsigned int);
 };
 
 class HackPacketPool : public vector<HackPacketPoolElem> {
@@ -76,7 +76,7 @@ private:
 
 	/* functions for decrete which, and if, inject hacks */
 	bool check_uncommon_tcpopt(const struct tcphdr*);
-	bool percentage(float, int);
+	bool percentage(float, unsigned int);
 	float logarithm(int);
 
 	/* functions for working on queues and lists */

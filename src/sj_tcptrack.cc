@@ -48,13 +48,13 @@ static DataDebug *dd;
 
 enum priority_t { HIGH = 0, LOW = 1 };
 
-HackPacketPoolElem::HackPacketPoolElem(bool* c, HackPacket* d, int hf, int pp) {
-	config = c;
-	enabled = *c;
-	dummy = d;
-	hack_frequency = hf;
-	prescription_probability = pp;
-}
+HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d, unsigned int hf, unsigned int pp) :
+	config(c),
+	enabled(*c),
+	dummy(d),
+	hack_frequency(hf),
+	prescription_probability(pp)
+{}
 
 HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
@@ -182,7 +182,8 @@ Packet* TCPTrack::readpacket() {
 	Packet *pkt = p_queue.get(SEND, ANY_SOURCE, ANY_PROTO, false);
 	if (pkt != NULL) {
 		p_queue.remove(*pkt);
-		last_pkt_fix(*pkt);
+		if(pkt->source != NETWORK)
+			last_pkt_fix(*pkt);
 	}
 	return pkt;
 }
@@ -834,7 +835,7 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
  * injection should happens ALWAYS, but give the less possible elements
  * to the attacker for detects sniffjoke working style
  */
-bool TCPTrack::percentage(float math_choosed, int vecna_choosed)
+bool TCPTrack::percentage(float math_choosed, unsigned int vecna_choosed)
 {
 	return ((random() % 100) <= ((int)(math_choosed * vecna_choosed) / 100));
 }
