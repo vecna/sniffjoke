@@ -283,7 +283,7 @@ HackPacket::HackPacket(const Packet& pkt) :
 	Packet(pkt),
 	debug_info(NULL),
 	position(ANTICIPATION),
-	prejudge(JUDGEUNASSIGNED),
+	prejudge(GUILTY_OR_PRESCRIPTION),
 	prescription_probability(93),
 	hack_frequency(0)
 {
