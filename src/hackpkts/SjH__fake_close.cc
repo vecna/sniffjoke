@@ -21,6 +21,12 @@
  */
 #include "sj_hackpkts.h"
 
+SjH__fake_close::SjH__fake_close(Packet pkt) : HackPacket(pkt) {
+	debug_info = (char *)"fake close";
+	prescription_probability = 98;
+	hack_frequency = 5;
+}
+
 bool SjH__fake_close::condition(const Packet &pkt)
 {
 	return (pkt.tcp->ack != 0);
@@ -28,7 +34,6 @@ bool SjH__fake_close::condition(const Packet &pkt)
 
 void SjH__fake_close::hack()
 {
-	debug_info = (char *)"fake close";
 	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
 		
 	resizePayload(0);

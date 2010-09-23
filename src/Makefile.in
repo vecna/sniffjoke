@@ -56,7 +56,7 @@ am_sniffjoke_OBJECTS = sj_main.$(OBJEXT) sj_conf.$(OBJEXT) \
 	SjH__fake_data.$(OBJEXT) SjH__fake_seq.$(OBJEXT) \
 	SjH__shift_ack.$(OBJEXT) SjH__zero_window.$(OBJEXT) \
 	SjH__fake_data_anticipation.$(OBJEXT) \
-	SjH__fake_data_posticipation.$(OBJEXT) SjH__fake_syn.$(OBJEXT) \
+	SjH__fake_data_posticipation.$(OBJEXT) \
 	SjH__valid_rst_fake_seq.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
@@ -201,7 +201,6 @@ sniffjoke_SOURCES = sj_main.cc \
                     hackpkts/SjH__zero_window.cc \
                     hackpkts/SjH__fake_data_anticipation.cc \
                     hackpkts/SjH__fake_data_posticipation.cc \
-                    hackpkts/SjH__fake_syn.cc \
                     hackpkts/SjH__valid_rst_fake_seq.cc
 
 CLEANFILES = *~
@@ -309,7 +308,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_data_anticipation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_data_posticipation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_seq.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_syn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__shift_ack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__valid_rst_fake_seq.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__zero_window.Po@am__quote@
@@ -435,20 +433,6 @@ SjH__fake_data_posticipation.obj: hackpkts/SjH__fake_data_posticipation.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data_posticipation.cc' object='SjH__fake_data_posticipation.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data_posticipation.obj `if test -f 'hackpkts/SjH__fake_data_posticipation.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data_posticipation.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data_posticipation.cc'; fi`
-
-SjH__fake_syn.o: hackpkts/SjH__fake_syn.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_syn.o -MD -MP -MF $(DEPDIR)/SjH__fake_syn.Tpo -c -o SjH__fake_syn.o `test -f 'hackpkts/SjH__fake_syn.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_syn.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_syn.Tpo $(DEPDIR)/SjH__fake_syn.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_syn.cc' object='SjH__fake_syn.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_syn.o `test -f 'hackpkts/SjH__fake_syn.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_syn.cc
-
-SjH__fake_syn.obj: hackpkts/SjH__fake_syn.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_syn.obj -MD -MP -MF $(DEPDIR)/SjH__fake_syn.Tpo -c -o SjH__fake_syn.obj `if test -f 'hackpkts/SjH__fake_syn.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_syn.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_syn.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_syn.Tpo $(DEPDIR)/SjH__fake_syn.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_syn.cc' object='SjH__fake_syn.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_syn.obj `if test -f 'hackpkts/SjH__fake_syn.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_syn.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_syn.cc'; fi`
 
 SjH__valid_rst_fake_seq.o: hackpkts/SjH__valid_rst_fake_seq.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__valid_rst_fake_seq.o -MD -MP -MF $(DEPDIR)/SjH__valid_rst_fake_seq.Tpo -c -o SjH__valid_rst_fake_seq.o `test -f 'hackpkts/SjH__valid_rst_fake_seq.cc' || echo '$(srcdir)/'`hackpkts/SjH__valid_rst_fake_seq.cc

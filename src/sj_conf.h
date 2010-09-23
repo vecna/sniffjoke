@@ -90,7 +90,6 @@ struct sj_config {
 		bool SjH__fake_data_anticipation;
 		bool SjH__fake_data_posticipation;
 		bool SjH__fake_seq;
-		bool SjH__fake_syn;
 		bool SjH__shift_ack;
 		bool SjH__valid_rst_fake_seq;
 		bool SjH__zero_window;

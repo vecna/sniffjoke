@@ -29,7 +29,6 @@
 #include <poll.h>
 #include <netpacket/packet.h>
 
-#define MTU             1500
 #define BURSTSIZE       10
 
 class NetIO {

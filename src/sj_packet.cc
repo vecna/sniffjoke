@@ -29,7 +29,8 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) :
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
-	proto(PROTOUNASSIGNED)
+	proto(PROTOUNASSIGNED),
+	injection(ANY_INJECTION)
 {
 	memcpy(&(pbuf[0]), buff, buff_size);	
 	updatePointers();
@@ -42,6 +43,7 @@ Packet::Packet(const Packet& pkt) :
 	pbuf_size(pkt.pbuf_size),
 	orig_pktlen(pkt.orig_pktlen),
 	packet_id(0),
+	evilbit(GOOD),
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
@@ -138,15 +140,7 @@ void Packet::fixIpTcpSum(void)
 	tcp->check = compute_sum(sum);
 }
 
-HackPacket::HackPacket(const Packet& pkt) :
-	Packet(pkt),
-	debug_info(NULL),
-	position(ANTICIPATION)
-{
-	packet_id = 0;
-}
-
-void HackPacket::increasePbuf(unsigned int morespace) {
+void Packet::increasePbuf(unsigned int morespace) {
 	/* the pbuf can only be incremented safaly, not decremented */
 	unsigned int newpbuf_size = pbuf_size + morespace;
 	pbuf.resize(newpbuf_size);
@@ -157,7 +151,7 @@ void HackPacket::increasePbuf(unsigned int morespace) {
 	pbuf_size = newpbuf_size;
 }
 
-void HackPacket::resizePayload(unsigned int newlen) {
+void Packet::resizePayload(unsigned int newlen) {
 	/* the payload can be incremented or decremented safely */
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
@@ -180,7 +174,7 @@ void HackPacket::resizePayload(unsigned int newlen) {
 	updatePointers();
 }
 
-void HackPacket::fillRandomPayload()
+void Packet::fillRandomPayload()
 {
 	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 	for (int i = 0; i < diff; i++)
@@ -188,33 +182,28 @@ void HackPacket::fillRandomPayload()
 }
 
 /* ipopt IPOPT_RR inj*/
-void HackPacket::SjH__inject_ipopt(void)
+void Packet::SjH__inject_ipopt(void)
 {
 	const int route_n = random() % 10;
 	const unsigned fakeipopt = ((route_n + 1) * 4);
-	
 	const int needed_space = fakeipopt;
 	const int free_space = pbuf_size - ntohs(ip->tot_len);
 	
-	/* safe ip size check */
-	if(pbuf_size + needed_space - free_space > 576)
-		return;
-	
-	if(free_space < needed_space)
-		increasePbuf(needed_space - free_space);	
-
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	const int l47len = ntohs(ip->tot_len) - iphlen;
+		
+	if(free_space < needed_space) {
+		/* safety ip size check */
+		if((iphlen + needed_space > 60) || (pbuf_size + needed_space - free_space > MTU - needed_space))
+			return;
+			
+		increasePbuf(needed_space - free_space);
+	}
 	
-	unsigned char *endip = &(pbuf[0]) + sizeof(struct iphdr);
-	const int startipopt = ip->ihl * 4 - sizeof(struct iphdr);
+	unsigned char *endip = (unsigned char*)&pbuf[0] + iphlen;
 
-	/* 1: strip the original ip options, if present, copying payload over */	
-	if (iphlen > sizeof(struct iphdr)) 
-		memmove(endip, &pbuf[0] + iphlen, l47len);
-
-	iphlen = sizeof(struct iphdr) + fakeipopt;
+	iphlen += fakeipopt;
 
 	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
 	memmove(endip + fakeipopt, endip, l47len);
@@ -241,31 +230,30 @@ void HackPacket::SjH__inject_ipopt(void)
 
 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
-void HackPacket::SjH__inject_tcpopt(void)
+void Packet::SjH__inject_tcpopt(void)
 {
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
 	const int free_space = pbuf_size - ntohs(ip->tot_len);
-	
-	/* safe ip size check */
-	if(pbuf_size + needed_space - free_space > 576)
-		return;
-	
-	if(free_space < needed_space)
-		increasePbuf(needed_space - free_space);
-	
+
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	const int l57len = ntohs(ip->tot_len) - (iphlen + tcphlen);
-	unsigned char *endtcp = &(pbuf[0]) + iphlen + sizeof(struct tcphdr);
-	const int starttcpopt = tcphlen - sizeof(struct tcphdr);
+
+	if(free_space < needed_space) {
+
+		/* safety ip size check */
+		if((tcphlen + needed_space > 60) || (pbuf_size + needed_space - free_space > MTU - needed_space))
+			return;
+
+		increasePbuf(needed_space - free_space);
+	}
+
+	unsigned char *endtcp = (unsigned char*)&pbuf[0] + iphlen + tcphlen;
+
 	const time_t now = time(NULL);
 
-	/* 1: strip the original tcp options, if present, copying payload over */
-	if (tcphlen > sizeof(struct tcphdr))
-		memmove(endtcp, &(pbuf[0]) + tcphlen, l57len);
-
-	tcphlen = sizeof(struct tcphdr) + faketcpopt;
+	tcphlen += faketcpopt;
 	
 	/* 2: shift the payload after the reserved space to faketcpopt */
 	memmove(endtcp + faketcpopt, endtcp, l57len);
@@ -285,7 +273,20 @@ void HackPacket::SjH__inject_tcpopt(void)
 	 *   - there is no space reserved for timestamps
 	 */ 
 
-	ip->tot_len = htons(iphlen + tcphlen + faketcpopt + l57len);
-	tcp->doff = (sizeof(struct tcphdr) + faketcpopt) & 0xf;
+	ip->tot_len = htons(iphlen + tcphlen + l57len);
+	tcp->doff = (tcphlen / 4) & 0xf;
 	payload = (unsigned char *)(tcp) + tcphlen;
+}
+
+
+HackPacket::HackPacket(const Packet& pkt) :
+	Packet(pkt),
+	debug_info(NULL),
+	position(ANTICIPATION),
+	prejudge(JUDGEUNASSIGNED),
+	prescription_probability(93),
+	hack_frequency(0)
+{
+	packet_id = 0;
+	evilbit = EVIL;
 }

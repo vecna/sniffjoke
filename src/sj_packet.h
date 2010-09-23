@@ -34,12 +34,13 @@ using namespace std;
 #include <cstdio>
 #include <cstdlib>
 
+enum evilbit_t { GOOD = 0, EVIL = 1 };
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
 enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
-enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3 };
+enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, GUILTY_OR_PRESCRIPTION = 4 };
 enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
+enum injection_t { INJECTUNASSIGNED = 0, ANY_INJECTION = 1, IP_INJECTION = 2, TCP_INJECTION = 3, NO_INJECTION = 4};
 enum position_t { ANY_POSITION = 0, ANTICIPATION = 1, POSTICIPATION = 2 };
-enum checksum_fix_t { NO = 0, FIX_IP_CHECKSUM = 1, FIX_TCP_CHECKSUM = 2, FIX_BOTH_CHECKSUM = 3 };
 
 class Packet {
 public:
@@ -58,10 +59,12 @@ public:
 	 */
 	unsigned int packet_id;
 
+	evilbit_t evilbit;
 	source_t source;
 	status_t status;
 	judge_t wtf;
 	proto_t proto;
+	injection_t injection;
 
 	struct iphdr *ip;
 	struct tcphdr *tcp;
@@ -83,18 +86,6 @@ public:
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
-};
-
-/* Abstract class used to create hacks */
-class HackPacket : public Packet {
-public:
-	position_t position;
-	char *debug_info;
-
-	HackPacket(const Packet &);
-	virtual HackPacket* create_hack(const Packet& pkt) = 0;
-	virtual bool condition(const Packet &) = 0;
-	virtual void hack() = 0;
 	
 	/* functions required in TCP/IP packets forging */
 	void increasePbuf(unsigned int);
@@ -103,6 +94,24 @@ public:
 
 	void SjH__inject_ipopt(void);
 	void SjH__inject_tcpopt(void);
+};
+
+/* Abstract class used to create hacks */
+class HackPacket : public Packet {
+public:
+	char *debug_info;
+	
+	judge_t prejudge;
+	unsigned int prescription_probability;
+	unsigned int hack_frequency;
+	
+	position_t position;
+	
+
+	HackPacket(const Packet &);
+	virtual HackPacket* create_hack(const Packet& pkt) = 0;
+	virtual bool condition(const Packet &) = 0;
+	virtual void hack() = 0;
 };
 
 #endif /* SJ_PACKET_H */

@@ -20,6 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
+SjH__shift_ack::SjH__shift_ack(Packet pkt) : HackPacket(pkt) {
+	debug_info = (char *)"shift ack";
+	prejudge = INNOCENT;
+	hack_frequency = 15;
+}
+
 bool SjH__shift_ack::condition(const Packet &pkt)
 {
 	return (pkt.tcp->ack != 0);
@@ -27,7 +33,6 @@ bool SjH__shift_ack::condition(const Packet &pkt)
 
 void SjH__shift_ack::hack()
 {
-	debug_info = (char *)"shift ack";
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	tcp->ack_seq = htonl(ntohl(tcp->ack_seq) + 65535);
 }

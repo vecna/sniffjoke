@@ -48,27 +48,24 @@ static DataDebug *dd;
 
 enum priority_t { HIGH = 0, LOW = 1 };
 
-HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d, unsigned int hf, unsigned int pp) :
+HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d) :
 	config(c),
 	enabled(*c),
-	dummy(d),
-	hack_frequency(hf),
-	prescription_probability(pp)
+	dummy(d)
 {}
 
 HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
 	const Packet dummy = Packet(512, (const unsigned char*)dummydata, 512);
 
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy), 5, 98));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy), 10, 98));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy), 50, 100));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_posticipation, new SjH__fake_data_posticipation(dummy), 50, 100));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy), 15, 98));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_syn, new SjH__fake_syn(dummy), 11, 94));
-	push_back(HackPacketPoolElem(&sjconf->SjH__shift_ack, new SjH__shift_ack(dummy), 15, 0));
-	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy), 8, 0));
-	push_back(HackPacketPoolElem(&sjconf->SjH__zero_window, new SjH__zero_window(dummy), 5, 95));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_posticipation, new SjH__fake_data_posticipation(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__shift_ack, new SjH__shift_ack(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__zero_window, new SjH__zero_window(dummy)));
 	
 	free(dummydata);
 }
@@ -182,7 +179,7 @@ Packet* TCPTrack::readpacket() {
 	Packet *pkt = p_queue.get(SEND, ANY_SOURCE, ANY_PROTO, false);
 	if (pkt != NULL) {
 		p_queue.remove(*pkt);
-		if(pkt->source != NETWORK)
+		if(runcopy->sj_run == true && pkt->source != NETWORK)
 			last_pkt_fix(*pkt);
 	}
 	return pkt;
@@ -332,7 +329,6 @@ void TCPTrack::force_send(void)
  *   otherwise, the should be the packet received from the tunnel. They 
  *   use the same treatment as INNOCENT packets.
  *
- *   at the moment, no hacks use INNOCENT flag.
  */
 void TCPTrack::last_pkt_fix(Packet &pkt)
 {
@@ -369,56 +365,71 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		return;
 
 	ttlfocus_map_it = ttlfocus_map.find(pkt.ip->daddr);
-	if (ttlfocus_map_it == ttlfocus_map.end())
-		return;
+	if (ttlfocus_map_it != ttlfocus_map.end())
+		ttlfocus = &(ttlfocus_map_it->second);
+	else
+		ttlfocus = NULL;
 
-	ttlfocus = &(ttlfocus_map_it->second);
 	/* 1st check: HOW MANY TTL GIVE TO THE PACKET ? */
-	if (ttlfocus->status == TTL_UNKNOWN) {
+	if (ttlfocus != NULL && ttlfocus->status != TTL_UNKNOWN) {
+		if (pkt.wtf == PRESCRIPTION) 
+			pkt.ip->ttl = ttlfocus->expiring_ttl - (random() % 5);
+		else	/* GUILTY or INNOCENT */
+			pkt.ip->ttl = ttlfocus->expiring_ttl + 1 + (random() % 5);
+
+	} else {
 		if (pkt.wtf == PRESCRIPTION)
 			pkt.wtf = GUILTY;
 
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
-	} else {
-		if (pkt.wtf == PRESCRIPTION) 
-			pkt.ip->ttl = ttlfocus->expiring_ttl;
-		else	/* GUILTY or INNOCENT */
-			pkt.ip->ttl = ttlfocus->expiring_ttl + 1 + (random() % 5);
-
 	}
+	
+	/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
+	if(pkt.evilbit == EVIL) {
+		/* 
+		 * real packet;
+		 * we MUST select injections that assicure that the packet
+		 * can arrive to destination without been discarded
+		 */ 
+	} else {
+		/* 
+		 * hack packet, INNOCENT, PRESCRIPTION or GUILTY it will be discarded;
+		 * we CAN select
+		 */
+	}
+	/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
 
 	/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
-	HackPacket *injpkt = dynamic_cast<HackPacket*>(&pkt);
-	if (injpkt) {
-		if (runcopy->SjH__inject_ipopt) {
-			if (percentage(1, 100)) {
-				injpkt->SjH__inject_ipopt();
+	if (runcopy->SjH__inject_ipopt && (pkt.injection == ANY_INJECTION || pkt.injection == IP_INJECTION)) {
+		if (percentage(1, 100)) {
+			pkt.SjH__inject_ipopt();
 #ifdef HACKSDEBUG
-				internal_log(NULL, HACKS_DEBUG,
-					"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) id %d",
-					ntohs(injpkt->tcp->source), 
-					inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
-					ntohs(injpkt->tcp->dest), 
-					ntohs(injpkt->ip->id)
-				);
+			internal_log(NULL, HACKS_DEBUG,
+				"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) id %d",
+				ntohs(pkt.tcp->source), 
+				inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
+				ntohs(pkt.tcp->dest), 
+				ntohs(pkt.ip->id)
+			);
 #endif
-			}
 		}
+	}
 
-		if (runcopy->SjH__inject_tcpopt) {
-			if (!check_uncommon_tcpopt(injpkt->tcp))
-				if (percentage(25, 100))
-					injpkt->SjH__inject_tcpopt();
+	if (runcopy->SjH__inject_tcpopt && (pkt.injection == ANY_INJECTION || pkt.injection == TCP_INJECTION)) {
+		if (!check_uncommon_tcpopt(pkt.tcp)) {
+			if (percentage(25, 100)) {
+				pkt.SjH__inject_tcpopt();
 #ifdef HACKSDEBUG
 				internal_log(NULL, HACKS_DEBUG,
 					"HACKSDEBUG [Inj Fake TcpOpt] (lo:%d %s:%d) id %d",
-					ntohs(injpkt->tcp->source), 
-					inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
-					ntohs(injpkt->tcp->dest), 
-					ntohs(injpkt->ip->id)
+					ntohs(pkt.tcp->source), 
+					inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
+					ntohs(pkt.tcp->dest), 
+					ntohs(pkt.ip->id)
 				);
-#endif
+			}
 		}
+#endif
 	}
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
@@ -679,7 +690,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		hppe = &(*it);
 		hppe->enabled &= *(hppe->config);
 		hppe->enabled &= hppe->dummy->condition(pkt);
-		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->hack_frequency);
+		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->dummy->hack_frequency);
 	}
 
 	/* -- RANDOMIZE HACKS APPLICATION */
@@ -690,13 +701,15 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	for ( it = applicable_hacks.begin(); it < applicable_hacks.end(); it++ ) {
 		hppe = &(*it);
 		if(!hppe->enabled) continue;
-		if (hppe->prescription_probability) {
-			if (percentage(hppe->prescription_probability, 100)) 
+
+		if (hppe->dummy->prejudge == GUILTY_OR_PRESCRIPTION) {
+			if (percentage(hppe->dummy->prescription_probability, 100)) 
 				court_word = PRESCRIPTION;
 			else 
 				court_word = GUILTY;
-		} else 
-			court_word = INNOCENT;
+		} else {
+			court_word = hppe->dummy->prejudge;
+		}
 
 		injpkt = hppe->dummy->create_hack(pkt);
 		injpkt->hack();
@@ -831,7 +844,7 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 }
 
 /* 
- * this two functions is required on hacking injection, because that 
+ * this two functions is required on hacks injection, because that 
  * injection should happens ALWAYS, but give the less possible elements
  * to the attacker for detects sniffjoke working style
  */

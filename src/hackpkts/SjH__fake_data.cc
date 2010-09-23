@@ -20,6 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
+SjH__fake_data::SjH__fake_data(Packet pkt) : HackPacket(pkt) {
+	debug_info = (char *)"fake data";
+	prescription_probability = 98;
+	hack_frequency = 10;
+}
+
 bool SjH__fake_data::condition(const Packet &pkt)
 {
 	return (pkt.payload != NULL);
@@ -27,8 +33,6 @@ bool SjH__fake_data::condition(const Packet &pkt)
 
 void SjH__fake_data::hack()
 {
-	debug_info = (char *)"fake data";
-
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
 	
 	fillRandomPayload();

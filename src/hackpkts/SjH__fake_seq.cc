@@ -20,6 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
+SjH__fake_seq::SjH__fake_seq(Packet pkt) : HackPacket(pkt) {
+	debug_info = (char *)"fake seq";
+	prescription_probability = 98;
+	hack_frequency = 15;
+}
+
 bool SjH__fake_seq::condition(const Packet &pkt)
 {
 	return (pkt.payload != NULL);
@@ -27,7 +33,6 @@ bool SjH__fake_seq::condition(const Packet &pkt)
 
 void SjH__fake_seq::hack()
 {
-	debug_info = (char *)"fake seq";
 	int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
 	
 	if(diff > 200) {

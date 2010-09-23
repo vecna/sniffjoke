@@ -20,6 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
+SjH__zero_window::SjH__zero_window(Packet pkt) : HackPacket(pkt) {
+	debug_info = (char *)"zero_ window";
+	prescription_probability = 93;
+	hack_frequency = 5;
+}
+
 bool SjH__zero_window::condition(const Packet &pkt)
 {
 	return true;
@@ -27,8 +33,6 @@ bool SjH__zero_window::condition(const Packet &pkt)
 
 void SjH__zero_window::hack()
 {
-	debug_info = (char *)"zero_ window";
-
 	resizePayload(0);
 
 	tcp->syn = tcp->fin = tcp->rst = 1;

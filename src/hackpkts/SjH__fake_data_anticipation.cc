@@ -27,6 +27,12 @@
  * function.
  */
 #include "sj_hackpkts.h"
+SjH__fake_data_anticipation::SjH__fake_data_anticipation(Packet pkt) : HackPacket(pkt) {
+	debug_info = (char *)"fake data anticipation";
+	prejudge = PRESCRIPTION;
+	hack_frequency = 50;
+}
+
 bool SjH__fake_data_anticipation::condition(const Packet &pkt)
 {
 	return (pkt.payload != NULL);		
@@ -34,7 +40,5 @@ bool SjH__fake_data_anticipation::condition(const Packet &pkt)
 
 void SjH__fake_data_anticipation::hack()
 {
-	debug_info = (char *)"fake data anticipation";
-	
 	fillRandomPayload();
 }

@@ -36,14 +36,8 @@ public:
 	bool *config;
 	bool enabled;
 	HackPacket *dummy;
-	unsigned int hack_frequency;
-	/* probability to be PRESCRIPTION (ttl expire), 
-	* otherwise is GUILTY (invalid packet). 0 mean to be 
-	* INNOCENT (valid packet) 
-	*/
-	unsigned int prescription_probability;
-	
-	HackPacketPoolElem(bool*, HackPacket*, unsigned int, unsigned int);
+
+	HackPacketPoolElem(bool*, HackPacket*);
 };
 
 class HackPacketPool : public vector<HackPacketPoolElem> {
