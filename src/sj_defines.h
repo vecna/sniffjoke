@@ -30,6 +30,7 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 #define MTU				1500
+#define MTU_FAKE			1440
 #define MSGBUF				512
 
 #endif /* SJ_DEFINES_H */
