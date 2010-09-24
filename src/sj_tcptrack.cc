@@ -699,44 +699,35 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
 	}
 	
-	/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
-	if(pkt.evilbit == EVIL) {
-		/* 
-		 * real packet;
-		 * we MUST select injections that assicure that the packet
-		 * can arrive to destination without been discarded
-		 */ 
-	} else {
-		/* 
-		 * hack packet, INNOCENT, PRESCRIPTION or GUILTY it will be discarded;
-		 * we CAN select
-		 */
-	}
-	/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
+	/* START FIXME START FIXME START FIXME START FIXME START FIXME START FIXME START */ 
 
-	/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
-	if (runcopy->SjH__inject_ipopt && (pkt.injection == ANY_INJECTION || pkt.injection == IP_INJECTION)) {
-		if (percentage(1, 100)) {
-			pkt.SjH__inject_ipopt();
-#ifdef HACKSDEBUG
-			internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) id %d",
-				ntohs(pkt.tcp->source), 
-				inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
-				ntohs(pkt.tcp->dest), 
-				ntohs(pkt.ip->id)
-			);
-#endif
+	/* AT THE MOMENT THE IMPLEMENTED IP/TCP OPTIONS COULD LEAD PKT TO BE DISCARDED BY DESTIONATION
+	 * SO AT THE MOMENT WE APPLY THEM TO EVIL PACKET ONLY.
+	 * IN FUTURE WE PROBABLY WILL HAVE ALSO INTERESTING INJECTION THAT COULD LEAD THE SNIFFER TO FAIL ONLY
+	 * SO WE WILL IMPLEMENT SOMETHING LIKE:
+
+		if(pkt.evilbit == EVIL) { 
+			* real packet;
+			* we MUST select injections that assicure that the packet
+			* can arrive to destination without been discarded
+			* 
+		} else {
+			* 
+			* hack packet, INNOCENT, PRESCRIPTION or GUILTY it will be discarded;
+			* we CAN select
+			*
 		}
-	}
+	*/
 
-	if (runcopy->SjH__inject_tcpopt && (pkt.injection == ANY_INJECTION || pkt.injection == TCP_INJECTION)) {
-		if (!check_uncommon_tcpopt(pkt.tcp)) {
-			if (percentage(25, 100)) {
-				pkt.SjH__inject_tcpopt();
+	if(pkt.evilbit == EVIL) {
+
+		/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
+		if (runcopy->SjH__inject_ipopt && (pkt.injection == ANY_INJECTION || pkt.injection == IP_INJECTION)) {
+			if (percentage(1, 100)) {
+				pkt.SjH__inject_ipopt();
 #ifdef HACKSDEBUG
 				internal_log(NULL, HACKS_DEBUG,
-					"HACKSDEBUG [Inj Fake TcpOpt] (lo:%d %s:%d) id %d",
+					"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) id %d",
 					ntohs(pkt.tcp->source), 
 					inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
 					ntohs(pkt.tcp->dest), 
@@ -745,7 +736,25 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 #endif
 			}
 		}
+
+		if (runcopy->SjH__inject_tcpopt && (pkt.injection == ANY_INJECTION || pkt.injection == TCP_INJECTION)) {
+			if (!check_uncommon_tcpopt(pkt.tcp)) {
+				if (percentage(25, 100)) {
+					pkt.SjH__inject_tcpopt();
+#ifdef HACKSDEBUG
+					internal_log(NULL, HACKS_DEBUG,
+						"HACKSDEBUG [Inj Fake TcpOpt] (lo:%d %s:%d) id %d",
+						ntohs(pkt.tcp->source), 
+						inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
+						ntohs(pkt.tcp->dest), 
+						ntohs(pkt.ip->id)
+					);
+#endif
+				}
+			}
+		}
 	}
+	/* END FIXME END FIXME END FIXME END FIXME END FIXME END FIXME END FIXME END */
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
 	pkt.fixIpTcpSum();
