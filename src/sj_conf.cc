@@ -131,7 +131,6 @@ void SjConf::autodetect_gw_ip_address()
 
 void SjConf::autodetect_gw_mac_address()
 {
-	printf("%d\n", ETH_ALEN);
 	char cmd[MEDIUMBUF];
 	FILE *foca;
 	char imp_str[SMALLBUF];

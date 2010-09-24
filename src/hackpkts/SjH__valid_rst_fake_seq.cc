@@ -31,11 +31,6 @@
 	hack_frequency = 8;
 }
 
-bool SjH__valid_rst_fake_seq::condition(const Packet &pkt)
-{
-	return true;
-}
- 
 void SjH__valid_rst_fake_seq::hack()
 {
 	resizePayload(0);

@@ -31,7 +31,7 @@ using namespace std;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
+//#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
 #ifdef DATADEBUG
 #include "sj_optional_datadebug.h"
 static DataDebug *dd;
@@ -52,11 +52,12 @@ HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d) :
 	config(c),
 	enabled(*c),
 	dummy(d)
-{}
+{
+}
 
 HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
-	const Packet dummy = Packet(512, (const unsigned char*)dummydata, 512);
+	const Packet dummy = Packet((const unsigned char*)dummydata, 512);
 
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy)));
@@ -224,12 +225,15 @@ SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt)
 SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it) {
 	SessionTrack& st = stm_it->second;
 	if (st.shutdown == false) {
+#ifdef PACKETDEBUG
 		internal_log(NULL, DEBUG_LEVEL,
 			"SHUTDOWN sexion sport %d dport %d daddr %u",
 			ntohs(st.sport), ntohs(st.dport), st.daddr
 		);
 		st.shutdown = true;
+#endif
 	} else {
+#ifdef PACKETDEBUG
 		internal_log(NULL, DEBUG_LEVEL,
 			"Removing session: local:%d . %s:%d #%d", 
 			ntohs(st.sport), 
@@ -237,6 +241,7 @@ SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it) {
 			ntohs(st.dport),
 			st.packet_number
 		);
+#endif
 		sex_map.erase(stm_it);
 	}
 }
@@ -737,9 +742,9 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 					ntohs(pkt.tcp->dest), 
 					ntohs(pkt.ip->id)
 				);
+#endif
 			}
 		}
-#endif
 	}
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
@@ -768,7 +773,7 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 	 * the packets options could be modified by last_pkt_fix
 	 */
 
-	pkt = new Packet(nbyte, buff, nbyte);
+	pkt = new Packet(buff, nbyte);
 	pkt->mark(source, YOUNG, INNOCENT);
 
 	/* 

@@ -26,11 +26,6 @@ SjH__zero_window::SjH__zero_window(Packet pkt) : HackPacket(pkt) {
 	hack_frequency = 5;
 }
 
-bool SjH__zero_window::condition(const Packet &pkt)
-{
-	return true;
-}
-
 void SjH__zero_window::hack()
 {
 	resizePayload(0);

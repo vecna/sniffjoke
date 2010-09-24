@@ -22,8 +22,8 @@
 #include "sj_packet.h"
 #include "sj_utils.h"
 
-Packet::Packet(int size, const unsigned char* buff, int buff_size) :
-	pbuf(size, 0),
+Packet::Packet(const unsigned char* buff, int size) :
+	pbuf(size),
 	pbuf_size(size),
 	packet_id(make_pkt_id(buff)),
 	source(SOURCEUNASSIGNED),
@@ -32,7 +32,7 @@ Packet::Packet(int size, const unsigned char* buff, int buff_size) :
 	proto(PROTOUNASSIGNED),
 	injection(ANY_INJECTION)
 {
-	memcpy(&(pbuf[0]), buff, buff_size);	
+	memcpy(&(pbuf[0]), buff, size);
 	updatePointers();
 	
 	orig_pktlen = ntohs(ip->tot_len);
@@ -289,4 +289,8 @@ HackPacket::HackPacket(const Packet& pkt) :
 {
 	packet_id = 0;
 	evilbit = EVIL;
+}
+
+bool HackPacket::condition(const Packet &) {
+	return true;
 }

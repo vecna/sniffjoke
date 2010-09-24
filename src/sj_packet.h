@@ -75,7 +75,7 @@ public:
 	int pbuf_size;  
 	int orig_pktlen;
 	
-	Packet(int, const unsigned char*, int);
+	Packet(const unsigned char*, int);
 	Packet(const Packet &);
 	virtual ~Packet(void);
 
@@ -110,7 +110,7 @@ public:
 
 	HackPacket(const Packet &);
 	virtual HackPacket* create_hack(const Packet& pkt) = 0;
-	virtual bool condition(const Packet &) = 0;
+	virtual bool condition(const Packet &);
 	virtual void hack() = 0;
 };
 

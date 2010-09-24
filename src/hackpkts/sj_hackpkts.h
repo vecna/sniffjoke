@@ -64,14 +64,6 @@ public:
 	void hack();
 };
 
-class SjH__fake_syn : public HackPacket {
-public:
-	SjH__fake_syn(Packet pkt);
-	SjH__fake_syn* create_hack(const Packet& pkt) { return new SjH__fake_syn(pkt); };
-	bool condition(const Packet&);
-	void hack();
-};
-
 class SjH__shift_ack : public HackPacket {
 public: 
 	SjH__shift_ack(Packet pkt);
@@ -84,7 +76,6 @@ class SjH__valid_rst_fake_seq : public HackPacket {
 public:
 	SjH__valid_rst_fake_seq(Packet pkt);
 	SjH__valid_rst_fake_seq* create_hack(const Packet& pkt) { return new SjH__valid_rst_fake_seq(pkt); };
-	bool condition(const Packet&);
 	void hack();
 };
 
@@ -92,7 +83,6 @@ class SjH__zero_window : public HackPacket {
 public:
 	SjH__zero_window(Packet pkt);
 	SjH__zero_window* create_hack(const Packet& pkt) { return new SjH__zero_window(pkt); };
-	bool condition(const Packet&);
 	void hack();
 };
 /*

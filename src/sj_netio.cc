@@ -115,7 +115,7 @@ NetIO::NetIO(SjConf *sjconf)
 		"/sbin/ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d", 
 		runcopy->tun_number,
 		runcopy->local_ip_addr,
-		MTU_FAKE
+		MTU
 	);
 	internal_log(NULL, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]\n",
 		runcopy->tun_number, runcopy->interface,

@@ -13,7 +13,7 @@
 #define DROP_USER                       "sniffjoke"
 #define DROP_GROUP                      "sniffjoke"
 #define MAGICVAL			0xADECADDE
-#define CHROOT_DIR			"/tmp/sniffjoke/"
+#define CHROOT_DIR			"/tmp/sniffjoke"
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
 #define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
@@ -30,7 +30,6 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 #define MTU				1500
-#define MTU_FAKE			1440
 #define MSGBUF				512
 
 #endif /* SJ_DEFINES_H */
