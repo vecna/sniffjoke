@@ -757,10 +757,13 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	/* END FIXME END FIXME END FIXME END FIXME END FIXME END FIXME END FIXME END */
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
-	pkt.fixIpTcpSum();
-
-	if (pkt.wtf == GUILTY)
-		pkt.tcp->check ^= (0xd34d * (unsigned short)random() + 1);
+	if (pkt.wtf == GUILTY) {
+		if(random() % 2)
+			pkt.ip->check ^= (0xd34d * (unsigned short)random() + 1);
+		else
+			pkt.tcp->check ^= (0xd34d * (unsigned short)random() + 1);
+	} else
+		pkt.fixIpTcpSum();
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */

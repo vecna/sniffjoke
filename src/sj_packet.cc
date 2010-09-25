@@ -274,7 +274,7 @@ void Packet::SjH__inject_tcpopt(void)
 	 */ 
 
 	ip->tot_len = htons(iphlen + tcphlen + l57len);
-	tcp->doff = (tcphlen / 4) & 0xf;
+	tcp->doff = tcphlen / 4;
 	payload = (unsigned char *)(tcp) + tcphlen;
 }
 

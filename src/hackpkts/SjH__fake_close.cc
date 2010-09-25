@@ -21,7 +21,7 @@
  */
 #include "sj_hackpkts.h"
 
-SjH__fake_close::SjH__fake_close(Packet pkt) : HackPacket(pkt) {
+SjH__fake_close::SjH__fake_close(const Packet pkt) : HackPacket(pkt) {
 	debug_info = (char *)"fake close";
 	prescription_probability = 98;
 	hack_frequency = 5;

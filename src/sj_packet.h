@@ -107,7 +107,6 @@ public:
 	
 	position_t position;
 	
-
 	HackPacket(const Packet &);
 	virtual HackPacket* create_hack(const Packet& pkt) = 0;
 	virtual bool condition(const Packet &);
