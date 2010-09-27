@@ -77,7 +77,7 @@ public:
 	
 	Packet(const unsigned char*, int);
 	Packet(const Packet &);
-	virtual ~Packet(void);
+	virtual ~Packet(void) {};
 
 	unsigned int make_pkt_id(const unsigned char*) const;
 	void mark(source_t, status_t, judge_t);
@@ -111,6 +111,7 @@ public:
 	virtual HackPacket* create_hack(const Packet& pkt) = 0;
 	virtual bool condition(const Packet &);
 	virtual void hack() = 0;
+
 };
 
 #endif /* SJ_PACKET_H */

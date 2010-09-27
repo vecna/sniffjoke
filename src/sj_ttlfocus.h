@@ -43,10 +43,10 @@ class TTLFocus {
 public:
 
 	unsigned int daddr;
-	unsigned char expiring_ttl;
-	unsigned char min_working_ttl;
-	unsigned char sent_probe;
-	unsigned char received_probe;
+	unsigned short expiring_ttl;
+	unsigned short min_working_ttl;
+	unsigned short sent_probe;
+	unsigned short received_probe;
 	unsigned short puppet_port;
 	unsigned int rand_key;
 	ttlsearch_t status;

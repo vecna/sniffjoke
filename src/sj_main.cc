@@ -391,6 +391,14 @@ void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...)
 	}
 }
 
+void* memset_random(void *s, size_t n)
+{
+	char *cp = (char*)s;
+	while (n-- > 0)
+		*cp++ = (char)random();
+	return s;
+}
+
 int main(int argc, char **argv)
 {
 	int i, charopt, local_input = 0;
@@ -682,6 +690,7 @@ int main(int argc, char **argv)
 	mitm->prepare_conntrack(conntrack);
 	/* main block */
 	while (1) {
+		SjProc->sigtrapDisable();
 		mitm->network_io();
 		mitm->queue_flush();
 
@@ -700,6 +709,7 @@ int main(int argc, char **argv)
 		}
 		
 		sj_srv_child_check_local_unixserv(listening_unix_socket, sjconf);
+		SjProc->sigtrapEnable();
 
 	}
 	/* nevah here */

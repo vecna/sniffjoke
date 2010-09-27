@@ -22,16 +22,15 @@
 #include "sj_packetqueue.h"
 #include "sj_utils.h"
 
-PacketQueue::PacketQueue(int queue_levels) :
-	queue_levels(queue_levels),
+PacketQueue::PacketQueue() :
 	cur_prio(0),
 	cur_pkt(NULL),
-	front(new Packet*[queue_levels]),
-	back(new Packet*[queue_levels])
+	front(new Packet*[2]),
+	back(new Packet*[2])
 {
 	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");
-	memset(front, NULL, sizeof(Packet*)*queue_levels);
-	memset(back, NULL, sizeof(Packet*)*queue_levels);
+	memset(front, NULL, sizeof(Packet*)*2);
+	memset(back, NULL, sizeof(Packet*)*2);
 }
 
 
@@ -47,7 +46,7 @@ PacketQueue::~PacketQueue(void)
 	delete[] back;
 }
 
-void PacketQueue::insert(int prio, Packet &pkt)
+void PacketQueue::insert(priority_t prio, Packet &pkt)
 {
 	delete_if_present(pkt.packet_id);
 
@@ -62,46 +61,51 @@ void PacketQueue::insert(int prio, Packet &pkt)
 	}
 }
 
-void PacketQueue::insert_before(int prio, Packet &pkt, Packet &ref)
+void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
 	delete_if_present(pkt.packet_id);
 
-	if (front[prio] == &ref) {
-		pkt.prev = NULL;
-		pkt.next = &ref;
-		ref.prev = &pkt;
-		front[prio] = &pkt;
-	} else {
-		pkt.prev = ref.prev;
-		if(ref.prev != NULL)
-			ref.prev->next = &pkt;
-		pkt.next = &ref;
-		ref.prev = &pkt;
+	for (int i = 0; i < 2; i++) {
+		if (front[i] == &ref) {
+			pkt.prev = NULL;
+			pkt.next = &ref;
+			ref.prev = &pkt;
+			front[i] = &pkt;
+			return;
+		}
 	}
+	
+	pkt.prev = ref.prev;
+	if(ref.prev != NULL)
+		ref.prev->next = &pkt;
+	pkt.next = &ref;
+	ref.prev = &pkt;
 }
 
-void PacketQueue::insert_after(int prio, Packet &pkt, Packet &ref)
+void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
 	delete_if_present(pkt.packet_id);
 
-	if (back[prio] == &ref) {
-		pkt.prev = &ref;
-		pkt.next = NULL;
-		ref.next = &pkt;
-		back[prio] = &pkt;
-		return;
-	} else {
-		pkt.next = ref.next;
-		if(ref.next != NULL)
-			ref.next->prev = &pkt;
-		pkt.prev = &ref;
-		ref.next = &pkt;
+	for (int i = 0; i < 2; i++) {
+		if (back[i] == &ref) {
+			pkt.prev = &ref;
+			pkt.next = NULL;
+			ref.next = &pkt;
+			back[i] = &pkt;
+			return;
+		}
 	}
+	
+	pkt.next = ref.next;
+	if(ref.next != NULL)
+		ref.next->prev = &pkt;
+	pkt.prev = &ref;
+	ref.next = &pkt;
 }
 
 void PacketQueue::remove(const Packet &pkt)
 {
-	for (int i = 0; i < queue_levels; i++) {
+	for (int i = 0; i < 2; i++) {
 		if (front[i] == &pkt) {
 			if (back[i] == &pkt) {
 				front[i] = back[i] = NULL;
@@ -117,8 +121,12 @@ void PacketQueue::remove(const Packet &pkt)
 		}
 	}
 
-	pkt.prev->next = pkt.next;
-	pkt.next->prev = pkt.prev;
+	if(pkt.prev != NULL)
+		pkt.prev->next = pkt.next;
+
+	if(pkt.next != NULL)
+		pkt.next->prev = pkt.prev;
+
 	return;
 }
 
@@ -150,7 +158,7 @@ Packet* PacketQueue::get(bool must_continue)
 		
 		while (cur_pkt == NULL) {
 			cur_prio++;
-			if (cur_prio < queue_levels) {
+			if (cur_prio < 2) {
 				cur_pkt = front[cur_prio];
 			} else {
 				return NULL;

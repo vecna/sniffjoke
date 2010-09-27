@@ -238,13 +238,39 @@ void Process::CleanExit(void)
 	exit(0);
 }
 
-void Process::sigtrapSetup(sig_t sigtrap_function) 
+void Process::sigtrapSetup(sig_t sigtrap_function) { struct sigaction ignore;
+	
+	sigemptyset(&sig_nset);
+	sigaddset(&sig_nset, SIGINT);
+	sigaddset(&sig_nset, SIGABRT);
+	sigaddset(&sig_nset, SIGTERM);
+	sigaddset(&sig_nset, SIGQUIT);
+	
+	action.sa_handler = sigtrap_function;
+	action.sa_mask = sig_nset;
+	
+	ignore.sa_handler = SIG_IGN;
+	
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGABRT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGQUIT, &action, NULL);
+	sigaction(SIGUSR1, &ignore, NULL);
+}
+
+void Process::sigtrapEnable()
 {
-	signal(SIGINT, sigtrap_function);
-	signal(SIGABRT, sigtrap_function);
-	signal(SIGTERM, sigtrap_function);
-	signal(SIGQUIT, sigtrap_function);
-	signal(SIGUSR1, SIG_IGN);
+	sigprocmask(SIG_SETMASK, &sig_oset, NULL);
+}
+
+void Process::sigtrapDisable()
+{
+	sigemptyset(&sig_nset);
+	sigaddset(&sig_nset, SIGINT);
+	sigaddset(&sig_nset, SIGABRT);
+	sigaddset(&sig_nset, SIGTERM);
+	sigaddset(&sig_nset, SIGQUIT);
+	sigprocmask(SIG_BLOCK, &sig_nset, &sig_oset);	
 }
 
 int Process::isServiceRunning(void) 
@@ -317,5 +343,4 @@ Process::Process(struct sj_useropt *useropt)
 		printf("required root privileges\n");
 		failure = true;
 	}
-
 }

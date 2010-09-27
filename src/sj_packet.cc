@@ -52,8 +52,6 @@ Packet::Packet(const Packet& pkt) :
 	updatePointers();
 }
 
-Packet::~Packet() {}
-
 unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 {
 	struct iphdr *ip = (struct iphdr *)buf;
@@ -176,9 +174,8 @@ void Packet::resizePayload(unsigned int newlen) {
 
 void Packet::fillRandomPayload()
 {
-	const int diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
-	for (int i = 0; i < diff; i++)
-		payload[i] = (char)random();
+	const unsigned diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	memset_random(payload, diff);
 }
 
 /* ipopt IPOPT_RR inj*/
@@ -195,7 +192,7 @@ void Packet::SjH__inject_ipopt(void)
 		
 	if(free_space < needed_space) {
 		/* safety ip size check */
-		if((iphlen + needed_space > 60) || (pbuf_size + needed_space - free_space > MTU - needed_space))
+		if(iphlen + needed_space > 60)
 			return;
 			
 		increasePbuf(needed_space - free_space);
@@ -219,8 +216,7 @@ void Packet::SjH__inject_ipopt(void)
 				
 	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
 
-	for (int i = 4; i < fakeipopt; i++)
-		endip[i] = (char)random();
+	memset_random(&endip[4], fakeipopt - 4);
 
 	ip->ihl = iphlen / 4;
 	ip->tot_len = htons(iphlen + l47len);
@@ -243,7 +239,7 @@ void Packet::SjH__inject_tcpopt(void)
 	if(free_space < needed_space) {
 
 		/* safety ip size check */
-		if((tcphlen + needed_space > 60) || (pbuf_size + needed_space - free_space > MTU - needed_space))
+		if(tcphlen + needed_space > 60)
 			return;
 
 		increasePbuf(needed_space - free_space);
@@ -291,6 +287,7 @@ HackPacket::HackPacket(const Packet& pkt) :
 	evilbit = EVIL;
 }
 
-bool HackPacket::condition(const Packet &) {
+bool HackPacket::condition(const Packet &)
+{
 	return true;
 }

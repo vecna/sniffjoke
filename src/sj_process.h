@@ -40,6 +40,11 @@ public:
 	} ProcessType;
 
 	bool failure;
+	
+	sigset_t sig_nset;
+	sigset_t sig_oset;
+	struct sigaction action;
+	struct sigaction ignore;
 
 	Process(struct sj_useropt *useropt);
 	pid_t readPidfile(const char *pidfile);
@@ -50,6 +55,8 @@ public:
 	void CleanExit(void);
 	void CleanExit(bool);
 	void sigtrapSetup(sig_t sigtrap_function);
+	void sigtrapEnable();
+	void sigtrapDisable();
 	int isServiceRunning(void);
 	int isClientRunning(void);
 	void writePidfile(const char *pidfile, pid_t pid);

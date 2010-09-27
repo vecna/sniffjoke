@@ -56,5 +56,5 @@ void SjH__fake_seq::hack()
 	tcp->window = htons((random() % 80) * 64);
 	tcp->ack = tcp->ack_seq = 0;
 
-	fillRandomPayload();
+	//fillRandomPayload();
 }

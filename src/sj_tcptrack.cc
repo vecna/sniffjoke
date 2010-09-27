@@ -31,7 +31,7 @@ using namespace std;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-//#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
+#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
 #ifdef DATADEBUG
 #include "sj_optional_datadebug.h"
 static DataDebug *dd;
@@ -43,10 +43,6 @@ static DataDebug *dd;
 #define HACKSDEBUG
 
 #define STARTING_ARB_TTL	46
-
-#define UNCHANGED_SIZE		(-1)
-
-enum priority_t { HIGH = 0, LOW = 1 };
 
 HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d) :
 	config(c),
@@ -72,7 +68,6 @@ HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 }
 
 TCPTrack::TCPTrack(SjConf *sjconf) :
-	p_queue(2),
 	runcopy(sjconf->running),
 	hack_pool(sjconf->running)
 {
@@ -288,7 +283,6 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	injpkt->tcp->seq = htonl(ttlfocus.rand_key + tested_ttl);
 	injpkt->ip->id = (ttlfocus.rand_key % 64) + tested_ttl;
 
-	injpkt->fixIpTcpSum();
 	p_queue.insert(HIGH, *injpkt);
 
 #ifdef PACKETDEBUG
@@ -398,8 +392,10 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 			ttlfocus->received_probe++;
 			ttlfocus->status = TTL_KNOWN;
 
-			if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) 
+			if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) { 
 				ttlfocus->min_working_ttl = discern_ttl;
+				ttlfocus->expiring_ttl = discern_ttl - 1;
+			}
 
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG,
@@ -556,7 +552,7 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
  *
  * the hacks are, for the most, two kinds.
  *
- * one kind require the knowledge of exactly hop distance between the two hops, to forge
+ * one kind require the knowledge of exactly hop distance between the two end points, to forge
  * packets able to expire an hop before the destination IP addres, and inject in the
  * stream some valid TCP RSQ, TCP FIN and fake sequenced packet.
  *
@@ -574,7 +570,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	HackPacketPool applicable_hacks = hack_pool;
 	
 	/* SELECT APPLICABLE HACKS */
-	for ( it = applicable_hacks.begin(); it < applicable_hacks.end(); it++ ) {
+	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) {
 		hppe = &(*it);
 		hppe->enabled &= *(hppe->config);
 		hppe->enabled &= hppe->dummy->condition(pkt);
@@ -586,7 +582,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
 	judge_t court_word;
-	for ( it = applicable_hacks.begin(); it < applicable_hacks.end(); it++ ) {
+	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) {
 		hppe = &(*it);
 		if(!hppe->enabled) continue;
 
@@ -600,21 +596,22 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		}
 
 		injpkt = hppe->dummy->create_hack(pkt);
+		Packet* antani = injpkt;
 		injpkt->hack();
 		injpkt->mark(LOCAL, SEND, court_word);
 
 		switch(injpkt->position) {
 			case ANTICIPATION:
-				p_queue.insert_before(LOW, *injpkt, pkt);
+				p_queue.insert_before(*injpkt, pkt);
 				break;
 			case POSTICIPATION:
-				p_queue.insert_after(LOW, *injpkt, pkt);
+				p_queue.insert_after(*injpkt, pkt);
 				break;
 			case ANY_POSITION:
 				if(random() % 2)
-					p_queue.insert_before(LOW, *injpkt, pkt);
+					p_queue.insert_before(*injpkt, pkt);
 				else
-					p_queue.insert_after(LOW, *injpkt, pkt);
+					p_queue.insert_after(*injpkt, pkt);
 				break;
 		}
 
@@ -636,14 +633,19 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 }
 
 /* 
- * last packet fix! is the catch all for all packets, they should be:
- *   PRESCRIPTION pkt, that expire BEFORE REACH destination addr
- *   GUILTY pkt, that have some kind of error to be discarged from the dest
- *   INNOCENT pkt, valid packet that reach destination address
- *
- *   otherwise, the should be the packet received from the tunnel. They 
- *   use the same treatment as INNOCENT packets.
- *
+ * Last_pkt_fix is the last modification applied to packets.
+ * Modification involve only TCP packets coming from TUNNEL.
+ * On others packs, treated as INNOCENT, get only fixed the IP/TCP CHECKSUM.
+ * They could be:
+ * 
+ *   PRESCRIPTION: will EXPIRE BEFORE REACHING destination (due to ttl modification)
+ * 			could be: ONLY HACK PACKETS
+ *   GUILTY:       will BE DISCARDED by destination (due to some error introduction)
+ *                      at the moment the only error applied is the invalidation tcp checksum
+ *                      could be: ONLY HACK PACKETS 
+ *   INNOCENT      will REACH the destination
+ *                      could be: REAL PACKETS
+ *                                HACK PACKETS (that will be discarded by destination)
  */
 void TCPTrack::last_pkt_fix(Packet &pkt)
 {
@@ -652,10 +654,6 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	const time_t now = time(NULL);
 	int i;
 
-	/* 
-	 * packets different from TCP, and packets without ttl focus struct are
-	 * SEND immediatly
-	 */ 
 #ifdef PACKETDEBUG
 	if (pkt.proto == TCP) 
 		internal_log(NULL, PACKETS_DEBUG,
@@ -669,52 +667,76 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		);
 	else 
 		internal_log(NULL, PACKETS_DEBUG,
-			"last_pkt_fix (!TCP): id %u proto %d source %d", 
+			"last_pkt_fix (!TCP): id %u proto %d source %d",
 			ntohs(pkt.ip->id), 
 			pkt.ip->protocol, 
 			pkt.source
 		);
 #endif
 
-	if (pkt.proto != TCP || pkt.source == TTLBFORCE)
+	if (pkt.proto != TCP) {
 		return;
-
+	} else if (pkt.source != TUNNEL && pkt.source != LOCAL) {
+		pkt.fixIpTcpSum();
+		return;
+	}
+	
+	/* 1st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */
 	ttlfocus_map_it = ttlfocus_map.find(pkt.ip->daddr);
+
 	if (ttlfocus_map_it != ttlfocus_map.end())
 		ttlfocus = &(ttlfocus_map_it->second);
 	else
 		ttlfocus = NULL;
 
-	/* 1st check: HOW MANY TTL GIVE TO THE PACKET ? */
 	if (ttlfocus != NULL && ttlfocus->status != TTL_UNKNOWN) {
 		if (pkt.wtf == PRESCRIPTION) 
 			pkt.ip->ttl = ttlfocus->expiring_ttl - (random() % 5);
 		else	/* GUILTY or INNOCENT */
-			pkt.ip->ttl = ttlfocus->expiring_ttl + 1 + (random() % 5);
-
+			pkt.ip->ttl = ttlfocus->min_working_ttl + (random() % 5);
+#ifdef HACKSDEBUG
+			internal_log(NULL, HACKS_DEBUG,
+				"HACKSDEBUG [TTL: %d] (expiring: %d, min_working: %d, sent_probe: %d, received_probe: %d",
+				pkt.ip->ttl,
+				ttlfocus->expiring_ttl,
+				ttlfocus->min_working_ttl,
+				ttlfocus->sent_probe,
+				ttlfocus->received_probe
+			);
+#endif
 	} else {
 		if (pkt.wtf == PRESCRIPTION)
 			pkt.wtf = GUILTY;
 
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
-	}
+#ifdef HACKSDEBUG
+			internal_log(NULL, HACKS_DEBUG,
+				"HACKSDEBUG [TTL: %d]",
+				pkt.ip->ttl
+			);
+#endif
+	}	
+	/* end 1st check */
 	
 	/* START FIXME START FIXME START FIXME START FIXME START FIXME START FIXME START */ 
 
-	/* AT THE MOMENT THE IMPLEMENTED IP/TCP OPTIONS COULD LEAD PKT TO BE DISCARDED BY DESTIONATION
-	 * SO AT THE MOMENT WE APPLY THEM TO EVIL PACKET ONLY.
-	 * IN FUTURE WE PROBABLY WILL HAVE ALSO INTERESTING INJECTION THAT COULD LEAD THE SNIFFER TO FAIL ONLY
+	/* 2nd check: WHAT KIND OF INJECTIONS CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET */
+	
+	/* AT THE MOMENT THE IMPLEMENTED IP/TCP OPTIONS COULD LEAD PKTS TO BE DISCARDED BY DESTIONATION
+	 * SO AT THE MOMENT WE APPLY THEM TO EVIL PKTS ONLY.
+	 * IN FUTURE WE PROBABLY WILL HAVE ALSO INTERESTING INJECTIONS THAT COULD LEAD THE SNIFFER TO FAIL WITHOUT
+	 * DISTURB THE SEXION.
 	 * SO WE WILL IMPLEMENT SOMETHING LIKE:
 
 		if(pkt.evilbit == EVIL) { 
 			* real packet;
 			* we MUST select injections that assicure that the packet
-			* can arrive to destination without been discarded
+			* can arrive to destination without been discarded.
 			* 
 		} else {
 			* 
-			* hack packet, INNOCENT, PRESCRIPTION or GUILTY it will be discarded;
-			* we CAN select
+			* hack packet, INNOCENT, PRESCRIPTION or GUILTY it WILL be discarded;
+			* we CAN select one of all injections.
 			*
 		}
 	*/
@@ -754,16 +776,15 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 			}
 		}
 	}
+	/* end 2nd check */
+	
 	/* END FIXME END FIXME END FIXME END FIXME END FIXME END FIXME END FIXME END */
 
 	/* 3rd check: GOOD CHECKSUM or BAD CHECKSUM ? */
-	if (pkt.wtf == GUILTY) {
-		if(random() % 2)
-			pkt.ip->check ^= (0xd34d * (unsigned short)random() + 1);
-		else
-			pkt.tcp->check ^= (0xd34d * (unsigned short)random() + 1);
-	} else
-		pkt.fixIpTcpSum();
+	pkt.fixIpTcpSum();
+	if (pkt.wtf == GUILTY)
+		pkt.tcp->check ^= (0xd34d * (unsigned short)random() + 1);
+	/* end 3nd check */
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
@@ -787,7 +808,7 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 
 	pkt = new Packet(buff, nbyte);
 	pkt->mark(source, YOUNG, INNOCENT);
-
+	
 	/* 
 	 * the packet from the tunnel are put with lower priority and the
 	 * hack-packet, injected from sniffjoke, are put in the higher one.
@@ -803,7 +824,7 @@ Packet* TCPTrack::readpacket() {
 	Packet *pkt = p_queue.get(SEND, ANY_SOURCE, ANY_PROTO, false);
 	if (pkt != NULL) {
 		p_queue.remove(*pkt);
-		if(runcopy->sj_run == true && pkt->source != NETWORK)
+		if (runcopy->sj_run == true)
 			last_pkt_fix(*pkt);
 	}
 	return pkt;

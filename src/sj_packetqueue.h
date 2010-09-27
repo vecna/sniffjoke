@@ -25,6 +25,8 @@
 #include "sj_defines.h"
 #include "sj_packet.h"
 
+enum priority_t { HIGH = 0, LOW = 1 };
+
 class PacketQueue {
 private:
 	Packet **front;
@@ -34,11 +36,11 @@ private:
 	Packet *cur_pkt;
 public:
 
-	PacketQueue(int);
+	PacketQueue();
 	~PacketQueue(void);
-	void insert(int, Packet &);
-	void insert_before(int, Packet &, Packet &);
-	void insert_after(int, Packet &, Packet &);
+	void insert(priority_t, Packet &);
+	void insert_before(Packet &, Packet &);
+	void insert_after(Packet &, Packet &);
 	void remove(const Packet &);
 	void delete_if_present(unsigned int);
 	Packet* get(bool);

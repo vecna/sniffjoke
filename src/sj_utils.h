@@ -53,5 +53,6 @@
 
 void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal);
 void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...);
+void* memset_random(void *s, size_t n);
 
 #endif /* SJ_UTILS_H */
