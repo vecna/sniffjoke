@@ -47,7 +47,9 @@ public:
 
 class TCPTrack {
 private:
+	struct timespec clock;
 	PacketQueue p_queue;
+	bool youngpacketspresent;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
 	HackPacketPool hack_pool;

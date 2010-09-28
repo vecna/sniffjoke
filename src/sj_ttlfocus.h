@@ -22,8 +22,12 @@
 #ifndef SJ_TTLFOCUS_H
 #define SJ_TTLFOCUS_H
 
+#include "time.h"
+
 #include <map>
 using namespace std;
+
+#define TTLPROBEINTERVAL 50000 // ns
 
 enum ttlsearch_t { TTL_KNOWN = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOWN = 9 };
 
@@ -52,10 +56,13 @@ public:
 	unsigned short puppet_port;
 	unsigned int rand_key;
 	ttlsearch_t status;
+	struct timespec next_probe_time;
 
 	TTLFocus(unsigned int);
 	TTLFocus(const TTLFocus& cpy);
 	TTLFocus(const struct ttlfocus_cache_record& cpy);
+	void scheduleNextProbe();
+	bool isProbeIntervalPassed(const struct timespec&);
 };
 
 class TTLFocusMap : public map<const unsigned int, TTLFocus> {

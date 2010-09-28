@@ -60,6 +60,8 @@ am_sniffjoke_OBJECTS = sj_main.$(OBJEXT) sj_conf.$(OBJEXT) \
 	SjH__valid_rst_fake_seq.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
+sniffjoke_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
+	$(sniffjoke_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -203,6 +205,7 @@ sniffjoke_SOURCES = sj_main.cc \
                     hackpkts/SjH__fake_data_posticipation.cc \
                     hackpkts/SjH__valid_rst_fake_seq.cc
 
+sniffjoke_LDFLAGS = -lrt
 CLEANFILES = *~
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -295,7 +298,7 @@ clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 sniffjoke$(EXEEXT): $(sniffjoke_OBJECTS) $(sniffjoke_DEPENDENCIES) 
 	@rm -f sniffjoke$(EXEEXT)
-	$(CXXLINK) $(sniffjoke_OBJECTS) $(sniffjoke_LDADD) $(LIBS)
+	$(sniffjoke_LINK) $(sniffjoke_OBJECTS) $(sniffjoke_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

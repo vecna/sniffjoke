@@ -31,16 +31,16 @@ using namespace std;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
+//#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
 #ifdef DATADEBUG
 #include "sj_optional_datadebug.h"
 static DataDebug *dd;
 #endif
 
 // define PACKETDEBUG enable session debug, ttl bruteforce 
-#define PACKETDEBUG 
+//#define PACKETDEBUG 
 // define HACKSDEBUG enable dump about packet injected
-#define HACKSDEBUG
+//#define HACKSDEBUG
 
 #define STARTING_ARB_TTL	46
 
@@ -48,8 +48,7 @@ HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d) :
 	config(c),
 	enabled(*c),
 	dummy(d)
-{
-}
+{}
 
 HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
@@ -69,6 +68,7 @@ HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 
 TCPTrack::TCPTrack(SjConf *sjconf) :
 	runcopy(sjconf->running),
+	youngpacketspresent(false),
 	hack_pool(sjconf->running)
 {
 
@@ -264,10 +264,13 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	 * between our peer and the remote peer. the packet
 	 * is lighty modify (ip->id change) and checksum fixed
 	 */
+	 
+	if(!ttlfocus.isProbeIntervalPassed(clock))
+		return;
 
 	if (analyze_ttl_stats(ttlfocus))
 		return;
-
+		
 	/* create a new packet; the copy is done to keep refsyn ORIGINAL */
 	Packet *injpkt = new Packet(delayed_syn_pkt);
 	injpkt->mark(TTLBFORCE, SEND, INNOCENT);
@@ -284,6 +287,8 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	injpkt->ip->id = (ttlfocus.rand_key % 64) + tested_ttl;
 
 	p_queue.insert(HIGH, *injpkt);
+	
+	ttlfocus.scheduleNextProbe();
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
@@ -557,15 +562,15 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 
 void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
 
-	Packet *packet = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, false);
-	while (packet != NULL) {
-		if (packet->tcp->syn && packet->ip->daddr == daddr) {
+	Packet *pkt = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, false);
+	while (pkt != NULL) {
+		if (pkt->tcp->syn && pkt->ip->daddr == daddr) {
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG, "The REAL SYN change status from KEEP to SEND");
 #endif
-			packet->status = SEND;
+			pkt->status = SEND;
 		}
-		packet = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, true);
+		pkt = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, true);
 	}
 }
 
@@ -618,7 +623,6 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		}
 
 		injpkt = hppe->dummy->create_hack(pkt);
-		Packet* antani = injpkt;
 		injpkt->hack();
 		injpkt->mark(LOCAL, SEND, court_word);
 
@@ -840,6 +844,8 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 	 */
 	p_queue.insert(LOW, *pkt);
 	
+	youngpacketspresent = true;
+	
 	return true;
 }
 
@@ -866,16 +872,24 @@ Packet* TCPTrack::readpacket() {
  *
  * analyze_packets_queue is called from the main.cc select() block
  */
-void TCPTrack::analyze_packets_queue(void)
+void TCPTrack::analyze_packets_queue()
 {
 	Packet *pkt;
 	TTLFocus *ttlfocus;
 	TTLFocusMap::iterator ttlfocus_map_it;
+	struct timespec now;
+	
+	clock_gettime(CLOCK_REALTIME, &clock);
 
 #ifdef DATADEBUG
         dd->InfoMsg("Packet", "analyze_packets_queue");
         dd->Dump_Packet(p_queue);
 #endif
+
+	if(youngpacketspresent == false)
+		goto analyze_keep_packets;
+	else
+		youngpacketspresent = false;
 
 	pkt = p_queue.get(YOUNG, NETWORK, ICMP, false);
 	while (pkt != NULL) {
@@ -909,10 +923,6 @@ void TCPTrack::analyze_packets_queue(void)
 		if (pkt != NULL && pkt->status == YOUNG && (pkt->tcp->rst || pkt->tcp->fin))
 			pkt = analyze_incoming_rstfin(*pkt);   
 
-		/* if packet exist again = is not destroyed by analyze function */
-		if (pkt != NULL && pkt->status == YOUNG)
-			pkt->status = SEND;
-			
 		pkt = p_queue.get(YOUNG, NETWORK, TCP, true);
 	}
 
@@ -935,12 +945,17 @@ void TCPTrack::analyze_packets_queue(void)
 		 */
 		manage_outgoing_packets(*pkt);
 
-		/* all outgoing packets, exception for starting SYN (status = KEEP), are sent immediatly */
-		if (pkt->status == YOUNG)
-			pkt->status = SEND;
-			
 		pkt = p_queue.get(YOUNG, TUNNEL, TCP, true);
 	}
+
+	/* all YOUNG packets must be sent immediatly */
+	pkt = p_queue.get(YOUNG, ANY_SOURCE, ANY_PROTO, false);
+	while (pkt != NULL) {
+		pkt->status = SEND;
+		pkt = p_queue.get(YOUNG, ANY_SOURCE, ANY_PROTO, true);
+	}
+
+analyze_keep_packets:
 
 	pkt = p_queue.get(KEEP, TUNNEL, TCP, false);
 	while (pkt != NULL) {
@@ -962,14 +977,6 @@ void TCPTrack::analyze_packets_queue(void)
 		}
 		pkt = p_queue.get(KEEP, TUNNEL, TCP, true);
 	}
-
-	/* all others YOUNG packets must be sent immediatly */
-	pkt = p_queue.get(YOUNG, ANY_SOURCE, ANY_PROTO, false);
-	while (pkt != NULL) {
-		pkt->status = SEND;
-		pkt = p_queue.get(YOUNG, ANY_SOURCE, ANY_PROTO, true);
-	}
-	
 }
 
 /*

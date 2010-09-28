@@ -210,13 +210,19 @@ void NetIO::prepare_conntrack(TCPTrack *ct) {
 
 void NetIO::network_io(void)
 {
-	int burst = BURSTSIZE;
 	int nfds;
+
+	/*
+	 * Having a burst size of 5 pkt and a poll timeout of 10 ms
+	 * we assure to call conntrack->analyze_packets_queue() with a
+	 *  max interval of 50 ms.
+	 */
+	int burst = 5;
+	int timeout_ms = 10;
 
 	while (burst--)
 	{
-		/* poll wants milliseconds, I want 0.050 sec of delay */
-		nfds = poll(fds, 2, 50);
+		nfds = poll(fds, 2, timeout_ms);
 
 		if (nfds == -1) {
 			internal_log(NULL, ALL_LEVEL, "Strange and dangerous error in poll: %s", strerror(errno));

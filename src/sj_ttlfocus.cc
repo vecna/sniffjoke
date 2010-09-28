@@ -39,7 +39,9 @@ TTLFocus::TTLFocus(unsigned int destip) :
 	puppet_port(htons((random() % 15000) + 1100)),
 	rand_key(random()),
 	status(TTL_BRUTALFORCE)
-{}
+{
+	clock_gettime(CLOCK_REALTIME, &next_probe_time);
+}
 
 TTLFocus::TTLFocus(const TTLFocus& cpy) :
 	daddr(cpy.daddr),
@@ -51,7 +53,9 @@ TTLFocus::TTLFocus(const TTLFocus& cpy) :
 	puppet_port(cpy.puppet_port),
 	rand_key(cpy.rand_key),
 	status(cpy.status)
-{}
+{
+	memcpy(&next_probe_time, &(cpy.next_probe_time), sizeof(struct timespec));
+}
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	daddr(cpy.daddr),
@@ -63,7 +67,28 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	puppet_port(cpy.puppet_port),
 	rand_key(cpy.rand_key),
 	status(cpy.status)
-{}
+{
+	clock_gettime(CLOCK_REALTIME, &next_probe_time);
+}
+
+void TTLFocus::scheduleNextProbe() {
+    if(TTLPROBEINTERVAL > 1000000000 - next_probe_time.tv_nsec) {
+        next_probe_time.tv_sec++;
+        next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL - 1000000000;
+    } else
+        next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL;
+}
+
+bool TTLFocus::isProbeIntervalPassed(const struct timespec& now) {
+    if(now.tv_sec > next_probe_time.tv_sec)
+        return true;
+
+    else if(now.tv_sec == next_probe_time.tv_sec && now.tv_nsec > next_probe_time.tv_nsec)
+        return true;
+
+    return false;
+}
+
 
 TTLFocusMap::TTLFocusMap() {
 	load();
