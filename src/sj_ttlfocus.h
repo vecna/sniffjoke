@@ -31,6 +31,7 @@ struct ttlfocus_cache_record {
 	unsigned int daddr;
 	unsigned short expiring_ttl;
 	unsigned short min_working_ttl;
+	unsigned short synack_ttl;
 	unsigned short sent_probe;
 	unsigned short received_probe;
 	unsigned short puppet_port;
@@ -45,6 +46,7 @@ public:
 	unsigned int daddr;
 	unsigned short expiring_ttl;
 	unsigned short min_working_ttl;
+	unsigned short synack_ttl;
 	unsigned short sent_probe;
 	unsigned short received_probe;
 	unsigned short puppet_port;

@@ -66,6 +66,7 @@ private:
 	void enque_ttl_probe(const Packet&, TTLFocus&);
 	bool analyze_ttl_stats(TTLFocus&);
 
+	void analyze_incoming_ttl(Packet&);
 	Packet* analyze_incoming_icmp(Packet&);
 	Packet* analyze_incoming_synack(Packet&);
 	Packet* analyze_incoming_rstfin(Packet&);

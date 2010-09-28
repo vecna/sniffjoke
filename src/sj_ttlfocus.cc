@@ -33,6 +33,7 @@ TTLFocus::TTLFocus(unsigned int destip) :
 	daddr(destip),
 	min_working_ttl(0xff),
 	expiring_ttl(0),
+	synack_ttl(0),
 	sent_probe(0),
 	received_probe(0),
 	puppet_port(htons((random() % 15000) + 1100)),
@@ -44,6 +45,7 @@ TTLFocus::TTLFocus(const TTLFocus& cpy) :
 	daddr(cpy.daddr),
 	min_working_ttl(cpy.min_working_ttl),
 	expiring_ttl(cpy.expiring_ttl),
+	synack_ttl(cpy.synack_ttl),
 	sent_probe(cpy.sent_probe),
 	received_probe(cpy.received_probe),
 	puppet_port(cpy.puppet_port),
@@ -55,6 +57,7 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	daddr(cpy.daddr),
 	min_working_ttl(cpy.min_working_ttl),
 	expiring_ttl(cpy.expiring_ttl),
+	synack_ttl(cpy.synack_ttl),
 	sent_probe(cpy.sent_probe),
 	received_probe(cpy.received_probe),
 	puppet_port(cpy.puppet_port),
@@ -124,6 +127,7 @@ void TTLFocusMap::dump() {
 		cache_record.daddr = tmp->daddr;
 		cache_record.expiring_ttl = tmp->expiring_ttl;
 		cache_record.min_working_ttl = tmp->min_working_ttl;
+		cache_record.synack_ttl = tmp->synack_ttl;
 		cache_record.sent_probe = tmp->sent_probe;
 		cache_record.received_probe = tmp->received_probe;
 		cache_record.puppet_port = tmp->puppet_port;

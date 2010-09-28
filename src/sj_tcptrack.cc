@@ -306,6 +306,28 @@ bool TCPTrack::analyze_ttl_stats(TTLFocus &ttlfocus)
 	return false;
 }
 
+void TCPTrack::analyze_incoming_ttl(Packet &pkt)
+{
+	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
+	TTLFocus *ttlfocus;
+
+	if (it != ttlfocus_map.end()) {
+		ttlfocus = &(it->second);
+		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) {
+			/* probably a topology change has happened */
+#ifdef PACKETDEBUG
+			internal_log(NULL, PACKETS_DEBUG,
+				"probable topology change happened for destination %s [synack_ttl: %d, received_ttl: %d]" ,
+				inet_ntoa(*((struct in_addr *)&pkt.ip->saddr)),
+				ttlfocus->synack_ttl,
+				pkt.ip->ttl
+			);
+#endif
+			
+		}
+	}
+}
+
 
 Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 {
@@ -356,7 +378,6 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 	return &timeexc;
 }
 
-
 Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 {
 	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
@@ -395,6 +416,7 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 			if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) { 
 				ttlfocus->min_working_ttl = discern_ttl;
 				ttlfocus->expiring_ttl = discern_ttl - 1;
+				ttlfocus->synack_ttl = synack.ip->ttl;
 			}
 
 #ifdef PACKETDEBUG
@@ -421,7 +443,7 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 			delete &synack;
 			return NULL;
 		}
-		
+				
 		/* 
 		 * connect(3, {sa_family=AF_INET, sin_port=htons(80), 
 		 * sin_addr=inet_addr("89.186.95.190")}, 16) = 
@@ -696,10 +718,11 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 			pkt.ip->ttl = ttlfocus->min_working_ttl + (random() % 5);
 #ifdef HACKSDEBUG
 			internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG [TTL: %d] (expiring: %d, min_working: %d, sent_probe: %d, received_probe: %d",
+				"HACKSDEBUG [TTL: %d] (expiring: %d, min_working: %d, synack_ttl: %d, sent_probe: %d, received_probe: %d",
 				pkt.ip->ttl,
 				ttlfocus->expiring_ttl,
 				ttlfocus->min_working_ttl,
+				ttlfocus->synack_ttl,
 				ttlfocus->sent_probe,
 				ttlfocus->received_probe
 			);
@@ -856,6 +879,9 @@ void TCPTrack::analyze_packets_queue(void)
 
 	pkt = p_queue.get(YOUNG, NETWORK, ICMP, false);
 	while (pkt != NULL) {
+		
+		analyze_incoming_ttl(*pkt);
+		
 		/* 
 		 * a TIME_EXCEEDED packet should contains informations
 		 * for discern HOP distance from a remote host
@@ -874,6 +900,9 @@ void TCPTrack::analyze_packets_queue(void)
 	 */
 	pkt = p_queue.get(YOUNG, NETWORK, TCP, false);
 	while (pkt != NULL) {
+		
+		analyze_incoming_ttl(*pkt);
+
 		if (pkt->tcp->syn && pkt->tcp->ack)
 			pkt = analyze_incoming_synack(*pkt);
 
