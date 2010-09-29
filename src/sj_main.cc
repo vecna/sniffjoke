@@ -101,7 +101,8 @@ static void sj_help(const char *pname)
 		CHROOT_DIR, CHROOT_DIR, CONF_FILE, "127.0.0.1");
 }
 
-static void sj_version(const char *pname) {
+static void sj_version(const char *pname)
+{
 	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 

@@ -53,7 +53,7 @@ HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d) :
 HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
 	const Packet dummy = Packet((const unsigned char*)dummydata, 512);
-
+	
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy)));
@@ -217,7 +217,8 @@ SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt)
 	}
 }
 
-SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it) {
+SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
+{
 	SessionTrack& st = stm_it->second;
 	if (st.shutdown == false) {
 #ifdef PACKETDEBUG
@@ -560,8 +561,8 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 	}
 }
 
-void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr) {
-
+void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
+{
 	Packet *pkt = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, false);
 	while (pkt != NULL) {
 		if (pkt->tcp->syn && pkt->ip->daddr == daddr) {
@@ -849,7 +850,8 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 	return true;
 }
 
-Packet* TCPTrack::readpacket() {
+Packet* TCPTrack::readpacket()
+{
 	Packet *pkt = p_queue.get(SEND, ANY_SOURCE, ANY_PROTO, false);
 	if (pkt != NULL) {
 		p_queue.remove(*pkt);

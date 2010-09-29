@@ -204,7 +204,8 @@ NetIO::~NetIO(void)
 	system(tmpsyscmd);
 }
 
-void NetIO::prepare_conntrack(TCPTrack *ct) {
+void NetIO::prepare_conntrack(TCPTrack *ct)
+{
 	conntrack = ct;
 }
 
@@ -217,7 +218,7 @@ void NetIO::network_io(void)
 	 * we assure to call conntrack->analyze_packets_queue() with a
 	 *  max interval of 50 ms.
 	 */
-	int burst = 5;
+	int burst = 5; /* the real value is burst * 2, because in one cycle we can read a pkt from netfd and a pkt from tunfd */
 	int timeout_ms = 10;
 
 	while (burst--)
@@ -254,7 +255,7 @@ void NetIO::network_io(void)
 		}
 
 		if (fds[1].revents & POLLIN) {
-			if ((size = read(tunfd, pktbuf, MTU)) == -1) {
+			if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
 					internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
 					check_call_ret("Reading from tunnel", errno, size, false);
@@ -292,7 +293,7 @@ void NetIO::queue_flush(void)
 	 */
 	while ((pkt = conntrack->readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
-			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf_size)) == -1) {
+			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size())) == -1) {
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, size, false);
@@ -323,6 +324,7 @@ void NetIO::queue_flush(void)
 	}
 }
 
-bool NetIO::is_network_down(void) {
+bool NetIO::is_network_down(void)
+{
 	return networkdown_condition;
 }

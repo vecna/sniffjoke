@@ -30,7 +30,8 @@ SessionTrack::SessionTrack(const Packet &pkt) :
 	shutdown(false)
 {}
 
-bool SessionTrackKey::operator<(SessionTrackKey comp) const {
+bool SessionTrackKey::operator<(SessionTrackKey comp) const
+{
 	if (daddr < comp.daddr) {
 		return true;
 	} else if (daddr > comp.daddr) {

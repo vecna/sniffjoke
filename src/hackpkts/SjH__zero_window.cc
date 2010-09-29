@@ -20,7 +20,8 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-SjH__zero_window::SjH__zero_window(const Packet pkt) : HackPacket(pkt) {
+SjH__zero_window::SjH__zero_window(const Packet pkt) : HackPacket(pkt)
+{
 	debug_info = (char *)"zero_ window";
 	prescription_probability = 93;
 	hack_frequency = 5;

@@ -71,7 +71,8 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	clock_gettime(CLOCK_REALTIME, &next_probe_time);
 }
 
-void TTLFocus::scheduleNextProbe() {
+void TTLFocus::scheduleNextProbe()
+{
     if(TTLPROBEINTERVAL > 1000000000 - next_probe_time.tv_nsec) {
         next_probe_time.tv_sec++;
         next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL - 1000000000;
@@ -79,7 +80,8 @@ void TTLFocus::scheduleNextProbe() {
         next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL;
 }
 
-bool TTLFocus::isProbeIntervalPassed(const struct timespec& now) {
+bool TTLFocus::isProbeIntervalPassed(const struct timespec& now)
+{
     if(now.tv_sec > next_probe_time.tv_sec)
         return true;
 
@@ -90,14 +92,18 @@ bool TTLFocus::isProbeIntervalPassed(const struct timespec& now) {
 }
 
 
-TTLFocusMap::TTLFocusMap() {
+TTLFocusMap::TTLFocusMap()
+{
 	load();
 }
-TTLFocusMap::~TTLFocusMap() {
+
+TTLFocusMap::~TTLFocusMap()
+{
 	dump();
 }
 
-void TTLFocusMap::load() {
+void TTLFocusMap::load()
+{
 	FILE *loadfd;
 	int i = 0;
 	int ret;
@@ -130,7 +136,8 @@ void TTLFocusMap::load() {
 }
 
 
-void TTLFocusMap::dump() {
+void TTLFocusMap::dump()
+{
 	FILE *dumpfd;
 	int i = 0;
 	int ret;

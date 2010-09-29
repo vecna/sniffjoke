@@ -27,7 +27,8 @@
  * function.
  */
 #include "sj_hackpkts.h"
-SjH__fake_data_anticipation::SjH__fake_data_anticipation(const Packet pkt) : HackPacket(pkt) {
+SjH__fake_data_anticipation::SjH__fake_data_anticipation(const Packet pkt) : HackPacket(pkt)
+{
 	debug_info = (char *)"fake data anticipation";
 	prejudge = PRESCRIPTION;
 	hack_frequency = 50;

@@ -32,7 +32,8 @@
 
 extern int errno;
 
-bool Process::setLocktoExist(const char *lockfname) {
+bool Process::setLocktoExist(const char *lockfname)
+{
 	int fd;
 	struct flock fl;
 
@@ -196,7 +197,8 @@ void Process::PrivilegesDowngrade(struct sj_config *running)
 	internal_log(NULL, VERBOSE_LEVEL, "process %d downgrade privileges to uid %d gid %d", userinfo->pw_uid, groupinfo->gr_gid);
 }
 
-void Process::CleanExit(bool boh) {
+void Process::CleanExit(bool boh)
+{
 	CleanExit();
 }
 
@@ -238,7 +240,9 @@ void Process::CleanExit(void)
 	exit(0);
 }
 
-void Process::sigtrapSetup(sig_t sigtrap_function) { struct sigaction ignore;
+void Process::sigtrapSetup(sig_t sigtrap_function)
+{
+	struct sigaction ignore;
 	
 	sigemptyset(&sig_nset);
 	sigaddset(&sig_nset, SIGINT);
@@ -283,7 +287,8 @@ int Process::isClientRunning(void)
 	return CheckLockExist(SJ_CLIENT_LOCK);
 }
 
-pid_t Process::readPidfile(const char *pidfile) {
+pid_t Process::readPidfile(const char *pidfile)
+{
 	int ret = 0;
 	FILE *pidf = fopen(pidfile, "r");
 
@@ -299,7 +304,8 @@ pid_t Process::readPidfile(const char *pidfile) {
 	return ret;
 }
 
-void Process::writePidfile(const char *pidfile, pid_t pid) {
+void Process::writePidfile(const char *pidfile, pid_t pid)
+{
 	FILE *pidf = fopen(pidfile, "w+");
 
 	if (pidf != NULL) { 
@@ -326,12 +332,14 @@ void Process::SjBackground()
 	
 }
 
-void Process::processIsolation() {
+void Process::processIsolation()
+{
 	setsid();
 	umask(027);
 }
 
-void Process::SetProcType(sj_process_t ProcType) {
+void Process::SetProcType(sj_process_t ProcType)
+{
 	ProcessType = ProcType;
 }
 

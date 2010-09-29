@@ -163,7 +163,8 @@ void SjConf::autodetect_gw_mac_address()
 	}
 }
 
-void SjConf::autodetect_first_available_tunnel_interface() {
+void SjConf::autodetect_first_available_tunnel_interface()
+{
 	const char *cmd = "ifconfig -a | grep tun | cut -b -7";
 	FILE *foca;
 	char imp_str[SMALLBUF];
@@ -291,7 +292,8 @@ skipping_conf_file:
 	chmod(completefname, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 }
 
-SjConf::~SjConf() {
+SjConf::~SjConf()
+{
 	internal_log(NULL, ALL_LEVEL, "SjConf: pid %d cleaning configuration object", getpid());
 }
 

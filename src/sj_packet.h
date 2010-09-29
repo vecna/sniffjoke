@@ -72,7 +72,6 @@ public:
 	unsigned char *payload;
 
 	vector<unsigned char> pbuf;
-	int pbuf_size;  
 	int orig_pktlen;
 	
 	Packet(const unsigned char*, int);

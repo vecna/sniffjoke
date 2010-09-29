@@ -130,7 +130,8 @@ void PacketQueue::remove(const Packet &pkt)
 	return;
 }
 
-void PacketQueue::delete_if_present(unsigned int packet_id) {
+void PacketQueue::delete_if_present(unsigned int packet_id)
+{
 	if (packet_id) { /* HackPackets packets bypass this */
 		Packet* tmp = get(packet_id);
 		if (tmp != NULL) {

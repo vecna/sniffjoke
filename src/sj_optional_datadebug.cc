@@ -94,7 +94,7 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 					ntohs(tmp->tcp->dest),
 					tmp->packet_id,
 					tmp->orig_pktlen,
-					tmp->pbuf_size
+					tmp->pbuf.size()
 				);
 				break;
 			case ICMP:
@@ -102,7 +102,7 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->orig_pktlen,
-					tmp->pbuf_size,
+					tmp->pbuf.size(),
 					tmp->packet_id
 				);
 				break;
@@ -112,7 +112,7 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->ip->protocol,
 					tmp->orig_pktlen,
-					tmp->pbuf_size,
+					tmp->pbuf.size(),
 					tmp->packet_id
 				);
 				break;

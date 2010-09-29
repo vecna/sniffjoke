@@ -29,8 +29,21 @@
 #define SJ_SERVICE_UNIXSOCK		"sniffjoke_service" 
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
+
+/*
+  sniffoke make use of two MTU values, one real an one fake
+  the real one is used on netfd(network real interface),
+  the fake one instead is used on tunfd(the tun interface)
+  the difference in values of 80 bytes is keept due to
+  space requirements for tcp+ip options injection (40bytes + 40bytes).
+  In fact ip header len has a minimum value of 5(20bytes)
+  and a max value of 15(60bytes)  and so tcp data offset.
+  So the difference between   min and max is 8(40bytes).
+ */
 #define MTU				1500
-#define MTU_FAKE			1440
+#define MTU_FAKE			1420
+
+
 #define MSGBUF				512
 
 #endif /* SJ_DEFINES_H */

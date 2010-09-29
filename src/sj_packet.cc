@@ -24,7 +24,6 @@
 
 Packet::Packet(const unsigned char* buff, int size) :
 	pbuf(size),
-	pbuf_size(size),
 	packet_id(make_pkt_id(buff)),
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
@@ -40,7 +39,6 @@ Packet::Packet(const unsigned char* buff, int size) :
 
 Packet::Packet(const Packet& pkt) :
 	pbuf(pkt.pbuf),
-	pbuf_size(pkt.pbuf_size),
 	orig_pktlen(pkt.orig_pktlen),
 	packet_id(0),
 	evilbit(GOOD),
@@ -70,8 +68,8 @@ void Packet::mark(source_t source, status_t status, judge_t judge)
 	this->wtf = judge;
 }
 
-void Packet::updatePointers(void) {
-	
+void Packet::updatePointers(void)
+{
 	ip = (struct iphdr *)&(pbuf[0]);
 	if (ip->protocol == IPPROTO_TCP) {
 		proto = TCP;
@@ -138,23 +136,21 @@ void Packet::fixIpTcpSum(void)
 	tcp->check = compute_sum(sum);
 }
 
-void Packet::increasePbuf(unsigned int morespace) {
+void Packet::increasePbuf(unsigned int morespace)
+{
 	/* the pbuf can only be incremented safaly, not decremented */
-	unsigned int newpbuf_size = pbuf_size + morespace;
-	pbuf.resize(newpbuf_size);
+	pbuf.resize(pbuf.size() + morespace);
 	
 	updatePointers();
-	
-	/* fixing the new length */
-	pbuf_size = newpbuf_size;
 }
 
-void Packet::resizePayload(unsigned int newlen) {
+void Packet::resizePayload(unsigned int newlen) 
+{
 	/* the payload can be incremented or decremented safely */
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
-	unsigned int newpbuf_size = pbuf_size - oldlen + newlen;
+	unsigned int newpbuf_size = pbuf.size() - oldlen + newlen;
 	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
 	unsigned newtotallen = iphlen + tcphlen + newlen;
 	
@@ -166,9 +162,6 @@ void Packet::resizePayload(unsigned int newlen) {
         ip = (struct iphdr *)&(pbuf[0]);
         ip->tot_len = htons(newtotallen);
 
-        /* fixing the new length */
-        pbuf_size = newpbuf_size;
-	
 	updatePointers();
 }
 
@@ -184,7 +177,7 @@ void Packet::SjH__inject_ipopt(void)
 	const int route_n = random() % 10;
 	const unsigned fakeipopt = ((route_n + 1) * 4);
 	const int needed_space = fakeipopt;
-	const int free_space = pbuf_size - ntohs(ip->tot_len);
+	const int free_space = pbuf.size() - ntohs(ip->tot_len);
 	
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
@@ -230,7 +223,7 @@ void Packet::SjH__inject_tcpopt(void)
 {
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
-	const int free_space = pbuf_size - ntohs(ip->tot_len);
+	const int free_space = pbuf.size() - ntohs(ip->tot_len);
 
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
