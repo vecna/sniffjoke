@@ -92,31 +92,28 @@ void Packet::updatePointers(void)
 	}
 }
 
-unsigned int Packet::half_cksum(const void *pointed_data, int len)
+unsigned int Packet::half_cksum(const unsigned short *data, int len)
 {
-	unsigned int sum = 0x00;
-	unsigned short carry = 0x00;
-	unsigned short *data = (unsigned short *)pointed_data;
+	unsigned int sum = 0;
 
 	while (len > 1)
 	{
 		sum += *data++;
+		if(sum & 0x80000000)
+			sum = (sum & 0xFFFF) + (sum >> 16);
 		len -= 2;
 	}
 
-	if (len == 1)
-	{
-		*((unsigned short *) &carry) = *(unsigned char *) data;
-		sum += carry;
-	}
+	if (len)
+		sum += *(unsigned char *)data;
 
 	return sum;
 }
 
 unsigned short Packet::compute_sum(unsigned int sum)
 {
-	sum = (sum >> 16) + (sum & 0xffff);
-	sum += (sum >> 16);
+	while(sum>>16)
+             sum = (sum & 0xFFFF) + (sum >> 16);
 
 	return (unsigned short) ~sum;
 }
@@ -127,12 +124,12 @@ void Packet::fixIpTcpSum(void)
 	unsigned int l4len = ntohs(ip->tot_len) - (ip->ihl * 4);
 
 	ip->check = 0;
-	sum = half_cksum((void *)ip, (ip->ihl * 4));
+	sum = half_cksum((const unsigned short *)ip, (ip->ihl * 4));
 	ip->check = compute_sum(sum);
 	tcp->check = 0;
-	sum = half_cksum((void *) &ip->saddr, 8);
+	sum = half_cksum((const unsigned short *) &ip->saddr, 8);
 	sum += htons (IPPROTO_TCP + l4len);
-	sum += half_cksum((void *)tcp, l4len);
+	sum += half_cksum((const unsigned short *)tcp, l4len);
 	tcp->check = compute_sum(sum);
 }
 

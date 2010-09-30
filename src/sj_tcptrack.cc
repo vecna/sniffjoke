@@ -651,7 +651,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 			ntohs(injpkt->tcp->dest), session->packet_number,
 			ntohs(injpkt->ip->id),
 			injpkt->orig_pktlen,
-			injpkt->pbuf_size, ntohs(injpkt->ip->tot_len),
+			injpkt->pbuf.size(), ntohs(injpkt->ip->tot_len),
 			ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
 			injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
 		);

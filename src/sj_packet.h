@@ -82,7 +82,7 @@ public:
 	void mark(source_t, status_t, judge_t);
 	void updatePointers(void);
 	
-	unsigned int half_cksum(const void *, int);
+	unsigned int half_cksum(const unsigned short*, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
 	
