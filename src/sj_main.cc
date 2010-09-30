@@ -72,7 +72,7 @@ static Process *SjProc = NULL;
 
 #define SNIFFJOKE_HACKING_HELP \
 	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
-	" usage: --hacking 0123456789AB (12 positions: \"Y\" enable, \"N\" disable) 12 hacks:\n\n"\
+	" usage: --hacking 0123456789AB (12 positions: \"Y\" enable, \"N\" disable) 11 hacks:\n\n"\
 	"  1] fake data\t\t\t\t(default: YES)\n"\
 	"  2] fake seq\t\t\t\t(default: NO - need check)\n"\
 	"  3] fake close\t\t\t\t(default: YES - verify FIN/RST diffs)\n"\

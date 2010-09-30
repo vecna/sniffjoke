@@ -47,11 +47,7 @@ void SjH__fake_close::hack()
 	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
 		tcp->fin = 1;
 	else
-		tcp->rst = 1; 
-
-	/* 
-	 * in both case, the sequence number must be shrink as no data is there.
-	 * the ack_seq is set because the ACK flag is checked to be 1
-	 */
+		tcp->rst = 1;
+	
 	tcp->seq = htonl(ntohl(tcp->seq) - original_size + 1);
 }

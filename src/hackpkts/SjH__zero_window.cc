@@ -31,7 +31,7 @@ void SjH__zero_window::hack()
 {
 	resizePayload(0);
 
-	tcp->syn = tcp->fin = tcp->rst = 1;
+	tcp->syn = tcp->fin = tcp->rst = 0;
 	tcp->psh = tcp->ack = 0;
 	tcp->window = 0;
 }

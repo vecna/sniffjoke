@@ -31,16 +31,16 @@ using namespace std;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-//#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
+#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
 #ifdef DATADEBUG
 #include "sj_optional_datadebug.h"
 static DataDebug *dd;
 #endif
 
 // define PACKETDEBUG enable session debug, ttl bruteforce 
-//#define PACKETDEBUG 
+#define PACKETDEBUG 
 // define HACKSDEBUG enable dump about packet injected
-//#define HACKSDEBUG
+#define HACKSDEBUG
 
 #define STARTING_ARB_TTL	46
 
