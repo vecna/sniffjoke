@@ -36,12 +36,12 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 		return true;
 	} else if (daddr > comp.daddr) {
 		return false;
-	} else if (daddr == comp.daddr) {
+	} else {
 		if (sport < comp.sport) {
 			return true;
 		} else if (sport > comp.sport) {
 			return false;
-		} else if (sport == comp.sport) {
+		} else {
 			if (dport < comp.dport)
 				return true;
 			else

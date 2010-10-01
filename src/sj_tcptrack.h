@@ -47,22 +47,21 @@ public:
 
 class TCPTrack {
 private:
+	struct sj_config *runcopy;
+	bool youngpacketspresent;
 	struct timespec clock;
 	PacketQueue p_queue;
-	bool youngpacketspresent;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
 	HackPacketPool hack_pool;
 
-	struct sj_config *runcopy;
-
-	bool check_evil_packet(const unsigned char*, int);
+	bool check_evil_packet(const unsigned char*, unsigned int);
 	bool check_uncommon_tcpopt(const struct tcphdr*);
 	bool percentage(float, unsigned int);
 	float logarithm(int);
 
 	SessionTrack* init_sessiontrack(const Packet&);
-	SessionTrack* clear_session(SessionTrackMap::iterator stm_it);
+	void clear_session(SessionTrackMap::iterator stm_it);
 
 	TTLFocus* init_ttlfocus(unsigned int);
 	void enque_ttl_probe(const Packet&, TTLFocus&);

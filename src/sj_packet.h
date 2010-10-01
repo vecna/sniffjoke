@@ -98,15 +98,15 @@ public:
 /* Abstract class used to create hacks */
 class HackPacket : public Packet {
 public:
-	char *debug_info;
-	
+	const char *debug_info;
+
+	position_t position;	
 	judge_t prejudge;
 	unsigned int prescription_probability;
 	unsigned int hack_frequency;
 	
-	position_t position;
-	
 	HackPacket(const Packet &);
+	HackPacket(const Packet& pkt, const char* hackname);
 	virtual HackPacket* create_hack(const Packet& pkt) = 0;
 	virtual bool condition(const Packet &);
 	virtual void hack() = 0;

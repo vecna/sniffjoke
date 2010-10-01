@@ -27,9 +27,9 @@
  * function.
  */
 #include "sj_hackpkts.h"
-SjH__fake_data_posticipation::SjH__fake_data_posticipation(const Packet pkt) : HackPacket(pkt)
+SjH__fake_data_posticipation::SjH__fake_data_posticipation(const Packet pkt) :
+	HackPacket(pkt, "fake data posticipation")
 {
-	debug_info = (char *)"fake data posticipation";
 	prejudge = PRESCRIPTION;
 	position = POSTICIPATION;
 	hack_frequency = 50;

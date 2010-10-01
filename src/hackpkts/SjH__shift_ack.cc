@@ -20,9 +20,9 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "sj_hackpkts.h"
-SjH__shift_ack::SjH__shift_ack(const Packet pkt) : HackPacket(pkt)
+SjH__shift_ack::SjH__shift_ack(const Packet pkt) :
+	HackPacket(pkt, "shift ack")
 {
-	debug_info = (char *)"shift ack";
 	prejudge = INNOCENT;
 	hack_frequency = 15;
 }

@@ -31,8 +31,8 @@
 
 TTLFocus::TTLFocus(unsigned int destip) :
 	daddr(destip),
-	min_working_ttl(0xff),
 	expiring_ttl(0),
+        min_working_ttl(0xff),
 	synack_ttl(0),
 	sent_probe(0),
 	received_probe(0),
@@ -45,8 +45,8 @@ TTLFocus::TTLFocus(unsigned int destip) :
 
 TTLFocus::TTLFocus(const TTLFocus& cpy) :
 	daddr(cpy.daddr),
-	min_working_ttl(cpy.min_working_ttl),
 	expiring_ttl(cpy.expiring_ttl),
+	min_working_ttl(cpy.min_working_ttl),
 	synack_ttl(cpy.synack_ttl),
 	sent_probe(cpy.sent_probe),
 	received_probe(cpy.received_probe),
@@ -59,8 +59,8 @@ TTLFocus::TTLFocus(const TTLFocus& cpy) :
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	daddr(cpy.daddr),
-	min_working_ttl(cpy.min_working_ttl),
 	expiring_ttl(cpy.expiring_ttl),
+	min_working_ttl(cpy.min_working_ttl),
 	synack_ttl(cpy.synack_ttl),
 	sent_probe(cpy.sent_probe),
 	received_probe(cpy.received_probe),

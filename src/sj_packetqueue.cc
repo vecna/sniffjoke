@@ -23,10 +23,10 @@
 #include "sj_utils.h"
 
 PacketQueue::PacketQueue() :
-	cur_prio(0),
-	cur_pkt(NULL),
 	front(new Packet*[2]),
-	back(new Packet*[2])
+	back(new Packet*[2]),
+	cur_prio(0),
+	cur_pkt(NULL)
 {
 	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");
 	memset(front, NULL, sizeof(Packet*)*2);

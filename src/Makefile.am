@@ -31,6 +31,7 @@ sniffjoke_SOURCES = sj_main.cc \
                     hackpkts/SjH__fake_data_posticipation.cc \
                     hackpkts/SjH__valid_rst_fake_seq.cc
 
+AM_CPPFLAGS = -ansi -pedantic -Wall -Werror
 sniffjoke_LDFLAGS = -lrt
 
 CLEANFILES = *~

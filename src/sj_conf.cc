@@ -28,7 +28,7 @@
 #include <sys/stat.h>
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
-void SjConf::compare_check_copy(char *target, int tlen, const char *useropt, int ulen, const char *sjdefault)
+void SjConf::compare_check_copy(char *target, unsigned int tlen, const char *useropt, unsigned int ulen, const char *sjdefault)
 {
 	int blen = ulen > strlen(sjdefault) ? strlen(sjdefault) : ulen;
 
@@ -63,7 +63,7 @@ void SjConf::autodetect_local_interface()
 	const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	int i;
+	unsigned int i;
 
 	internal_log(NULL, ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd);
 
@@ -88,7 +88,7 @@ void SjConf::autodetect_local_interface_ip_address()
 	char cmd[MEDIUMBUF];
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	int i;
+	unsigned int i;
 	snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
 		running->interface
 	);
@@ -111,7 +111,7 @@ void SjConf::autodetect_gw_ip_address()
 	const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	int i;
+	unsigned int i;
 
 	internal_log(NULL, ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd);
 
@@ -134,7 +134,7 @@ void SjConf::autodetect_gw_mac_address()
 	char cmd[MEDIUMBUF];
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	int i;
+	unsigned int i;
 	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", running->gw_ip_addr);
 
 	internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running->gw_ip_addr, cmd);
@@ -155,10 +155,10 @@ void SjConf::autodetect_gw_mac_address()
 		raise(SIGTERM);
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
-		sscanf(running->gw_mac_str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
-			&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
-			&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
-			&running->gw_mac_addr[4], &running->gw_mac_addr[5]
+		sscanf(running->gw_mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+			(unsigned int *)&running->gw_mac_addr[0], (unsigned int *)&running->gw_mac_addr[1], 
+			(unsigned int *)&running->gw_mac_addr[2], (unsigned int *)&running->gw_mac_addr[3], 
+			(unsigned int *)&running->gw_mac_addr[4], (unsigned int *)&running->gw_mac_addr[5]
 		);
 	}
 }
@@ -253,7 +253,6 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 		
 	} else {
 
-skipping_conf_file:
 		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found: using defaults", completefname);
 		memset(running, 0x00, sizeof(sj_config));
 
@@ -441,7 +440,7 @@ char *SjConf::handle_cmd_start(void)
 
 char *SjConf::handle_cmd_showport(void) 
 {
-	int i, acc_start = 0, acc_end = 0, kind, actual_io = 0;
+	int i, acc_start = 0, kind, actual_io = 0;
 	char *index = &io_buf[0];
 	memset(io_buf, 0x00, HUGEBUF);
 

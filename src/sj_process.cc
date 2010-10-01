@@ -30,8 +30,6 @@
 #include <wait.h>
 #include <sys/un.h>
 
-extern int errno;
-
 bool Process::setLocktoExist(const char *lockfname)
 {
 	int fd;
@@ -51,7 +49,6 @@ bool Process::setLocktoExist(const char *lockfname)
 		return true;
 	}
 	else {
-		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to lock %s", lockfname);
 		failure = true;
 		return false;
@@ -65,7 +62,6 @@ pid_t Process::CheckLockExist(const char *lockfname)
 	pid_t ret;
 
 	if ((fd = open(lockfname, O_RDWR|O_CREAT)) == -1) {
-		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to open lock file: %s", lockfname);
 		failure = true;
 		return -1;
@@ -74,7 +70,6 @@ pid_t Process::CheckLockExist(const char *lockfname)
 	memset(&fl, 0x00, sizeof(fl));
 
 	if (fcntl(fd, F_GETLK, &fl) != 0) {
-		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to get lock from file: %s", lockfname);
 		failure = true;
 		return -1;
@@ -100,7 +95,6 @@ void Process::processDetach()
 	pipe(pdes);
 
 	if ((pid_child = fork()) == -1) {
-		int saved_errno = errno;
 		internal_log(NULL, ALL_LEVEL, "unable to fork (calling pid %d, parent %d)", getpid(), getppid());
 		failure = true;
 		return;;

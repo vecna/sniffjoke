@@ -75,7 +75,7 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 				source = "TTL BRUTAL FORCE";
 				break;
 			case SOURCEUNASSIGNED:
-				source = "SOURCE UNASSIGNED (this wouldn't be happen)";
+				source = "SOURCE UNASSIGNED [this wouldn't be happen]";
 				break;
 			default:
 				source = "WRONG SOURCE CODE";
@@ -88,31 +88,42 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					ntohs(tmp->tcp->source)
 				);
-				fprintf(Packet_f, "Packet [%d] %s:%d id %8x orig_pktlen %d bufsize %d\n",
+				fprintf(Packet_f, "Packet [%d] %s:%d orig_pktlen %d bufsize %lu packet_id %8x\n",
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->daddr))),
 					ntohs(tmp->tcp->dest),
-					tmp->packet_id,
 					tmp->orig_pktlen,
-					tmp->pbuf.size()
+					(unsigned long)tmp->pbuf.size(),
+					tmp->packet_id
 				);
 				break;
 			case ICMP:
-				fprintf(Packet_f, "Packet [%d] %s ICMP origlen %d bufsize %d packet_id %8x\n",
+				fprintf(Packet_f, "Packet [%d] %s ICMP orig_pktlen %d bufsize %lu packet_id %8x\n",
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->orig_pktlen,
-					tmp->pbuf.size(),
+					(unsigned long)tmp->pbuf.size(),
 					tmp->packet_id
 				);
 				break;
 			case OTHER_IP:
-				fprintf(Packet_f, "Packet [%d] %s OTHER PROTOCOL (%d) origlen %d bufsize %d packet_id %8x\n",
+				fprintf(Packet_f, "Packet [%d] %s OTHER PROTOCOL (%d) orig_pktlen %d bufsize %lu packet_id %8x\n",
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->ip->protocol,
 					tmp->orig_pktlen,
-					tmp->pbuf.size(),
+					(unsigned long)tmp->pbuf.size(),
+					tmp->packet_id
+				);
+				break;
+			case PROTOUNASSIGNED:
+			case ANY_PROTO:
+				fprintf(Packet_f, "Packet [%d] %s PROTOUNASSIGNED/ANY_PROTO [this wouldn't be happen] (%d) orig_pktlen %d bufsize %lu packet_id %8x\n",
+					i,
+					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
+					tmp->ip->protocol,
+					tmp->orig_pktlen,
+					(unsigned long)tmp->pbuf.size(),
 					tmp->packet_id
 				);
 				break;

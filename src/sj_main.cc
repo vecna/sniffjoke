@@ -98,7 +98,7 @@ static void sj_help(const char *pname)
 	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, DEFAULT_DEBUG_LEVEL, 
 		CHROOT_DIR, LOGFILE, 
 		DROP_USER, DROP_GROUP, 
-		CHROOT_DIR, CHROOT_DIR, CONF_FILE, "127.0.0.1");
+		CHROOT_DIR, CHROOT_DIR, CONF_FILE);
 }
 
 static void sj_version(const char *pname)
@@ -219,7 +219,7 @@ static int sj_bind_unixsocket()
 static void sj_srv_child_check_local_unixserv(int srvsock, SjConf *confobj)
 {
 	char received_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
-	int i, rlen, cmdlen;
+	int rlen;
 	struct sockaddr_un fromaddr;
 
 	if ((rlen = service_listener(srvsock, received_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
@@ -337,7 +337,6 @@ static void client_send_command(char *cmdstring)
 void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal) 
 {
 	char errbuf[MSGBUF];
-	int my_ret = 0;
 
 	internal_log(NULL, DEBUG_LEVEL, "checking errno %d message of [%s], return value: %d fatal %d", objerrno, umsg, ret, fatal);
 
@@ -358,7 +357,7 @@ void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal)
 }
 
 /* forceflow is almost useless, use NULL in the normal logging options */
-void internal_log(FILE *forceflow, int errorlevel, const char *msg, ...) 
+void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...) 
 {
 	va_list arguments;
 	time_t now = time(NULL);
@@ -402,10 +401,9 @@ void* memset_random(void *s, size_t n)
 
 int main(int argc, char **argv)
 {
-	int i, charopt, local_input = 0;
+	int charopt;
 	bool restart_on_restore = false;
 	char command_buffer[MEDIUMBUF], *command_input = NULL;
-	bool srv_just_active = 0;
 	int listening_unix_socket;
 	
 	/* set the default values in the configuration struct */

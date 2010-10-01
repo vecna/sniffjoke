@@ -106,7 +106,7 @@ class SjConf {
 private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
-		void compare_check_copy(char *, int, const char *, int , const char *);
+		void compare_check_copy(char *, unsigned int, const char *, unsigned int , const char *);
 		void autodetect_local_interface(void);
 		void autodetect_local_interface_ip_address(void);
 		void autodetect_gw_ip_address(void);

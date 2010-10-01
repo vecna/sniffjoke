@@ -25,9 +25,9 @@
  * Slipping in the window: TCP Reset attacks
  * http://kerneltrap.org/node/3072
  */
-SjH__valid_rst_fake_seq::SjH__valid_rst_fake_seq(const Packet pkt) : HackPacket(pkt)
+SjH__valid_rst_fake_seq::SjH__valid_rst_fake_seq(const Packet pkt) :
+	HackPacket(pkt, "valid rst fake seq")
 {
-	debug_info = (char *)"valid rst fake seq";
 	prejudge = INNOCENT;
 	hack_frequency = 8;
 }

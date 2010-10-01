@@ -23,13 +23,13 @@
 #include "sj_utils.h"
 
 Packet::Packet(const unsigned char* buff, int size) :
-	pbuf(size),
 	packet_id(make_pkt_id(buff)),
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
-	injection(ANY_INJECTION)
+	injection(ANY_INJECTION),
+        pbuf(size)
 {
 	memcpy(&(pbuf[0]), buff, size);
 	updatePointers();
@@ -38,14 +38,14 @@ Packet::Packet(const unsigned char* buff, int size) :
 }
 
 Packet::Packet(const Packet& pkt) :
-	pbuf(pkt.pbuf),
-	orig_pktlen(pkt.orig_pktlen),
 	packet_id(0),
 	evilbit(GOOD),
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
-	proto(PROTOUNASSIGNED)
+	proto(PROTOUNASSIGNED),
+	pbuf(pkt.pbuf),
+	orig_pktlen(pkt.orig_pktlen)
 {
 	updatePointers();
 }
@@ -237,8 +237,6 @@ void Packet::SjH__inject_tcpopt(void)
 
 	unsigned char *endtcp = (unsigned char*)&pbuf[0] + iphlen + tcphlen;
 
-	const time_t now = time(NULL);
-
 	tcphlen += faketcpopt;
 	
 	/* 2: shift the payload after the reserved space to faketcpopt */
@@ -252,7 +250,12 @@ void Packet::SjH__inject_tcpopt(void)
 	/*
 	 *  from: /usr/include/netinet/tcp.h:
 	 *  # define TCPOLEN_TIMESTAMP	  10
-	 *  NOP (1) + NOP (1) + Timestamp Value (TSval) (4) + Timestamp Echo Reply (TSecr) (4)
+	 *  reserved for: NOP (1),
+	                  NOP (1),
+	                  TCPOPT_TIMESTAMP (1),
+	                  TCPOPT_LEN (1),
+	                  Timestamp Value (TSval) (4),
+	                  Timestamp Echo Reply (TSecr) (4)
 	 * 
 	 *  so the hacks are two:
 	 *   - the size indicated could be different than 10
@@ -264,10 +267,9 @@ void Packet::SjH__inject_tcpopt(void)
 	payload = (unsigned char *)(tcp) + tcphlen;
 }
 
-
-HackPacket::HackPacket(const Packet& pkt) :
+HackPacket::HackPacket(const Packet& pkt, const char* hackname) :
 	Packet(pkt),
-	debug_info(NULL),
+	debug_info(hackname),
 	position(ANTICIPATION),
 	prejudge(GUILTY_OR_PRESCRIPTION),
 	prescription_probability(93),

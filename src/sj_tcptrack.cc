@@ -92,7 +92,7 @@ TCPTrack::~TCPTrack(void)
 	internal_log(NULL, DEBUG_LEVEL, "~TCPTrack()");
 }
 
-bool TCPTrack::check_evil_packet(const unsigned char *buff, int nbyte)
+bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 {
 	struct iphdr *ip = (struct iphdr *)buff;
  
@@ -217,8 +217,13 @@ SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt)
 	}
 }
 
-SessionTrack* TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
+void TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
 {
+	/* 
+	 * clear_session don't remove conntrack immediatly, at the first call
+	 * set the "shutdown" bool variable, at the second clear it, this
+	 * because of double FIN-ACK and RST-ACK happening between both hosts.
+	 */
 	SessionTrack& st = stm_it->second;
 	if (st.shutdown == false) {
 #ifdef PACKETDEBUG
@@ -282,10 +287,10 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	 */
 	ttlfocus.sent_probe++;
 	tested_ttl = ttlfocus.sent_probe;
-	injpkt->ip->ttl = tested_ttl;
+	injpkt->ip->ttl = ttlfocus.sent_probe;
 	injpkt->tcp->source = ttlfocus.puppet_port;
-	injpkt->tcp->seq = htonl(ttlfocus.rand_key + tested_ttl);
-	injpkt->ip->id = (ttlfocus.rand_key % 64) + tested_ttl;
+	injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
+	injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
 
 	p_queue.insert(HIGH, *injpkt);
 	
@@ -293,9 +298,8 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
-		"Injecting probe %d, tested_ttl %d [exp %d min work %d], (dport %d sport %d) daddr %s",
+		"Injecting probe %d [exp %d min work %d], (dport %d sport %d) daddr %s",
 		ttlfocus.sent_probe,
-		tested_ttl, 
 		ttlfocus.expiring_ttl, ttlfocus.min_working_ttl, 
 		ntohs(injpkt->tcp->dest), ntohs(injpkt->tcp->source),
 		inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr))
@@ -483,14 +487,8 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 	);
 #endif
 
-	if (stm_it != sex_map.end()) {
-		/* 
-		 * clear_session don't remove conntrack immediatly, at the first call
-		 * set the "shutdown" bool variable, at the second clear it, this
-		 * because of double FIN-ACK and RST-ACK happening between both hosts.
-		 */
+	if (stm_it != sex_map.end())
 		clear_session(stm_it);
-	}
 	
 	return &rstfin;
 }
@@ -498,9 +496,9 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 void TCPTrack::manage_outgoing_packets(Packet &pkt)
 {
 	TTLFocus *ttlfocus;
-	SessionTrack *session;
 	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
 	SessionTrackMap::iterator sex_map_it;
+	SessionTrack *session;
 
 	/* 
 	 * session get return an existing session or even NULL, 
@@ -527,9 +525,6 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 		}
 	}
 
-	/* all outgoing packets, exception for starting SYN, are SEND immediatly */	
-	pkt.status = SEND;
-	
 	sex_map_it = sex_map.find(key);
 	if (sex_map_it != sex_map.end()) {
 		session = &(sex_map_it->second);
@@ -545,10 +540,6 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 				ntohs(pkt.tcp->dest), ntohs(pkt.tcp->source)
 			);
 #endif
-			/* 
-			 * clear_session don't remove conntrack immediatly, at the first 
-			 * invoke set "shutdown" variable, at the second clear it 
-			 */
 			 clear_session(sex_map_it);
 			   
 		} else {
@@ -591,9 +582,9 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
  */
 void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 {
-	HackPacket *injpkt;
 	vector<HackPacketPoolElem>::iterator it;
 	HackPacketPoolElem *hppe;
+	HackPacket *injpkt;
 	
 	HackPacketPool applicable_hacks = hack_pool;
 	
@@ -678,8 +669,6 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 {
 	const TTLFocus *ttlfocus;
 	TTLFocusMap::iterator ttlfocus_map_it;
-	const time_t now = time(NULL);
-	int i;
 
 #ifdef PACKETDEBUG
 	if (pkt.proto == TCP) 
@@ -877,9 +866,8 @@ Packet* TCPTrack::readpacket()
 void TCPTrack::analyze_packets_queue()
 {
 	Packet *pkt;
-	TTLFocus *ttlfocus;
 	TTLFocusMap::iterator ttlfocus_map_it;
-	struct timespec now;
+	TTLFocus *ttlfocus;
 	
 	clock_gettime(CLOCK_REALTIME, &clock);
 
