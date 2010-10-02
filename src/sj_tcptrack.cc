@@ -544,7 +544,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 				inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)), ntohs(pkt.tcp->dest)
 			);
 #endif
-		clear_session(sex_map_it);
+			clear_session(sex_map_it);
 			   
 		} else {
 						
@@ -641,10 +641,11 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 #ifdef HACKSDEBUG
 		internal_log(NULL, HACKS_DEBUG,
 			"HACKSDEBUG: [%s, court:%d, position:%d] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
+			injpkt->debug_info,
 			court_word,
 			injpkt->position,
 			ntohs(injpkt->tcp->source), 
-			inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
+			inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)),
 			ntohs(injpkt->tcp->dest), session->packet_number,
 			ntohs(injpkt->ip->id),
 			injpkt->orig_pktlen,
@@ -733,10 +734,10 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
 #ifdef HACKSDEBUG
-			internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG [TTL: %d]",
-				pkt.ip->ttl
-			);
+		internal_log(NULL, HACKS_DEBUG,
+			"HACKSDEBUG [TTL: %d]",
+			pkt.ip->ttl
+		);
 #endif
 	}	
 	/* end 1st check */

@@ -36,7 +36,7 @@ bool SjH__fake_close::condition(const Packet &pkt)
 void SjH__fake_close::hack()
 {
 	const int original_size = orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4);
-		
+
 	resizePayload(0);
 		
 	ip->id = htons(ntohs(ip->id) + (random() % 10));
