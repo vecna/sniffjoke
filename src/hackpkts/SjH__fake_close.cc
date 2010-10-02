@@ -22,7 +22,7 @@
 #include "sj_hackpkts.h"
 
 SjH__fake_close::SjH__fake_close(const Packet pkt) :
-	HackPacket(pkt, "fake data posticipation")
+	HackPacket(pkt, "fake close")
 {
 	prescription_probability = 98;
 	hack_frequency = 5;

@@ -156,9 +156,9 @@ void SjConf::autodetect_gw_mac_address()
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
 		sscanf(running->gw_mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
-			(unsigned int *)&running->gw_mac_addr[0], (unsigned int *)&running->gw_mac_addr[1], 
-			(unsigned int *)&running->gw_mac_addr[2], (unsigned int *)&running->gw_mac_addr[3], 
-			(unsigned int *)&running->gw_mac_addr[4], (unsigned int *)&running->gw_mac_addr[5]
+			&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
+			&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
+			&running->gw_mac_addr[4], &running->gw_mac_addr[5]
 		);
 	}
 }

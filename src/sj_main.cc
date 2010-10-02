@@ -567,13 +567,13 @@ int main(int argc, char **argv)
 		SjProc->ReleaseLock(SJ_CLIENT_LOCK);
 		SjProc->CleanExit();
 	}
-
+	
 	if (argc > 1 && argv[1][0] != '-') {
 		internal_log(stderr, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
 		sj_help(argv[0]);
 		return -1;
 	}
-
+	
 	if (SjProc->isServiceRunning()) 
 	{
 		/* da pulire questo pezzo, togliere tutti i pidfile quando si appura che non servono piu' */

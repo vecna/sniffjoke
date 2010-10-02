@@ -73,7 +73,7 @@ struct sj_config {
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
-		unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
+		unsigned int gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
 		unsigned short max_ttl_probe;		/* default: 30 */
 		unsigned int max_sex_track;		/* default: 4096 */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */

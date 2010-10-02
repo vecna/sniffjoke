@@ -228,15 +228,18 @@ void TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
 	if (st.shutdown == false) {
 #ifdef PACKETDEBUG
 		internal_log(NULL, DEBUG_LEVEL,
-			"SHUTDOWN sexion sport %d dport %d daddr %u",
-			ntohs(st.sport), ntohs(st.dport), st.daddr
+			"SESSION SHUTDOWN START session sport: %d  d[%s:%d] #%d", 
+			ntohs(st.sport), 
+			inet_ntoa(*((struct in_addr *)&st.daddr)) ,
+			ntohs(st.dport),
+			st.packet_number
 		);
 		st.shutdown = true;
 #endif
 	} else {
 #ifdef PACKETDEBUG
 		internal_log(NULL, DEBUG_LEVEL,
-			"Removing session: local:%d . %s:%d #%d", 
+			"SESSION SHUTDOWN END session sport: %d  d[%s:%d] #%d", 
 			ntohs(st.sport), 
 			inet_ntoa(*((struct in_addr *)&st.daddr)) ,
 			ntohs(st.dport),
@@ -262,7 +265,6 @@ TTLFocus* TCPTrack::init_ttlfocus(unsigned int daddr)
  */
 void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus)
 {
-	unsigned char tested_ttl;
 	/* 
 	 * the first packet (the SYN) is used as starting point
 	 * in the enque_ttl_burst to generate the series of 
@@ -276,7 +278,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 
 	if (analyze_ttl_stats(ttlfocus))
 		return;
-		
+	
 	/* create a new packet; the copy is done to keep refsyn ORIGINAL */
 	Packet *injpkt = new Packet(delayed_syn_pkt);
 	injpkt->mark(TTLBFORCE, SEND, INNOCENT);
@@ -286,7 +288,6 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	 * the iphdr is preserved and the tested_ttl found
 	 */
 	ttlfocus.sent_probe++;
-	tested_ttl = ttlfocus.sent_probe;
 	injpkt->ip->ttl = ttlfocus.sent_probe;
 	injpkt->tcp->source = ttlfocus.puppet_port;
 	injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
@@ -479,17 +480,19 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 
 #ifdef PACKETDEBUG
 	internal_log(NULL, PACKETS_DEBUG,
-		"RST/FIN received (NET): ack_seq %08x, sport %d dport %d saddr %s",
-		rstfin.tcp->ack_seq, 
-		ntohs(rstfin.tcp->source),
-		ntohs(rstfin.tcp->dest),
-		inet_ntoa(*((struct in_addr *)&rstfin.ip->saddr))
+		"RST/FIN (NET) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) s[%s:%d] d[%s:%d])",
+		ntohl(rstfin.tcp->seq),
+		ntohl(rstfin.tcp->ack_seq),
+		rstfin.tcp->rst, rstfin.tcp->fin, 
+		rstfin.tcp->ack,
+		inet_ntoa(*((struct in_addr *)&rstfin.ip->saddr)), ntohs(rstfin.tcp->source),
+		inet_ntoa(*((struct in_addr *)&rstfin.ip->daddr)), ntohs(rstfin.tcp->dest)
 	);
 #endif
 
 	if (stm_it != sex_map.end())
 		clear_session(stm_it);
-	
+		
 	return &rstfin;
 }
 
@@ -509,7 +512,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 
 #ifdef PACKETDEBUG
 		internal_log(NULL, PACKETS_DEBUG,
-			"SYN from TUNNEL:%d %s:%d",
+			"SYN (TUN) %d %s:%d",
 			ntohs(pkt.tcp->source),
 			inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)),
 			ntohs(pkt.tcp->dest) 
@@ -532,15 +535,16 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 		if (pkt.tcp->fin || pkt.tcp->rst) {
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG,
-				"FIN/RST (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) dport %d sport %d)",
+				"RST/FIN (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) s[%s:%d] d[%s:%d])",
 				ntohl(pkt.tcp->seq),
 				ntohl(pkt.tcp->ack_seq),
 				pkt.tcp->rst, pkt.tcp->fin, 
 				pkt.tcp->ack,
-				ntohs(pkt.tcp->dest), ntohs(pkt.tcp->source)
+				inet_ntoa(*((struct in_addr *)&pkt.ip->saddr)), ntohs(pkt.tcp->source),
+				inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)), ntohs(pkt.tcp->dest)
 			);
 #endif
-			 clear_session(sex_map_it);
+		clear_session(sex_map_it);
 			   
 		} else {
 						
@@ -606,10 +610,11 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 		if(!hppe->enabled) continue;
 
 		if (hppe->dummy->prejudge == GUILTY_OR_PRESCRIPTION) {
-			if (percentage(hppe->dummy->prescription_probability, 100)) 
+			if (percentage(hppe->dummy->prescription_probability, 100)) {
 				court_word = PRESCRIPTION;
-			else 
+			} else {
 				court_word = GUILTY;
+			}
 		} else {
 			court_word = hppe->dummy->prejudge;
 		}
@@ -635,8 +640,9 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 
 #ifdef HACKSDEBUG
 		internal_log(NULL, HACKS_DEBUG,
-			"HACKSDEBUG: [%s] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
-			injpkt->debug_info,
+			"HACKSDEBUG: [%s, court:%d, position:%d] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
+			court_word,
+			injpkt->position,
 			ntohs(injpkt->tcp->source), 
 			inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)) ,
 			ntohs(injpkt->tcp->dest), session->packet_number,
@@ -861,7 +867,7 @@ Packet* TCPTrack::readpacket()
  * KEEP (packet to keep and wait)
  * YOUNG (packet received, here analyzed for the first time)
  *
- * analyze_packets_queue is called from the main.cc select() block
+ * analyze_packets_queue is called from the main.cc poll() block
  */
 void TCPTrack::analyze_packets_queue()
 {
