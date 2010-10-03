@@ -6,53 +6,6 @@ AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
-AC_CANONICAL_HOST
-AH_TEMPLATE(OS_LINUX, [compiling under linux])
-AH_TEMPLATE(OS_BSD, [compiling under bsd])
-AH_TEMPLATE(OS_BSD_FREE, [compiling under free bsd])
-AH_TEMPLATE(OS_BSD_OPEN, [compiling under open bsd])
-AH_TEMPLATE(OS_BSD_NET, [compiling under net bsd])
-AH_TEMPLATE(OS_DARWIN, [compiling under macosx])
-AM_CONDITIONAL(LINUX, false)
-AM_CONDITIONAL(BSD, false)
-AM_CONDITIONAL(DARWIN, false)
-
-case "$host_os" in
-*linux*)
-   AC_DEFINE(OS_LINUX)
-   AM_CONDITIONAL(LINUX, true)
-   OS="LINUX"
-   ;;
-*freebsd*)
-   AC_DEFINE(OS_BSD)
-   AC_DEFINE(OS_BSD_FREE)
-   AM_CONDITIONAL(BSD, true)
-   OS="FREEBSD"
-   ;;
-*openbsd*)
-   AC_DEFINE(OS_BSD)
-   AC_DEFINE(OS_BSD_OPEN)
-   AM_CONDITIONAL(BSD, true)
-   OS="OPENBSD"
-   ;;
-*netbsd*)
-   AC_DEFINE(OS_BSD)
-   AC_DEFINE(OS_BSD_NET)
-   AM_CONDITIONAL(BSD, true)
-   OS="NETBSD"
-   ;;
-*darwin*)
-   AC_DEFINE(OS_DARWIN)
-   AM_CONDITIONAL(DARWIN, true)
-   OS="DARWIN"
-   ;;
-*)
-   echo
-   echo "NOT A SUPPORTED SYSTEM / OR SYSTEM NOT RECOGNIZED"
-   echo
-   ;;
-esac
-
 AC_PROG_CXX
 AC_LANG_CPLUSPLUS
 AC_PROG_INSTALL
