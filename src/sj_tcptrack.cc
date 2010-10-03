@@ -209,7 +209,7 @@ SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt)
 		return &(it->second);
 	else {
 		if(sex_map.size() == runcopy->max_sex_track) {
-			/* if we reach sextrackmax probably we have a lot of dead sessions trackd */
+			/* if we reach sextrackmax probably we have a lot of dead sessions tracked */
 			/* we can make a complete clear() resetting sex_map without problems */
 			sex_map.clear();
 		}
@@ -899,7 +899,6 @@ void TCPTrack::analyze_packets_queue()
 		 */
 		if (pkt->icmp->type == ICMP_TIME_EXCEEDED) {
 			pkt = analyze_incoming_icmp(*pkt);
-			p_queue.remove(*pkt);
 		}
 
 		pkt = p_queue.get(YOUNG, NETWORK, ICMP, true);
