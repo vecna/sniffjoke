@@ -994,7 +994,4 @@ void TCPTrack::force_send(void)
 		pkt->status = SEND;
 		pkt = p_queue.get(true);
 	}
-#ifdef PACKETDEBUG
-	internal_log(NULL, PACKETS_DEBUG, "force_send had converted %d packets to SEND status", counter);
-#endif
 }
