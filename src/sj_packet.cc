@@ -279,8 +279,3 @@ HackPacket::HackPacket(const Packet& pkt, const char* hackname) :
 	packet_id = 0;
 	evilbit = EVIL;
 }
-
-bool HackPacket::condition(const Packet &)
-{
-	return true;
-}

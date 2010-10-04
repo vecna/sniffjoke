@@ -44,7 +44,6 @@ class SjH__fake_close_rst : public HackPacket {
 public:
 	SjH__fake_close_rst(const Packet pkt);
 	SjH__fake_close_rst* create_hack(const Packet& pkt) { return new SjH__fake_close_rst(pkt); };
-	bool condition(const Packet&);
 	void hack();
 };
 

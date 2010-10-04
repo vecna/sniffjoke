@@ -108,7 +108,7 @@ public:
 	HackPacket(const Packet &);
 	HackPacket(const Packet& pkt, const char* hackname);
 	virtual HackPacket* create_hack(const Packet& pkt) = 0;
-	virtual bool condition(const Packet &);
+	virtual bool condition(const Packet &) { return true; };
 	virtual void hack() = 0;
 
 };
