@@ -8,7 +8,7 @@ fi
 
 echo "+ Starting SniffJoke hacks test"
 echo "* Stopping running sniffjoke"
-../sniffjoke quit
+sniffjoke quit
 
 generate_hacking_option()
 {
@@ -41,16 +41,16 @@ for x in $i; do
 	md5sum generated-2.$x > generated-2.$x.md5sum
 	generate_hacking_option
 	echo "+ Starting sniffjoke in the $x instance"
-	../../sniffjoke --force --debug 6 --hacking $HACKOPT
+	sniffjoke --force --debug 6 --hacking $HACKOPT
 	sleep 1
 	if [ ! -e "/tmp/sniffjoke/sniffjoke_service" ]; then 
 		echo "- Bad, on instance $x sniffjoke IS NOT running!"; exit;
 	fi
-	../../sniffjoke clear
-	../../sniffjoke set 80 80 heavy 
-	../../sniffjoke start
+	sniffjoke clear
+	sniffjoke set 80 80 heavy 
+	sniffjoke start
 	curl -d "sparedata=`cat generated-1.$x`" http://www.delirandom.net/sniffjoke_test/post_echo.php > received-1.$x
 	curl -d "sparedata=`cat generated-2.$x`" http://www.delirandom.net/sniffjoke_test/post_echo.php > received-2.$x
-	../../sniffjoke quit
+	sniffjoke quit
 	cd ..
 done
