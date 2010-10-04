@@ -108,24 +108,6 @@
 /* Define to 1 if you have the <wait.h> header file. */
 #undef HAVE_WAIT_H
 
-/* compiling under bsd */
-#undef OS_BSD
-
-/* compiling under free bsd */
-#undef OS_BSD_FREE
-
-/* compiling under net bsd */
-#undef OS_BSD_NET
-
-/* compiling under open bsd */
-#undef OS_BSD_OPEN
-
-/* compiling under macosx */
-#undef OS_DARWIN
-
-/* compiling under linux */
-#undef OS_LINUX
-
 /* Name of package */
 #undef PACKAGE
 

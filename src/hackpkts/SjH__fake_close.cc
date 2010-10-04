@@ -44,7 +44,7 @@ void SjH__fake_close::hack()
 	/* fake close could have FIN+ACK or RST+ACK */
 	tcp->psh = 0;
 
-	if (1) /* if (random() % 2) FIXME, a fake rst seems to break connection */
+	if (0) /* if (random() % 2) FIXME, a fake rst seems to break connection */
 		tcp->fin = 1;
 	else
 		tcp->rst = 1;
