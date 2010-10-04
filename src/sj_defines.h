@@ -18,8 +18,9 @@
 #define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
 #define DEFAULT_DEBUG_LEVEL             2
-#define CONFIGURABLE_HACKS_N            11
-#define ASSURED_HACKS                   "YYYYNNYYYYY"
+#define CONFIGURABLE_HACKS_N            13
+//#define ASSURED_HACKS                   "NYNYYYNNYNNYY"
+#define ASSURED_HACKS                   "NNNNNNNNNNNNN"
 
 #define SJ_SERVICE_LOCK			"/tmp/.sniffjoke_service.lock"
 #define SJ_CLIENT_LOCK               	"/tmp/.sniffjoke_client.lock"

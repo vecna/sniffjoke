@@ -334,21 +334,23 @@ void SjConf::dump(void)
 void SjConf::setup_active_hacks(void) 
 {
 	/* default is set to false */
-	if(running->hacks[0]  == 'Y') { running->SjH__fake_close = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake close] hack type"); }
-	if(running->hacks[1]  == 'Y') { running->SjH__fake_data = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data] hack type"); }
-	if(running->hacks[2] == 'Y') {
+	if(running->hacks[0]  == 'Y') { running->SjH__fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake syn] hack type"); }
+	if(running->hacks[1]  == 'Y') { running->SjH__fake_close_fin = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake close (fin)] hack type"); }
+	if(running->hacks[2]  == 'Y') { running->SjH__fake_close_rst = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake close (rst)] hack type"); }
+	if(running->hacks[3]  == 'Y') { running->SjH__fake_data = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data] hack type"); }
+	if(running->hacks[4]  == 'Y') {
 		running->SjH__fake_data_anticipation = true;
 		running->SjH__fake_data_posticipation = true; 
 		internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake data anticipation|posticipation] hack type"); 
 	}	
-	if(running->hacks[3]  == 'Y') { running->SjH__fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake seq] hack type"); }
-	if(running->hacks[4]  == 'Y') { running->SjH__shift_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [shift ack] hack type"); }
-	if(running->hacks[5]  == 'Y') { running->SjH__zero_window = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [zero window] hack type"); }
-	if(running->hacks[6]  == 'Y') { running->SjH__valid_rst_fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [valid rst fake seq] hack type"); }
-	if(running->hacks[7]  == 'Y') { running->SjH__half_fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake syn] hack type"); }
-	if(running->hacks[8]  == 'Y') { running->SjH__half_fake_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake fin] hack type"); }
-	if(running->hacks[9]  == 'Y') { running->SjH__inject_ipopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject ipopt] hack type"); }
-	if(running->hacks[10] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
+	if(running->hacks[5]  == 'Y') { running->SjH__fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake seq] hack type"); }
+	if(running->hacks[6]  == 'Y') { running->SjH__shift_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [shift ack] hack type"); }
+	if(running->hacks[7]  == 'Y') { running->SjH__fake_zero_window = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake zero window] hack type"); }
+	if(running->hacks[8]  == 'Y') { running->SjH__valid_rst_fake_seq = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [valid rst fake seq] hack type"); }
+	if(running->hacks[9]  == 'Y') { running->SjH__half_fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake syn] hack type"); }
+	if(running->hacks[10] == 'Y') { running->SjH__half_fake_ack = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [half fake fin] hack type"); }
+	if(running->hacks[11] == 'Y') { running->SjH__inject_ipopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject ipopt] hack type"); }
+	if(running->hacks[12] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
 }
 
 char *SjConf::handle_cmd_quit(void)

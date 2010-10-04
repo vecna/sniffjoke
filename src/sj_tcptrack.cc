@@ -54,14 +54,16 @@ HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	void* dummydata = calloc(1, 512);
 	const Packet dummy = Packet((const unsigned char*)dummydata, 512);
 	
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close, new SjH__fake_close(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_syn, new SjH__fake_syn(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close_fin, new SjH__fake_close_fin(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close_rst, new SjH__fake_close_rst(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_posticipation, new SjH__fake_data_posticipation(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__shift_ack, new SjH__shift_ack(dummy)));
 	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__zero_window, new SjH__zero_window(dummy)));
+	push_back(HackPacketPoolElem(&sjconf->SjH__fake_zero_window, new SjH__zero_window(dummy)));
 	
 	free(dummydata);
 }

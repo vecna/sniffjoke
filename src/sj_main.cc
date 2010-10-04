@@ -72,19 +72,20 @@ static Process *SjProc = NULL;
 
 #define SNIFFJOKE_HACKING_HELP \
 	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
-	" usage: --hacking 0123456789AB (12 positions: \"Y\" enable, \"N\" disable) 11 hacks:\n\n"\
-	"  1] fake data\t\t\t\t(default: YES)\n"\
-	"  2] fake seq\t\t\t\t(default: NO - need check)\n"\
-	"  3] fake close\t\t\t\t(default: YES - verify FIN/RST diffs)\n"\
-	"  4] fake zero window\t\t\t(default: YES)\n"\
-	"  5] valid rst fake seq\t\t\t(default: YES)\n"\
-	"  6] fake syn\t\t\t\t(default: NO - cause a troblue ?)\n"\
-	"  7] shift ack\t\t\t\t(default: NO - need testing, cause ack storm, cwnd downgrade)\n"\
-	"  8] half fake syn\t\t\t(default: NO - not implemented)\n"\
-	"  9] half fake ack\t\t\t(default: NO - not implemented)\n"\
-	" 10] inject IPOPT\t\t\t(default: YES - need a lot of research)\n"\
-	" 11] inject TCPOPT\t\t\t(default: YES - need research too)\n"\
-	" 12] fake data (ant|post)icipation\t(default: YES)\n\n"\
+	" usage: --hacking 0123456789ABC (13 positions: \"Y\" enable, \"N\" disable) 13 hacks:\n\n"\
+	"  0] fake close syn\t\t\t\t(default: NO)\n"\
+	"  1] fake close fin\t\t\t\t(default: YES)\n"\
+	"  2] fake close rst\t\t\t\t(default: NO)\n"\
+	"  3] fake data\t\t\t\t(default: YES)\n"\
+	"  4] fake data (ant|post)icipation\t(default: YES)\n\n"\
+	"  5] fake seq\t\t\t\t(default: YES)\n"\
+	"  6] shift ack\t\t\t\t(default: NO - need testing, cause ack storm, cwnd downgrade)\n"\
+	"  7] fake zero window\t\t\t(default: NO)\n"\
+	"  8] valid rst fake seq\t\t\t(default: YES)\n"\
+	"  9] half fake syn\t\t\t(default: NO - not implemented)\n"\
+	" 10] half fake ack\t\t\t(default: NO - not implemented)\n"\
+	" 11] inject IPOPT\t\t\t(default: YES - need a lot of research)\n"\
+	" 12] inject TCPOPT\t\t\t(default: YES - need a lot of research)\n"\
 	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED)\n"
 
 static void sj_hacking_help(void)

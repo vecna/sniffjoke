@@ -24,10 +24,26 @@
 
 #include "../sj_packet.h"
 
-class SjH__fake_close : public HackPacket {
+class SjH__fake_syn : public HackPacket {
 public:
-	SjH__fake_close(const Packet pkt);
-	SjH__fake_close* create_hack(const Packet& pkt) { return new SjH__fake_close(pkt); };
+	SjH__fake_syn(const Packet pkt);
+	SjH__fake_syn* create_hack(const Packet& pkt) { return new SjH__fake_syn(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_close_fin : public HackPacket {
+public:
+	SjH__fake_close_fin(const Packet pkt);
+	SjH__fake_close_fin* create_hack(const Packet& pkt) { return new SjH__fake_close_fin(pkt); };
+	bool condition(const Packet&);
+	void hack();
+};
+
+class SjH__fake_close_rst : public HackPacket {
+public:
+	SjH__fake_close_rst(const Packet pkt);
+	SjH__fake_close_rst* create_hack(const Packet& pkt) { return new SjH__fake_close_rst(pkt); };
 	bool condition(const Packet&);
 	void hack();
 };

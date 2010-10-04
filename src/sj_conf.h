@@ -85,17 +85,18 @@ struct sj_config {
 		/* hacks support */
 		char hacks[CONFIGURABLE_HACKS_N];
 
-		bool SjH__fake_close;
+		bool SjH__fake_syn;
+		bool SjH__fake_close_fin;
+		bool SjH__fake_close_rst;
 		bool SjH__fake_data;
 		bool SjH__fake_data_anticipation;
 		bool SjH__fake_data_posticipation;
 		bool SjH__fake_seq;
 		bool SjH__shift_ack;
 		bool SjH__valid_rst_fake_seq;
-		bool SjH__zero_window;
+		bool SjH__fake_zero_window;
 		bool SjH__half_fake_syn;
 		bool SjH__half_fake_ack;
-		
 		bool SjH__inject_ipopt;
 		bool SjH__inject_tcpopt;
 

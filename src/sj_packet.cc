@@ -105,8 +105,8 @@ unsigned int Packet::half_cksum(const void* data, int len)
 		len -= 2;
 	}
 
-	if (len)
-		sum += *usdata;
+	if (len == 1)
+		sum += (unsigned short) *(unsigned char*)usdata;
 
 	return sum;
 }
