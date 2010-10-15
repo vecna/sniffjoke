@@ -1,26 +1,26 @@
 bin_PROGRAMS = sniffjoke
 
-sniffjoke_SOURCES = sj_main.cc \
-                    sj_utils.h \
-                    sj_defines.h \
-                    sj_conf.h \
-                    sj_conf.cc \
-                    sj_process.h \
-                    sj_process.cc \
-                    sj_netio.h \
-                    sj_netio.cc \
-                    sj_packet.h \
-                    sj_packet.cc \
-                    sj_packetqueue.h \
-                    sj_packetqueue.cc \
-                    sj_ttlfocus.h \
-                    sj_ttlfocus.cc \
-                    sj_sessiontrack.h \
-                    sj_sessiontrack.cc \
-                    sj_tcptrack.h \
-                    sj_tcptrack.cc \
-                    sj_optional_datadebug.h \
-                    sj_optional_datadebug.cc \
+sniffjoke_SOURCES = 	DataDebug.cc \
+			DataDebug.h \
+			hardcoded-defines.h \
+			NetIO.cc \
+			NetIO.h \
+			Packet.cc \
+			Packet.h \
+			PacketQueue.cc \
+			PacketQueue.h \
+			Process.cc \
+			Process.h \
+			SessionTrack.cc \
+			SessionTrack.h \
+			SniffJoke.cc \
+			TCPTrack.cc \
+			TCPTrack.h \
+			TTLfocus.cc \
+			TTLfocus.h \
+			UserConf.cc \
+			UserConf.h \
+			Utils.h \
                     hackpkts/sj_hackpkts.h \
                     hackpkts/SjH__fake_syn.cc \
                     hackpkts/SjH__fake_close_fin.cc \

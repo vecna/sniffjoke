@@ -19,7 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_hackpkts.h"
+#include "HackPacket.h"
 /* 
  * if the session is resetted, the remote box maybe vulnerable to:
  * Slipping in the window: TCP Reset attacks

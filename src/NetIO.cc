@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_netio.h"
-#include "sj_utils.h"
+#include "NetIO.h"
+#include "Utils.h"
 
 #include <fcntl.h>
 #include <poll.h>
@@ -28,7 +28,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-NetIO::NetIO(SjConf *sjconf)
+NetIO::NetIO(UserConf *sjconf)
 {
 	struct ifreq orig_gw;
 	struct ifreq ifr;
@@ -117,7 +117,7 @@ NetIO::NetIO(SjConf *sjconf)
 		runcopy->local_ip_addr,
 		MTU_FAKE
 	);
-	internal_log(NULL, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]\n",
+	internal_log(NULL, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]",
 		runcopy->tun_number, runcopy->interface,
 		runcopy->local_ip_addr, tmpsyscmd
 	);
@@ -188,8 +188,10 @@ NetIO::~NetIO(void)
 	close(netfd);
 	memset(&send_ll, 0x00, sizeof(send_ll));
 	
-	if (getuid() || geteuid())
+	if (getuid() || geteuid()) {
+		internal_log(NULL, ALL_LEVEL, "~NetIO: not root: unable to restore default gw");
 		return;
+	}
 
 	internal_log(NULL, VERBOSE_LEVEL, "NetIO: deleting our default gw [route del default]");
 	system("route del default");
@@ -202,6 +204,8 @@ NetIO::~NetIO(void)
 	snprintf(tmpsyscmd, MEDIUMBUF, "route add default gw %s", runcopy->gw_ip_addr);
 	internal_log(NULL, VERBOSE_LEVEL, "NetIO: restoring previous default gateway [%s]", tmpsyscmd);
 	system(tmpsyscmd);
+
+	internal_log(NULL, DEBUG_LEVEL, "~NetIO");
 }
 
 void NetIO::prepare_conntrack(TCPTrack *ct)
@@ -242,12 +246,8 @@ void NetIO::network_io(void)
 					break;
 				}
 			} else {
-				/* this is too heavy to log -- I remove because also on heavy debug I don't care about
-				 * the size of the FORWARED packet (this function is used when sniffjoke is not injecting, 
-				 * in "stop" command)
 				internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network correctly: %d bytes [sniffjoke %s]", 
 							 size, runcopy->sj_run == true ? "running" : "stopped");
-				 */
 
 				/* add packet in connection tracking queue */
 				conntrack->writepacket(NETWORK, pktbuf, size);
@@ -262,11 +262,8 @@ void NetIO::network_io(void)
 					break;
 				}
 			} else {
-				/*
-				 * I've keep the line because, if you're making debug, should be helpful decomment those lines
 				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes [sniffjoke %s]", 
 						size, runcopy->sj_run == true ? "running" : "stopped");
-				 */
 
 				/* add packet in connection tracking queue */
 				conntrack->writepacket(TUNNEL, pktbuf, size);
@@ -298,11 +295,8 @@ void NetIO::queue_flush(void)
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, size, false);
 			} else {
-				/*
-				 * if no error occour, log every line is too heavy also in debug mode
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
 							size, runcopy->sj_run == true ? "running" : "stopped");
-				 */
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
@@ -312,12 +306,8 @@ void NetIO::queue_flush(void)
 				networkdown_condition = true;
 				check_call_ret("Writing in network", errno, size, false);
 			} else {
-				/* 
-				 * same reason as explained before
-				 *
 				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
 							 size, runcopy->sj_run == true ? "running" : "stopped");
-				 */
 			}
 		}
 		delete pkt;

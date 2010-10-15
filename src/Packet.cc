@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_packet.h"
-#include "sj_utils.h"
+#include "Packet.h"
+#include "Utils.h"
 
 Packet::Packet(const unsigned char* buff, int size) :
 	packet_id(make_pkt_id(buff)),

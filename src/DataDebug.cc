@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_optional_datadebug.h"
-#include "sj_utils.h"
+#include "DataDebug.h"
+#include "Utils.h"
 
 #include <csignal>
 #include <arpa/inet.h>
@@ -83,13 +83,13 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 
 		switch(tmp->proto) {
 			case TCP:
-				fprintf(Packet_f, "Packet [%d] %s:%d",
+				fprintf(Packet_f, "Packet TCP source %s [%d] %s:%d ",
+					source,
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					ntohs(tmp->tcp->source)
 				);
-				fprintf(Packet_f, "Packet [%d] %s:%d orig_pktlen %d bufsize %lu packet_id %8x\n",
-					i,
+				fprintf(Packet_f, "%s:%d orig_pktlen %d bufsize %lu packet_id %8x\n",
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->daddr))),
 					ntohs(tmp->tcp->dest),
 					tmp->orig_pktlen,
@@ -98,7 +98,8 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 				);
 				break;
 			case ICMP:
-				fprintf(Packet_f, "Packet [%d] %s ICMP orig_pktlen %d bufsize %lu packet_id %8x\n",
+				fprintf(Packet_f, "Packet ICMP source %s [%d] %s orig_pktlen %d bufsize %lu packet_id %8x\n",
+					source,
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->orig_pktlen,
@@ -107,7 +108,8 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 				);
 				break;
 			case OTHER_IP:
-				fprintf(Packet_f, "Packet [%d] %s OTHER PROTOCOL (%d) orig_pktlen %d bufsize %lu packet_id %8x\n",
+				fprintf(Packet_f, "Packet source %s [%d] %s OTHER PROTOCOL (%d) orig_pktlen %d bufsize %lu packet_id %8x\n",
+					source,
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->ip->protocol,
@@ -118,7 +120,8 @@ void DataDebug::Dump_Packet(PacketQueue& list)
 				break;
 			case PROTOUNASSIGNED:
 			case ANY_PROTO:
-				fprintf(Packet_f, "Packet [%d] %s PROTOUNASSIGNED/ANY_PROTO [this wouldn't be happen] (%d) orig_pktlen %d bufsize %lu packet_id %8x\n",
+				fprintf(Packet_f, "Packet source %s [%d] %s PROTOUNASSIGNED/ANY_PROTO [this wouldn't be happen] (%d) orig_pktlen %d bufsize %lu packet_id %8x\n",
+					source,
 					i,
 					inet_ntoa(*((struct in_addr *)&(tmp->ip->saddr))),
 					tmp->ip->protocol,

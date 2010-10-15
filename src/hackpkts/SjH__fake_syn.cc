@@ -19,7 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_hackpkts.h"
+#include "HackPacket.h"
 SjH__fake_syn::SjH__fake_syn(const Packet pkt) :
 	HackPacket(pkt, "fake seq")
 {

@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_packetqueue.h"
-#include "sj_utils.h"
+#include "PacketQueue.h"
+#include "Utils.h"
 
 PacketQueue::PacketQueue() :
 	front(new Packet*[2]),

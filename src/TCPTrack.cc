@@ -19,10 +19,10 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_utils.h"
-#include "sj_tcptrack.h"
+#include "Utils.h"
+#include "TCPTrack.h"
 
-#include "hackpkts/sj_hackpkts.h"
+#include "hackpkts/HackPacket.h"
 
 #include <algorithm>
 using namespace std;
@@ -33,7 +33,7 @@ using namespace std;
 
 #define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
 #ifdef DATADEBUG
-#include "sj_optional_datadebug.h"
+#include "DataDebug.h"
 static DataDebug *dd;
 #endif
 
@@ -68,7 +68,7 @@ HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
 	free(dummydata);
 }
 
-TCPTrack::TCPTrack(SjConf *sjconf) :
+TCPTrack::TCPTrack(UserConf *sjconf) :
 	runcopy(sjconf->running),
 	youngpacketspresent(false),
 	hack_pool(sjconf->running)
@@ -100,14 +100,14 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
  
 	if (nbyte < sizeof(struct iphdr)) {
 #ifdef DATADEBUG
-		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < sizeof(struct iphdr))");
+		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < sizeof(struct iphdr)) %d < %d", nbyte, ntohs(ip->tot_len) );
 #endif
 		return false;
 	}
 
 	if (nbyte < ntohs(ip->tot_len)) {
 #ifdef DATADEBUG
-		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < ntohs(ip->tot_len))");
+		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < ntohs(ip->tot_len)) %d < %d", nbyte, ntohs(ip->tot_len) );
 #endif
 		return false;
 	}
@@ -121,7 +121,9 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 
 		if (nbyte < iphlen + sizeof(struct tcphdr)) {
 #ifdef DATADEBUG
-			dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < iphlen + sizeof(struct tcphdr))");
+			dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < iphlen + sizeof(struct tcphdr)) %d < %d",
+				nbyte, iphlen + sizeof(struct tcphdr)
+			);
 #endif
 			return false;
 		}

@@ -22,7 +22,7 @@
 #ifndef SJ_HACKPKTS_H
 #define SJ_HACKPKTS_H
 
-#include "../sj_packet.h"
+#include "../Packet.h"
 
 class SjH__fake_syn : public HackPacket {
 public:

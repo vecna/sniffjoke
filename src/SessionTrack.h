@@ -19,19 +19,36 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "HackPacket.h"
-SjH__zero_window::SjH__zero_window(const Packet pkt) :
-	HackPacket(pkt, "zero_ window")
-{
-	prescription_probability = 93;
-	hack_frequency = 5;
-}
+#ifndef SJ_SESSIONTRACK_H
+#define SJ_SESSIONTRACK_H
 
-void SjH__zero_window::hack()
-{
-	resizePayload(0);
+#include "hardcoded-defines.h"
+#include "Packet.h"
+#include "TTLfocus.h"
 
-	tcp->syn = tcp->fin = tcp->rst = 0;
-	tcp->psh = tcp->ack = 0;
-	tcp->window = 0;
-}
+#include <map>
+using namespace std;
+
+class SessionTrack {
+public:
+	unsigned int daddr;
+	unsigned short sport;
+	unsigned short dport;
+	unsigned int isn;
+	unsigned int packet_number;
+	bool shutdown;
+
+	SessionTrack(const Packet &pb);
+};
+
+class SessionTrackKey {
+public:
+	unsigned int daddr;
+	unsigned short sport;
+	unsigned short dport;
+	bool operator<(SessionTrackKey comp) const;
+};
+
+typedef map<SessionTrackKey, SessionTrack> SessionTrackMap;
+
+#endif /* SJ_SESSIONTRACK_H */

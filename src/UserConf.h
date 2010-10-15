@@ -22,8 +22,8 @@
 #ifndef SJ_CONF_H
 #define SJ_CONF_H
 
-#include "sj_defines.h"
-#include "sj_utils.h"
+#include "hardcoded-defines.h"
+#include "Utils.h"
 
 #include <net/ethernet.h>
 
@@ -69,11 +69,11 @@ struct sj_config {
 		char group[MEDIUMBUF];		/* default: check defines.h */
 		char chroot_dir[MEDIUMBUF];		/* default: check defines.h */
 		char logfname[MEDIUMBUF];		/* default: check defines.h */
-		int debug_level;			/* default: check defines.h */
+		unsigned int debug_level;			/* default: check defines.h */
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
-		unsigned int gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
+		unsigned char gw_mac_addr[ETH_ALEN];	/* the conversion of _str */
 		unsigned short max_ttl_probe;		/* default: 30 */
 		unsigned int max_sex_track;		/* default: 4096 */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
@@ -103,7 +103,7 @@ struct sj_config {
 		char *error;
 };
 
-class SjConf {
+class UserConf {
 private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
@@ -117,8 +117,8 @@ private:
 public:
 		struct sj_config *running;
 
-		SjConf(struct sj_useropt *);
-		~SjConf();
+		UserConf(struct sj_useropt *);
+		~UserConf();
 
 		void dump(void);
 		void setup_active_hacks(void);
@@ -128,6 +128,7 @@ public:
 		char *handle_cmd_stop(void);
 		char *handle_cmd_start(void);
 		char *handle_cmd_quit(void);
+		char *handle_cmd_info(void);
 		char *handle_cmd_set(unsigned short, unsigned short, unsigned char);
 		char *handle_cmd_showport(void);
 		char *handle_cmd_log(int);

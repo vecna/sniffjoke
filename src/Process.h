@@ -19,36 +19,47 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_SESSIONTRACK_H
-#define SJ_SESSIONTRACK_H
+#ifndef SJ_PROCESS_H
+#define SJ_PROCESS_H
 
-#include "sj_defines.h"
-#include "sj_packet.h"
-#include "sj_ttlfocus.h"
+#include "hardcoded-defines.h"
 
-#include <map>
-using namespace std;
+#include <csignal>
+#include <cstdio>
 
-class SessionTrack {
+class Process {
+private:
+	struct passwd *userinfo;
+	struct group *groupinfo;
+
+	sigset_t sig_nset;
+	sigset_t sig_oset;
+	struct sigaction action;
+	struct sigaction ignore;
+
+	FILE *pidFile;
 public:
-	unsigned int daddr;
-	unsigned short sport;
-	unsigned short dport;
-	unsigned int isn;
-	unsigned int packet_number;
-	bool shutdown;
+	pid_t tracked_child_pid;
+	bool failure;
+	
+	Process(struct sj_useropt *useropt);
 
-	SessionTrack(const Packet &pb);
+	pid_t readPidfile();
+	void writePidfile();
+	void unlinkPidfile();
+	void openPidfile();
+
+	void processDetach() ;
+	void Jail(const char *chroot_dir, struct sj_config *running);
+	void PrivilegesDowngrade(struct sj_config *running);
+	void sigtrapSetup(sig_t sigtrap_function);
+	void sigtrapEnable();
+	void sigtrapDisable();
+	void SjBackground();
+	void processIsolation() ;
+
+	void ServiceFatherClose();
+	void ServiceChildClose();
 };
 
-class SessionTrackKey {
-public:
-	unsigned int daddr;
-	unsigned short sport;
-	unsigned short dport;
-	bool operator<(SessionTrackKey comp) const;
-};
-
-typedef map<SessionTrackKey, SessionTrack> SessionTrackMap;
-
-#endif /* SJ_SESSIONTRACK_H */
+#endif /* SJ_Process_H */

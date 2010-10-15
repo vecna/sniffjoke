@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_conf.h"
-#include "sj_utils.h"
+#include "UserConf.h"
+#include "Utils.h"
 
 #include <cctype>
 #include <csignal>
@@ -28,7 +28,7 @@
 #include <sys/stat.h>
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
-void SjConf::compare_check_copy(char *target, unsigned int tlen, const char *useropt, unsigned int ulen, const char *sjdefault)
+void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *useropt, unsigned int ulen, const char *sjdefault)
 {
 	int blen = ulen > strlen(sjdefault) ? strlen(sjdefault) : ulen;
 
@@ -46,7 +46,7 @@ void SjConf::compare_check_copy(char *target, unsigned int tlen, const char *use
 }
 
 /* private function useful for resolution of code/name */
-const char *SjConf::resolve_weight_name(int command_code) 
+const char *UserConf::resolve_weight_name(int command_code) 
 {
 	switch(command_code) {
 		case HEAVY: return "heavy";
@@ -58,8 +58,11 @@ const char *SjConf::resolve_weight_name(int command_code)
 	}
 }
 
-void SjConf::autodetect_local_interface()
+void UserConf::autodetect_local_interface()
 {
+	/* check this command: the flag value, matched in 0003, is derived from:
+	 * 	/usr/src/linux/include/linux/route.h
+	 */
 	const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
 	FILE *foca;
 	char imp_str[SMALLBUF];
@@ -71,6 +74,7 @@ void SjConf::autodetect_local_interface()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
+	memset(running->interface, 0x00, SMALLBUF);
 	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
 		running->interface[i] = imp_str[i];
 
@@ -83,7 +87,7 @@ void SjConf::autodetect_local_interface()
 }
 
 
-void SjConf::autodetect_local_interface_ip_address()
+void UserConf::autodetect_local_interface_ip_address()
 {
 	char cmd[MEDIUMBUF];
 	FILE *foca;
@@ -106,7 +110,7 @@ void SjConf::autodetect_local_interface_ip_address()
 }
 
 
-void SjConf::autodetect_gw_ip_address()
+void UserConf::autodetect_gw_ip_address()
 {
 	const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
 	FILE *foca;
@@ -129,7 +133,7 @@ void SjConf::autodetect_gw_ip_address()
 	}
 }
 
-void SjConf::autodetect_gw_mac_address()
+void UserConf::autodetect_gw_mac_address()
 {
 	char cmd[MEDIUMBUF];
 	FILE *foca;
@@ -155,15 +159,15 @@ void SjConf::autodetect_gw_mac_address()
 		raise(SIGTERM);
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
-		sscanf(running->gw_mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
-			&running->gw_mac_addr[0], &running->gw_mac_addr[1], 
-			&running->gw_mac_addr[2], &running->gw_mac_addr[3], 
-			&running->gw_mac_addr[4], &running->gw_mac_addr[5]
+		sscanf(running->gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x",
+			(unsigned int *)&running->gw_mac_addr[0], (unsigned int *)&running->gw_mac_addr[1], 
+			(unsigned int *)&running->gw_mac_addr[2], (unsigned int *)&running->gw_mac_addr[3], 
+			(unsigned int *)&running->gw_mac_addr[4], (unsigned int *)&running->gw_mac_addr[5]
 		);
 	}
 }
 
-void SjConf::autodetect_first_available_tunnel_interface()
+void UserConf::autodetect_first_available_tunnel_interface()
 {
 	const char *cmd = "ifconfig -a | grep tun | cut -b -7";
 	FILE *foca;
@@ -184,7 +188,7 @@ void SjConf::autodetect_first_available_tunnel_interface()
 }
 
 /* this method is used only in the ProcessType = SERVICE CHILD */
-void SjConf::network_setup(void)
+void UserConf::network_setup(void)
 {
 	internal_log(NULL, DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
 
@@ -193,14 +197,12 @@ void SjConf::network_setup(void)
 	else
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke loaded and stopped at the moment, waiting for \"sniffjoke start\" command");
 
-	/* checking only one string: if not set, defaults was loaded, we need autodetect */
-	if(running->interface[0] == 0x00) {
-		autodetect_local_interface();
-		autodetect_local_interface_ip_address();
-		autodetect_gw_ip_address();
-		autodetect_gw_mac_address();
-		autodetect_first_available_tunnel_interface();
-	}
+	/* autodetect is always used, we should not trust the preloaded configuration */
+	autodetect_local_interface();
+	autodetect_local_interface_ip_address();
+	autodetect_gw_ip_address();
+	autodetect_gw_mac_address();
+	autodetect_first_available_tunnel_interface();
 
 	internal_log(NULL, VERBOSE_LEVEL, "-- system local interface: %s, %s address", running->interface, running->local_ip_addr);
 	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway mac address: %s", running->gw_mac_str);
@@ -208,13 +210,13 @@ void SjConf::network_setup(void)
 	internal_log(NULL, VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", running->tun_number);
 
 	if(running->port_conf_set_n) {
-		internal_log(NULL, VERBOSE_LEVEL,"-- readed %d TCP port set, verify them with sniffjoke stat",
+		internal_log(NULL, VERBOSE_LEVEL,"-- loaded %d TCP port set, verify them with sniffjoke stat",
 			running->port_conf_set_n
 		);
 	}
 }
 
-SjConf::SjConf(struct sj_useropt *user_opt)
+UserConf::UserConf(struct sj_useropt *user_opt)
 {
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
@@ -223,7 +225,8 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 
 	char completefname[LARGEBUF];
-	snprintf(completefname, LARGEBUF, "%s/%s", user_opt->chroot_dir, user_opt->cfgfname);
+	memset(completefname, 0x00, LARGEBUF);
+	snprintf(completefname, LARGEBUF, "%s%s", user_opt->chroot_dir, user_opt->cfgfname);
 	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", completefname);
 
 	if ((cF = fopen(completefname, "r")) != NULL) 
@@ -291,12 +294,12 @@ SjConf::SjConf(struct sj_useropt *user_opt)
 	chmod(completefname, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 }
 
-SjConf::~SjConf()
+UserConf::~UserConf()
 {
-	internal_log(NULL, ALL_LEVEL, "SjConf: pid %d cleaning configuration object", getpid());
+	internal_log(NULL, ALL_LEVEL, "UserConf: pid %d cleaning configuration object", getpid());
 }
 
-void SjConf::dump(void)
+void UserConf::dump(void)
 {
 	char completefname[LARGEBUF];
 	FILE *dumpfd;
@@ -310,7 +313,7 @@ void SjConf::dump(void)
 		snprintf(completefname, LARGEBUF, "%s", running->fileconfname);
 	}
 	else {
-		snprintf(completefname, LARGEBUF, "%s/%s", running->chroot_dir, running->fileconfname);
+		snprintf(completefname, LARGEBUF, "%s%s", running->chroot_dir, running->fileconfname);
 	}
 	
 	if((dumpfd = fopen(completefname, "w")) != NULL) {	
@@ -331,7 +334,7 @@ void SjConf::dump(void)
 }
 
 /* WARNING: change this function require a change in sniffjoke.cc sj_hacking_help() */
-void SjConf::setup_active_hacks(void) 
+void UserConf::setup_active_hacks(void) 
 {
 	/* default is set to false */
 	if(running->hacks[0]  == 'Y') { running->SjH__fake_syn = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [fake syn] hack type"); }
@@ -353,7 +356,16 @@ void SjConf::setup_active_hacks(void)
 	if(running->hacks[12] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
 }
 
-char *SjConf::handle_cmd_quit(void)
+char *UserConf::handle_cmd_info(void)
+{
+	memset(io_buf, 0x00, HUGEBUF);
+
+	snprintf(io_buf, HUGEBUF, "NOT IMPLEMENTED - analyze TTL and session\n");
+
+	return &io_buf[0];
+}
+
+char *UserConf::handle_cmd_quit(void)
 {
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
 	/* dump the configuration in the binconf file */
@@ -369,7 +381,7 @@ char *SjConf::handle_cmd_quit(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_cmd_stat(void) 
+char *UserConf::handle_cmd_stat(void) 
 {
 	internal_log(NULL, VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, HUGEBUF, 
@@ -387,7 +399,7 @@ char *SjConf::handle_cmd_stat(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned char what)
+char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned char what)
 {
 	const char *what_weightness;
 
@@ -414,7 +426,7 @@ char *SjConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned 
 	return &io_buf[0];
 }
 
-char *SjConf::handle_cmd_stop(void)
+char *UserConf::handle_cmd_stop(void)
 {
 	if (running->sj_run != false) {
 		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
@@ -427,7 +439,7 @@ char *SjConf::handle_cmd_stop(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_cmd_start(void)
+char *UserConf::handle_cmd_start(void)
 {
 	if (running->sj_run != true) {
 		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
@@ -440,7 +452,7 @@ char *SjConf::handle_cmd_start(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_cmd_showport(void) 
+char *UserConf::handle_cmd_showport(void) 
 {
 	int i, acc_start = 0, kind, actual_io = 0;
 	char *index = &io_buf[0];
@@ -449,7 +461,8 @@ char *SjConf::handle_cmd_showport(void)
 	/* the first port work as initialization */
 	kind = running->portconf[0];
 
-	for (i = 1; i < PORTNUMBER; i++) {
+	for (i = 1; i < PORTNUMBER; i++) 
+	{
 		/* the kind has changed, so we must print the previous port range */
 		if (running->portconf[i] != kind) 
 		{
@@ -471,8 +484,14 @@ char *SjConf::handle_cmd_showport(void)
 	return &io_buf[0];
 }
 
-char *SjConf::handle_cmd_log(int newloglevel)
+char *UserConf::handle_cmd_log(int newloglevel)
 {
-	snprintf(io_buf, HUGEBUF, "TO BE IMPLEMENTED -- new log level requested %d\n", newloglevel);
+	if(newloglevel < ALL_LEVEL || newloglevel > HACKS_DEBUG) {
+		snprintf(io_buf, HUGEBUF, "error in the new loglevel requested: accepted >= %d and <= %d\n", ALL_LEVEL, HACKS_DEBUG);
+	} else {
+		snprintf(io_buf, HUGEBUF, "changing log level since %d to %d\n", running->debug_level, newloglevel);
+		running->debug_level = newloglevel;
+	}
+
 	return &io_buf[0];
 }

@@ -22,11 +22,11 @@
 #ifndef SJ_TCPTRACK_H
 #define SJ_TCPTRACK_H
 
-#include "sj_conf.h"
-#include "sj_packet.h"
-#include "sj_packetqueue.h"
-#include "sj_sessiontrack.h"
-#include "sj_ttlfocus.h"
+#include "UserConf.h"
+#include "Packet.h"
+#include "PacketQueue.h"
+#include "SessionTrack.h"
+#include "TTLfocus.h"
 
 #include <vector>
 using namespace std;
@@ -79,7 +79,7 @@ private:
 	void last_pkt_fix(Packet&);
 
 public:
-	TCPTrack(SjConf*);
+	TCPTrack(UserConf*);
 	~TCPTrack(void);
 
 	bool writepacket(const source_t, const unsigned char*, int);

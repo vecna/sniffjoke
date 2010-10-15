@@ -19,33 +19,55 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_OPTIONAL_DATADEBUG_H
-#define SJ_OPTIONAL_DATADEBUG_H
+#ifndef SJ_NETIO_H
+#define SJ_NETIO_H
 
-#include "sj_packetqueue.h"
-#include "sj_sessiontrack.h"
-#include "sj_ttlfocus.h"
+#include "hardcoded-defines.h"
+#include "UserConf.h"
+#include "TCPTrack.h"
 
-#include <cstdio>
+#include <poll.h>
+#include <netpacket/packet.h>
 
-#define SESSION_FILE_DEBUG	"datadump/session.log"
-#define PACKET_FILE_DEBUG	"datadump/packet.log"
-#define TTL_FILE_DEBUG		"datadump/ttl.log"
+#define BURSTSIZE       10
 
-class DataDebug 
-{
+class NetIO {
 private:
-	FILE *Session_f, *Packet_f, *TTL_f;
+	/* 
+	 * these data are required for handle 
+	 * tunnel/ethernet man in the middle
+	 */
+	struct sockaddr_ll send_ll;
+	struct sj_config *runcopy;
+
+	/* tunfd/netfd: file descriptor for I/O purpose */
+	int tunfd;
+	int netfd;
+
+        /* poll variables, two file descriptors */
+        struct pollfd fds[2];
+
+	TCPTrack *conntrack;
+
+	unsigned char pktbuf[MTU];
+	int size;
+	Packet *pkt;
+
+	bool networkdown_condition;
+
 public:
-	DataDebug(void);
-	~DataDebug(void);
 
-	void Dump_Packet(PacketQueue &);
-	void Dump_Session(SessionTrackMap &);
-	void Dump_TTL(TTLFocusMap &);
+	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
+	 *	   --- but not killed!
+	 */
 
-	/* "Session", "Packet", "TTL" */
-	void InfoMsg(const char *, const char *, ...);
+	NetIO(UserConf*);
+	~NetIO(void);
+	void prepare_conntrack(TCPTrack*);
+	void network_io(void);
+	void queue_flush(void);
+	bool is_network_down(void);
+	void set_running(bool);
 };
 
-#endif /* SJ_OPTIONAL_DATADEBUG_H */
+#endif /* SJ_NETIO_H */

@@ -13,7 +13,7 @@
 #define DROP_USER                       "sniffjoke"
 #define DROP_GROUP                      "sniffjoke"
 #define MAGICVAL			0xADECADDE
-#define CHROOT_DIR			"/tmp/sniffjoke"
+#define CHROOT_DIR			"/var/sniffjoke/"
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
 #define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
@@ -21,10 +21,8 @@
 #define CONFIGURABLE_HACKS_N            13
 #define ASSURED_HACKS                   "NYNYYYNNYNNYY"
 
-#define SJ_SERVICE_LOCK			"/tmp/.sniffjoke_service.lock"
-#define SJ_CLIENT_LOCK               	"/tmp/.sniffjoke_client.lock"
-#define SJ_SERVICE_FATHER_PID_FILE	"/tmp/sniffjoke_father.pid"
-#define SJ_SERVICE_CHILD_PID_FILE	"/tmp/sniffjoke_child.pid"
+#define SJ_PIDFILE			"/var/run/sniffjoke.pid"
+
 /* those are used under chroot */
 #define SJ_SERVICE_UNIXSOCK		"sniffjoke_service" 
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"

@@ -19,9 +19,9 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_ttlfocus.h"
-#include "sj_defines.h"
-#include "sj_utils.h"
+#include "TTLfocus.h"
+#include "hardcoded-defines.h"
+#include "Utils.h"
 
 #include <cerrno>
 #include <cstdlib>

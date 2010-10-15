@@ -26,7 +26,7 @@
  * design pourpose, every injected packet require a dedicated 
  * function.
  */
-#include "sj_hackpkts.h"
+#include "HackPacket.h"
 SjH__fake_data_posticipation::SjH__fake_data_posticipation(const Packet pkt) :
 	HackPacket(pkt, "fake data posticipation")
 {

@@ -22,7 +22,7 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
-#include "sj_defines.h"
+#include "hardcoded-defines.h"
 
 #include <vector>
 using namespace std;

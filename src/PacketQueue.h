@@ -19,33 +19,33 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "sj_sessiontrack.h"
+#ifndef SJ_PACKET_QUEUE_H
+#define SJ_PACKET_QUEUE_H
 
-SessionTrack::SessionTrack(const Packet &pkt) :
-	daddr(pkt.ip->daddr),
-	sport(pkt.tcp->source),
-	dport(pkt.tcp->dest),
-	isn(pkt.tcp->seq),
-	packet_number(1),
-	shutdown(false)
-{}
+#include "hardcoded-defines.h"
+#include "Packet.h"
 
-bool SessionTrackKey::operator<(SessionTrackKey comp) const
-{
-	if (daddr < comp.daddr) {
-		return true;
-	} else if (daddr > comp.daddr) {
-		return false;
-	} else {
-		if (sport < comp.sport) {
-			return true;
-		} else if (sport > comp.sport) {
-			return false;
-		} else {
-			if (dport < comp.dport)
-				return true;
-			else
-				return false;
-		}
-	}
-}
+enum priority_t { HIGH = 0, LOW = 1 };
+
+class PacketQueue {
+private:
+	Packet **front;
+	Packet **back;
+	unsigned int queue_levels;
+	unsigned int cur_prio;
+	Packet *cur_pkt;
+public:
+
+	PacketQueue();
+	~PacketQueue(void);
+	void insert(priority_t, Packet &);
+	void insert_before(Packet &, Packet &);
+	void insert_after(Packet &, Packet &);
+	void remove(const Packet &);
+	void delete_if_present(unsigned int);
+	Packet* get(bool);
+	Packet* get(status_t, source_t, proto_t, bool);
+	Packet* get(unsigned int);
+};
+
+#endif /* SJ_PACKET_QUEUE_H */
