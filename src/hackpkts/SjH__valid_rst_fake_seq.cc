@@ -21,9 +21,19 @@
  */
 #include "HackPacket.h"
 /* 
- * if the session is resetted, the remote box maybe vulnerable to:
- * Slipping in the window: TCP Reset attacks
- * http://kerneltrap.org/node/3072
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ * 
+ * A reset must be ignored if the ack value is more than last_ack_seq + window,
+ * this is a path due to the denial of service named 
+ * "Slipping in the window: TCP Reset attacks", linked below
+ * this is another ack working in INNOCENT mode, not with GUILTY/PRESCRIPTION
+ *
+ * SOURCE: deduction, analysis of the DoS [ http://kerneltrap.org/node/3072 ]
+ * VERIFIED IN:
+ * KNOW BUGS:
+ * WRITTEN IN VERSION: 0.4.0
+ *
  */
 SjH__valid_rst_fake_seq::SjH__valid_rst_fake_seq(const Packet pkt) :
 	HackPacket(pkt, "valid rst fake seq")

@@ -20,13 +20,31 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
+#include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ * 
  * SjH__fake_data_anticipation and SjH__fake_data_posticipation
  * are both the same hack, and need to be used together, anyway for 
  * design pourpose, every injected packet require a dedicated 
  * function.
+ *
+ * the hacks inject a packet (maked as invalid, with TTL expiring or bad
+ * checksum) with a fake data, of the same length of the original packet,
+ * BEFORE and AFTER the real packet. this cause that the sniffer (that 
+ * eventually confirm the readed data when the data was acknowledged), had
+ * memorized the first packet or the last only (because they share the same
+ * sequence number). the reassembled flow appear override bye the data here
+ * injected. should be the leverage for an applicative injection (like a 
+ * fake mail instead of the real mail, etc...)
+ * 
+ * SOURCE: deduction, analysis of libnids
+ * VERIFIED IN:
+ * KNOW BUGS:
+ * WRITTEN IN VERSION: 0.4.0
  */
-#include "HackPacket.h"
+
 SjH__fake_data_anticipation::SjH__fake_data_anticipation(const Packet pkt) :
 	HackPacket(pkt, "fake data anticipation")
 {

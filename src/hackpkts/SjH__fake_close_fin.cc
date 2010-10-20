@@ -20,6 +20,17 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ *
+ * fake close is used because a sniffer could read a FIN like a session closing
+ * tcp-flag, and stop the session monitoring/reassembly.
+ *
+ * SOURCE: phrack, deduction, 
+ * VERIFIED IN:
+ * KNOW BUGS:
+ */
 
 SjH__fake_close_fin::SjH__fake_close_fin(const Packet pkt) :
 	HackPacket(pkt, "fake close (fin)")

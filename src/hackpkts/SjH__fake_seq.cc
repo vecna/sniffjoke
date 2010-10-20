@@ -20,6 +20,20 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ *
+ * when a sniffer collect the file using the sequence as stream offset, injecting a
+ * completely random seq should cause extremely large and empty flow, truncation or
+ * apparently large missinsg block of data.
+ * 
+ * SOURCE: phrack, analysis of tcpflow, analysis of wireshark
+ * VERIFIED IN:
+ * KNOW BUGS:
+ * WRITTEN IN VERSION: 0.4.0
+ */
+
 SjH__fake_seq::SjH__fake_seq(const Packet pkt) :
 	HackPacket(pkt, "fake seq")
 {

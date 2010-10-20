@@ -145,6 +145,8 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 {
 	unsigned char check;
+	bool ret;
+
 	for (int i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++) {
 		check = ((unsigned char *)tcp)[i];
 
@@ -159,12 +161,21 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 			case TCPOPT_WINDOW:
 			case TCPOPT_SACK_PERMITTED:
 			case TCPOPT_SACK:
-				return true;
 			default:
-				return true;
+				ret = true; break;
 		}
 	}
-	return false;
+	ret = false;
+#ifdef PACKETDEBUG
+		internal_log(NULL, DEBUG_LEVEL,
+			"check uncommon TCPOPT: sport %d -> dport%d, TCP OPT %s", 
+			ntohs(tcp->source), 
+			ntohs(tcp->dest),
+			ret ? "true" : "false"
+		);
+#endif
+	return ret;
+	
 }
 
 /* 
@@ -196,7 +207,7 @@ float TCPTrack::logarithm(int packet_number)
 	else if (packet_number > 100)
 		blah = (packet_number / 100) * 100;
 	else
-		return 2.2; /* x > 8 && x < 100 */
+		return 2.2; /* x > 20 && x < 100 */
 
 	if (blah == packet_number)
 		return 90.0;
@@ -238,8 +249,8 @@ void TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
 			ntohs(st.dport),
 			st.packet_number
 		);
-		st.shutdown = true;
 #endif
+		st.shutdown = true;
 	} else {
 #ifdef PACKETDEBUG
 		internal_log(NULL, DEBUG_LEVEL,
@@ -329,10 +340,10 @@ void TCPTrack::analyze_incoming_ttl(Packet &pkt)
 	if (it != ttlfocus_map.end()) {
 		ttlfocus = &(it->second);
 		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) {
-			/* probably a topology change has happened */
+			/* probably a topology change has happened - we need a solution wtf!!  */
 #ifdef PACKETDEBUG
 			internal_log(NULL, PACKETS_DEBUG,
-				"probable topology change happened for destination %s [synack_ttl: %d, received_ttl: %d]" ,
+				"probable network topology change happened for destination %s [synack_ttl: %d, received_ttl: %d]" ,
 				inet_ntoa(*((struct in_addr *)&pkt.ip->saddr)),
 				ttlfocus->synack_ttl,
 				pkt.ip->ttl
@@ -694,7 +705,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		);
 	else 
 		internal_log(NULL, PACKETS_DEBUG,
-			"last_pkt_fix (!TCP): id %u proto %d source %d",
+			"last_pkt_fix (not TCP): id %u proto %d source %d",
 			ntohs(pkt.ip->id), 
 			pkt.ip->protocol, 
 			pkt.source
@@ -738,10 +749,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
 #ifdef HACKSDEBUG
-		internal_log(NULL, HACKS_DEBUG,
-			"HACKSDEBUG [TTL: %d]",
-			pkt.ip->ttl
-		);
+		internal_log(NULL, HACKS_DEBUG, "HACKSDEBUG [TTL: %d]", pkt.ip->ttl);
 #endif
 	}	
 	/* end 1st check */
@@ -777,7 +785,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 				pkt.SjH__inject_ipopt();
 #ifdef HACKSDEBUG
 				internal_log(NULL, HACKS_DEBUG,
-					"HACKSDEBUG [Inj IpOpt] (lo:%d %s:%d) id %d",
+					"HACKSDEBUG [Inj BAD IpOpt] (lo:%d %s:%d) id %d",
 					ntohs(pkt.tcp->source), 
 					inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
 					ntohs(pkt.tcp->dest), 
@@ -793,7 +801,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 					pkt.SjH__inject_tcpopt();
 #ifdef HACKSDEBUG
 					internal_log(NULL, HACKS_DEBUG,
-						"HACKSDEBUG [Inj Fake TcpOpt] (lo:%d %s:%d) id %d",
+						"HACKSDEBUG [Inj BAD TcpOpt] (lo:%d %s:%d) id %d",
 						ntohs(pkt.tcp->source), 
 						inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
 						ntohs(pkt.tcp->dest), 

@@ -34,12 +34,29 @@ using namespace std;
 #include <cstdio>
 #include <cstdlib>
 
+/* if the packet is inject from sniffjoke is marked with the evilbit */
 enum evilbit_t { GOOD = 0, EVIL = 1 };
+
+/* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
+
+/* status mean what sniffjoke has to do with the packet. KEEP is used when a packet is 
+ * delayed, YOUNG when a packet was created by sniffjoke, SEND has to be send */
 enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
+
+/* Every sniffjoke packet is based on be discarged from the remote host and accepted from
+ * the sniffer, in order to obtain the sniffer tracking poisoning, those marker mean if the
+ * packet need to be plain and correct (INNOCENT) to expire prematurely (PRESCRIPTION) to be 
+ * consider bad and discarged (GUILTY, corrupt the TCP checksum) or a random choose of both */
 enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, GUILTY_OR_PRESCRIPTION = 4 };
+
+/* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
 enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
+
+/* this specify the kind of modification the TCP-hack has caused in the packet */
 enum injection_t { INJECTUNASSIGNED = 0, ANY_INJECTION = 1, IP_INJECTION = 2, TCP_INJECTION = 3, NO_INJECTION = 4};
+
+/* a sniffjoke packet should be send before the oroginal packet or after the original packet */
 enum position_t { ANY_POSITION = 0, ANTICIPATION = 1, POSTICIPATION = 2 };
 
 class Packet {

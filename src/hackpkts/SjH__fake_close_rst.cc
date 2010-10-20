@@ -20,6 +20,19 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ * 
+ * fake close is used because a sniffer could read a FIN like a session closing
+ * tcp-flag, and stop the session monitoring/reassembly.
+ *
+ * SOURCE: phrack, deduction, 
+ * VERIFIED IN:
+ * KNOW BUGS: fastweb network (italian wire provider), should not support this hack 
+ * 	      because the HAG close the session at the first valid RST exiting
+ * 	      from your box.
+ */
 
 SjH__fake_close_rst::SjH__fake_close_rst(const Packet pkt) :
 	HackPacket(pkt, "fake close (rst)")

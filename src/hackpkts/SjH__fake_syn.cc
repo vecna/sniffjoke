@@ -20,6 +20,20 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ * 
+ * a SYN packet, in a sniffer reassembly routine should mean the allocation/
+ * opening of a new flow. if this syn packet collide with a previously 
+ * allocated tuple, what happen ?
+ * 
+ * SOURCE: deduction
+ * VERIFIED IN:
+ * KNOW BUGS:
+ * WRITTEN IN VERSION: 0.4.0
+ */
+
 SjH__fake_syn::SjH__fake_syn(const Packet pkt) :
 	HackPacket(pkt, "fake seq")
 {

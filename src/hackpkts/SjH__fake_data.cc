@@ -20,6 +20,17 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ * 
+ * fake data should be replaced by _data_(ant|post)icipation hacks ?
+ * 
+ * SOURCE: phrack
+ * VERIFIED IN:
+ * KNOW BUGS:
+ */
+
 SjH__fake_data::SjH__fake_data(const Packet pkt) :
 	HackPacket(pkt, "fake data")
 {

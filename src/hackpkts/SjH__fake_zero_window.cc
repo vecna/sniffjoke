@@ -20,6 +20,18 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "HackPacket.h"
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ *
+ * I didn't rembemer exactly, zero window TCP packet are used for stop the 
+ * communication until resume is requested
+ * 
+ * SOURCE: deduction, whishful thinking
+ * VERIFIED IN:
+ * KNOW BUGS:
+ * WRITTEN IN VERSION: 0.4.0
+ */
 SjH__zero_window::SjH__zero_window(const Packet pkt) :
 	HackPacket(pkt, "zero_ window")
 {
