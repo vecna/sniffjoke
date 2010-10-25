@@ -8,7 +8,20 @@ AC_CONFIG_HEADERS([src/config.h])
 
 AC_PROG_CXX
 AC_LANG_CPLUSPLUS
+EC_GCC_MACRO
 AC_PROG_INSTALL
+
+AC_DISABLE_STATIC
+AC_LIBTOOL_WIN32_DLL
+AC_LIBTOOL_DLOPEN
+AM_PROG_LIBTOOL
+AC_SEARCH_LIBS(dlopen,c dl,,)
+ac_ec_lt_dlopen=yes
+AC_SEARCH_LIBS(lt_dlopen,c dl ltdl,,ac_ec_lt_dlopen=no)
+AC_CHECK_HEADERS(dlfcn.h)
+AC_CHECK_HEADERS(ltdl.h)
+LT_CONFIG_LTDL_DIR([libltdl])
+AC_LIB_LTDL
 
 AC_CHECK_HEADERS(cerrno,,exit 1)
 AC_CHECK_HEADERS(csignal,,exit 1)
@@ -41,6 +54,18 @@ AC_CHECK_HEADERS(sys/stat.h,,exit 1)
 AC_CHECK_HEADERS(sys/un.h,,exit 1)
 
 AC_CONFIG_FILES( Makefile
-                 src/Makefile)
+                 src/Makefile
+                 hacks/Makefile
+                 hacks/fake_close_fin/Makefile
+                 hacks/fake_close_rst/Makefile
+                 hacks/fake_data/Makefile
+                 hacks/fake_data_anticipation/Makefile
+                 hacks/fake_data_posticipation/Makefile
+                 hacks/fake_seq/Makefile
+                 hacks/fake_syn/Makefile
+                 hacks/fake_zero_window/Makefile
+                 hacks/shift_ack/Makefile
+                 hacks/valid_rst_fake_seq/Makefile)
+
 
 AC_OUTPUT

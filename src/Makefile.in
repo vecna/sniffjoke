@@ -32,6 +32,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 bin_PROGRAMS = sniffjoke$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -46,35 +48,37 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_sniffjoke_OBJECTS = DataDebug.$(OBJEXT) \
-			NetIO.$(OBJEXT) \
-			Packet.$(OBJEXT) \
-			PacketQueue.$(OBJEXT) \
-			Process.$(OBJEXT) \
-			SessionTrack.$(OBJEXT) \
-			SniffJoke.$(OBJEXT) \
-			TCPTrack.$(OBJEXT) \
-			TTLfocus.$(OBJEXT) \
-			UserConf.$(OBJEXT) \
-			hackpkts/FakeDataPosticipation.$(OBJEXT) \
-			hackpkts/FakeDataAnticipation.$(OBJEXT) 
+am_sniffjoke_OBJECTS = DataDebug.$(OBJEXT) NetIO.$(OBJEXT) \
+	Packet.$(OBJEXT) PacketQueue.$(OBJEXT) Process.$(OBJEXT) \
+	SessionTrack.$(OBJEXT) SniffJoke.$(OBJEXT) TCPTrack.$(OBJEXT) \
+	TTLfocus.$(OBJEXT) UserConf.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
-sniffjoke_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
-	$(sniffjoke_LDFLAGS) $(LDFLAGS) -o $@
+sniffjoke_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(sniffjoke_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+LTCXXCOMPILE = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
-CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
-	-o $@
+CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 SOURCES = $(sniffjoke_SOURCES)
 DIST_SOURCES = $(sniffjoke_SOURCES)
 ETAGS = etags
@@ -82,10 +86,17 @@ CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
+AR = @AR@
+ARGZ_H = @ARGZ_H@
+AS = @AS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+CC = @CC@
+CCDEPMODE = @CCDEPMODE@
+CFLAGS = @CFLAGS@
+CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
@@ -94,24 +105,49 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DLLTOOL = @DLLTOOL@
+DSYMUTIL = @DSYMUTIL@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+FGREP = @FGREP@
 GREP = @GREP@
+INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBADD_DL = @LIBADD_DL@
+LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
+LIBADD_DLOPEN = @LIBADD_DLOPEN@
+LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
+LN_S = @LN_S@
+LTDLDEPS = @LTDLDEPS@
+LTDLINCL = @LTDLINCL@
+LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
+LT_CONFIG_H = @LT_CONFIG_H@
+LT_DLLOADERS = @LT_DLLOADERS@
+LT_DLPREOPEN = @LT_DLPREOPEN@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NM = @NM@
+NMEDIT = @NMEDIT@
+OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -120,6 +156,8 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+RANLIB = @RANLIB@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -128,21 +166,31 @@ abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
+ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
@@ -151,6 +199,9 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
+ltdl_LIBOBJS = @ltdl_LIBOBJS@
+ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -161,16 +212,15 @@ psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
+subdirs = @subdirs@
+sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-sniffjoke_SOURCES = 	DataDebug.cc \
+sniffjoke_SOURCES = DataDebug.cc \
 			DataDebug.h \
-			hackpkts/HackPacket.h \
-			hackpkts/FakeDataPosticipation.cc \
-			hackpkts/FakeDataAnticipation.cc \
 			hardcoded-defines.h \
 			NetIO.cc \
 			NetIO.h \
@@ -189,7 +239,8 @@ sniffjoke_SOURCES = 	DataDebug.cc \
 			TTLfocus.h \
 			UserConf.cc \
 			UserConf.h \
-			Utils.h 
+			Utils.h
+
 AM_CPPFLAGS = -ansi -pedantic -Wall -Werror
 sniffjoke_LDFLAGS = -lrt
 CLEANFILES = *~
@@ -197,7 +248,7 @@ all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-.SUFFIXES: .cc .o .obj
+.SUFFIXES: .cc .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -251,7 +302,7 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
 	for p in $$list; do echo "$$p $$p"; done | \
 	sed 's/$(EXEEXT)$$//' | \
-	while read p p1; do if test -f $$p; \
+	while read p p1; do if test -f $$p || test -f $$p1; \
 	  then echo "$$p"; echo "$$p"; else :; fi; \
 	done | \
 	sed -e 'p;s,.*/,,;n;h' -e 's|.*|.|' \
@@ -265,8 +316,8 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	while read type dir files; do \
 	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
 	    test -z "$$files" || { \
-	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
-	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	    echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+	    $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
 	    } \
 	; done
 
@@ -281,7 +332,13 @@ uninstall-binPROGRAMS:
 	cd "$(DESTDIR)$(bindir)" && rm -f $$files
 
 clean-binPROGRAMS:
-	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+	@list='$(bin_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
 sniffjoke$(EXEEXT): $(sniffjoke_OBJECTS) $(sniffjoke_DEPENDENCIES) 
 	@rm -f sniffjoke$(EXEEXT)
 	$(sniffjoke_LINK) $(sniffjoke_OBJECTS) $(sniffjoke_LDADD) $(LIBS)
@@ -292,26 +349,16 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_close_fin.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_close_rst.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_data.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_data_anticipation.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_data_posticipation.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_seq.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_syn.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__fake_zero_window.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__shift_ack.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SjH__valid_rst_fake_seq.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_conf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_netio.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_optional_datadebug.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_packet.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_packetqueue.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_process.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_sessiontrack.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_tcptrack.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sj_ttlfocus.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DataDebug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NetIO.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Packet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PacketQueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Process.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SessionTrack.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SniffJoke.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCPTrack.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TTLfocus.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UserConf.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -327,145 +374,18 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-SjH__fake_syn.o: hackpkts/SjH__fake_syn.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_syn.o -MD -MP -MF $(DEPDIR)/SjH__fake_syn.Tpo -c -o SjH__fake_syn.o `test -f 'hackpkts/SjH__fake_syn.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_syn.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_syn.Tpo $(DEPDIR)/SjH__fake_syn.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_syn.cc' object='SjH__fake_syn.o' libtool=no @AMDEPBACKSLASH@
+.cc.lo:
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_syn.o `test -f 'hackpkts/SjH__fake_syn.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_syn.cc
+@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
-SjH__fake_syn.obj: hackpkts/SjH__fake_syn.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_syn.obj -MD -MP -MF $(DEPDIR)/SjH__fake_syn.Tpo -c -o SjH__fake_syn.obj `if test -f 'hackpkts/SjH__fake_syn.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_syn.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_syn.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_syn.Tpo $(DEPDIR)/SjH__fake_syn.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_syn.cc' object='SjH__fake_syn.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_syn.obj `if test -f 'hackpkts/SjH__fake_syn.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_syn.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_syn.cc'; fi`
+mostlyclean-libtool:
+	-rm -f *.lo
 
-SjH__fake_close_fin.o: hackpkts/SjH__fake_close_fin.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_close_fin.o -MD -MP -MF $(DEPDIR)/SjH__fake_close_fin.Tpo -c -o SjH__fake_close_fin.o `test -f 'hackpkts/SjH__fake_close_fin.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_close_fin.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_close_fin.Tpo $(DEPDIR)/SjH__fake_close_fin.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_close_fin.cc' object='SjH__fake_close_fin.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_close_fin.o `test -f 'hackpkts/SjH__fake_close_fin.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_close_fin.cc
-
-SjH__fake_close_fin.obj: hackpkts/SjH__fake_close_fin.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_close_fin.obj -MD -MP -MF $(DEPDIR)/SjH__fake_close_fin.Tpo -c -o SjH__fake_close_fin.obj `if test -f 'hackpkts/SjH__fake_close_fin.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_close_fin.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_close_fin.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_close_fin.Tpo $(DEPDIR)/SjH__fake_close_fin.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_close_fin.cc' object='SjH__fake_close_fin.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_close_fin.obj `if test -f 'hackpkts/SjH__fake_close_fin.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_close_fin.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_close_fin.cc'; fi`
-
-SjH__fake_close_rst.o: hackpkts/SjH__fake_close_rst.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_close_rst.o -MD -MP -MF $(DEPDIR)/SjH__fake_close_rst.Tpo -c -o SjH__fake_close_rst.o `test -f 'hackpkts/SjH__fake_close_rst.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_close_rst.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_close_rst.Tpo $(DEPDIR)/SjH__fake_close_rst.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_close_rst.cc' object='SjH__fake_close_rst.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_close_rst.o `test -f 'hackpkts/SjH__fake_close_rst.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_close_rst.cc
-
-SjH__fake_close_rst.obj: hackpkts/SjH__fake_close_rst.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_close_rst.obj -MD -MP -MF $(DEPDIR)/SjH__fake_close_rst.Tpo -c -o SjH__fake_close_rst.obj `if test -f 'hackpkts/SjH__fake_close_rst.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_close_rst.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_close_rst.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_close_rst.Tpo $(DEPDIR)/SjH__fake_close_rst.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_close_rst.cc' object='SjH__fake_close_rst.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_close_rst.obj `if test -f 'hackpkts/SjH__fake_close_rst.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_close_rst.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_close_rst.cc'; fi`
-
-SjH__fake_data.o: hackpkts/SjH__fake_data.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_data.o -MD -MP -MF $(DEPDIR)/SjH__fake_data.Tpo -c -o SjH__fake_data.o `test -f 'hackpkts/SjH__fake_data.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_data.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_data.Tpo $(DEPDIR)/SjH__fake_data.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data.cc' object='SjH__fake_data.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data.o `test -f 'hackpkts/SjH__fake_data.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_data.cc
-
-SjH__fake_data.obj: hackpkts/SjH__fake_data.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_data.obj -MD -MP -MF $(DEPDIR)/SjH__fake_data.Tpo -c -o SjH__fake_data.obj `if test -f 'hackpkts/SjH__fake_data.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_data.Tpo $(DEPDIR)/SjH__fake_data.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data.cc' object='SjH__fake_data.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data.obj `if test -f 'hackpkts/SjH__fake_data.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data.cc'; fi`
-
-SjH__fake_seq.o: hackpkts/SjH__fake_seq.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_seq.o -MD -MP -MF $(DEPDIR)/SjH__fake_seq.Tpo -c -o SjH__fake_seq.o `test -f 'hackpkts/SjH__fake_seq.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_seq.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_seq.Tpo $(DEPDIR)/SjH__fake_seq.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_seq.cc' object='SjH__fake_seq.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_seq.o `test -f 'hackpkts/SjH__fake_seq.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_seq.cc
-
-SjH__fake_seq.obj: hackpkts/SjH__fake_seq.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_seq.obj -MD -MP -MF $(DEPDIR)/SjH__fake_seq.Tpo -c -o SjH__fake_seq.obj `if test -f 'hackpkts/SjH__fake_seq.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_seq.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_seq.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_seq.Tpo $(DEPDIR)/SjH__fake_seq.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_seq.cc' object='SjH__fake_seq.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_seq.obj `if test -f 'hackpkts/SjH__fake_seq.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_seq.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_seq.cc'; fi`
-
-SjH__shift_ack.o: hackpkts/SjH__shift_ack.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__shift_ack.o -MD -MP -MF $(DEPDIR)/SjH__shift_ack.Tpo -c -o SjH__shift_ack.o `test -f 'hackpkts/SjH__shift_ack.cc' || echo '$(srcdir)/'`hackpkts/SjH__shift_ack.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__shift_ack.Tpo $(DEPDIR)/SjH__shift_ack.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__shift_ack.cc' object='SjH__shift_ack.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__shift_ack.o `test -f 'hackpkts/SjH__shift_ack.cc' || echo '$(srcdir)/'`hackpkts/SjH__shift_ack.cc
-
-SjH__shift_ack.obj: hackpkts/SjH__shift_ack.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__shift_ack.obj -MD -MP -MF $(DEPDIR)/SjH__shift_ack.Tpo -c -o SjH__shift_ack.obj `if test -f 'hackpkts/SjH__shift_ack.cc'; then $(CYGPATH_W) 'hackpkts/SjH__shift_ack.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__shift_ack.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__shift_ack.Tpo $(DEPDIR)/SjH__shift_ack.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__shift_ack.cc' object='SjH__shift_ack.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__shift_ack.obj `if test -f 'hackpkts/SjH__shift_ack.cc'; then $(CYGPATH_W) 'hackpkts/SjH__shift_ack.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__shift_ack.cc'; fi`
-
-SjH__fake_zero_window.o: hackpkts/SjH__fake_zero_window.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_zero_window.o -MD -MP -MF $(DEPDIR)/SjH__fake_zero_window.Tpo -c -o SjH__fake_zero_window.o `test -f 'hackpkts/SjH__fake_zero_window.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_zero_window.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_zero_window.Tpo $(DEPDIR)/SjH__fake_zero_window.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_zero_window.cc' object='SjH__fake_zero_window.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_zero_window.o `test -f 'hackpkts/SjH__fake_zero_window.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_zero_window.cc
-
-SjH__fake_zero_window.obj: hackpkts/SjH__fake_zero_window.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_zero_window.obj -MD -MP -MF $(DEPDIR)/SjH__fake_zero_window.Tpo -c -o SjH__fake_zero_window.obj `if test -f 'hackpkts/SjH__fake_zero_window.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_zero_window.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_zero_window.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_zero_window.Tpo $(DEPDIR)/SjH__fake_zero_window.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_zero_window.cc' object='SjH__fake_zero_window.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_zero_window.obj `if test -f 'hackpkts/SjH__fake_zero_window.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_zero_window.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_zero_window.cc'; fi`
-
-SjH__fake_data_anticipation.o: hackpkts/SjH__fake_data_anticipation.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_data_anticipation.o -MD -MP -MF $(DEPDIR)/SjH__fake_data_anticipation.Tpo -c -o SjH__fake_data_anticipation.o `test -f 'hackpkts/SjH__fake_data_anticipation.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_data_anticipation.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_data_anticipation.Tpo $(DEPDIR)/SjH__fake_data_anticipation.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data_anticipation.cc' object='SjH__fake_data_anticipation.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data_anticipation.o `test -f 'hackpkts/SjH__fake_data_anticipation.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_data_anticipation.cc
-
-SjH__fake_data_anticipation.obj: hackpkts/SjH__fake_data_anticipation.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_data_anticipation.obj -MD -MP -MF $(DEPDIR)/SjH__fake_data_anticipation.Tpo -c -o SjH__fake_data_anticipation.obj `if test -f 'hackpkts/SjH__fake_data_anticipation.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data_anticipation.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data_anticipation.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_data_anticipation.Tpo $(DEPDIR)/SjH__fake_data_anticipation.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data_anticipation.cc' object='SjH__fake_data_anticipation.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data_anticipation.obj `if test -f 'hackpkts/SjH__fake_data_anticipation.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data_anticipation.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data_anticipation.cc'; fi`
-
-SjH__fake_data_posticipation.o: hackpkts/SjH__fake_data_posticipation.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_data_posticipation.o -MD -MP -MF $(DEPDIR)/SjH__fake_data_posticipation.Tpo -c -o SjH__fake_data_posticipation.o `test -f 'hackpkts/SjH__fake_data_posticipation.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_data_posticipation.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_data_posticipation.Tpo $(DEPDIR)/SjH__fake_data_posticipation.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data_posticipation.cc' object='SjH__fake_data_posticipation.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data_posticipation.o `test -f 'hackpkts/SjH__fake_data_posticipation.cc' || echo '$(srcdir)/'`hackpkts/SjH__fake_data_posticipation.cc
-
-SjH__fake_data_posticipation.obj: hackpkts/SjH__fake_data_posticipation.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__fake_data_posticipation.obj -MD -MP -MF $(DEPDIR)/SjH__fake_data_posticipation.Tpo -c -o SjH__fake_data_posticipation.obj `if test -f 'hackpkts/SjH__fake_data_posticipation.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data_posticipation.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data_posticipation.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__fake_data_posticipation.Tpo $(DEPDIR)/SjH__fake_data_posticipation.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__fake_data_posticipation.cc' object='SjH__fake_data_posticipation.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__fake_data_posticipation.obj `if test -f 'hackpkts/SjH__fake_data_posticipation.cc'; then $(CYGPATH_W) 'hackpkts/SjH__fake_data_posticipation.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__fake_data_posticipation.cc'; fi`
-
-SjH__valid_rst_fake_seq.o: hackpkts/SjH__valid_rst_fake_seq.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__valid_rst_fake_seq.o -MD -MP -MF $(DEPDIR)/SjH__valid_rst_fake_seq.Tpo -c -o SjH__valid_rst_fake_seq.o `test -f 'hackpkts/SjH__valid_rst_fake_seq.cc' || echo '$(srcdir)/'`hackpkts/SjH__valid_rst_fake_seq.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__valid_rst_fake_seq.Tpo $(DEPDIR)/SjH__valid_rst_fake_seq.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__valid_rst_fake_seq.cc' object='SjH__valid_rst_fake_seq.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__valid_rst_fake_seq.o `test -f 'hackpkts/SjH__valid_rst_fake_seq.cc' || echo '$(srcdir)/'`hackpkts/SjH__valid_rst_fake_seq.cc
-
-SjH__valid_rst_fake_seq.obj: hackpkts/SjH__valid_rst_fake_seq.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SjH__valid_rst_fake_seq.obj -MD -MP -MF $(DEPDIR)/SjH__valid_rst_fake_seq.Tpo -c -o SjH__valid_rst_fake_seq.obj `if test -f 'hackpkts/SjH__valid_rst_fake_seq.cc'; then $(CYGPATH_W) 'hackpkts/SjH__valid_rst_fake_seq.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__valid_rst_fake_seq.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SjH__valid_rst_fake_seq.Tpo $(DEPDIR)/SjH__valid_rst_fake_seq.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='hackpkts/SjH__valid_rst_fake_seq.cc' object='SjH__valid_rst_fake_seq.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SjH__valid_rst_fake_seq.obj `if test -f 'hackpkts/SjH__valid_rst_fake_seq.cc'; then $(CYGPATH_W) 'hackpkts/SjH__valid_rst_fake_seq.cc'; else $(CYGPATH_W) '$(srcdir)/hackpkts/SjH__valid_rst_fake_seq.cc'; fi`
+clean-libtool:
+	-rm -rf .libs _libs
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -584,7 +504,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -639,7 +559,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-am
 
@@ -654,16 +575,17 @@ uninstall-am: uninstall-binPROGRAMS
 .MAKE: all install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-binPROGRAMS \
-	clean-generic ctags distclean distclean-compile \
-	distclean-generic distclean-hdr distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-binPROGRAMS install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
+	clean-generic clean-libtool ctags distclean distclean-compile \
+	distclean-generic distclean-hdr distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-binPROGRAMS install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags uninstall uninstall-am uninstall-binPROGRAMS
 
 

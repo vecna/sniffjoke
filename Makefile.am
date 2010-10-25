@@ -1,4 +1,4 @@
-SUBDIRS = src
+SUBDIRS = hacks src
 
 EXTRA_DIST = AUTHORS \
              ChangeLog \

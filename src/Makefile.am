@@ -20,10 +20,7 @@ sniffjoke_SOURCES = 	DataDebug.cc \
 			TTLfocus.h \
 			UserConf.cc \
 			UserConf.h \
-			Utils.h \
-			hackpkts/HackPacket.h \
-			hackpkts/FakeDataPosticipation.cc \
-			hackpkts/FakeDataAnticipation.cc 
+			Utils.h
 AM_CPPFLAGS = -ansi -pedantic -Wall -Werror
 sniffjoke_LDFLAGS = -lrt
 

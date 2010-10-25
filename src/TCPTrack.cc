@@ -22,7 +22,6 @@
 #include "Utils.h"
 #include "TCPTrack.h"
 
-#include "hackpkts/HackPacket.h"
 #include <dlfcn.h>
 
 #include <algorithm>
@@ -62,15 +61,15 @@ void HackPacketPool::ImportPluginList(struct sj_config *sjconf)
 	/* da implementare il parsing - ci penso io */
 	n_plugin = 2;
 
-	listOfHacks[0].pluginHandler = dlopen("./FakeDataAnticipation.so", RTLD_LAZY);
+	listOfHacks[0].pluginHandler = dlopen("./fake_data_anticipation.so", RTLD_LAZY);
 	listOfHacks[0].fp_CreateHackObj = (constructor_f *) dlsym(listOfHacks[0].pluginHandler, "CreateHackObject");
 	listOfHacks[0].fp_deleteHackObj = (destructor_f *) dlsym(listOfHacks[0].pluginHandler, "DeleteHackObject");
-	listOfHacks[0].pluginpath = "lib/FakeDataAnticipation.so";
+	listOfHacks[0].pluginpath = "lib/fake_data_anticipation.so";
 
-	listOfHacks[1].pluginHandler = dlopen("./FakeDataPosticipation.so", RTLD_LAZY);
+	listOfHacks[1].pluginHandler = dlopen("./fake_data_posticipation.so", RTLD_LAZY);
 	listOfHacks[1].fp_CreateHackObj = (constructor_f *) dlsym(listOfHacks[1].pluginHandler, "CreateHackObject");
 	listOfHacks[1].fp_deleteHackObj = (destructor_f *) dlsym(listOfHacks[1].pluginHandler, "DeleteHackObject");
-	listOfHacks[1].pluginpath = "lib/FakeDataPosticipation.so";
+	listOfHacks[1].pluginpath = "lib/fake_data_posticipation.so";
 
 #if 0 // il ciclo potrebbe assomigliare a:
 	{
