@@ -23,6 +23,7 @@
 #include "TCPTrack.h"
 
 #include "hackpkts/HackPacket.h"
+#include <dlfcn.h>
 
 #include <algorithm>
 using namespace std;
@@ -44,28 +45,81 @@ static DataDebug *dd;
 
 #define STARTING_ARB_TTL	46
 
-HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* const d) :
+HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* d) :
 	config(c),
 	enabled(*c),
 	dummy(d)
 {}
 
-HackPacketPool::HackPacketPool(struct sj_config *sjconf) {
-	void* dummydata = calloc(1, 512);
-	const Packet dummy = Packet((const unsigned char*)dummydata, 512);
+void HackPacketPool::ImportPluginList(struct sj_config *sjconf)
+{
+	/* PARAMETRO sj_config ancora inutile, i plugin staranno in
+	 * 	/var/sniffjoke/lib, e siccome chroot è in /var/sniffjoke saranno
+	 * 	accessibili anche da sotto il chroot. sj_config serve per disabilitare o 
+	 * 	abilitare plugin a commandline, overridando le informazioni presenti nel file di indice qui sotto */
+
+	FILE *plugfile = fopen("lib/enabled_plugin.txt", "r"); // fare un default, gestir gli errori, ecc... TODO
+	/* da implementare il parsing - ci penso io */
+	n_plugin = 2;
+
+	listOfHacks[0].pluginHandler = dlopen("./FakeDataAnticipation.so", RTLD_LAZY);
+	listOfHacks[0].fp_CreateHackObj = (constructor_f *) dlsym(listOfHacks[0].pluginHandler, "CreateHackObject");
+	listOfHacks[0].fp_deleteHackObj = (destructor_f *) dlsym(listOfHacks[0].pluginHandler, "DeleteHackObject");
+	listOfHacks[0].pluginpath = "lib/FakeDataAnticipation.so";
+
+	listOfHacks[1].pluginHandler = dlopen("./FakeDataPosticipation.so", RTLD_LAZY);
+	listOfHacks[1].fp_CreateHackObj = (constructor_f *) dlsym(listOfHacks[1].pluginHandler, "CreateHackObject");
+	listOfHacks[1].fp_deleteHackObj = (destructor_f *) dlsym(listOfHacks[1].pluginHandler, "DeleteHackObject");
+	listOfHacks[1].pluginpath = "lib/FakeDataPosticipation.so";
+
+#if 0 // il ciclo potrebbe assomigliare a:
+	{
+		const char *name = "FakeDataPosticipation.so";
+		if(!(listOfHacks->pluginHandler = dlopen(name, RTLD_LAZY))) {
+			internal_log(NULL, ALL_LEVEL, "Posticipation fail! :%s", dlerror() ); 
+		}
+		
+		tracedPlugin->fp_CreateHackObj = (constructor_f *) dlsym(plugin, "CreateHackObject");
+		tracedPlugin->fp_DeleteHackObj = (destructor_f *) dlsym(plugin, "DeleteHackObject");
 	
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_syn, new SjH__fake_syn(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close_fin, new SjH__fake_close_fin(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_close_rst, new SjH__fake_close_rst(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data, new SjH__fake_data(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_anticipation, new SjH__fake_data_anticipation(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_data_posticipation, new SjH__fake_data_posticipation(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_seq, new SjH__fake_seq(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__shift_ack, new SjH__shift_ack(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__valid_rst_fake_seq, new SjH__valid_rst_fake_seq(dummy)));
-	push_back(HackPacketPoolElem(&sjconf->SjH__fake_zero_window, new SjH__zero_window(dummy)));
-	
-	free(dummydata);
+	}
+#endif
+	/* torna void, ma forse è errato: se un plugin non c'è, va considerato errore fatale o no ? */
+}
+
+HackPacketPool::HackPacketPool(struct sj_config *sjconf, /* TODO passargli come argomento la */ listOfPlugin) 
+{
+	int i;
+
+	/* TOBE implemented */
+	/* ImportPluginList(sjconf);, fill struct <vePluginTrack listOfHacks*/
+	/* per ogni elemento di listOfHacks */
+
+	for(i =0; i < n_plugin; i++)
+	{
+
+		bool obviously_true = true;
+
+		if(listOfPlugin[i]->hackname == NULL) {
+			/* TODO: check the address integrity of the methods */
+			internal_log(NULL, ALL_LEVEL, "BAd, REALLY BAD, name not present in plugin");	
+		}
+
+		push_back(HackPacketPoolElem(/* prima c'era il bool del sj_shift_ack_enable, ora, se 
+						il plugin è nella lista, o non è tolto in sjconf e quindi
+						non presente in listOfHacks, ogni plugin che arriva qui è 
+						abilitato di certo. però l'ho lasciato, perché il bool qui ha senso
+						per le abilitazioni progressive */ &obviously_true, listOfPlugin[i]->fp_CreateHackObj()
+			)
+		);
+	}
+
+	/* 
+	 * TCPTrack.cc:86: warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
+	 *
+	 * THE IS NO WAY TO AVOID IT!
+	 * need, for TCPTrack.cc to be compiled without -Werror 
+	 */
 }
 
 TCPTrack::TCPTrack(UserConf *sjconf) :
@@ -599,11 +653,10 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
  * bad checksum FIN packet; bad checksum fake SEQ; valid reset with bad sequence number ...
  *
  */
-void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
+void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *session)
 {
 	vector<HackPacketPoolElem>::iterator it;
 	HackPacketPoolElem *hppe;
-	HackPacket *injpkt;
 	
 	HackPacketPool applicable_hacks = hack_pool;
 	
@@ -611,7 +664,7 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) {
 		hppe = &(*it);
 		hppe->enabled &= *(hppe->config);
-		hppe->enabled &= hppe->dummy->condition(pkt);
+		hppe->enabled &= hppe->dummy->Condition(orig_pkt);
 		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->dummy->hack_frequency);
 	}
 
@@ -619,56 +672,39 @@ void TCPTrack::inject_hack_in_queue(Packet &pkt, const SessionTrack *session)
 	random_shuffle( applicable_hacks.begin(), applicable_hacks.end() );
 
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
-	judge_t court_word;
-	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) {
+	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) 
+	{
+		/* must be moved in the do/while loop based on HackPacket->num_pkt_gen */
+		Packet *injpkt;
+
 		hppe = &(*it);
-		if(!hppe->enabled) continue;
+		if(!hppe->enabled) 
+			continue;
 
-		if (hppe->dummy->prejudge == GUILTY_OR_PRESCRIPTION) {
-			if (percentage(hppe->dummy->prescription_probability, 100)) {
-				court_word = PRESCRIPTION;
-			} else {
-				court_word = GUILTY;
-			}
-		} else {
-			court_word = hppe->dummy->prejudge;
+		injpkt = hppe->dummy->createHack(orig_pkt);
+
+		/* we trust in the external developer, but is required a safety check by sniffjoke :) */
+		if(!injpkt->SelfIntegrityCheck(hppe->dummy->hackname)) {
+			internal_log(NULL, ALL_LEVEL, "invalid packet generated by hack %s", hppe->dummy->hackname);
+			delete injpkt;
+			continue;
 		}
-
-		injpkt = hppe->dummy->create_hack(pkt);
-		injpkt->hack();
-		injpkt->mark(LOCAL, SEND, court_word);
+		injpkt->mark(LOCAL, SEND);
 
 		switch(injpkt->position) {
 			case ANTICIPATION:
-				p_queue.insert_before(*injpkt, pkt);
+				p_queue.insert_before(*injpkt, orig_pkt);
 				break;
 			case POSTICIPATION:
-				p_queue.insert_after(*injpkt, pkt);
+				p_queue.insert_after(*injpkt, orig_pkt);
 				break;
 			case ANY_POSITION:
 				if(random() % 2)
-					p_queue.insert_before(*injpkt, pkt);
+					p_queue.insert_before(*injpkt, orig_pkt);
 				else
-					p_queue.insert_after(*injpkt, pkt);
+					p_queue.insert_after(*injpkt, orig_pkt);
 				break;
 		}
-
-#ifdef HACKSDEBUG
-		internal_log(NULL, HACKS_DEBUG,
-			"HACKSDEBUG: [%s, court:%d, position:%d] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
-			injpkt->debug_info,
-			court_word,
-			injpkt->position,
-			ntohs(injpkt->tcp->source), 
-			inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)),
-			ntohs(injpkt->tcp->dest), session->packet_number,
-			ntohs(injpkt->ip->id),
-			injpkt->orig_pktlen,
-			injpkt->pbuf.size(), ntohs(injpkt->ip->tot_len),
-			ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
-			injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
-		);
-#endif
 	}
 }
 

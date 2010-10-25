@@ -29,7 +29,7 @@
  * are both the same hack, and need to be used together, anyway for 
  * design pourpose, every injected packet require a dedicated 
  * function.
- * 
+ *
  * the hacks inject a packet (maked as invalid, with TTL expiring or bad
  * checksum) with a fake data, of the same length of the original packet,
  * BEFORE and AFTER the real packet. this cause that the sniffer (that 
@@ -45,20 +45,57 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-SjH__fake_data_posticipation::SjH__fake_data_posticipation(const Packet pkt) :
-	HackPacket(pkt, "fake data posticipation")
+class FakeDataPosticipation : public HackPacket
 {
-	prejudge = PRESCRIPTION;
-	position = POSTICIPATION;
-	hack_frequency = 50;
+private:
+public:
+	virtual Packet *createHack(Packet &orig_packet)
+	{
+		Packet ret = Packet(orig_packet);
+		ret.fillRandomPayload();
+
+		/* REQUIRED - checked */
+		ret.wtf = PRESCRIPTION;
+		ret.position = POSTICIPATION;
+
+#if 0
+                internal_log(NULL, HACKS_DEBUG,
+                        "HACKSDEBUG: %s [court:%d, position:%d] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
+			__FILE__,
+                        court_word,
+                        injpkt->position,
+                        ntohs(injpkt->tcp->source),
+                        inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)),
+                        ntohs(injpkt->tcp->dest), session->packet_number,
+                        ntohs(injpkt->ip->id),
+                        injpkt->orig_pktlen,
+                        injpkt->pbuf.size(), ntohs(injpkt->ip->tot_len),
+                        ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
+                        injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
+                );
+#endif
+		return <Packet *>(this);
+	}
+
+	virtual bool condition(const Packet &orig_packet)
+	{
+		return (orig_packet.payload != NULL);		
+	}
+
+	FakeDataPosticipation(const Packet &dummy) {
+		/* REQUIRED - checked */
+		hack_frequency = 50;
+		/* REQUIRED - checked */
+		hackname = "FakeDataPosticipation";
+	}
+
+	~FakeDataPosticipation() { }
+};
+
+extern "C"  HackPacket * CreateHackObject() {
+	return new FakeDataPosticipation;
 }
 
-bool SjH__fake_data_posticipation::condition(const Packet &pkt)
-{
-	return (pkt.payload != NULL);		
-}
-
-void SjH__fake_data_posticipation::hack()
-{		
-	fillRandomPayload();
+extern "C" DeleteHackPacket * DeleteHackObject(HackPacket *who) {
+	delete who;
 }

@@ -40,9 +40,25 @@ public:
 	HackPacketPoolElem(bool*, HackPacket*);
 };
 
+struct PluginTrack {
+	void *pluginHandler;	
+	constructor_f fp_CreateHackObj;
+	destructor_f fp_DeleteHackObj;
+	const char *pluginpath;
+};
+
 class HackPacketPool : public vector<HackPacketPoolElem> {
+private:
+	/* TODO - serve un vettore che tenga traccia dei nomi dei plugin, degli stream aperti dei plugin e delle funzioni distruttici.
+	 * in questo modo, quando viene chiamato ~TCPTrack, viene invicata la lista di distruttori importanti da dlsym
+	 */
+//	vector<PluginTrack> listOfHacks;
+	struct PluginTrack listOfHacks[20];
+	int n_plugin; // TEMP - DOPO SARA' VECTOR o COS'ALTRO 
+
+	void ImportPluginList(struct sj_config *);
 public:
-	HackPacketPool(struct sj_config*);
+	HackPacketPool(struct sj_config *);
 };
 
 class TCPTrack {

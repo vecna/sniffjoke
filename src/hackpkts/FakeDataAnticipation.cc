@@ -45,19 +45,57 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-SjH__fake_data_anticipation::SjH__fake_data_anticipation(const Packet pkt) :
-	HackPacket(pkt, "fake data anticipation")
+class FakeDataAnticipation : public HackPacket
 {
-	prejudge = PRESCRIPTION;
-	hack_frequency = 50;
+private:
+public:
+	virtual Packet *createHack(Packet &orig_packet)
+	{
+		Packet ret = Packet(orig_packet);
+		ret.fillRandomPayload();
+
+		/* REQUIRED - checked */
+		ret.wtf = PRESCRIPTION;
+		ret.position = ANTICIPATION;
+
+#if 0
+                internal_log(NULL, HACKS_DEBUG,
+                        "HACKSDEBUG: %s [court:%d, position:%d] (lo:%d %s:%d #%d) id %u len %d-%d[%d] data %d {%d%d%d%d%d}",
+			__FILE__,
+                        court_word,
+                        injpkt->position,
+                        ntohs(injpkt->tcp->source),
+                        inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr)),
+                        ntohs(injpkt->tcp->dest), session->packet_number,
+                        ntohs(injpkt->ip->id),
+                        injpkt->orig_pktlen,
+                        injpkt->pbuf.size(), ntohs(injpkt->ip->tot_len),
+                        ntohs(injpkt->ip->tot_len) - ((injpkt->ip->ihl * 4) + (injpkt->tcp->doff * 4)),
+                        injpkt->tcp->syn, injpkt->tcp->ack, injpkt->tcp->psh, injpkt->tcp->fin, injpkt->tcp->rst
+                );
+#endif
+		return <Packet *>(this);
+	}
+
+	virtual bool condition(const Packet &orig_packet)
+	{
+		return (orig_packet.payload != NULL);		
+	}
+
+	FakeDataAnticipation(const Packet &dummy) {
+		/* REQUIRED - checked */
+		hack_frequency = 50;
+		/* REQUIRED - checked */
+		hackname = "FakeDataAnticipation";
+	}
+
+	~FakeDataAnticipation() { }
+};
+
+extern "C"  HackPacket * CreateHackObject() {
+	return new FakeDataAnticipation;
 }
 
-bool SjH__fake_data_anticipation::condition(const Packet &pkt)
-{
-	return (pkt.payload != NULL);		
-}
-
-void SjH__fake_data_anticipation::hack()
-{
-	fillRandomPayload();
+extern "C" DeleteHackPacket * DeleteHackObject(HackPacket *who) {
+	delete who;
 }

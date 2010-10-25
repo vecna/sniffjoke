@@ -1,5 +1,5 @@
 AC_INIT(sniffjoke)
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/sj_defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 AC_SUBST(PACKAGE_VERSION)
 AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
 

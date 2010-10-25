@@ -82,6 +82,7 @@ public:
 	judge_t wtf;
 	proto_t proto;
 	injection_t injection;
+	position_t position;	
 
 	struct iphdr *ip;
 	struct tcphdr *tcp;
@@ -96,12 +97,14 @@ public:
 	virtual ~Packet(void) {};
 
 	unsigned int make_pkt_id(const unsigned char*) const;
+	void mark(source_t, status_t);
 	void mark(source_t, status_t, judge_t);
 	void updatePointers(void);
 	
 	unsigned int half_cksum(const void*, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
+	bool SelfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
 	void increasePbuf(unsigned int);
@@ -112,22 +115,39 @@ public:
 	void SjH__inject_tcpopt(void);
 };
 
-/* Abstract class used to create hacks */
-class HackPacket : public Packet {
-public:
-	const char *debug_info;
+/* 
+ * HackPacket - pure virtual methods 
+ *
+ * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
+ * we understand how to do. HackPacket classes is implemented by the external
+ * module and the programmer should implement Condition and createHack, constructor
+ * and distructor methods.
+ *
+ * at the end of every plugin code, is required the two extern "C", pointing
+ * to the constructor and the destructor method. the constructon instace
+ * your/the plugin with your/the Condition and createHack code.
+ *
+****/
 
-	position_t position;	
-	judge_t prejudge;
+
+class HackPacket {
+public:
 	unsigned int prescription_probability;
 	unsigned int hack_frequency;
-	
-	HackPacket(const Packet &);
-	HackPacket(const Packet& pkt, const char* hackname);
-	virtual HackPacket* create_hack(const Packet& pkt) = 0;
-	virtual bool condition(const Packet &) { return true; };
-	virtual void hack() = 0;
+	const char *hackname;
 
+	/* number of packets generated from the hack */
+	int num_pkt_gen;
+
+	virtual bool Condition(Packet &) = 0;
+	virtual Packet *createHack(Packet &) = 0;
+
+	HackPacket(const char *name) { }
 };
+
+typedef HackPacket * constructor_f(); 
+	// extern(ed) "C" as HackPacket * CreateHackObject
+typedef void destructor_f(HackPacket *); 
+	// extern(ed) "C" as DeleteHackPacket * DeleteHackObject
 
 #endif /* SJ_PACKET_H */

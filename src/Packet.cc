@@ -61,11 +61,24 @@ unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 		return 0; /* packet_id == 0 mean no ID check */
 }
 
-void Packet::mark(source_t source, status_t status, judge_t judge)
+/* VERIFY
+ *
+ * mark should be used in two ways:
+ * 1) after the hack-plugin has returned the packet, we need set up the
+ *    parameters for inser correctly in the chain. two arguments are enought
+ *
+ * 2) when a packet is generated, and require a bulk inizialization,
+ *    three (or more ? VERIFY THIS) arguments usefull
+ */
+void Packet::mark(source_t source, status_t status)
 {
 	this->source = source;
 	this->status = status;
-	this->wtf = judge;
+}
+
+void Packet::mark(source_t source, status_t status, judge_t wtf) {
+	this->wtf = wtf;
+	mark(source, status);
 }
 
 void Packet::updatePointers(void)
@@ -132,6 +145,31 @@ void Packet::fixIpTcpSum(void)
 	sum += htons (IPPROTO_TCP + l4len);
 	sum += half_cksum((const void *)tcp, l4len);
 	tcp->check = compute_sum(sum);
+}
+
+bool Packet::SelfIntegrityCheck(const char *pluginName)
+{
+	if(source != SOURCEUNASSIGNED ) {
+		internal_log(NULL, ALL_LEVEL, "in %s (source_t)source must not be set: ignored value", pluginName);
+	}
+
+	if(status != STATUSUNASSIGNED ) {
+		internal_log(NULL, ALL_LEVEL, "in %s (status_t)status must not be set: ignored value", pluginName);
+	}
+
+	if(wtf != JUDGEUNASSIGNED ) {
+		internal_log(NULL, ALL_LEVEL, "in %s not set ->wtf (what the fuck SniffJoke has to do with the generated packet!", pluginName);
+		return false;
+	}
+
+	if(proto == PROTOUNASSIGNED) {
+		internal_log(NULL, ALL_LEVEL, "in %s not set ->proto (error ? or not ?) ", pluginName);
+	}
+
+        if(injection == INJECTUNASSIGNED) {
+		internal_log(NULL, ALL_LEVEL, "please, in plugin %s specify what kind of injection you made", pluginName);
+	}
+	return true;
 }
 
 void Packet::increasePbuf(unsigned int morespace)
@@ -215,7 +253,6 @@ void Packet::SjH__inject_ipopt(void)
 	payload = (unsigned char *)(tcp) + tcphlen;
 }
 
-
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
 void Packet::SjH__inject_tcpopt(void)
 {
@@ -266,16 +303,4 @@ void Packet::SjH__inject_tcpopt(void)
 	ip->tot_len = htons(iphlen + tcphlen + l57len);
 	tcp->doff = tcphlen / 4;
 	payload = (unsigned char *)(tcp) + tcphlen;
-}
-
-HackPacket::HackPacket(const Packet& pkt, const char* hackname) :
-	Packet(pkt),
-	debug_info(hackname),
-	position(ANTICIPATION),
-	prejudge(GUILTY_OR_PRESCRIPTION),
-	prescription_probability(93),
-	hack_frequency(0)
-{
-	packet_id = 0;
-	evilbit = EVIL;
 }
