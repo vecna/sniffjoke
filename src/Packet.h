@@ -132,6 +132,7 @@ public:
 
 class HackPacket {
 public:
+	judge_t prejudge;
 	unsigned int prescription_probability;
 	unsigned int hack_frequency;
 	const char *hackname;
@@ -139,15 +140,14 @@ public:
 	/* number of packets generated from the hack */
 	int num_pkt_gen;
 
-	virtual bool Condition(Packet &) = 0;
+	virtual bool Condition(const Packet &) { return true; };
 	virtual Packet *createHack(Packet &) = 0;
 
-	HackPacket(const char *name) { }
 };
 
-typedef HackPacket * constructor_f(); 
-	// extern(ed) "C" as HackPacket * CreateHackObject
+typedef HackPacket* constructor_f(); 
+	// extern(ed) "C" as HackPacket* CreateHackObject
 typedef void destructor_f(HackPacket *); 
-	// extern(ed) "C" as DeleteHackPacket * DeleteHackObject
+	// extern(ed) "C" as void DeleteHackObject
 
 #endif /* SJ_PACKET_H */

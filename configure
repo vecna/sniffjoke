@@ -16496,7 +16496,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_data_anticipation/Makefile hacks/fake_data_posticipation/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data_anticipation/Makefile hacks/fake_data_posticipation/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile"
 
 
 
@@ -17610,7 +17610,6 @@ do
     "hacks/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/Makefile" ;;
     "hacks/fake_close_fin/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_close_fin/Makefile" ;;
     "hacks/fake_close_rst/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_close_rst/Makefile" ;;
-    "hacks/fake_data/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_data/Makefile" ;;
     "hacks/fake_data_anticipation/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_data_anticipation/Makefile" ;;
     "hacks/fake_data_posticipation/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_data_posticipation/Makefile" ;;
     "hacks/fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_seq/Makefile" ;;
