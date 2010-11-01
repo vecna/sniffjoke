@@ -52,10 +52,12 @@ private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
+		orig_packet.selflog(__func__, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 		ret->fillRandomPayload();
 
 		ret->position = ANTICIPATION;
+		ret->selflog(__func__, "Hacked packet");
 
 		return ret;
 	}

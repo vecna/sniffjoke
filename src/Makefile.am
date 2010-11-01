@@ -21,7 +21,7 @@ sniffjoke_SOURCES = 	DataDebug.cc \
 			UserConf.cc \
 			UserConf.h \
 			Utils.h
-AM_CPPFLAGS = -ansi -pedantic -Wall -Werror
+AM_CPPFLAGS = -ansi -pedantic -Wall 
 sniffjoke_LDFLAGS = -lrt
 
 CLEANFILES = *~

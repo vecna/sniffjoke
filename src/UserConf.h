@@ -53,7 +53,7 @@ struct sj_useropt {
 		const char *group;
 		const char *chroot_dir;
 		const char *logfname;
-		const char *requested_hacks;
+		const char *enabler;
 		unsigned int debug_level;
 		bool go_foreground;
 		bool force_restart;
@@ -65,11 +65,12 @@ struct sj_useropt {
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool sj_run;				/* default: false = NO RUNNING */
-		char user[MEDIUMBUF];			/* default: check defines.h */
-		char group[MEDIUMBUF];			/* default: check defines.h */
-		char chroot_dir[MEDIUMBUF];		/* default: check defines.h */
-		char logfname[MEDIUMBUF];		/* default: check defines.h */
-		unsigned int debug_level;		/* default: check defines.h */
+		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
+		char group[MEDIUMBUF];			/* default: idem */
+		char chroot_dir[MEDIUMBUF];		/* default: idem */
+		char enabler[MEDIUMBUF];		/* default: idem */
+		char logfname[MEDIUMBUF];		/* default: idem */
+		unsigned int debug_level;		/* default: idem */
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
@@ -81,24 +82,6 @@ struct sj_config {
 		unsigned int port_conf_set_n;		/* number of "set" usage */
 		unsigned char portconf[PORTNUMBER];
 		char fileconfname[MEDIUMBUF];
-
-		/* hacks support */
-		char hacks[CONFIGURABLE_HACKS_N];
-
-		bool SjH__fake_syn;
-		bool SjH__fake_close_fin;
-		bool SjH__fake_close_rst;
-		bool SjH__fake_data;
-		bool SjH__fake_data_anticipation;
-		bool SjH__fake_data_posticipation;
-		bool SjH__fake_seq;
-		bool SjH__shift_ack;
-		bool SjH__valid_rst_fake_seq;
-		bool SjH__fake_zero_window;
-		bool SjH__half_fake_syn;
-		bool SjH__half_fake_ack;
-		bool SjH__inject_ipopt;
-		bool SjH__inject_tcpopt;
 
 		char *error;
 };

@@ -43,22 +43,19 @@ public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
 		Packet* ret = new Packet(orig_packet);
-		
+		orig_packet.selflog(__func__, "Original packet");
+
 		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
 
 		ret->resizePayload(0);
-
 		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
-
 		ret->tcp->psh = 0;
-
 		ret->tcp->rst = 1;
-	
 		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) - original_size + 1);
-
 		ret->fillRandomPayload();
-
 		ret->position = ANTICIPATION;
+
+		ret->selflog(__func__, "Hacked packet");
 
 		return ret;
 	}

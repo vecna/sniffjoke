@@ -16,13 +16,11 @@
 #define CHROOT_DIR			"/var/sniffjoke/"
 // FIXME con -DPATH_LIB=\"$(libdir)/@PACKAGE@/\"
 // #define PLUGINSSUBDIR			"/usr/local/lib/sniffjoke/"	// used INSIDE chroot
-#define PLUGINSENABLER			"/var/sniffjoke/plugins_enabled.txt" // used in PLUGINSSUBDIR
+#define PLUGINSENABLER			"plugins_enabled.txt" // used INSIDE chroot
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
 #define DEFAULT_DEBUG_LEVEL             2
-#define CONFIGURABLE_HACKS_N            13
-#define ASSURED_HACKS                   "NYNYYYNNYNNYY"
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
 

@@ -55,7 +55,8 @@ static Process *SjProc = NULL;
 	" --chroot-dir [dir]\truns chroted into the specified dir [default: %s]\n"\
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --config [filename]\tconfig file[default: %s%s]\n"\
+	" --config [filename]\tconfig file [default: %s%s]\n"\
+	" --enabler [filename]\tplugins enabler file [default: %s%s]\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
@@ -72,40 +73,12 @@ static Process *SjProc = NULL;
 	" loglevel\t\t[1-6] change the loglevel\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
-/* FIXME - rimuovere tutte le cose dell'hack selection, ormai si passa al path dell'enabler-file
-#define SNIFFJOKE_HACKING_HELP \
-	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
-	" usage: --hacking 0123456789ABC (13 positions: \"Y\" enable, \"N\" disable) 13 hacks:\n\n"\
-	"  0] fake close syn\t\t\t\t(default: NO)\n"\
-	"  1] fake close fin\t\t\t\t(default: YES)\n"\
-	"  2] fake close rst\t\t\t\t(default: NO)\n"\
-	"  3] fake data\t\t\t\t(default: YES)\n"\
-	"  4] fake data (ant|post)icipation\t(default: YES)\n\n"\
-	"  5] fake seq\t\t\t\t(default: YES)\n"\
-	"  6] shift ack\t\t\t\t(default: NO - need testing, cause ack storm, cwnd downgrade)\n"\
-	"  7] fake zero window\t\t\t(default: NO)\n"\
-	"  8] valid rst fake seq\t\t\t(default: YES)\n"\
-	"  9] half fake syn\t\t\t(default: NO - not implemented)\n"\
-	" 10] half fake ack\t\t\t(default: NO - not implemented)\n"\
-	" 11] inject IPOPT\t\t\t(default: YES - need a lot of research)\n"\
-	" 12] inject TCPOPT\t\t\t(default: YES - need a lot of research)\n"\
-	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED)\n"
-*/
-
-/*
-static void sj_hacking_help(void)
-{
-	printf(SNIFFJOKE_HACKING_HELP);
-	printf(" default: --hacking %s\n", ASSURED_HACKS);
-}
-*/
-
 static void sj_help(const char *pname, const char *basedir)
 {
 	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, DEFAULT_DEBUG_LEVEL, 
 		basedir, LOGFILE, 
 		DROP_USER, DROP_GROUP, 
-		basedir, basedir, CONF_FILE);
+		basedir, basedir, CONF_FILE, basedir, PLUGINSENABLER);
 }
 
 static void sj_version(const char *pname)
@@ -443,7 +416,7 @@ int main(int argc, char **argv)
 	useropt.chroot_dir = CHROOT_DIR;
 	useropt.logfname = LOGFILE;
 	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
-	useropt.requested_hacks = ASSURED_HACKS;
+	useropt.enabler = PLUGINSENABLER;
 
 	useropt.go_foreground = false;
 	useropt.force_restart = false;
@@ -459,9 +432,9 @@ int main(int argc, char **argv)
 		{ "chroot-dir", required_argument, NULL, 'c' },
 		{ "debug", required_argument, NULL, 'd' },
 		{ "logfile", required_argument, NULL, 'l' },
-		{ "foreground", optional_argument, NULL, 'x' },
-		{ "force", optional_argument, NULL, 'r' },
-		{ "hacking", required_argument, NULL, 'k' },
+		{ "enabler", required_argument, NULL, 'e' },
+		{ "foreground", no_argument, NULL, 'x' },
+		{ "force", no_argument, NULL, 'r' },
 		{ "help", no_argument, NULL, 'h' },
 		{ "version", no_argument, NULL, 'v' },
 		{ NULL, 0, NULL, 0 }
@@ -507,7 +480,7 @@ int main(int argc, char **argv)
 	}
 
 	if (command_input == NULL) {
-		while ((charopt = getopt_long(argc, argv, "f:u:g:c:l:d:xrvhk", sj_option, NULL)) != -1) {
+		while ((charopt = getopt_long(argc, argv, "f:u:g:c:d:l:e:xrhv", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
 					useropt.cfgfname = strdup(optarg);
@@ -536,18 +509,9 @@ int main(int argc, char **argv)
 				case 'v':
 					sj_version(argv[0]);
 					return 0;
-				case 'k': // FIXME - selezione dei plugin, esclusione, file di loading di default
-/*					if(strlen(optarg) != CONFIGURABLE_HACKS_N) {
-						sj_hacking_help();
-						return -1;
-					}
-					useropt.requested_hacks = strdup(optarg); */
+				case 'e':
+					useropt.enabler = strdup(optarg);
 					break;
-				case 'h':
-/*					if(optarg != NULL && !strcmp(optarg, "hacking")) {
-						sj_hacking_help();
-						return -1;
-					} */
 				default:
 					sj_help(argv[0], useropt.chroot_dir);
 					return -1;

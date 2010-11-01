@@ -45,6 +45,7 @@ private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
+		orig_packet.selflog(__func__, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 
 		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
@@ -52,6 +53,7 @@ public:
 
 		ret->position = ANY_POSITION;
 
+		ret->selflog(__func__, "Hacked packet");
 		return ret;
 	}
 

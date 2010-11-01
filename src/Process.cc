@@ -126,7 +126,8 @@ void Process::PrivilegesDowngrade(struct sj_config *running)
 		raise(SIGTERM);
 	}
 
-	internal_log(NULL, VERBOSE_LEVEL, "process %d downgrade privileges to uid %d gid %d", userinfo->pw_uid, groupinfo->gr_gid);
+	internal_log(NULL, VERBOSE_LEVEL, "process %d downgrade privileges to uid %d gid %d", 
+		getpid(), userinfo->pw_uid, groupinfo->gr_gid);
 }
 
 /* these Servece*Closed routines are called by a runtime execution or from the 

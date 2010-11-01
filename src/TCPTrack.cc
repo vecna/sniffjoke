@@ -67,6 +67,7 @@ bool HackPacketPool::verifyPluginIntegirty(HackPacket *loaded)
  */
 HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf) 
 {
+	char plugfilepath[MEDIUMBUF];
 	FILE *plugfile;
 
 	memset(&listOfHacks, 0x00, sizeof(struct PluginTrack) * MAXPLUGINS);
@@ -74,8 +75,12 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 
 	*fail = false;
 
-	if((plugfile = fopen(PLUGINSENABLER, "r")) == NULL) {
-		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", PLUGINSENABLER, strerror(errno));
+	/* we are not running in chroot at the moment, but the plugins enabler is defined
+	 * to be. whenever the enabler will stay in /usr/local/lib I will be glad, in both cases
+	 * we need buffer with the absolute path */
+	snprintf(plugfilepath, MEDIUMBUF, "%s/%s", sjconf->chroot_dir, sjconf->enabler);
+	if((plugfile = fopen(plugfilepath, "r")) == NULL) {
+		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", plugfilepath, strerror(errno));
 		*fail = true;
 		return;
 	}
@@ -119,11 +124,20 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 		listOfHacks[n_plugin].pluginHandler = handler;
 		listOfHacks[n_plugin].pluginPath = strdup(plugname);
 
-		constructor_f *X = (constructor_f *) dlsym(handler, "CreateHackObject");
-		listOfHacks[n_plugin].fp_CreateHackObj = X; // = (constructor_f *) dlsym(handler, "CreateHackObject");
+//		constructor_f X;
+//		*(void **)(const int)&X = dlsym(handler, "CreateHackObject");
+//		constructor_f *X;
+//		*(void **)&X = dlsym(handler, "CreateHackObject");
+//		listOfHacks[n_plugin].fp_CreateHackObj = X; 
+//	UNABLE TO SOLVE 
+//	TCPTrack.cc:128: warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
+//	NOR
+//	TCPTrack.cc:124: warning: dereferencing type-punned pointer will break strict-aliasing rules
+//	I've removed the -Werror from Makefile.*
 
-		destructor_f *Y = (destructor_f *) dlsym(handler, "DeleteHackObject");
-		listOfHacks[n_plugin].fp_DeleteHackObj = Y;
+		/* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
+		listOfHacks[n_plugin].fp_CreateHackObj = (constructor_f *)dlsym(handler, "CreateHackObject");
+		listOfHacks[n_plugin].fp_DeleteHackObj = (destructor_f *)dlsym(handler, "DeleteHackObject");
 
 		n_plugin++;
 	} while(!feof(plugfile));
@@ -755,13 +769,13 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	if(pkt.evilbit == EVIL) {
 
 		/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
-		if (runcopy->SjH__inject_ipopt && (pkt.injection == ANY_INJECTION || pkt.injection == IP_INJECTION)) {
+		if (pkt.injection == ANY_INJECTION || pkt.injection == IP_INJECTION) {
 			if (percentage(15, 100)) {
 				pkt.SjH__inject_ipopt();
 			}
 		}
 
-		if (runcopy->SjH__inject_tcpopt && (pkt.injection == ANY_INJECTION || pkt.injection == TCP_INJECTION)) {
+		if (pkt.injection == ANY_INJECTION || pkt.injection == TCP_INJECTION) {
 			if (!check_uncommon_tcpopt(pkt.tcp)) {
 				if (percentage(25, 100)) {
 					pkt.SjH__inject_tcpopt();

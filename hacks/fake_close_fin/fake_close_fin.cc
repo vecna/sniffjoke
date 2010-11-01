@@ -43,7 +43,7 @@ public:
 		Packet* ret = new Packet(orig_packet);
 		
 		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
-		orig_packet.selflog("Original, in Fake FIN");
+		orig_packet.selflog(__func__, "Original packet");
 
 		ret->resizePayload(0);
 		ret->fillRandomPayload();
@@ -56,7 +56,7 @@ public:
 
 		ret->position = ANTICIPATION;
 
-		ret->selflog("Hacked by Fake FIN");
+		ret->selflog(__func__, "Hacked packet");
 		return ret;
 	}
 

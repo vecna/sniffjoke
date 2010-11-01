@@ -156,7 +156,7 @@ public:
 	virtual Packet *createHack(Packet &) = 0;
 };
 
-typedef HackPacket* constructor_f(const int); 
+typedef HackPacket * constructor_f(const int); 
 	// extern(ed) "C" as HackPacket* CreateHackObject
 typedef void destructor_f(HackPacket *);  // TODO - need to be used and is not used in the destruction routine
 	// extern(ed) "C" as void DeleteHackObject
