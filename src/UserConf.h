@@ -59,7 +59,7 @@ struct sj_useropt {
 		bool force_restart;
 		FILE *logstream;
 		FILE *packet_logstream;
-		FILE *hacks_logstream;
+		FILE *session_logstream;
 };
 
 struct sj_config {

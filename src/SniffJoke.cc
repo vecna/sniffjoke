@@ -48,7 +48,7 @@ static Process *SjProc = NULL;
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
 	" --debug [level 1-6]\tset up verbosoty level [default: %d]\n"\
-	"\t\t\t1: suppress log, 2: few, 3: verbose, 4: debug, 5: packet, 6: tcp hacks\n"\
+	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
 	" --logfile [file]\tset a logfile, [default: %s%s]\n"\
 	" --user [username]\tdowngrade priviledge to the specified user [default: %s]\n"\
 	" --group [groupname]\tdowngrade priviledge to the specified group [default: %s]\n"\
@@ -72,6 +72,7 @@ static Process *SjProc = NULL;
 	" loglevel\t\t[1-6] change the loglevel\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
+/* FIXME - rimuovere tutte le cose dell'hack selection, ormai si passa al path dell'enabler-file
 #define SNIFFJOKE_HACKING_HELP \
 	" the option --hacking [value] enable or disable some hack, is used with a test script\n"\
 	" usage: --hacking 0123456789ABC (13 positions: \"Y\" enable, \"N\" disable) 13 hacks:\n\n"\
@@ -89,12 +90,15 @@ static Process *SjProc = NULL;
 	" 11] inject IPOPT\t\t\t(default: YES - need a lot of research)\n"\
 	" 12] inject TCPOPT\t\t\t(default: YES - need a lot of research)\n"\
 	" example: --hacking YNNNYYYNYNYN (7 and 8 position: IGNORED)\n"
+*/
 
+/*
 static void sj_hacking_help(void)
 {
 	printf(SNIFFJOKE_HACKING_HELP);
 	printf(" default: --hacking %s\n", ASSURED_HACKS);
 }
+*/
 
 static void sj_help(const char *pname, const char *basedir)
 {
@@ -281,9 +285,9 @@ static void read_unixsock(int srvsock, UserConf *confobj)
 		int loglevel;
 
 		sscanf(r_command, "loglevel %d", &loglevel);
-		if (loglevel < 0 || loglevel > HACKS_DEBUG) {
+		if (loglevel < 0 || loglevel > PACKETS_DEBUG) {
 			internal_buf = (char *)malloc(MEDIUMBUF);
-			snprintf(internal_buf, MEDIUMBUF, "invalid log value: %d, must be > 0 and < than %d", loglevel, HACKS_DEBUG);
+			snprintf(internal_buf, MEDIUMBUF, "invalid log value: %d, must be > 0 and < than %d", loglevel, PACKETS_DEBUG);
 			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		} else {
@@ -393,8 +397,8 @@ void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...
 	if (errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
 		output_flow = useropt.packet_logstream;
 
-	if (errorlevel == HACKS_DEBUG && useropt.hacks_logstream != NULL)
-		output_flow = useropt.hacks_logstream;
+	if (errorlevel == SESSION_DEBUG && useropt.session_logstream != NULL)
+		output_flow = useropt.session_logstream;
 
 	/* is checked sjconf->running->debug_level instead of useropt.debug_level
 	 * because the user should chage it with the "set" command */
@@ -445,7 +449,7 @@ int main(int argc, char **argv)
 	useropt.force_restart = false;
 	useropt.logstream = stdout;
 	useropt.packet_logstream = stdout;
-	useropt.hacks_logstream = stdout;
+	useropt.session_logstream = stdout;
 	
 	struct option sj_option[] =
 	{
@@ -532,18 +536,18 @@ int main(int argc, char **argv)
 				case 'v':
 					sj_version(argv[0]);
 					return 0;
-				case 'k':
-					if(strlen(optarg) != CONFIGURABLE_HACKS_N) {
+				case 'k': // FIXME - selezione dei plugin, esclusione, file di loading di default
+/*					if(strlen(optarg) != CONFIGURABLE_HACKS_N) {
 						sj_hacking_help();
 						return -1;
 					}
-					useropt.requested_hacks = strdup(optarg);
+					useropt.requested_hacks = strdup(optarg); */
 					break;
 				case 'h':
-					if(optarg != NULL && !strcmp(optarg, "hacking")) {
+/*					if(optarg != NULL && !strcmp(optarg, "hacking")) {
 						sj_hacking_help();
 						return -1;
-					}
+					} */
 				default:
 					sj_help(argv[0], useropt.chroot_dir);
 					return -1;
@@ -622,6 +626,13 @@ int main(int argc, char **argv)
 	/* running the network setup before the background, for keep the software output visible on the console */
 	sjconf->network_setup();
 
+	/* loading the plugins used for tcp hacking */
+	conntrack = new TCPTrack(sjconf);
+	if(conntrack->fail == true) {
+		internal_log(NULL, ALL_LEVEL, "fatal error in initialization hacks plugin, aborted");
+		return 0;
+	}
+
 	if (!useropt.go_foreground) 
 	{
 		SjProc->SjBackground();
@@ -672,10 +683,10 @@ int main(int argc, char **argv)
 			internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
 		}
 
-		if (useropt.debug_level >= HACKS_DEBUG) {
+		if (useropt.debug_level >= SESSION_DEBUG) {
 			char *tmpfname = (char *)calloc(1, strlen(useropt.logfname) + 10);
-			sprintf(tmpfname, "%s.hacks", useropt.logfname);
-			if ((useropt.hacks_logstream = fopen(tmpfname, "a+")) == NULL) {
+			sprintf(tmpfname, "%s.session", useropt.logfname);
+			if ((useropt.session_logstream = fopen(tmpfname, "a+")) == NULL) {
 				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
 				raise(SIGTERM);
 			}
@@ -688,10 +699,10 @@ int main(int argc, char **argv)
 	listening_unix_socket = sj_bind_unixsocket();
 
 	if (sjconf->running->sj_run == false)
-		internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it\n");
+		internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it");
 
-	conntrack = new TCPTrack(sjconf);
 	mitm->prepare_conntrack(conntrack);
+
 	/* main block */
 	while (1) {
 		SjProc->sigtrapDisable();

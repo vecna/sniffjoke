@@ -23,6 +23,7 @@
 #define SJ_TTLFOCUS_H
 
 #include "time.h"
+#include "UserConf.h"
 
 #include <map>
 using namespace std;
@@ -46,7 +47,6 @@ struct ttlfocus_cache_record {
 
 class TTLFocus {
 public:
-
 	unsigned int daddr;
 	unsigned short expiring_ttl;
 	unsigned short min_working_ttl;
@@ -63,6 +63,9 @@ public:
 	TTLFocus(const struct ttlfocus_cache_record& cpy);
 	void scheduleNextProbe();
 	bool isProbeIntervalPassed(const struct timespec&);
+
+	void selflog(const char *, const char *);
+	char debugbuf[LARGEBUF];
 };
 
 class TTLFocusMap : public map<const unsigned int, TTLFocus> {

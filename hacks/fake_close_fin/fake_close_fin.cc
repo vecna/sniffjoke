@@ -33,31 +33,30 @@
  */
 
 #include "Packet.h"
+#include "Utils.h"
 
 class fake_close_fin : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
 		Packet* ret = new Packet(orig_packet);
 		
 		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
+		orig_packet.selflog("Original, in Fake FIN");
 
 		ret->resizePayload(0);
+		ret->fillRandomPayload();
 
 		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
-
-		ret->tcp->psh = 0;
-
-		ret->tcp->fin = 1;
-	
 		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) - original_size + 1);
 
-		ret->fillRandomPayload();
+		ret->tcp->psh = 0;
+		ret->tcp->fin = 1;
 
 		ret->position = ANTICIPATION;
 
+		ret->selflog("Hacked by Fake FIN");
 		return ret;
 	}
 
@@ -66,15 +65,16 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	fake_close_fin() {
-		hackname = "fake_close_fin";
+	fake_close_fin(int plugin_index) {
+		track_index = plugin_index;
+		hackName = "Fake FIN";
 		hack_frequency = 5;
 		prescription_probability = 98;
 	}
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new fake_close_fin;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
+	return new fake_close_fin(plugin_tracking_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

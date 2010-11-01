@@ -1,0 +1,18 @@
+This file works as a TODO&REMIND:
+
+. DataDebug.cc at the moment is not used, it should be cutted off or keep, anyway we need 
+  a clean way to used it, call it, and collect the log. Makefile compile and link it 
+  again, but is not called
+
+. TTLFocus.cc an interesting analysis should derive from a visual correlation of TTL
+  distance and difference between network topology change for every path. because 
+  asymmetric network may cause that your SENDING path change the numer of hops, and 
+  your INCOMING path does not. This is the biggest problem because TTL hacking 
+  injection is the most strong sniffer evasion tech available.
+
+
+for every questione, code hacking, plugin proposal & improvement, every submission
+is welcom to: vecna@delirandom.net, cc: giovanni.pellerano@evilaliv3.org
+
+future site release will contain an upload/download system. if you have a nice idea 
+about make it, contacts ours, we are always looking for community helps :)

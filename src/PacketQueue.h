@@ -22,6 +22,7 @@
 #ifndef SJ_PACKET_QUEUE_H
 #define SJ_PACKET_QUEUE_H
 
+#include "UserConf.h"
 #include "hardcoded-defines.h"
 #include "Packet.h"
 

@@ -1,4 +1,5 @@
-AC_INIT(sniffjoke)
+AC_INIT
+AC_CONFIG_SRCDIR([sniffjoke])
 PACKAGE_VERSION=`grep SW_VERSION\  ./src/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 AC_SUBST(PACKAGE_VERSION)
 AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
@@ -7,7 +8,7 @@ AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
 AC_PROG_CXX
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 EC_GCC_MACRO
 AC_PROG_INSTALL
 
@@ -20,7 +21,7 @@ ac_ec_lt_dlopen=yes
 AC_SEARCH_LIBS(lt_dlopen,c dl ltdl,,ac_ec_lt_dlopen=no)
 AC_CHECK_HEADERS(dlfcn.h)
 AC_CHECK_HEADERS(ltdl.h)
-LT_CONFIG_LTDL_DIR([libltdl])
+#LT_CONFIG_LTDL_DIR([libltdl])
 AC_LIB_LTDL
 
 AC_CHECK_HEADERS(cerrno,,exit 1)

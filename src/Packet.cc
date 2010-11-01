@@ -48,6 +48,7 @@ Packet::Packet(const Packet& pkt) :
 	orig_pktlen(pkt.orig_pktlen)
 {
 	updatePointers();
+	memset(debugbuf, 0x00, LARGEBUF);
 }
 
 unsigned int Packet::make_pkt_id(const unsigned char* buf) const
@@ -214,19 +215,21 @@ void Packet::SjH__inject_ipopt(void)
 	const unsigned fakeipopt = ((route_n + 1) * 4);
 	const int needed_space = fakeipopt;
 	const int free_space = pbuf.size() - ntohs(ip->tot_len);
-	
+
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
 	const int l47len = ntohs(ip->tot_len) - iphlen;
-		
+
+	selflog(__func__, "before IPopt injection");
+
 	if(free_space < needed_space) {
 		/* safety ip size check */
 		if(iphlen + needed_space > 60)
 			return;
-			
+
 		increasePbuf(needed_space - free_space);
 	}
-	
+
 	unsigned char *endip = (unsigned char*)&pbuf[0] + iphlen;
 
 	iphlen += fakeipopt;
@@ -236,13 +239,13 @@ void Packet::SjH__inject_ipopt(void)
 
 	endip[0] = IPOPT_NOP;
 	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
-	
+
 	/* Here comes the tha hack, 4 more or 4 less the right value*/
 	if (random() % 2)
 		endip[2] = fakeipopt - 1 - (4 * (random() % 5));	/* IPOPT_OLEN   */
 	else
 		endip[2] = fakeipopt - 1 + (4 * (random() % 5));	/* IPOPT_OLEN   */
-				
+
 	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
 
 	memset_random(&endip[4], fakeipopt - 4);
@@ -251,6 +254,8 @@ void Packet::SjH__inject_ipopt(void)
 	ip->tot_len = htons(iphlen + l47len);
 	tcp = (struct tcphdr *)((unsigned char*)(ip) + iphlen);
 	payload = (unsigned char *)(tcp) + tcphlen;
+
+	selflog(__func__, "after IPopt injection");
 }
 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
@@ -259,6 +264,8 @@ void Packet::SjH__inject_tcpopt(void)
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
 	const int free_space = pbuf.size() - ntohs(ip->tot_len);
+
+	selflog(__func__, "before TCPopt injection");
 
 	int iphlen = ip->ihl * 4;
 	int tcphlen = tcp->doff * 4;
@@ -303,4 +310,82 @@ void Packet::SjH__inject_tcpopt(void)
 	ip->tot_len = htons(iphlen + tcphlen + l57len);
 	tcp->doff = tcphlen / 4;
 	payload = (unsigned char *)(tcp) + tcphlen;
+
+	selflog(__func__, "after TCPopt injection");
+}
+
+void Packet::selflog(const char *func, const char *loginfo) 
+{
+	const char *evilstr, *statustr, *wtfstr, *sourcestr;
+	/* inet_ntoa use a static buffer */
+	char *p, swapaddr[MEDIUMBUF], protoinfo[MEDIUMBUF]; 
+
+	p = inet_ntoa(*((struct in_addr *)&(ip->saddr)));
+	memcpy(swapaddr, p, strlen(p));
+	swapaddr[strlen(p)] =0x00;
+
+	if(evilbit == EVIL)
+		evilstr = "evil"; /* evil packets are the pks generate from sniffjoke */
+	else
+		evilstr = "good";
+
+	switch(status) {
+		case STATUSUNASSIGNED: statustr = "unassigned"; break;
+		case YOUNG:  statustr = "young"; break;
+		case SEND: statustr = "send"; break;
+		case KEEP: statustr = "keep"; break;
+		default: statustr = "INVALID/other";
+	}
+
+	switch(wtf) {
+		case GUILTY_OR_PRESCRIPTION: wtfstr ="everybad"; break;
+		case JUDGEUNASSIGNED: wtfstr ="unsass"; break;
+		case PRESCRIPTION: wtfstr ="prescript"; break;
+		case INNOCENT: wtfstr ="innocent"; break;
+		case GUILTY: wtfstr ="badcksum"; break;
+		default: wtfstr ="INVALID/other"; break;
+	}
+
+	switch(source) {
+		case SOURCEUNASSIGNED: sourcestr = "source fault: unassigned"; break;
+		case TUNNEL: sourcestr = "tunnel"; break;
+		case LOCAL: sourcestr = "local"; break;
+		case NETWORK: sourcestr = "network"; break;
+		case TTLBFORCE: sourcestr = "ttl force"; break;
+		default: sourcestr = "badly unset"; break;
+	}
+
+	memset(protoinfo, 0x0, MEDIUMBUF);
+	switch(proto) {
+		case TCP:
+			snprintf(protoinfo, MEDIUMBUF, "TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x",
+				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
+				tcp->rst, orig_pktlen, orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4), 
+				ntohl(tcp->seq), ntohl(tcp->ack_seq)
+			);
+			break;
+		case ICMP:
+			snprintf(protoinfo, MEDIUMBUF, "ICMP type %d code %d len %d(%d)",
+				icmp->type, icmp->code,
+				orig_pktlen, orig_pktlen - (ip->ihl * 4) - sizeof(struct icmphdr)
+			);
+			break;
+		case OTHER_IP:
+			snprintf(protoinfo, MEDIUMBUF, "Other proto: %d", ip->protocol);
+			break;
+		case PROTOUNASSIGNED:
+			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
+			break;
+		default:
+			snprintf(protoinfo, MEDIUMBUF, "protocol fault! value %d", ip->protocol);
+			break;
+	}
+
+	internal_log(NULL, PACKETS_DEBUG, "%s :%x: E|%d status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+		func, packet_id, evilstr, statustr, wtfstr, sourcestr,
+		swapaddr, inet_ntoa(*((struct in_addr *)&ip->daddr)),
+		protoinfo, ip->ttl, loginfo
+       	);
+
+	memset(debugbuf, 0x00, LARGEBUF);
 }

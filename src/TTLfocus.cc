@@ -182,3 +182,22 @@ void TTLFocusMap::dump()
 
 	internal_log(NULL, VERBOSE_LEVEL, "ttlfocusmap dump completed: %d records dumped", i);
 }
+
+void TTLFocus::selflog(const char *func, const char *umsg) 
+{
+	const char *status_name;
+
+	switch(status) {
+		case TTL_KNOWN: status_name = "TTL known"; break;
+		case TTL_BRUTALFORCE: status_name = "BRUTALFORCE running"; break;
+		case TTL_UNKNOWN: status_name = "TTL UNKNOWN"; break;
+		default: status_name = "badly unset TTL status"; break;
+	}
+
+	internal_log(NULL, SESSION_DEBUG, 
+		"%s [%s] m_sent %d, m_recv %d m_expiring %d [%s]",
+		func, status_name, sent_probe, received_probe, expiring_ttl, umsg
+	);
+
+	memset(debugbuf, 0x00, LARGEBUF);
+}

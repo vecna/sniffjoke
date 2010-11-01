@@ -60,16 +60,17 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	shift_ack() {
-		hackname = "shift_ack";
+	shift_ack(int plugin_index) {
+		track_index =plugin_index;
+		hackName = "unexpected ACK shift";
 		hack_frequency = 15;
 		prejudge = INNOCENT;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new shift_ack;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
+	return new shift_ack(plugin_tracking_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

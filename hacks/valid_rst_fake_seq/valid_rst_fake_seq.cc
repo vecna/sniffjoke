@@ -65,14 +65,15 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	valid_rst_fake_seq() {
-		hackname = "valid_rst_fake_seq";
+	valid_rst_fake_seq(int plugin_index) {
+		track_index =plugin_index;
+		hackName = "true RST w/ invalid SEQ";
 		hack_frequency = 8;
 		prejudge = INNOCENT;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new valid_rst_fake_seq;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
+	return new valid_rst_fake_seq(plugin_tracking_index);
 }

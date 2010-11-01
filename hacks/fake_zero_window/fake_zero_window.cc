@@ -54,16 +54,17 @@ public:
 		return ret;
 	}
 
-	fake_zero_window() {
-		hackname = "fake_zero_window";
+	fake_zero_window(int plugin_index) {
+		track_index =plugin_index;
+		hackName = "Fake 0-window";
 		hack_frequency = 5;
 		prescription_probability = 93;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new fake_zero_window;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
+	return new fake_zero_window(plugin_tracking_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

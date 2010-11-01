@@ -79,16 +79,17 @@ public:
 		return (orig_packet.payload != NULL);
 	}
 
-	fake_seq() {
-		hackname = "fake_seq";
+	fake_seq(int plugin_index) {
+		track_index =plugin_index;
+		hackName = "Fake SEQ";
 		hack_frequency = 15;
 		prescription_probability = 98;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new fake_seq;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
+	return new fake_seq(plugin_tracking_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

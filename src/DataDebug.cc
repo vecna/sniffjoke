@@ -21,6 +21,7 @@
  */
 #include "DataDebug.h"
 #include "Utils.h"
+#include "UserConf.h"
 
 #include <csignal>
 #include <arpa/inet.h>

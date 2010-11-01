@@ -22,6 +22,7 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
+#include "UserConf.h"
 #include "hardcoded-defines.h"
 
 #include <vector>
@@ -33,6 +34,10 @@ using namespace std;
 
 #include <cstdio>
 #include <cstdlib>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 
 /* if the packet is inject from sniffjoke is marked with the evilbit */
 enum evilbit_t { GOOD = 0, EVIL = 1 };
@@ -113,6 +118,10 @@ public:
 
 	void SjH__inject_ipopt(void);
 	void SjH__inject_tcpopt(void);
+
+	/* utilities */
+	void selflog(const char *, const char *);
+	char debugbuf[LARGEBUF];
 };
 
 /* 
@@ -135,19 +144,21 @@ public:
 	judge_t prejudge;
 	unsigned int prescription_probability;
 	unsigned int hack_frequency;
-	const char *hackname;
+	const char *hackName;
+
+	/* set by constructor of the hacks classess */
+	int track_index;
 
 	/* number of packets generated from the hack */
 	int num_pkt_gen;
 
 	virtual bool Condition(const Packet &) { return true; };
 	virtual Packet *createHack(Packet &) = 0;
-
 };
 
-typedef HackPacket* constructor_f(); 
+typedef HackPacket* constructor_f(const int); 
 	// extern(ed) "C" as HackPacket* CreateHackObject
-typedef void destructor_f(HackPacket *); 
+typedef void destructor_f(HackPacket *);  // TODO - need to be used and is not used in the destruction routine
 	// extern(ed) "C" as void DeleteHackObject
 
 #endif /* SJ_PACKET_H */

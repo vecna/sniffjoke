@@ -65,14 +65,15 @@ public:
 		return (orig_packet.payload != NULL);		
 	}
 
-	fake_data_anticipation() {
-		hackname = "fake_data_anticipation";
+	fake_data_anticipation(int plugin_index) {
+		track_index =plugin_index;
+		hackName = "Fake data anticipation";
 		hack_frequency = 50;
 	}
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new fake_data_anticipation;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracked_index) {
+	return new fake_data_anticipation(plugin_tracked_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

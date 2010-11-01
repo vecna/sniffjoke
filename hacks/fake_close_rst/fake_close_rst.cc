@@ -68,15 +68,16 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	fake_close_rst() {
-		hackname = "fake_close_rst";
+	fake_close_rst(int plugin_index) {
+		track_index = plugin_index;
+		hackName = "Fake RST";
 		hack_frequency = 5;
 		prescription_probability = 98;
 	}
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new fake_close_rst;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracked_index) {
+	return new fake_close_rst(plugin_tracked_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

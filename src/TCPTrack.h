@@ -36,29 +36,29 @@ public:
 	bool *config;
 	bool enabled;
 	HackPacket *dummy;
+	int track_index;
 
-	HackPacketPoolElem(bool*, HackPacket*);
+	HackPacketPoolElem(bool*, unsigned int, HackPacket*);
 };
 
 struct PluginTrack {
 	void *pluginHandler;	
-	constructor_f fp_CreateHackObj;
-	destructor_f fp_DeleteHackObj;
-	const char *pluginpath;
+	constructor_f *fp_CreateHackObj;
+	destructor_f *fp_DeleteHackObj;
+	HackPacket *selfObj;
+	const char *pluginPath;
 };
 
 class HackPacketPool : public vector<HackPacketPoolElem> {
 private:
-	/* TODO - serve un vettore che tenga traccia dei nomi dei plugin, degli stream aperti dei plugin e delle funzioni distruttici.
-	 * in questo modo, quando viene chiamato ~TCPTrack, viene invicata la lista di distruttori importanti da dlsym
-	 */
-//	vector<PluginTrack> listOfHacks;
-	struct PluginTrack listOfHacks[20];
-	int n_plugin; // TEMP - DOPO SARA' VECTOR o COS'ALTRO 
+	struct PluginTrack listOfHacks[MAXPLUGINS];
+	int n_plugin;
 
-	void ImportPluginList(struct sj_config *);
+	bool verifyPluginIntegirty(HackPacket *);
+
 public:
-	HackPacketPool(struct sj_config *);
+	HackPacketPool(bool *, struct sj_config *);
+	~HackPacketPool();
 };
 
 class TCPTrack {
@@ -102,6 +102,8 @@ public:
 	Packet* readpacket(void);
 	void analyze_packets_queue(void);
 	void force_send(void);
+
+	bool fail;
 };
 
 #endif /* SJ_TCPTRACK_H */

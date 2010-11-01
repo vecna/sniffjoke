@@ -14,8 +14,11 @@
 #define DROP_GROUP                      "sniffjoke"
 #define MAGICVAL			0xADECADDE
 #define CHROOT_DIR			"/var/sniffjoke/"
+// FIXME con -DPATH_LIB=\"$(libdir)/@PACKAGE@/\"
+// #define PLUGINSSUBDIR			"/usr/local/lib/sniffjoke/"	// used INSIDE chroot
+#define PLUGINSENABLER			"/var/sniffjoke/plugins_enabled.txt" // used in PLUGINSSUBDIR
+#define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
-#define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
 #define DEFAULT_DEBUG_LEVEL             2
 #define CONFIGURABLE_HACKS_N            13
@@ -26,6 +29,13 @@
 /* those are used under chroot */
 #define SJ_SERVICE_UNIXSOCK		"sniffjoke_service" 
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
+
+/* TTL related define */
+#define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
+
+/* the maximum value of bruteforced TTL */
+#define STARTING_ARB_TTL		46
+
 
 
 /*

@@ -31,84 +31,132 @@ using namespace std;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define DATADEBUG // WARNING: it run a mkdir /tmp/datadump 
-#ifdef DATADEBUG
-#include "DataDebug.h"
-static DataDebug *dd;
-#endif
-
-// define PACKETDEBUG enable session debug, ttl bruteforce 
-#define PACKETDEBUG 
-// define HACKSDEBUG enable dump about packet injected
-#define HACKSDEBUG
-
-#define STARTING_ARB_TTL	46
-
-HackPacketPoolElem::HackPacketPoolElem(bool* const c, HackPacket* d) :
+HackPacketPoolElem::HackPacketPoolElem(bool* const c, unsigned int index, HackPacket* HackObj) :
 	config(c),
 	enabled(*c),
-	dummy(d)
-{}
-
-void HackPacketPool::ImportPluginList(struct sj_config *sjconf)
+	dummy(HackObj),
+	track_index(index)
 {
-	/* PARAMETRO sj_config ancora inutile, i plugin staranno in
-	 * 	/var/sniffjoke/lib, e siccome chroot è in /var/sniffjoke saranno
-	 * 	accessibili anche da sotto il chroot. sj_config serve per disabilitare o 
-	 * 	abilitare plugin a commandline, overridando le informazioni presenti nel file di indice qui sotto */
-
-	FILE *plugfile = fopen("lib/enabled_plugin.txt", "r"); // fare un default, gestir gli errori, ecc... TODO
-	/* da implementare il parsing - ci penso io */
-	n_plugin = 2;
-
-	listOfHacks[0].pluginHandler = dlopen("./fake_data_anticipation.so", RTLD_LAZY);
-	listOfHacks[0].fp_CreateHackObj = (constructor_f *) dlsym(listOfHacks[0].pluginHandler, "CreateHackObject");
-	listOfHacks[0].fp_deleteHackObj = (destructor_f *) dlsym(listOfHacks[0].pluginHandler, "DeleteHackObject");
-	listOfHacks[0].pluginpath = "lib/fake_data_anticipation.so";
-
-	listOfHacks[1].pluginHandler = dlopen("./fake_data_posticipation.so", RTLD_LAZY);
-	listOfHacks[1].fp_CreateHackObj = (constructor_f *) dlsym(listOfHacks[1].pluginHandler, "CreateHackObject");
-	listOfHacks[1].fp_deleteHackObj = (destructor_f *) dlsym(listOfHacks[1].pluginHandler, "DeleteHackObject");
-	listOfHacks[1].pluginpath = "lib/fake_data_posticipation.so";
-
-#if 0 // il ciclo potrebbe assomigliare a:
-	{
-		const char *name = "FakeDataPosticipation.so";
-		if(!(listOfHacks->pluginHandler = dlopen(name, RTLD_LAZY))) {
-			internal_log(NULL, ALL_LEVEL, "Posticipation fail! :%s", dlerror() ); 
-		}
-		
-		tracedPlugin->fp_CreateHackObj = (constructor_f *) dlsym(plugin, "CreateHackObject");
-		tracedPlugin->fp_DeleteHackObj = (destructor_f *) dlsym(plugin, "DeleteHackObject");
-	
-	}
-#endif
-	/* torna void, ma forse è errato: se un plugin non c'è, va considerato errore fatale o no ? */
 }
 
-HackPacketPool::HackPacketPool(struct sj_config *sjconf, /* TODO passargli come argomento la */ listOfPlugin) 
+/* Check if the constructor has make a good job - further checks need to be addedd */
+bool HackPacketPool::verifyPluginIntegirty(HackPacket *loaded) 
 {
-	int i;
+	if(loaded->hackName == NULL) {
+		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d lack of ->hackName member", loaded->track_index);
+		return false;
+	}
 
-	/* TOBE implemented */
-	/* ImportPluginList(sjconf);, fill struct <vePluginTrack listOfHacks*/
-	/* per ogni elemento di listOfHacks */
+	if(loaded->hack_frequency == 0) {
+		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d (%s) lack of ->hack_frequency", 
+			loaded->track_index, loaded->hackName);
+		return false;
+	}
 
-	for(i =0; i < n_plugin; i++)
+	return true;
+}
+
+/*
+ * the constructor of HackPacketPool is called once; in the TCPTrack constructor the class member
+ * hack_pool is instanced. what we need here is to read the entire plugin list, open and fix the
+ * list, keeping track in listOfHacks variable
+ *
+ *    hack_pool(sjconf->running)
+ *
+ * (class TCPTrack).hack_pool is the name of the unique HackPacketPool element
+ */
+HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf) 
+{
+	FILE *plugfile;
+
+	memset(&listOfHacks, 0x00, sizeof(struct PluginTrack) * MAXPLUGINS);
+	n_plugin = 0;
+
+	*fail = false;
+
+	if((plugfile = fopen(PLUGINSENABLER, "r")) == NULL) {
+		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", PLUGINSENABLER, strerror(errno));
+		*fail = true;
+		return;
+	}
+
+	int line = 0;
+	do {
+		char plugname[SMALLBUF];
+
+		fgets(plugname, SMALLBUF, plugfile);
+		line++;
+
+		if(plugname[0] == '#')
+			continue;
+
+		/* C's chop() */
+		plugname[strlen(plugname) -1] = 0x00; 
+
+		/* 4 is the minimum length of a ?.so plugin */
+		if(strlen(plugname) < 4 || feof(plugfile)) {
+			internal_log(NULL, VERBOSE_LEVEL, "reading %s: importend %d plugins, matched interruption at line %d",
+				PLUGINSENABLER, n_plugin, line);
+			break;
+		}
+
+		if(n_plugin == MAXPLUGINS -1) {
+			internal_log(NULL, ALL_LEVEL, 
+				"reached the limits of supported plugins (%d), modify hardcoded-defines.h!", MAXPLUGINS);
+			*fail = true;
+			/* if you are running more than 32 plugins, you know what to do */
+			break;
+		}
+
+		void *handler = dlopen(plugname, RTLD_LAZY);
+		if(handler == NULL) {
+			internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugname, dlerror());
+			*fail = true;
+			break;
+		}
+		internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugname);
+
+		listOfHacks[n_plugin].pluginHandler = handler;
+		listOfHacks[n_plugin].pluginPath = strdup(plugname);
+
+		constructor_f *X = (constructor_f *) dlsym(handler, "CreateHackObject");
+		listOfHacks[n_plugin].fp_CreateHackObj = X; // = (constructor_f *) dlsym(handler, "CreateHackObject");
+
+		destructor_f *Y = (destructor_f *) dlsym(handler, "DeleteHackObject");
+		listOfHacks[n_plugin].fp_DeleteHackObj = Y;
+
+		n_plugin++;
+	} while(!feof(plugfile));
+
+	if(*fail || !n_plugin) {
+		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins: FAILURE while loading detected", n_plugin);
+		return;
+	} else
+		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins", n_plugin);
+
+	for(int i =0; i < n_plugin; i++)
 	{
-
 		bool obviously_true = true;
 
-		if(listOfPlugin[i]->hackname == NULL) {
-			/* TODO: check the address integrity of the methods */
-			internal_log(NULL, ALL_LEVEL, "BAd, REALLY BAD, name not present in plugin");	
+		HackPacket *loaded = listOfHacks[i].fp_CreateHackObj(i);
+
+		if(!verifyPluginIntegirty(loaded)) {
+			internal_log(NULL, ALL_LEVEL, "plugin #%d %s incorret implementation: read the documentation!", 
+				loaded->track_index, basename(listOfHacks[i].pluginPath) );
+			*fail = true;
+			continue;
+		} else {
+			internal_log(NULL, DEBUG_LEVEL, "plugin #%d/%s implementation accepted",
+				loaded->track_index, loaded->hackName);
+
+			listOfHacks[i].selfObj = loaded;
 		}
 
 		push_back(HackPacketPoolElem(/* prima c'era il bool del sj_shift_ack_enable, ora, se 
 						il plugin è nella lista, o non è tolto in sjconf e quindi
 						non presente in listOfHacks, ogni plugin che arriva qui è 
 						abilitato di certo. però l'ho lasciato, perché il bool qui ha senso
-						per le abilitazioni progressive */ &obviously_true, listOfPlugin[i]->fp_CreateHackObj()
+						per le abilitazioni progressive */ &obviously_true, i, loaded
 			)
 		);
 	}
@@ -121,29 +169,37 @@ HackPacketPool::HackPacketPool(struct sj_config *sjconf, /* TODO passargli come 
 	 */
 }
 
+HackPacketPool::~HackPacketPool() 
+{
+	/* call the distructor loaded from the plugins */
+	while(n_plugin--) 
+	{
+		listOfHacks[n_plugin].fp_DeleteHackObj(listOfHacks[n_plugin].selfObj);
+
+		if(dlclose(listOfHacks[n_plugin].pluginHandler)) 
+			internal_log(NULL, ALL_LEVEL, "unable to close %s plugin: %s", listOfHacks[n_plugin].pluginPath, dlerror());
+		else
+			internal_log(NULL, DEBUG_LEVEL, "closed handler of %s", listOfHacks[n_plugin].pluginPath);
+	}
+}
+
 TCPTrack::TCPTrack(UserConf *sjconf) :
 	runcopy(sjconf->running),
 	youngpacketspresent(false),
-	hack_pool(sjconf->running)
+	/* fail is the public member used to signal a failure in plugin's loading, 
+	 * hack_pool is a "class HackPacketPool", that extend a vector of HackPacketPoolElem */
+	hack_pool(&fail, sjconf->running)
 {
-
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
 		srandom((unsigned int)time(NULL) ^ random());
 	
-#ifdef DATADEBUG
-        dd = new DataDebug();
-#endif
-
 	internal_log(NULL, DEBUG_LEVEL, "TCPTrack()");
 }
 
 TCPTrack::~TCPTrack(void) 
 {
-#ifdef DATADEBUG
-        delete dd;
-#endif
-	
+	delete &hack_pool;
 	internal_log(NULL, DEBUG_LEVEL, "~TCPTrack()");
 }
 
@@ -151,17 +207,10 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 {
 	struct iphdr *ip = (struct iphdr *)buff;
  
-	if (nbyte < sizeof(struct iphdr)) {
-#ifdef DATADEBUG
-		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < sizeof(struct iphdr)) %d < %d", nbyte, ntohs(ip->tot_len) );
-#endif
-		return false;
-	}
-
-	if (nbyte < ntohs(ip->tot_len)) {
-#ifdef DATADEBUG
-		dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < ntohs(ip->tot_len)) %d < %d", nbyte, ntohs(ip->tot_len) );
-#endif
+	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) ) {
+		internal_log(NULL, PACKETS_DEBUG, "%s %s: nbyte %s < (struct iphdr) %d || (ip->tot_len) %d", 
+			__FILE__, __func__, nbyte, sizeof(struct iphdr), ntohs(ip->tot_len)
+		);
 		return false;
 	}
 
@@ -173,11 +222,9 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 		iphlen = ip->ihl * 4;
 
 		if (nbyte < iphlen + sizeof(struct tcphdr)) {
-#ifdef DATADEBUG
-			dd->InfoMsg("Packet", "check_evil_packet: if (nbyte < iphlen + sizeof(struct tcphdr)) %d < %d",
-				nbyte, iphlen + sizeof(struct tcphdr)
+			internal_log(NULL, PACKETS_DEBUG, "%s %s: [bad TCP] nbyte %d < iphlen + (struct tcphdr) %d",
+				__FILE__, __func__, nbyte, iphlen + sizeof(struct tcphdr)
 			);
-#endif
 			return false;
 		}
 
@@ -185,22 +232,23 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 		tcphlen = tcp->doff * 4;
 		
 		if (ntohs(ip->tot_len) < iphlen + tcphlen) {
-#ifdef DATADEBUG
-			dd->InfoMsg("Packet", "check_evil_packet: if (ntohs(ip->tot_len) < iphlen + tcphlen)");
-#endif
+			internal_log(NULL, PACKETS_DEBUG, "%s %s: [bad TCP][bis] nbyte %d < iphlen + tcphlen %d",
+				__FILE__, __func__, nbyte, iphlen + tcphlen
+			);
 			return false;
 		}
 	}
-	
 	return true;
 }
 
 bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 {
 	unsigned char check;
-	bool ret;
+	/* default: there are not uncommon TCPOPT, and the packets should be stripped off */
+	bool ret = false ;
 
-	for (int i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++) {
+	for (int i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++) 
+	{
 		check = ((unsigned char *)tcp)[i];
 
 		switch(check) {
@@ -216,17 +264,17 @@ bool TCPTrack::check_uncommon_tcpopt(const struct tcphdr *tcp)
 			case TCPOPT_SACK:
 			default:
 				ret = true; break;
+		/* every unknow TCPOPT is keep, only TIMESTAMP, EOL, NOP are stripped off ATM */
 		}
 	}
-	ret = false;
-#ifdef PACKETDEBUG
-		internal_log(NULL, DEBUG_LEVEL,
-			"check uncommon TCPOPT: sport %d -> dport%d, TCP OPT %s", 
-			ntohs(tcp->source), 
-			ntohs(tcp->dest),
-			ret ? "true" : "false"
-		);
-#endif
+
+	internal_log(NULL, PACKETS_DEBUG,
+		"%s %s: sport %d -> dport %d, TCP OPT %s", __FILE__, __func__,
+		ntohs(tcp->source), 
+		ntohs(tcp->dest),
+		ret ? "true" : "false"
+	);
+
 	return ret;
 	
 }
@@ -294,26 +342,10 @@ void TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
 	 */
 	SessionTrack& st = stm_it->second;
 	if (st.shutdown == false) {
-#ifdef PACKETDEBUG
-		internal_log(NULL, DEBUG_LEVEL,
-			"SESSION SHUTDOWN START session sport: %d  d[%s:%d] #%d", 
-			ntohs(st.sport), 
-			inet_ntoa(*((struct in_addr *)&st.daddr)) ,
-			ntohs(st.dport),
-			st.packet_number
-		);
-#endif
+		st.selflog(__func__, "shutdown false set to be true");
 		st.shutdown = true;
 	} else {
-#ifdef PACKETDEBUG
-		internal_log(NULL, DEBUG_LEVEL,
-			"SESSION SHUTDOWN END session sport: %d  d[%s:%d] #%d", 
-			ntohs(st.sport), 
-			inet_ntoa(*((struct in_addr *)&st.daddr)) ,
-			ntohs(st.dport),
-			st.packet_number
-		);
-#endif
+		st.selflog(__func__, "shutdown true, deleting session");
 		sex_map.erase(stm_it);
 	}
 }
@@ -365,15 +397,10 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	
 	ttlfocus.scheduleNextProbe();
 
-#ifdef PACKETDEBUG
-	internal_log(NULL, PACKETS_DEBUG,
-		"Injecting probe %d [exp %d min work %d], (dport %d sport %d) daddr %s",
-		ttlfocus.sent_probe,
-		ttlfocus.expiring_ttl, ttlfocus.min_working_ttl, 
-		ntohs(injpkt->tcp->dest), ntohs(injpkt->tcp->source),
-		inet_ntoa(*((struct in_addr *)&injpkt->ip->daddr))
+	snprintf(injpkt->debugbuf, LARGEBUF, "Injecting probe %d [exp %d min work %d]",
+		ttlfocus.sent_probe, ttlfocus.expiring_ttl, ttlfocus.min_working_ttl
 	);
-#endif
+	injpkt->selflog(__func__, injpkt->debugbuf);
 }
 
 bool TCPTrack::analyze_ttl_stats(TTLFocus &ttlfocus)
@@ -390,19 +417,18 @@ void TCPTrack::analyze_incoming_ttl(Packet &pkt)
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	TTLFocus *ttlfocus;
 
-	if (it != ttlfocus_map.end()) {
+	if (it != ttlfocus_map.end()) 
+	{
 		ttlfocus = &(it->second);
-		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) {
+		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) 
+		{
 			/* probably a topology change has happened - we need a solution wtf!!  */
-#ifdef PACKETDEBUG
-			internal_log(NULL, PACKETS_DEBUG,
-				"probable network topology change happened for destination %s [synack_ttl: %d, received_ttl: %d]" ,
-				inet_ntoa(*((struct in_addr *)&pkt.ip->saddr)),
-				ttlfocus->synack_ttl,
-				pkt.ip->ttl
+			snprintf(pkt.debugbuf, LARGEBUF, 
+				"net topology change! #probe %d [exp %d min work %d synack ttl %d]",
+				ttlfocus->sent_probe, ttlfocus->expiring_ttl, 
+				ttlfocus->min_working_ttl, ttlfocus->synack_ttl
 			);
-#endif
-			
+			pkt.selflog(__func__, pkt.debugbuf);
 		}
 	}
 }
@@ -413,11 +439,6 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 	const struct iphdr *badiph;
 	const struct tcphdr *badtcph;
 	TTLFocusMap::iterator ttlfocus_map_it;
-
-#ifdef DATADEBUG
-        dd->InfoMsg("TTL", "analyze_incoming_icmp");
-        dd->Dump_TTL(ttlfocus_map);
-#endif
 
 	badiph = (struct iphdr *)((unsigned char *)timeexc.icmp + sizeof(struct icmphdr));
 	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl * 4));
@@ -432,22 +453,14 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 			ttlfocus->received_probe++;
 
 			if (expired_ttl > ttlfocus->expiring_ttl) {
-#ifdef PACKETDEBUG
-				internal_log(NULL, PACKETS_DEBUG, "TTL OK: (sent %d recvd %d) previous %d now %d", 
-					ttlfocus->sent_probe, ttlfocus->received_probe,
-					ttlfocus->expiring_ttl, expired_ttl
-				);
-#endif
+				snprintf(ttlfocus->debugbuf, LARGEBUF, "good TTL: recv %d", expired_ttl);
+				ttlfocus->selflog(__func__, ttlfocus->debugbuf);
 				ttlfocus->expiring_ttl = expired_ttl;
 			}
-#ifdef PACKETDEBUG
-			else {
-				internal_log(NULL, PACKETS_DEBUG, "TTL BAD: (sent %d recvd %d) previous %d now %d",
-					ttlfocus->sent_probe, ttlfocus->received_probe,
-					ttlfocus->expiring_ttl, expired_ttl
-				);
+			else  {
+				snprintf(ttlfocus->debugbuf, LARGEBUF, "BAD TTL!: recv %d", expired_ttl);
+				ttlfocus->selflog(__func__, ttlfocus->debugbuf);
 			}
-#endif
 		}
 		p_queue.remove(timeexc);
 		delete &timeexc;
@@ -462,11 +475,6 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
 	TTLFocus *ttlfocus;
 
-#ifdef DATADEBUG
-        dd->InfoMsg("Session", "analyzie_incoming_synack, from: %s", inet_ntoa(*((struct in_addr *)&synack.ip->saddr)));
-		dd->Dump_Session(sex_map);
-#endif
-
 	/* NETWORK is src: dest port and source port inverted and saddr are used, 
 	 * source is put as last argument (puppet port)
 	 */
@@ -475,16 +483,8 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 		
 		ttlfocus = &(it->second);
 
-#ifdef PACKETDEBUG
-		internal_log(NULL, PACKETS_DEBUG, "SYN/ACK (saddr %s) seq %08x seq_ack %08x - dport %d sport %d puppet %d",
-			inet_ntoa(*((struct in_addr *)&synack.ip->saddr)),
-			ntohl(synack.tcp->seq),
-			ntohl(synack.tcp->ack_seq),
-			ntohs(synack.tcp->dest), 
-			ntohs(synack.tcp->source),
-			ntohs(ttlfocus->puppet_port)
-		);
-#endif
+		snprintf(synack.debugbuf, LARGEBUF, "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
+		synack.selflog(__func__, synack.debugbuf);
 
 		if (synack.tcp->dest == ttlfocus->puppet_port) {
 			unsigned char discern_ttl =  ntohl(synack.tcp->ack_seq) - ttlfocus->rand_key - 1;
@@ -498,16 +498,8 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 				ttlfocus->synack_ttl = synack.ip->ttl;
 			}
 
-#ifdef PACKETDEBUG
-			internal_log(NULL, PACKETS_DEBUG,
-				"discern_ttl %d: min working ttl %d expiring ttl %d recv probe %d sent probe %d",
-				discern_ttl,
-				ttlfocus->min_working_ttl,
-				ttlfocus->expiring_ttl,
-				ttlfocus->received_probe,
-				ttlfocus->sent_probe
-			);
-#endif
+			snprintf(ttlfocus->debugbuf, LARGEBUF, "discerned TTL %d", discern_ttl);
+			ttlfocus->selflog(__func__, ttlfocus->debugbuf);
 
 			/* 
 			* this code flow happens only when the SYN ACK is received, due to
@@ -546,21 +538,13 @@ Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 	SessionTrackKey key = {rstfin.ip->saddr, rstfin.tcp->dest, rstfin.tcp->source};
 	SessionTrackMap::iterator stm_it = sex_map.find(key);
 
-#ifdef PACKETDEBUG
-	internal_log(NULL, PACKETS_DEBUG,
-		"RST/FIN (NET) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) s[%s:%d] d[%s:%d])",
-		ntohl(rstfin.tcp->seq),
-		ntohl(rstfin.tcp->ack_seq),
-		rstfin.tcp->rst, rstfin.tcp->fin, 
-		rstfin.tcp->ack,
-		inet_ntoa(*((struct in_addr *)&rstfin.ip->saddr)), ntohs(rstfin.tcp->source),
-		inet_ntoa(*((struct in_addr *)&rstfin.ip->daddr)), ntohs(rstfin.tcp->dest)
-	);
-#endif
-
-	if (stm_it != sex_map.end())
+	if (stm_it != sex_map.end()) {
+		rstfin.selflog(__func__, "Session found");
 		clear_session(stm_it);
-		
+	} else {
+		rstfin.selflog(__func__, "Session not found!");
+	}
+
 	return &rstfin;
 }
 
@@ -578,47 +562,32 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 		init_sessiontrack(pkt);
 		ttlfocus = init_ttlfocus(pkt.ip->daddr);
 
-#ifdef PACKETDEBUG
-		internal_log(NULL, PACKETS_DEBUG,
-			"SYN (TUN) %d %s:%d",
-			ntohs(pkt.tcp->source),
-			inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)),
-			ntohs(pkt.tcp->dest) 
-		);
-#endif
+		pkt.selflog(__func__, "incoming SYN");
+
 		/* if sniffjoke had not yet the minimum working ttl, continue the starting probe */
 		if (ttlfocus->status == TTL_BRUTALFORCE) {
-#ifdef PACKETDEBUG
-			internal_log(NULL, PACKETS_DEBUG, "SYN retransmission - DROPPED");
-#endif
+			ttlfocus->selflog(__func__, "SYN retrasmission, keep pkt");
 			pkt.status = KEEP; 
 			return;
 		}
 	}
 
 	sex_map_it = sex_map.find(key);
-	if (sex_map_it != sex_map.end()) {
+
+	if (sex_map_it != sex_map.end()) 
+	{
 		session = &(sex_map_it->second);
 		session->packet_number++;
-		if (pkt.tcp->fin || pkt.tcp->rst) {
-#ifdef PACKETDEBUG
-			internal_log(NULL, PACKETS_DEBUG,
-				"RST/FIN (TUN) clear: seq %08x seq_ack %08x (rst %d fin %d ack %d) s[%s:%d] d[%s:%d])",
-				ntohl(pkt.tcp->seq),
-				ntohl(pkt.tcp->ack_seq),
-				pkt.tcp->rst, pkt.tcp->fin, 
-				pkt.tcp->ack,
-				inet_ntoa(*((struct in_addr *)&pkt.ip->saddr)), ntohs(pkt.tcp->source),
-				inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)), ntohs(pkt.tcp->dest)
-			);
-#endif
+		if (pkt.tcp->fin || pkt.tcp->rst) 
+		{
+			pkt.selflog(__func__, "handling closing flags");
 			clear_session(sex_map_it);
 			   
 		} else {
-						
 			/* update_session_stat(xml_stat_root, ct); */
 
 			/* a closed or shutdown session don't require to be hacked */
+			pkt.selflog(__func__, "injecting pkt in queue");
 			inject_hack_in_queue(pkt, session);		
 		}
 	}
@@ -629,9 +598,7 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
 	Packet *pkt = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, false);
 	while (pkt != NULL) {
 		if (pkt->tcp->syn && pkt->ip->daddr == daddr) {
-#ifdef PACKETDEBUG
-			internal_log(NULL, PACKETS_DEBUG, "The REAL SYN change status from KEEP to SEND");
-#endif
+			pkt->selflog(__func__, "the orig SYN shift from keep to send");
 			pkt->status = SEND;
 		}
 		pkt = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP, true);
@@ -683,12 +650,14 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 		injpkt = hppe->dummy->createHack(orig_pkt);
 
 		/* we trust in the external developer, but is required a safety check by sniffjoke :) */
-		if(!injpkt->SelfIntegrityCheck(hppe->dummy->hackname)) {
-			internal_log(NULL, ALL_LEVEL, "invalid packet generated by hack %s", hppe->dummy->hackname);
+		if(!injpkt->SelfIntegrityCheck(hppe->dummy->hackName)) {
+			internal_log(NULL, ALL_LEVEL, "invalid packet generated by hack %s", hppe->dummy->hackName);
 			delete injpkt;
 			continue;
 		}
 		injpkt->mark(LOCAL, SEND);
+		snprintf(injpkt->debugbuf, MEDIUMBUF, "inj from %s", hppe->dummy->hackName);
+		injpkt->selflog(__func__, injpkt->debugbuf);
 
 		switch(injpkt->position) {
 			case ANTICIPATION:
@@ -727,26 +696,6 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	const TTLFocus *ttlfocus;
 	TTLFocusMap::iterator ttlfocus_map_it;
 
-#ifdef PACKETDEBUG
-	if (pkt.proto == TCP) 
-		internal_log(NULL, PACKETS_DEBUG,
-			"last_pkt_fix (TCP) : id %u (lo:%d %s:%d) proto %d source %d", 
-			ntohs(pkt.ip->id), 
-			ntohs(pkt.tcp->source),
-			inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
-			ntohs(pkt.tcp->dest), 
-			pkt.ip->protocol, 
-			pkt.source
-		);
-	else 
-		internal_log(NULL, PACKETS_DEBUG,
-			"last_pkt_fix (not TCP): id %u proto %d source %d",
-			ntohs(pkt.ip->id), 
-			pkt.ip->protocol, 
-			pkt.source
-		);
-#endif
-
 	if (pkt.proto != TCP) {
 		return;
 	} else if (pkt.source != TUNNEL && pkt.source != LOCAL) {
@@ -762,30 +711,21 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	else
 		ttlfocus = NULL;
 
-	if (ttlfocus != NULL && ttlfocus->status != TTL_UNKNOWN) {
+	if (ttlfocus != NULL && ttlfocus->status != TTL_UNKNOWN) 
+	{
 		if (pkt.wtf == PRESCRIPTION) 
 			pkt.ip->ttl = ttlfocus->expiring_ttl - (random() % 5);
 		else	/* GUILTY or INNOCENT */
 			pkt.ip->ttl = ttlfocus->min_working_ttl + (random() % 5);
-#ifdef HACKSDEBUG
-			internal_log(NULL, HACKS_DEBUG,
-				"HACKSDEBUG [TTL: %d] (expiring: %d, min_working: %d, synack_ttl: %d, sent_probe: %d, received_probe: %d",
-				pkt.ip->ttl,
-				ttlfocus->expiring_ttl,
-				ttlfocus->min_working_ttl,
-				ttlfocus->synack_ttl,
-				ttlfocus->sent_probe,
-				ttlfocus->received_probe
-			);
-#endif
-	} else {
+
+		pkt.selflog(__func__, "TTL available");
+	} 
+	else {
 		if (pkt.wtf == PRESCRIPTION)
 			pkt.wtf = GUILTY;
 
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
-#ifdef HACKSDEBUG
-		internal_log(NULL, HACKS_DEBUG, "HACKSDEBUG [TTL: %d]", pkt.ip->ttl);
-#endif
+		pkt.selflog(__func__, "TTL not available");
 	}	
 	/* end 1st check */
 	
@@ -816,17 +756,8 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 
 		/* 2nd check: CAN WE INJECT IP/TCP OPTIONS INTO THE PACKET ? */
 		if (runcopy->SjH__inject_ipopt && (pkt.injection == ANY_INJECTION || pkt.injection == IP_INJECTION)) {
-			if (percentage(1, 100)) {
+			if (percentage(15, 100)) {
 				pkt.SjH__inject_ipopt();
-#ifdef HACKSDEBUG
-				internal_log(NULL, HACKS_DEBUG,
-					"HACKSDEBUG [Inj BAD IpOpt] (lo:%d %s:%d) id %d",
-					ntohs(pkt.tcp->source), 
-					inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
-					ntohs(pkt.tcp->dest), 
-					ntohs(pkt.ip->id)
-				);
-#endif
 			}
 		}
 
@@ -834,15 +765,6 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 			if (!check_uncommon_tcpopt(pkt.tcp)) {
 				if (percentage(25, 100)) {
 					pkt.SjH__inject_tcpopt();
-#ifdef HACKSDEBUG
-					internal_log(NULL, HACKS_DEBUG,
-						"HACKSDEBUG [Inj BAD TcpOpt] (lo:%d %s:%d) id %d",
-						ntohs(pkt.tcp->source), 
-						inet_ntoa(*((struct in_addr *)&pkt.ip->daddr)) ,
-						ntohs(pkt.tcp->dest), 
-						ntohs(pkt.ip->id)
-					);
-#endif
 				}
 			}
 		}
@@ -925,11 +847,6 @@ void TCPTrack::analyze_packets_queue()
 	
 	clock_gettime(CLOCK_REALTIME, &clock);
 
-#ifdef DATADEBUG
-        dd->InfoMsg("Packet", "analyze_packets_queue");
-        dd->Dump_Packet(p_queue);
-#endif
-
 	if(youngpacketspresent == false)
 		goto analyze_keep_packets;
 	else
@@ -1008,14 +925,7 @@ analyze_keep_packets:
 		
 		ttlfocus = &(ttlfocus_map_it->second);
 		if (ttlfocus->status == TTL_BRUTALFORCE)  {
-#ifdef PACKETDEBUG
-			internal_log(NULL, PACKETS_DEBUG, "status BRUTALFORCE for %s: %d %d pkt is KEEP (%d), send %d probe, rcvd %d probe",
-				inet_ntoa(*((struct in_addr *)&ttlfocus->daddr)) ,
-				ntohs(pkt->tcp->source), 
-				ntohs(pkt->tcp->dest),
-				ttlfocus->status, ttlfocus->sent_probe, ttlfocus->received_probe
-			);
-#endif
+			pkt->selflog(__func__, "ttl status BForce, pkt KEEP");
 			enque_ttl_probe(*pkt, *ttlfocus);
 		}
 		pkt = p_queue.get(KEEP, TUNNEL, TCP, true);
@@ -1028,14 +938,8 @@ analyze_keep_packets:
  */
 void TCPTrack::force_send(void)
 {
-#ifdef PACKETDEBUG
-	int counter = 0;
-#endif
 	Packet *pkt = p_queue.get(false);
 	while (pkt != NULL) {
-#ifdef PACKETDEBUG
-		counter++;
-#endif
 		pkt->status = SEND;
 		pkt = p_queue.get(true);
 	}

@@ -78,16 +78,17 @@ public:
 		return (orig_packet.payload != NULL);
 	}
 
-	fake_syn() {
-		hackname = "fake_syn";
+	fake_syn(int plugin_index) {
+		track_index =plugin_index;
+		hackName = "Fake SYN";
 		hack_frequency = 15;
 		prescription_probability = 98;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject() {
-	return new fake_syn;
+extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
+	return new fake_syn(plugin_tracking_index);
 }
 
 extern "C" void DeleteHackObject(HackPacket *who) {

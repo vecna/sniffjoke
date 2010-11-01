@@ -286,7 +286,7 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 
 	/* making the same analysis with the --hacking [YES|NO STRING] */
 	compare_check_copy(running->hacks, CONFIGURABLE_HACKS_N, user_opt->requested_hacks, CONFIGURABLE_HACKS_N, ASSURED_HACKS);
-	setup_active_hacks();
+//	setup_active_hacks();
 
 	dump();
 
@@ -333,6 +333,7 @@ void UserConf::dump(void)
 	}
 }
 
+#if 0
 /* WARNING: change this function require a change in sniffjoke.cc sj_hacking_help() */
 void UserConf::setup_active_hacks(void) 
 {
@@ -355,6 +356,7 @@ void UserConf::setup_active_hacks(void)
 	if(running->hacks[11] == 'Y') { running->SjH__inject_ipopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject ipopt] hack type"); }
 	if(running->hacks[12] == 'Y') { running->SjH__inject_tcpopt = true; internal_log(NULL, DEBUG_LEVEL, "++ supporting [inject tcpopt] hack type"); }
 }
+#endif
 
 char *UserConf::handle_cmd_info(void)
 {
@@ -486,8 +488,17 @@ char *UserConf::handle_cmd_showport(void)
 
 char *UserConf::handle_cmd_log(int newloglevel)
 {
-	if(newloglevel < ALL_LEVEL || newloglevel > HACKS_DEBUG) {
-		snprintf(io_buf, HUGEBUF, "error in the new loglevel requested: accepted >= %d and <= %d\n", ALL_LEVEL, HACKS_DEBUG);
+	if(newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
+		snprintf(io_buf, HUGEBUF, 
+			"error in the new loglevel requested: accepted >= %d and <= %d\n\n"\
+			"\t1\tsuppressed log\n"\
+			"\t2\tdefault, common log\n"\
+			"\t3\tverbose\n"\
+			"\t4\tdebug\n"\
+			"\t5\tcreate $logfile.session, with a verbose logging in session tracking\n"\
+			"\t6\tcreate $logfile.packets, with various logline for every packet\n",
+			ALL_LEVEL, PACKETS_DEBUG
+		);
 	} else {
 		snprintf(io_buf, HUGEBUF, "changing log level since %d to %d\n", running->debug_level, newloglevel);
 		running->debug_level = newloglevel;
