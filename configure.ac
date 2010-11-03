@@ -1,15 +1,45 @@
 AC_INIT
-AC_CONFIG_SRCDIR([sniffjoke])
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
-AC_SUBST(PACKAGE_VERSION)
-AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
-
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
+AC_SUBST(PACKAGE_VERSION)
+
+AC_PREFIX_DEFAULT(/usr/local)
+
+AH_TEMPLATE(RUNUSER)
+AH_TEMPLATE(RUNGROUP)
+AC_DEFINE(RUNUSER, "sniffjoke")
+AC_DEFINE(RUNGROUP, "sniffjoke")
+
+if test "$prefix" = "NONE"; then
+   prefix="/usr/local"
+fi
+if test "$exec_prefix" = "NONE"; then
+   exec_prefix=$prefix
+fi
+
+AH_TEMPLATE(INSTALL_PREFIX, [the prefix passed by configure])
+AC_DEFINE_UNQUOTED(INSTALL_PREFIX, "`eval echo $prefix`")
+
+AH_TEMPLATE(INSTALL_EXECPREFIX, [the exec_prefix passed by configure])
+AC_DEFINE_UNQUOTED(INSTALL_EXECPREFIX, "`eval echo $exec_prefix`")
+
+AH_TEMPLATE(INSTALL_SYSCONFDIR, [where can I find my sysconf file ?])
+AC_DEFINE_UNQUOTED(INSTALL_SYSCONFDIR, "`eval echo $sysconfdir/sniffjoke/`")
+
+AH_TEMPLATE(INSTALL_LIBDIR, [where can I find my plugins ?])
+AC_DEFINE_UNQUOTED(INSTALL_LIBDIR, "`eval echo $libdir/sniffjoke/`")
+
+AH_TEMPLATE(INSTALL_BINDIR, [where can I find the sniffjoke executable ?])
+AC_DEFINE_UNQUOTED(INSTALL_BINDIR, "`eval echo $bindir`")
+
+
+AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
+
+
 AC_PROG_CXX
 AC_LANG([C++])
-EC_GCC_MACRO
 AC_PROG_INSTALL
 
 AC_DISABLE_STATIC
@@ -17,11 +47,10 @@ AC_LIBTOOL_WIN32_DLL
 AC_LIBTOOL_DLOPEN
 AM_PROG_LIBTOOL
 AC_SEARCH_LIBS(dlopen,c dl,,)
-ac_ec_lt_dlopen=yes
 AC_SEARCH_LIBS(lt_dlopen,c dl ltdl,,ac_ec_lt_dlopen=no)
 AC_CHECK_HEADERS(dlfcn.h)
 AC_CHECK_HEADERS(ltdl.h)
-#LT_CONFIG_LTDL_DIR([libltdl])
+LT_CONFIG_LTDL_DIR([libltdl])
 AC_LIB_LTDL
 
 AC_CHECK_HEADERS(cerrno,,exit 1)

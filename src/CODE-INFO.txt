@@ -12,7 +12,7 @@ This file works as a TODO&REMIND:
 
 
 for every questione, code hacking, plugin proposal & improvement, every submission
-is welcom to: vecna@delirandom.net, cc: giovanni.pellerano@evilaliv3.org
+is welcome to: vecna@delirandom.net, cc: giovanni.pellerano@evilaliv3.org
 
 future site release will contain an upload/download system. if you have a nice idea 
 about make it, contacts ours, we are always looking for community helps :)

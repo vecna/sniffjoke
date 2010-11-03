@@ -2,15 +2,14 @@
 #
 # comment supported
 #
-# is required the absolute path
-/usr/local/lib/sniffjoke/fake_close_fin.so
+fake_close_fin.so
 # 
-/usr/local/lib/sniffjoke/fake_close_rst.so
-/usr/local/lib/sniffjoke/fake_data_anticipation.so
-/usr/local/lib/sniffjoke/fake_data_posticipation.so
-/usr/local/lib/sniffjoke/fake_seq.so
-/usr/local/lib/sniffjoke/fake_syn.so
-/usr/local/lib/sniffjoke/fake_zero_window.so
-/usr/local/lib/sniffjoke/shift_ack.so
-/usr/local/lib/sniffjoke/valid_rst_fake_seq.so
+fake_close_rst.so
+fake_data_anticipation.so
+fake_data_posticipation.so
+fake_seq.so
+fake_syn.so
+fake_zero_window.so
+shift_ack.so
+valid_rst_fake_seq.so
 # regards

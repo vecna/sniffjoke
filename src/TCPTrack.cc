@@ -31,14 +31,6 @@ using namespace std;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-HackPacketPoolElem::HackPacketPoolElem(bool* const c, unsigned int index, HackPacket* HackObj) :
-	config(c),
-	enabled(*c),
-	dummy(HackObj),
-	track_index(index)
-{
-}
-
 /* Check if the constructor has make a good job - further checks need to be addedd */
 bool HackPacketPool::verifyPluginIntegirty(HackPacket *loaded) 
 {
@@ -67,113 +59,75 @@ bool HackPacketPool::verifyPluginIntegirty(HackPacket *loaded)
  */
 HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf) 
 {
-	char plugfilepath[MEDIUMBUF];
+	char plugabspath[MEDIUMBUF];
 	FILE *plugfile;
 
-	memset(&listOfHacks, 0x00, sizeof(struct PluginTrack) * MAXPLUGINS);
-	n_plugin = 0;
+	PluginTrack plugin;
 
 	*fail = false;
 
-	/* we are not running in chroot at the moment, but the plugins enabler is defined
-	 * to be. whenever the enabler will stay in /usr/local/lib I will be glad, in both cases
-	 * we need buffer with the absolute path */
-	snprintf(plugfilepath, MEDIUMBUF, "%s/%s", sjconf->chroot_dir, sjconf->enabler);
-	if((plugfile = fopen(plugfilepath, "r")) == NULL) {
-		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", plugfilepath, strerror(errno));
+	if((plugfile = fopen(sjconf->enabler, "r")) == NULL) {
+		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", sjconf->enabler, strerror(errno));
 		*fail = true;
 		return;
 	}
 
 	int line = 0;
 	do {
-		char plugname[SMALLBUF];
+		char plugrelpath[SMALLBUF];
 
-		fgets(plugname, SMALLBUF, plugfile);
+		fgets(plugrelpath, SMALLBUF, plugfile);
 		line++;
 
-		if(plugname[0] == '#')
+		if(plugrelpath[0] == '#')
 			continue;
 
 		/* C's chop() */
-		plugname[strlen(plugname) -1] = 0x00; 
+		plugrelpath[strlen(plugrelpath) -1] = 0x00; 
 
 		/* 4 is the minimum length of a ?.so plugin */
-		if(strlen(plugname) < 4 || feof(plugfile)) {
+		if(strlen(plugrelpath) < 4 || feof(plugfile)) {
 			internal_log(NULL, VERBOSE_LEVEL, "reading %s: importend %d plugins, matched interruption at line %d",
-				PLUGINSENABLER, n_plugin, line);
+				PLUGINSENABLER, size(), line);
 			break;
 		}
 
-		if(n_plugin == MAXPLUGINS -1) {
-			internal_log(NULL, ALL_LEVEL, 
-				"reached the limits of supported plugins (%d), modify hardcoded-defines.h!", MAXPLUGINS);
-			*fail = true;
-			/* if you are running more than 32 plugins, you know what to do */
-			break;
-		}
+		snprintf(plugabspath, SMALLBUF * 2, "%s%s", INSTALL_LIBDIR, plugrelpath);
 
-		void *handler = dlopen(plugname, RTLD_LAZY);
+		void *handler = dlopen(plugabspath, RTLD_LAZY);
 		if(handler == NULL) {
-			internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugname, dlerror());
+			internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugabspath, dlerror());
 			*fail = true;
 			break;
 		}
-		internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugname);
+		internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugabspath);
 
-		listOfHacks[n_plugin].pluginHandler = handler;
-		listOfHacks[n_plugin].pluginPath = strdup(plugname);
-
-//		constructor_f X;
-//		*(void **)(const int)&X = dlsym(handler, "CreateHackObject");
-//		constructor_f *X;
-//		*(void **)&X = dlsym(handler, "CreateHackObject");
-//		listOfHacks[n_plugin].fp_CreateHackObj = X; 
-//	UNABLE TO SOLVE 
-//	TCPTrack.cc:128: warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
-//	NOR
-//	TCPTrack.cc:124: warning: dereferencing type-punned pointer will break strict-aliasing rules
-//	I've removed the -Werror from Makefile.*
+		plugin.pluginHandler = handler;
+		plugin.pluginPath = strdup(plugabspath);
 
 		/* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
-		listOfHacks[n_plugin].fp_CreateHackObj = (constructor_f *)dlsym(handler, "CreateHackObject");
-		listOfHacks[n_plugin].fp_DeleteHackObj = (destructor_f *)dlsym(handler, "DeleteHackObject");
+		plugin.fp_CreateHackObj = (constructor_f *)(dlsym(handler, "CreateHackObject"));
+		plugin.fp_DeleteHackObj = (destructor_f *)dlsym(handler, "DeleteHackObject");
 
-		n_plugin++;
-	} while(!feof(plugfile));
+                plugin.selfObj = plugin.fp_CreateHackObj(size()+1);
 
-	if(*fail || !n_plugin) {
-		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins: FAILURE while loading detected", n_plugin);
-		return;
-	} else
-		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins", n_plugin);
-
-	for(int i =0; i < n_plugin; i++)
-	{
-		bool obviously_true = true;
-
-		HackPacket *loaded = listOfHacks[i].fp_CreateHackObj(i);
-
-		if(!verifyPluginIntegirty(loaded)) {
-			internal_log(NULL, ALL_LEVEL, "plugin #%d %s incorret implementation: read the documentation!", 
-				loaded->track_index, basename(listOfHacks[i].pluginPath) );
+		if(!verifyPluginIntegirty(plugin.selfObj)) {
+			internal_log(NULL, ALL_LEVEL, "plugin %s incorret implementation: read the documentation!",
+				basename(plugin.pluginPath) );
 			*fail = true;
-			continue;
 		} else {
 			internal_log(NULL, DEBUG_LEVEL, "plugin #%d/%s implementation accepted",
-				loaded->track_index, loaded->hackName);
+				plugin.selfObj->hackName);
+			push_back(plugin);
+                }
 
-			listOfHacks[i].selfObj = loaded;
-		}
+	} while(!feof(plugfile));
 
-		push_back(HackPacketPoolElem(/* prima c'era il bool del sj_shift_ack_enable, ora, se 
-						il plugin è nella lista, o non è tolto in sjconf e quindi
-						non presente in listOfHacks, ogni plugin che arriva qui è 
-						abilitato di certo. però l'ho lasciato, perché il bool qui ha senso
-						per le abilitazioni progressive */ &obviously_true, i, loaded
-			)
-		);
-	}
+	if(*fail || !size()) {
+		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins: FAILURE while loading detected", size());
+		return;
+	} else
+		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins", size());
 
 	/* 
 	 * TCPTrack.cc:86: warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
@@ -186,14 +140,15 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 HackPacketPool::~HackPacketPool() 
 {
 	/* call the distructor loaded from the plugins */
-	while(n_plugin--) 
-	{
-		listOfHacks[n_plugin].fp_DeleteHackObj(listOfHacks[n_plugin].selfObj);
 
-		if(dlclose(listOfHacks[n_plugin].pluginHandler)) 
-			internal_log(NULL, ALL_LEVEL, "unable to close %s plugin: %s", listOfHacks[n_plugin].pluginPath, dlerror());
+	vector<PluginTrack>::iterator it;
+	for ( it = begin(); it != end(); it++ ) {
+		(*it).fp_DeleteHackObj((*it).selfObj);
+
+		if(dlclose((*it).pluginHandler)) 
+			internal_log(NULL, ALL_LEVEL, "unable to close %s plugin: %s", (*it).pluginPath, dlerror());
 		else
-			internal_log(NULL, DEBUG_LEVEL, "closed handler of %s", listOfHacks[n_plugin].pluginPath);
+			internal_log(NULL, DEBUG_LEVEL, "closed handler of %s", (*it).pluginPath);
 	}
 }
 
@@ -213,7 +168,6 @@ TCPTrack::TCPTrack(UserConf *sjconf) :
 
 TCPTrack::~TCPTrack(void) 
 {
-	delete &hack_pool;
 	internal_log(NULL, DEBUG_LEVEL, "~TCPTrack()");
 }
 
@@ -635,24 +589,22 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
  */
 void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *session)
 {
-	vector<HackPacketPoolElem>::iterator it;
-	HackPacketPoolElem *hppe;
-	
-	HackPacketPool applicable_hacks = hack_pool;
+	vector<PluginTrack>::iterator it;
+	PluginTrack *hppe;
 	
 	/* SELECT APPLICABLE HACKS */
-	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) {
+	for ( it = hack_pool.begin(); it != hack_pool.end(); it++ ) {
 		hppe = &(*it);
-		hppe->enabled &= *(hppe->config);
-		hppe->enabled &= hppe->dummy->Condition(orig_pkt);
-		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->dummy->hack_frequency);
+		hppe->enabled = true;
+		hppe->enabled &= hppe->selfObj->Condition(orig_pkt);
+		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->selfObj->hack_frequency);
 	}
 
 	/* -- RANDOMIZE HACKS APPLICATION */
-	random_shuffle( applicable_hacks.begin(), applicable_hacks.end() );
+	random_shuffle( hack_pool.begin(), hack_pool.end() );
 
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
-	for ( it = applicable_hacks.begin(); it != applicable_hacks.end(); it++ ) 
+	for ( it = hack_pool.begin(); it != hack_pool.end(); it++ ) 
 	{
 		/* must be moved in the do/while loop based on HackPacket->num_pkt_gen */
 		Packet *injpkt;
@@ -661,16 +613,16 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 		if(!hppe->enabled) 
 			continue;
 
-		injpkt = hppe->dummy->createHack(orig_pkt);
+		injpkt = hppe->selfObj->createHack(orig_pkt);
 
 		/* we trust in the external developer, but is required a safety check by sniffjoke :) */
-		if(!injpkt->SelfIntegrityCheck(hppe->dummy->hackName)) {
-			internal_log(NULL, ALL_LEVEL, "invalid packet generated by hack %s", hppe->dummy->hackName);
+		if(!injpkt->SelfIntegrityCheck(hppe->selfObj->hackName)) {
+			internal_log(NULL, ALL_LEVEL, "invalid packet generated by hack %s", hppe->selfObj->hackName);
 			delete injpkt;
 			continue;
 		}
 		injpkt->mark(LOCAL, SEND);
-		snprintf(injpkt->debugbuf, MEDIUMBUF, "inj from %s", hppe->dummy->hackName);
+		snprintf(injpkt->debugbuf, MEDIUMBUF, "inj from %s", hppe->selfObj->hackName);
 		injpkt->selflog(__func__, injpkt->debugbuf);
 
 		switch(injpkt->position) {

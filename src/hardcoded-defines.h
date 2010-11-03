@@ -6,6 +6,8 @@
 #ifndef SJ_DEFINES_H
 #define SJ_DEFINES_H
 
+#include "config.h"
+
 #define SW_NAME                         "SniffJoke"
 #define SW_VERSION                      "0.4 alpha 3"
 
@@ -14,9 +16,7 @@
 #define DROP_GROUP                      "sniffjoke"
 #define MAGICVAL			0xADECADDE
 #define CHROOT_DIR			"/var/sniffjoke/"
-// FIXME con -DPATH_LIB=\"$(libdir)/@PACKAGE@/\"
-// #define PLUGINSSUBDIR			"/usr/local/lib/sniffjoke/"	// used INSIDE chroot
-#define PLUGINSENABLER			"plugins_enabled.txt" // used INSIDE chroot
+#define PLUGINSENABLER			INSTALL_SYSCONFDIR "plugins_enabled.txt"
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
 #define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot

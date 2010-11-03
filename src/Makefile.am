@@ -1,4 +1,4 @@
-bin_PROGRAMS = sniffjoke
+bin_PROGRAMS =		sniffjoke
 
 sniffjoke_SOURCES = 	DataDebug.cc \
 			DataDebug.h \
@@ -21,7 +21,8 @@ sniffjoke_SOURCES = 	DataDebug.cc \
 			UserConf.cc \
 			UserConf.h \
 			Utils.h
-AM_CPPFLAGS = -ansi -pedantic -Wall 
-sniffjoke_LDFLAGS = -lrt
 
-CLEANFILES = *~
+AM_CPPFLAGS =		-ansi -pedantic -Wall 
+sniffjoke_LDFLAGS =	-lrt
+
+CLEANFILES =		*~

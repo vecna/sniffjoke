@@ -367,7 +367,7 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case ICMP:
 			snprintf(protoinfo, MEDIUMBUF, "ICMP type %d code %d len %d(%d)",
 				icmp->type, icmp->code,
-				orig_pktlen, orig_pktlen - (ip->ihl * 4) - sizeof(struct icmphdr)
+				orig_pktlen, (int)(orig_pktlen - (ip->ihl * 4) - sizeof(struct icmphdr))
 			);
 			break;
 		case OTHER_IP:

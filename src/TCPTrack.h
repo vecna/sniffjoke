@@ -31,31 +31,35 @@
 #include <vector>
 using namespace std;
 
-class HackPacketPoolElem {
+class PluginTrack {
 public:
-	bool *config;
-	bool enabled;
-	HackPacket *dummy;
-	int track_index;
-
-	HackPacketPoolElem(bool*, unsigned int, HackPacket*);
-};
-
-struct PluginTrack {
 	void *pluginHandler;	
 	constructor_f *fp_CreateHackObj;
 	destructor_f *fp_DeleteHackObj;
 	HackPacket *selfObj;
 	const char *pluginPath;
+	bool enabled;
+	PluginTrack() {
+		pluginHandler = NULL;
+		fp_CreateHackObj = NULL;
+		fp_DeleteHackObj = NULL;
+		selfObj = NULL;
+		pluginPath = NULL;
+		enabled = NULL;
+	}
+	PluginTrack(const PluginTrack& cpy) {
+		pluginHandler = cpy.pluginHandler;
+		fp_CreateHackObj = cpy.fp_CreateHackObj;
+		fp_DeleteHackObj = cpy.fp_DeleteHackObj;
+		selfObj = cpy.selfObj;
+		pluginPath = cpy.pluginPath;
+		enabled = cpy.enabled;
+	}
 };
 
-class HackPacketPool : public vector<HackPacketPoolElem> {
+class HackPacketPool : public vector<PluginTrack> {
 private:
-	struct PluginTrack listOfHacks[MAXPLUGINS];
-	int n_plugin;
-
 	bool verifyPluginIntegirty(HackPacket *);
-
 public:
 	HackPacketPool(bool *, struct sj_config *);
 	~HackPacketPool();
