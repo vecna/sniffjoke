@@ -38,7 +38,6 @@
 
 class fake_seq : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
@@ -82,7 +81,7 @@ public:
 	}
 
 	fake_seq(int plugin_index) {
-		track_index =plugin_index;
+		track_index = plugin_index;
 		hackName = "Fake SEQ";
 		hack_frequency = 15;
 		prescription_probability = 98;

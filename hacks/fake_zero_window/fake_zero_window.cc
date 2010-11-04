@@ -37,7 +37,6 @@
 
 class fake_zero_window : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
@@ -57,7 +56,7 @@ public:
 	}
 
 	fake_zero_window(int plugin_index) {
-		track_index =plugin_index;
+		track_index = plugin_index;
 		hackName = "Fake 0-window";
 		hack_frequency = 5;
 		prescription_probability = 93;

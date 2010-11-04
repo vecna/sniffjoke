@@ -41,7 +41,6 @@
 
 class shift_ack : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
@@ -63,7 +62,7 @@ public:
 	}
 
 	shift_ack(int plugin_index) {
-		track_index =plugin_index;
+		track_index = plugin_index;
 		hackName = "unexpected ACK shift";
 		hack_frequency = 15;
 		prejudge = INNOCENT;

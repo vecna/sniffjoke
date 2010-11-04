@@ -94,7 +94,7 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 
 		snprintf(plugabspath, SMALLBUF * 2, "%s%s", INSTALL_LIBDIR, plugrelpath);
 
-		void *handler = dlopen(plugabspath, RTLD_LAZY);
+		void *handler = dlopen(plugabspath, RTLD_NOW);
 		if(handler == NULL) {
 			internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugabspath, dlerror());
 			*fail = true;
@@ -340,7 +340,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	 * between our peer and the remote peer. the packet
 	 * is lighty modify (ip->id change) and checksum fixed
 	 */
-	 
+
 	if(!ttlfocus.isProbeIntervalPassed(clock))
 		return;
 

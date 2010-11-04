@@ -68,8 +68,7 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
 fake_close_rst_la_LIBADD =
-am_fake_close_rst_la_OBJECTS = fake_close_rst.lo Packet.lo \
-	SniffJoke.lo
+am_fake_close_rst_la_OBJECTS = fake_close_rst.lo
 fake_close_rst_la_OBJECTS = $(am_fake_close_rst_la_OBJECTS)
 fake_close_rst_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -229,7 +228,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CXXFLAGS = -I$(top_srcdir)/src
 pkglib_LTLIBRARIES = fake_close_rst.la
-fake_close_rst_la_SOURCES = fake_close_rst.cc ../../src/Packet.cc ../../src/SniffJoke.cc
+fake_close_rst_la_SOURCES = fake_close_rst.cc
 fake_close_rst_la_LDFLAGS = -module -avoid-version
 fake_close_rst_la_LIBS = 
 all: all-am
@@ -306,8 +305,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Packet.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SniffJoke.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fake_close_rst.Plo@am__quote@
 
 .cc.o:
@@ -330,20 +327,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
-
-Packet.lo: ../../src/Packet.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Packet.lo -MD -MP -MF $(DEPDIR)/Packet.Tpo -c -o Packet.lo `test -f '../../src/Packet.cc' || echo '$(srcdir)/'`../../src/Packet.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/Packet.Tpo $(DEPDIR)/Packet.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../../src/Packet.cc' object='Packet.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Packet.lo `test -f '../../src/Packet.cc' || echo '$(srcdir)/'`../../src/Packet.cc
-
-SniffJoke.lo: ../../src/SniffJoke.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SniffJoke.lo -MD -MP -MF $(DEPDIR)/SniffJoke.Tpo -c -o SniffJoke.lo `test -f '../../src/SniffJoke.cc' || echo '$(srcdir)/'`../../src/SniffJoke.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/SniffJoke.Tpo $(DEPDIR)/SniffJoke.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../../src/SniffJoke.cc' object='SniffJoke.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SniffJoke.lo `test -f '../../src/SniffJoke.cc' || echo '$(srcdir)/'`../../src/SniffJoke.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo

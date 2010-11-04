@@ -22,7 +22,7 @@ sniffjoke_SOURCES = 	DataDebug.cc \
 			UserConf.h \
 			Utils.h
 
-AM_CPPFLAGS =		-ansi -pedantic -Wall 
-sniffjoke_LDFLAGS =	-lrt
+AM_CPPFLAGS =		-ansi -pedantic -Wall
+sniffjoke_LDFLAGS =	-lrt -Wl,-export-dynamic
 
 CLEANFILES =		*~

@@ -40,7 +40,6 @@
 
 class valid_rst_fake_seq : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
@@ -68,7 +67,7 @@ public:
 	}
 
 	valid_rst_fake_seq(int plugin_index) {
-		track_index =plugin_index;
+		track_index = plugin_index;
 		hackName = "true RST w/ invalid SEQ";
 		hack_frequency = 8;
 		prejudge = INNOCENT;

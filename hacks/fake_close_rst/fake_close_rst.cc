@@ -38,7 +38,6 @@
 
 class fake_close_rst : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{

@@ -38,7 +38,6 @@
 
 class fake_syn : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
@@ -81,7 +80,7 @@ public:
 	}
 
 	fake_syn(int plugin_index) {
-		track_index =plugin_index;
+		track_index = plugin_index;
 		hackName = "Fake SYN";
 		hack_frequency = 15;
 		prescription_probability = 98;

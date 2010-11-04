@@ -147,6 +147,8 @@ void Process::ServiceChildClose() {
 
 void Process::sigtrapSetup(sig_t sigtrap_function)
 {
+	struct sigaction ignore;
+
 	sigemptyset(&sig_nset);
 	sigaddset(&sig_nset, SIGINT);
 	sigaddset(&sig_nset, SIGABRT);

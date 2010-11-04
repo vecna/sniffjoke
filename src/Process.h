@@ -35,7 +35,6 @@ private:
 	sigset_t sig_nset;
 	sigset_t sig_oset;
 	struct sigaction action;
-	struct sigaction ignore;
 
 	FILE *pidFile;
 public:

@@ -159,11 +159,10 @@ void UserConf::autodetect_gw_mac_address()
 		raise(SIGTERM);
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
-		sscanf(running->gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x",
-			(unsigned int *)&running->gw_mac_addr[0], (unsigned int *)&running->gw_mac_addr[1], 
-			(unsigned int *)&running->gw_mac_addr[2], (unsigned int *)&running->gw_mac_addr[3], 
-			(unsigned int *)&running->gw_mac_addr[4], (unsigned int *)&running->gw_mac_addr[5]
-		);
+		unsigned int mac[6];
+		sscanf(running->gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+	        for (i=0; i<6; i++)
+        	        running->gw_mac_addr[i] = mac[i];
 	}
 }
 

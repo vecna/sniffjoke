@@ -48,7 +48,6 @@
 
 class fake_data_anticipation : public HackPacket
 {
-private:
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
@@ -68,7 +67,7 @@ public:
 	}
 
 	fake_data_anticipation(int plugin_index) {
-		track_index =plugin_index;
+		track_index = plugin_index;
 		hackName = "Fake data anticipation";
 		hack_frequency = 50;
 	}
