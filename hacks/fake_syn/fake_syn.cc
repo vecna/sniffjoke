@@ -38,10 +38,11 @@
 
 class fake_syn : public HackPacket
 {
+#define HACK_NAME	"Fake SYN"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 
 		ret->resizePayload(0);
@@ -69,7 +70,7 @@ public:
 		}
 
 		ret->position = ANTICIPATION;
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 
 		return ret;
 	}
@@ -81,7 +82,7 @@ public:
 
 	fake_syn(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "Fake SYN";
+		hackName = HACK_NAME;
 		hack_frequency = 15;
 		prescription_probability = 98;
 	}

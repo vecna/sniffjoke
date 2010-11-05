@@ -362,12 +362,17 @@ char *UserConf::handle_cmd_stat(void)
 		"gateway mac address:\t\t%s\n" \
 		"gateway ip address:\t\t%s\n" \
 		"local interface:\t\t%s, %s address\n" \
-		"dynamic tunnel interface:\ttun%d\n",
+		"dynamic tunnel interface:\ttun%d\n" \
+		"log level:\t\t%d at file %s\n" \
+		"plugins file:\t\t%s\n" \
+		"chroot directory:\t%s\n",
 		running->sj_run == true ? "TRUE" : "FALSE",
 		running->gw_mac_str,
 		running->gw_ip_addr,
 		running->interface, running->local_ip_addr,
-		running->tun_number
+		running->tun_number,
+		running->debug_level, running->logfname,
+		running->enabler, running->chroot_dir
 	);
 	return &io_buf[0];
 }
@@ -403,11 +408,11 @@ char *UserConf::handle_cmd_stop(void)
 {
 	if (running->sj_run != false) {
 		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
-		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
 		running->sj_run = false;
 	} else /* sniffjoke is already stopped */ {
 		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
-		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
 	}
 	return &io_buf[0];
 }
@@ -416,11 +421,11 @@ char *UserConf::handle_cmd_start(void)
 {
 	if (running->sj_run != true) {
 		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
-		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
 		running->sj_run = true;
 	} else /* sniffjoke is already running */ {
 		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
-		internal_log(NULL, ALL_LEVEL, "%s", io_buf);
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
 	}
 	return &io_buf[0];
 }

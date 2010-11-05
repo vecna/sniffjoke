@@ -241,13 +241,13 @@ void NetIO::network_io(void)
 			if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 				{
-					internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network: error: %s", strerror(errno));
+		//			internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network: error: %s", strerror(errno));
 					check_call_ret("Reading from network", errno, size, false);
 					break;
 				}
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network correctly: %d bytes [sniffjoke %s]", 
-							 size, runcopy->sj_run == true ? "running" : "stopped");
+		//		internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network correctly: %d bytes [sniffjoke %s]", 
+		//					 size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
 				conntrack->writepacket(NETWORK, pktbuf, size);
@@ -257,13 +257,13 @@ void NetIO::network_io(void)
 		if (fds[1].revents & POLLIN) {
 			if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-					internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+		//			internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
 					check_call_ret("Reading from tunnel", errno, size, false);
 					break;
 				}
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes [sniffjoke %s]", 
-						size, runcopy->sj_run == true ? "running" : "stopped");
+		//		internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes [sniffjoke %s]", 
+		//				size, runcopy->sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
 				conntrack->writepacket(TUNNEL, pktbuf, size);
@@ -291,23 +291,23 @@ void NetIO::queue_flush(void)
 	while ((pkt = conntrack->readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
 			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size())) == -1) {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
+//				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
 				networkdown_condition = true;
 				check_call_ret("Writing in tunnel", errno, size, false);
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
-							size, runcopy->sj_run == true ? "running" : "stopped");
+//				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
+//							size, runcopy->sj_run == true ? "running" : "stopped");
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
 				ntohs(pkt->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network error: %s", strerror(errno));
+//				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network error: %s", strerror(errno));
 				networkdown_condition = true;
 				check_call_ret("Writing in network", errno, size, false);
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
-							 size, runcopy->sj_run == true ? "running" : "stopped");
+//				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
+//							 size, runcopy->sj_run == true ? "running" : "stopped");
 			}
 		}
 		delete pkt;

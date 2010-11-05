@@ -32,8 +32,13 @@ using namespace std;
 #include <arpa/inet.h>
 
 /* Check if the constructor has make a good job - further checks need to be addedd */
-bool HackPacketPool::verifyPluginIntegirty(HackPacket *loaded) 
+bool HackPacketPool::verifyPluginIntegirty(PluginTrack *plugload, HackPacket *loaded) 
 {
+	if(plugload->fp_CreateHackObj == NULL || plugload->fp_DeleteHackObj == NULL) {
+		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d lack of create/delete object", loaded->track_index);
+		return false;
+	}
+
 	if(loaded->hackName == NULL) {
 		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d lack of ->hackName member", loaded->track_index);
 		return false;
@@ -106,18 +111,17 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 		plugin.pluginPath = strdup(plugabspath);
 
 		/* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
-		plugin.fp_CreateHackObj = (constructor_f *)(dlsym(handler, "CreateHackObject"));
+		plugin.fp_CreateHackObj = (constructor_f *)dlsym(handler, "CreateHackObject");
 		plugin.fp_DeleteHackObj = (destructor_f *)dlsym(handler, "DeleteHackObject");
 
                 plugin.selfObj = plugin.fp_CreateHackObj(size()+1);
 
-		if(!verifyPluginIntegirty(plugin.selfObj)) {
+		if(!verifyPluginIntegirty(&plugin, plugin.selfObj)) {
 			internal_log(NULL, ALL_LEVEL, "plugin %s incorret implementation: read the documentation!",
 				basename(plugin.pluginPath) );
 			*fail = true;
 		} else {
-			internal_log(NULL, DEBUG_LEVEL, "plugin #%d/%s implementation accepted",
-				plugin.selfObj->hackName);
+			internal_log(NULL, DEBUG_LEVEL, "plugin %s implementation accepted", plugin.selfObj->hackName);
 			push_back(plugin);
                 }
 
@@ -140,9 +144,14 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 HackPacketPool::~HackPacketPool() 
 {
 	/* call the distructor loaded from the plugins */
-
 	vector<PluginTrack>::iterator it;
-	for ( it = begin(); it != end(); it++ ) {
+	for ( it = begin(); it != end(); it++ ) 
+	{
+		internal_log(NULL, VERBOSE_LEVEL, "calling %s destructor (%s)", 
+			(*it).selfObj->hackName,
+			(*it).pluginPath
+		);
+
 		(*it).fp_DeleteHackObj((*it).selfObj);
 
 		if(dlclose((*it).pluginHandler)) 
@@ -622,7 +631,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 			continue;
 		}
 		injpkt->mark(LOCAL, SEND);
-		snprintf(injpkt->debugbuf, MEDIUMBUF, "inj from %s", hppe->selfObj->hackName);
+		snprintf(injpkt->debugbuf, MEDIUMBUF, "Injected from %s", hppe->selfObj->hackName);
 		injpkt->selflog(__func__, injpkt->debugbuf);
 
 		switch(injpkt->position) {

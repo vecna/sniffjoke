@@ -28,6 +28,9 @@ AC_DEFINE_UNQUOTED(INSTALL_EXECPREFIX, "`eval echo $exec_prefix`")
 AH_TEMPLATE(INSTALL_SYSCONFDIR, [where can I find my sysconf file ?])
 AC_DEFINE_UNQUOTED(INSTALL_SYSCONFDIR, "`eval echo $sysconfdir/sniffjoke/`")
 
+AH_TEMPLATE(INSTALL_STATEDIR, [where can I find my running track ?])
+AC_DEFINE_UNQUOTED(INSTALL_STATEDIR, "`eval echo $localstatedir/sniffjoke/`")
+
 AH_TEMPLATE(INSTALL_LIBDIR, [where can I find my plugins ?])
 AC_DEFINE_UNQUOTED(INSTALL_LIBDIR, "`eval echo $libdir/sniffjoke/`")
 
@@ -50,7 +53,7 @@ AC_SEARCH_LIBS(dlopen,c dl,,)
 AC_SEARCH_LIBS(lt_dlopen,c dl ltdl,,ac_ec_lt_dlopen=no)
 AC_CHECK_HEADERS(dlfcn.h)
 AC_CHECK_HEADERS(ltdl.h)
-LT_CONFIG_LTDL_DIR([libltdl])
+# LT_CONFIG_LTDL_DIR([libltdl])
 AC_LIB_LTDL
 
 AC_CHECK_HEADERS(cerrno,,exit 1)

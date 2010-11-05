@@ -37,10 +37,11 @@
 
 class fake_zero_window : public HackPacket
 {
+#define HACK_NAME	"Fake 0-window"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 
 		ret->resizePayload(0);
@@ -51,13 +52,13 @@ public:
 
 		ret->position = ANY_POSITION;
 
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
 	}
 
 	fake_zero_window(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "Fake 0-window";
+		hackName = HACK_NAME;
 		hack_frequency = 5;
 		prescription_probability = 93;
 	}

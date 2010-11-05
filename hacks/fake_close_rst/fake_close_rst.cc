@@ -38,11 +38,12 @@
 
 class fake_close_rst : public HackPacket
 {
+#define HACK_NAME	"Fake RST"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
 		Packet* ret = new Packet(orig_packet);
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 
 		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
 
@@ -54,7 +55,7 @@ public:
 		ret->fillRandomPayload();
 		ret->position = ANTICIPATION;
 
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 
 		return ret;
 	}
@@ -66,7 +67,7 @@ public:
 
 	fake_close_rst(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "Fake RST";
+		hackName = HACK_NAME;
 		hack_frequency = 5;
 		prescription_probability = 98;
 	}

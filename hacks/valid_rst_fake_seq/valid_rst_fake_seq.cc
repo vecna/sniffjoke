@@ -40,10 +40,11 @@
 
 class valid_rst_fake_seq : public HackPacket
 {
+#define HACK_NAME	"true RST w/ invalid SEQ"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 
 		ret->resizePayload(0);
@@ -57,7 +58,7 @@ public:
 
 		ret->position = ANY_POSITION;
 
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
 	}
 
@@ -68,7 +69,7 @@ public:
 
 	valid_rst_fake_seq(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "true RST w/ invalid SEQ";
+		hackName = HACK_NAME;
 		hack_frequency = 8;
 		prejudge = INNOCENT;
 	}
@@ -77,4 +78,8 @@ public:
 
 extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
 	return new valid_rst_fake_seq(plugin_tracking_index);
+}
+
+extern "C" void DeleteHackObject(HackPacket *who) {
+	delete who;
 }

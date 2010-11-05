@@ -55,7 +55,7 @@ void SessionTrack::selflog(const char *func, const char *lmsg)
 	internal_log(NULL, SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x shutdown %s #pkt %d: [%s]",
 		func, ntohs(sport), 
 		inet_ntoa(*((struct in_addr *)&daddr)),
-                isn,
+                ntohl(isn),
 		ntohs(dport), 
 		shutdown ? "TRUE" : "FALSE",
 		packet_number, lmsg

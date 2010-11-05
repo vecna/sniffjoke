@@ -15,7 +15,7 @@
 #define DROP_USER                       "sniffjoke"
 #define DROP_GROUP                      "sniffjoke"
 #define MAGICVAL			0xADECADDE
-#define CHROOT_DIR			"/var/sniffjoke/"
+#define CHROOT_DIR			INSTALL_STATEDIR
 #define PLUGINSENABLER			INSTALL_SYSCONFDIR "plugins_enabled.txt"
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
@@ -29,12 +29,10 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 /* TTL related define */
-#define TTLFOCUSMAP_FILE		"ttlfocus.bin"   //used INSIDE chroot
+#define TTLFOCUSMAP_FILE		INSTALL_STATEDIR "ttlfocus.bin"
 
 /* the maximum value of bruteforced TTL */
 #define STARTING_ARB_TTL		46
-
-
 
 /*
   sniffoke make use of two MTU values, one real an one fake

@@ -37,13 +37,14 @@
 
 class fake_close_fin : public HackPacket
 {
+#define HACK_NAME	"Fake Fin"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
 		Packet* ret = new Packet(orig_packet);
 		
 		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 
 		ret->resizePayload(0);
 		ret->fillRandomPayload();
@@ -56,7 +57,7 @@ public:
 
 		ret->position = ANTICIPATION;
 
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
 	}
 
@@ -67,7 +68,7 @@ public:
 
 	fake_close_fin(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "Fake FIN";
+		hackName = HACK_NAME;
 		hack_frequency = 5;
 		prescription_probability = 98;
 	}

@@ -41,10 +41,11 @@
 
 class shift_ack : public HackPacket
 {
+#define HACK_NAME	"unexpected ACK shift"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 
 		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
@@ -52,7 +53,7 @@ public:
 
 		ret->position = ANY_POSITION;
 
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
 	}
 
@@ -63,7 +64,7 @@ public:
 
 	shift_ack(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "unexpected ACK shift";
+		hackName = HACK_NAME;
 		hack_frequency = 15;
 		prejudge = INNOCENT;
 	}

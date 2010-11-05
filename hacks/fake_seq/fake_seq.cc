@@ -38,10 +38,11 @@
 
 class fake_seq : public HackPacket
 {
+#define HACK_NAME	"Fake SEQ"
 public:
 	virtual Packet *createHack(Packet &orig_packet)
 	{
-		orig_packet.selflog(__func__, "Original packet");
+		orig_packet.selflog(HACK_NAME, "Original packet");
 		Packet* ret = new Packet(orig_packet);
 
 		int diff = ntohs(ret->ip->tot_len) - ((ret->ip->ihl * 4) + (ret->tcp->doff * 4));
@@ -70,7 +71,7 @@ public:
 		ret->fillRandomPayload();
 
 		ret->position = ANY_POSITION;
-		ret->selflog(__func__, "Hacked packet");
+		ret->selflog(HACK_NAME, "Hacked packet");
 
 		return ret;
 	}
@@ -82,7 +83,7 @@ public:
 
 	fake_seq(int plugin_index) {
 		track_index = plugin_index;
-		hackName = "Fake SEQ";
+		hackName = HACK_NAME;
 		hack_frequency = 15;
 		prescription_probability = 98;
 	}

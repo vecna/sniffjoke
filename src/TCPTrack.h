@@ -59,7 +59,7 @@ public:
 
 class HackPacketPool : public vector<PluginTrack> {
 private:
-	bool verifyPluginIntegirty(HackPacket *);
+	bool verifyPluginIntegirty(PluginTrack *, HackPacket *);
 public:
 	HackPacketPool(bool *, struct sj_config *);
 	~HackPacketPool();

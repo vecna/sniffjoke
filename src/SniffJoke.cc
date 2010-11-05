@@ -56,7 +56,7 @@ static Process *SjProc = NULL;
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
 	" --config [filename]\tconfig file [default: %s%s]\n"\
-	" --enabler [filename]\tplugins enabler file [default: %s%s]\n"\
+	" --enabler [filename]\tplugins enabler file [default: %s]\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
@@ -78,7 +78,7 @@ static void sj_help(const char *pname, const char *basedir)
 	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, DEFAULT_DEBUG_LEVEL, 
 		basedir, LOGFILE, 
 		DROP_USER, DROP_GROUP, 
-		basedir, basedir, CONF_FILE, basedir, PLUGINSENABLER);
+		basedir, basedir, CONF_FILE, PLUGINSENABLER);
 }
 
 static void sj_version(const char *pname)
