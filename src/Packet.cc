@@ -24,11 +24,11 @@
 
 Packet::Packet(const unsigned char* buff, int size) :
 	packet_id(make_pkt_id(buff)),
+	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
-	injection(ANY_INJECTION),
         pbuf(size)
 {
 	memcpy(&(pbuf[0]), buff, size);
@@ -39,7 +39,7 @@ Packet::Packet(const unsigned char* buff, int size) :
 
 Packet::Packet(const Packet& pkt) :
 	packet_id(0),
-	evilbit(GOOD),
+	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
@@ -62,24 +62,16 @@ unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 		return 0; /* packet_id == 0 mean no ID check */
 }
 
-/* VERIFY
- *
- * mark should be used in two ways:
- * 1) after the hack-plugin has returned the packet, we need set up the
- *    parameters for inser correctly in the chain. two arguments are enought
- *
- * 2) when a packet is generated, and require a bulk inizialization,
- *    three (or more ? VERIFY THIS) arguments usefull
- */
-void Packet::mark(source_t source, status_t status)
+void Packet::mark(source_t source, status_t status, evilbit_t morality)
 {
 	this->source = source;
 	this->status = status;
+	this->evilbit = morality;
 }
 
-void Packet::mark(source_t source, status_t status, judge_t wtf) {
+void Packet::mark(source_t source, status_t status, judge_t wtf, evilbit_t morality) {
 	this->wtf = wtf;
-	mark(source, status);
+	mark(source, status, morality);
 }
 
 void Packet::updatePointers(void)
@@ -158,19 +150,26 @@ bool Packet::SelfIntegrityCheck(const char *pluginName)
 		internal_log(NULL, ALL_LEVEL, "in %s (status_t)status must not be set: ignored value", pluginName);
 	}
 
-	if(wtf != JUDGEUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "in %s not set ->wtf (what the fuck SniffJoke has to do with the generated packet!", pluginName);
-		return false;
+	if(wtf == JUDGEUNASSIGNED ) {
+		internal_log(NULL, ALL_LEVEL, "in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+		goto errorinfo;
 	}
 
 	if(proto == PROTOUNASSIGNED) {
-		internal_log(NULL, ALL_LEVEL, "in %s not set ->proto (error ? or not ?) ", pluginName);
+		internal_log(NULL, ALL_LEVEL, "in %s not set \"proto\" field, required", pluginName);
+		goto errorinfo;
 	}
 
-        if(injection == INJECTUNASSIGNED) {
-		internal_log(NULL, ALL_LEVEL, "please, in plugin %s specify what kind of injection you made", pluginName);
+	if(position == POSITIONUNASSIGNED) {
+		internal_log(NULL, ALL_LEVEL, "in %s not set \"position\" field, required", pluginName);
+		goto errorinfo;
 	}
+
 	return true;
+
+errorinfo:
+	internal_log(NULL, DEBUG_LEVEL, "Documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
+	return false;
 }
 
 void Packet::increasePbuf(unsigned int morespace)
@@ -208,8 +207,53 @@ void Packet::fillRandomPayload()
 	memset_random(payload, diff);
 }
 
+
+bool Packet::checkUncommonTCPOPT()
+{
+	unsigned char check;
+	/* default: there are not uncommon TCPOPT, and the packets should be stripped off */
+	bool ret = false ;
+
+	for (int i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++)
+	{
+		check = ((unsigned char *)tcp)[i];
+
+		switch(check) {
+			case TCPOPT_TIMESTAMP:
+				i += (TCPOLEN_TIMESTAMP +1);
+				break;
+			case TCPOPT_EOL:
+			case TCPOPT_NOP:
+				break;
+			case TCPOPT_MAXSEG:
+		case TCPOPT_WINDOW:
+		case TCPOPT_SACK_PERMITTED:
+		case TCPOPT_SACK:
+		default:
+			ret = true; break;
+		/* every unknow TCPOPT is keep, only TIMESTAMP, EOL, NOP are stripped off ATM */
+		}
+	}
+
+	internal_log(NULL, PACKETS_DEBUG,
+		"%s %s: sport %d -> dport %d, TCP OPT %s", __FILE__, __func__,
+		ntohs(tcp->source), ntohs(tcp->dest), ret ? "true" : "false");
+
+	return ret;
+}
+
+/* ATM not implemented: false = there are not uncommon ip opt */
+bool Packet::checkUncommonIPOPT() {
+	return false;
+}
+
+/* not implemented ATM */
+void Packet::Inject_GOOD_IPOPT(void)
+{
+}
+
 /* ipopt IPOPT_RR inj*/
-void Packet::SjH__inject_ipopt(void)
+void Packet::Inject_BAD_IPOPT(void)
 {
 	const int route_n = random() % 10;
 	const unsigned fakeipopt = ((route_n + 1) * 4);
@@ -259,7 +303,7 @@ void Packet::SjH__inject_ipopt(void)
 }
 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
-void Packet::SjH__inject_tcpopt(void)
+void Packet::Inject_TCPOPT(void)
 {
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;
@@ -324,26 +368,29 @@ void Packet::selflog(const char *func, const char *loginfo)
 	memcpy(swapaddr, p, strlen(p));
 	swapaddr[strlen(p)] =0x00;
 
-	if(evilbit == EVIL)
-		evilstr = "evil"; /* evil packets are the pks generate from sniffjoke */
-	else
-		evilstr = "good";
+	switch(evilbit) {
+		case MORALITYUNASSIGNED:
+			evilstr = "unassigned evilbit"; break;
+		case GOOD:
+			evilstr = "good"; break;
+		case EVIL:
+			evilstr = "evil"; /* evil packets are the pks generate from sniffjoke */ break;
+	}
 
 	switch(status) {
 		case STATUSUNASSIGNED: statustr = "unassigned"; break;
 		case YOUNG:  statustr = "young"; break;
 		case SEND: statustr = "send"; break;
 		case KEEP: statustr = "keep"; break;
-		default: statustr = "INVALID/other";
 	}
 
 	switch(wtf) {
-		case GUILTY_OR_PRESCRIPTION: wtfstr ="everybad"; break;
+		case RANDOMDAMAGE: wtfstr ="everybad"; break;
 		case JUDGEUNASSIGNED: wtfstr ="unsass"; break;
 		case PRESCRIPTION: wtfstr ="prescript"; break;
 		case INNOCENT: wtfstr ="innocent"; break;
 		case GUILTY: wtfstr ="badcksum"; break;
-		default: wtfstr ="INVALID/other"; break;
+		case MALFORMED: wtfstr ="malformetIP"; break;
 	}
 
 	switch(source) {
@@ -352,13 +399,12 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case LOCAL: sourcestr = "local"; break;
 		case NETWORK: sourcestr = "network"; break;
 		case TTLBFORCE: sourcestr = "ttl force"; break;
-		default: sourcestr = "badly unset"; break;
 	}
 
 	memset(protoinfo, 0x0, MEDIUMBUF);
 	switch(proto) {
 		case TCP:
-			snprintf(protoinfo, MEDIUMBUF, "TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x",
+			snprintf(protoinfo, MEDIUMBUF, "[TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x]",
 				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
 				tcp->rst, orig_pktlen, orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4), 
 				ntohl(tcp->seq), ntohl(tcp->ack_seq)
@@ -375,9 +421,6 @@ void Packet::selflog(const char *func, const char *loginfo)
 			break;
 		case PROTOUNASSIGNED:
 			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
-			break;
-		default:
-			snprintf(protoinfo, MEDIUMBUF, "protocol fault! value %d", ip->protocol);
 			break;
 	}
 

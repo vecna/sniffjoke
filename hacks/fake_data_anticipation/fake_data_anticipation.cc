@@ -57,6 +57,9 @@ public:
 		ret->fillRandomPayload();
 
 		ret->position = ANTICIPATION;
+		ret->proto = TCP;
+		ret->wtf = RANDOMDAMAGE;
+
 		ret->selflog(HACK_NAME, "Hacked packet");
 
 		return ret;

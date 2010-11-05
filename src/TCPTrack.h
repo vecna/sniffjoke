@@ -28,6 +28,9 @@
 #include "SessionTrack.h"
 #include "TTLfocus.h"
 
+/* in debug mode, an invalid plugin cause sniffjoke to sucide himself via SIGTERM */
+#include <signal.h>
+
 #include <vector>
 using namespace std;
 
@@ -76,7 +79,6 @@ private:
 	HackPacketPool hack_pool;
 
 	bool check_evil_packet(const unsigned char*, unsigned int);
-	bool check_uncommon_tcpopt(const struct tcphdr*);
 	bool percentage(float, unsigned int);
 	float logarithm(int);
 

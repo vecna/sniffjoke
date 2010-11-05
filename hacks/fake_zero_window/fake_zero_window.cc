@@ -51,6 +51,8 @@ public:
 		ret->tcp->window = 0;
 
 		ret->position = ANY_POSITION;
+		ret->wtf = RANDOMDAMAGE;
+		ret->proto = TCP;
 
 		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;

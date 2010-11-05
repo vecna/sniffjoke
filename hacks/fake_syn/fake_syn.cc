@@ -70,6 +70,8 @@ public:
 		}
 
 		ret->position = ANTICIPATION;
+		ret->wtf = RANDOMDAMAGE;
+		ret->proto = TCP;
 		ret->selflog(HACK_NAME, "Hacked packet");
 
 		return ret;

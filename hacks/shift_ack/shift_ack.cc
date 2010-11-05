@@ -52,6 +52,8 @@ public:
 		ret->tcp->ack_seq = htonl(ntohl(ret->tcp->ack_seq) + 65535);
 
 		ret->position = ANY_POSITION;
+		ret->wtf = INNOCENT;
+		ret->proto = TCP;
 
 		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
@@ -66,7 +68,6 @@ public:
 		track_index = plugin_index;
 		hackName = HACK_NAME;
 		hack_frequency = 15;
-		prejudge = INNOCENT;
 	}
 
 };

@@ -53,6 +53,9 @@ public:
 		ret->tcp->rst = 1;
 		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) - original_size + 1);
 		ret->fillRandomPayload();
+
+		ret->proto = TCP;
+		ret->wtf = RANDOMDAMAGE;
 		ret->position = ANTICIPATION;
 
 		ret->selflog(HACK_NAME, "Hacked packet");

@@ -57,6 +57,8 @@ public:
 		ret->tcp->fin = ret->tcp->psh = ret->tcp->syn = 0;
 
 		ret->position = ANY_POSITION;
+		ret->wtf = INNOCENT;
+		ret->proto = TCP;
 
 		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
@@ -71,7 +73,6 @@ public:
 		track_index = plugin_index;
 		hackName = HACK_NAME;
 		hack_frequency = 8;
-		prejudge = INNOCENT;
 	}
 
 };

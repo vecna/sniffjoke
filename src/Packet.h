@@ -40,7 +40,7 @@ using namespace std;
 
 
 /* if the packet is inject from sniffjoke is marked with the evilbit */
-enum evilbit_t { GOOD = 0, EVIL = 1 };
+enum evilbit_t { MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2 };
 
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
 enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
@@ -52,17 +52,15 @@ enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG 
 /* Every sniffjoke packet is based on be discarged from the remote host and accepted from
  * the sniffer, in order to obtain the sniffer tracking poisoning, those marker mean if the
  * packet need to be plain and correct (INNOCENT) to expire prematurely (PRESCRIPTION) to be 
- * consider bad and discarged (GUILTY, corrupt the TCP checksum) or a random choose of both */
-enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, GUILTY_OR_PRESCRIPTION = 4 };
+ * consider bad and discarged (GUILTY, corrupt the TCP checksum), MALFORMED (weird ip options)
+ * or a random choose of those */
+enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, MALFORMED = 4, RANDOMDAMAGE = 5 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
 enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
 
-/* this specify the kind of modification the TCP-hack has caused in the packet */
-enum injection_t { INJECTUNASSIGNED = 0, ANY_INJECTION = 1, IP_INJECTION = 2, TCP_INJECTION = 3, NO_INJECTION = 4};
-
 /* a sniffjoke packet should be send before the oroginal packet or after the original packet */
-enum position_t { ANY_POSITION = 0, ANTICIPATION = 1, POSTICIPATION = 2 };
+enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 3 };
 
 class Packet {
 public:
@@ -86,7 +84,6 @@ public:
 	status_t status;
 	judge_t wtf;
 	proto_t proto;
-	injection_t injection;
 	position_t position;	
 
 	struct iphdr *ip;
@@ -102,13 +99,17 @@ public:
 	virtual ~Packet(void) {};
 
 	unsigned int make_pkt_id(const unsigned char*) const;
-	void mark(source_t, status_t);
-	void mark(source_t, status_t, judge_t);
+	void mark(source_t, status_t, evilbit_t);
+	void mark(source_t, status_t, judge_t, evilbit_t);
 	void updatePointers(void);
 	
 	unsigned int half_cksum(const void*, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
+
+	/* autochecking */
+	bool checkUncommonTCPOPT();
+	bool checkUncommonIPOPT();
 	bool SelfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
@@ -116,8 +117,10 @@ public:
 	void resizePayload(unsigned int);
 	void fillRandomPayload();
 
-	void SjH__inject_ipopt(void);
-	void SjH__inject_tcpopt(void);
+	/* MALFORMED hacks and distortion of INNOCENT packets */
+	void Inject_BAD_IPOPT(void);
+	void Inject_GOOD_IPOPT(void);
+	void Inject_TCPOPT(void);
 
 	/* utilities */
 	void selflog(const char *, const char *);
@@ -141,7 +144,6 @@ public:
 
 class HackPacket {
 public:
-	judge_t prejudge;
 	unsigned int prescription_probability;
 	unsigned int hack_frequency;
 	const char *hackName;
