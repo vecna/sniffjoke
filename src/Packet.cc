@@ -21,6 +21,7 @@
  */
 #include "Packet.h"
 #include "Utils.h"
+#include <csignal>
 
 Packet::Packet(const unsigned char* buff, int size) :
 	packet_id(make_pkt_id(buff)),
@@ -369,36 +370,34 @@ void Packet::selflog(const char *func, const char *loginfo)
 	swapaddr[strlen(p)] =0x00;
 
 	switch(evilbit) {
-		case MORALITYUNASSIGNED:
-			evilstr = "unassigned evilbit"; break;
-		case GOOD:
-			evilstr = "good"; break;
-		case EVIL:
-			evilstr = "evil"; /* evil packets are the pks generate from sniffjoke */ break;
+		case GOOD: evilstr = "good"; break;
+		case EVIL: evilstr = "evil"; /* evil packets are the pks generate from sniffjoke */ break;
+                default: case MORALITYUNASSIGNED: evilstr = "unassigned evilbit"; break;
+
 	}
 
 	switch(status) {
-		case STATUSUNASSIGNED: statustr = "unassigned"; break;
 		case YOUNG:  statustr = "young"; break;
 		case SEND: statustr = "send"; break;
 		case KEEP: statustr = "keep"; break;
+                default: case STATUSUNASSIGNED: statustr = "unassigned"; break;
 	}
 
 	switch(wtf) {
 		case RANDOMDAMAGE: wtfstr ="everybad"; break;
-		case JUDGEUNASSIGNED: wtfstr ="unsass"; break;
 		case PRESCRIPTION: wtfstr ="prescript"; break;
 		case INNOCENT: wtfstr ="innocent"; break;
 		case GUILTY: wtfstr ="badcksum"; break;
 		case MALFORMED: wtfstr ="malformetIP"; break;
+                default: case JUDGEUNASSIGNED: wtfstr ="unsass"; break;
 	}
 
 	switch(source) {
-		case SOURCEUNASSIGNED: sourcestr = "source fault: unassigned"; break;
 		case TUNNEL: sourcestr = "tunnel"; break;
 		case LOCAL: sourcestr = "local"; break;
 		case NETWORK: sourcestr = "network"; break;
 		case TTLBFORCE: sourcestr = "ttl force"; break;
+		default: case SOURCEUNASSIGNED: sourcestr = "source fault: unassigned"; break;
 	}
 
 	memset(protoinfo, 0x0, MEDIUMBUF);
@@ -421,6 +420,10 @@ void Packet::selflog(const char *func, const char *loginfo)
 			break;
 		case PROTOUNASSIGNED:
 			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
+			break;
+		case ANY_PROTO:
+			internal_log(NULL, ALL_LEVEL, "Packet.cc: proto = ANY_PROTO, this wouldn't happen");
+			raise(SIGTERM);
 			break;
 	}
 

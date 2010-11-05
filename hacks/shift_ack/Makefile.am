@@ -6,5 +6,4 @@ shift_ack_la_SOURCES = shift_ack.cc
 
 shift_ack_la_LDFLAGS = -module -avoid-version
 
-LIBS =
-shift_ack_la_LIBS =
+CLEANFILES = Makefile.in

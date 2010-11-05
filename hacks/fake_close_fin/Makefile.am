@@ -6,5 +6,4 @@ fake_close_fin_la_SOURCES = fake_close_fin.cc
 
 fake_close_fin_la_LDFLAGS = -module -avoid-version
 
-LIBS =
-fake_close_fin_la_LIBS =
+CLEANFILES = Makefile.in

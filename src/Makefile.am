@@ -25,4 +25,9 @@ sniffjoke_SOURCES = 	DataDebug.cc \
 AM_CPPFLAGS =		-ansi -pedantic -Wall
 sniffjoke_LDFLAGS =	-lrt -Wl,-export-dynamic
 
-CLEANFILES =		*~
+CLEANFILES =		.deps/ \
+			.libs/ \
+			config.h \
+			config.h.in \
+			stamp-h1 \
+			Makefile.in

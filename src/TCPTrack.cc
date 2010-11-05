@@ -162,11 +162,11 @@ HackPacketPool::~HackPacketPool()
 }
 
 TCPTrack::TCPTrack(UserConf *sjconf) :
-	runcopy(sjconf->running),
+	runcopy(&sjconf->running),
 	youngpacketspresent(false),
 	/* fail is the public member used to signal a failure in plugin's loading, 
 	 * hack_pool is a "class HackPacketPool", that extend a vector of HackPacketPoolElem */
-	hack_pool(&fail, sjconf->running)
+	hack_pool(&fail, &sjconf->running)
 {
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
@@ -620,7 +620,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 					p_queue.insert_after(*injpkt, orig_pkt);
 				break;
 			case POSITIONUNASSIGNED:
-				internal_log(NULL, ALL_LEVEL, "ERRORACCIO - FIXME - VERIFICA - TOGLI E GESTISCI IN default:");
+				internal_log(NULL, ALL_LEVEL, "TCPTrack.cc: injpkt->position = POSITIONUNASSIGNED, this wouldn't happen");
 				raise(SIGTERM);
 		}
 	}
@@ -680,6 +680,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	if(pkt.wtf == RANDOMDAMAGE) 
 	{
 #define RANDVALUE	(random() % 100)
+
 		pkt.wtf = GUILTY;
 
 		if( RANDVALUE > 25)
@@ -727,20 +728,23 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	}	
 
 	/* IP options, every packet subject if possible, and MALFORMED will be apply */
-	if(pkt.wtf == MALFORMED)
-		pkt.Inject_BAD_IPOPT();
-	else
-		pkt.Inject_GOOD_IPOPT();
 
-	/* TCP options, every packet subject if possibile */
-	if (!pkt.checkUncommonTCPOPT())
-		pkt.Inject_TCPOPT();
+	if(pkt.evilbit == EVIL) {
+		if(pkt.wtf == MALFORMED)
+			pkt.Inject_BAD_IPOPT();
+		else
+			pkt.Inject_GOOD_IPOPT();
+
+		/* TCP options, every packet subject if possibile */
+		if (!pkt.checkUncommonTCPOPT())
+			pkt.Inject_TCPOPT();
+	}
 
 	/* fixing the mangled packet */
 	pkt.fixIpTcpSum();
 
 	/* corrupted checksum application if required */
-	if (pkt.wtf == GUILTY)
+	if (pkt.wtf == GUILTY && pkt.wtf == MALFORMED)
 		pkt.tcp->check ^= (0xd34d ^ (unsigned short)random());
 
 	pkt.selflog(__func__, "Packet ready to be send");

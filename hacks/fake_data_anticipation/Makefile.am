@@ -6,5 +6,4 @@ fake_data_anticipation_la_SOURCES = fake_data_anticipation.cc
 
 fake_data_anticipation_la_LDFLAGS = -module -avoid-version
 
-LIBS =
-fake_data_anticipation_la_LIBS =
+CLEANFILES = Makefile.in

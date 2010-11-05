@@ -52,7 +52,6 @@ public:
 
 		ret->position = ANY_POSITION;
 		ret->wtf = RANDOMDAMAGE;
-		ret->proto = TCP;
 
 		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;
@@ -74,3 +73,4 @@ extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
 extern "C" void DeleteHackObject(HackPacket *who) {
 	delete who;
 }
+

@@ -37,7 +37,7 @@ NetIO::NetIO(UserConf *sjconf)
 	int tmpfd;
 	char tmpsyscmd[MEDIUMBUF];
 
-	runcopy = sjconf->running;
+	runcopy = &sjconf->running;
 
 	networkdown_condition = false;
 	

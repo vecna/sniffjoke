@@ -98,7 +98,7 @@ private:
 		void autodetect_first_available_tunnel_interface(void);
 
 public:
-		struct sj_config *running;
+		struct sj_config running;
 
 		UserConf(struct sj_useropt *);
 		~UserConf();

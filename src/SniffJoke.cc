@@ -375,8 +375,8 @@ void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...
 
 	/* is checked sjconf->running->debug_level instead of useropt.debug_level
 	 * because the user should chage it with the "set" command */
-	if(sjconf != NULL && sjconf->running != NULL)
-		loglevel = sjconf->running->debug_level;
+	if(sjconf != NULL)
+		loglevel = sjconf->running.debug_level;
 	else
 		loglevel = useropt.debug_level;
 
@@ -546,13 +546,13 @@ int main(int argc, char **argv)
 		sjconf = new UserConf(&useropt);
 
 		/* if a user and a group ar not specified, defaults are used */
-		SjProc->Jail(useropt.chroot_dir, sjconf->running);
+		SjProc->Jail(useropt.chroot_dir, &sjconf->running);
 		if (SjProc->failure == true) {
 			internal_log(NULL, ALL_LEVEL, "error in process handling, closing");
 			delete SjProc;
 		}
 
-		SjProc->PrivilegesDowngrade(sjconf->running);
+		SjProc->PrivilegesDowngrade(&sjconf->running);
 
 		client_send_command(command_input);
 
@@ -626,7 +626,7 @@ int main(int argc, char **argv)
 	SjProc->processDetach();
 
 	/* Jail chroot + privileges downgrade */	
-	SjProc->Jail(useropt.chroot_dir, sjconf->running);
+	SjProc->Jail(useropt.chroot_dir, &sjconf->running);
 
 	/* background running, with different loglevel. logfile opened below: */
 	if (!useropt.go_foreground) {	
@@ -658,11 +658,11 @@ int main(int argc, char **argv)
 		}
 	}
 
-	SjProc->PrivilegesDowngrade(sjconf->running);
+	SjProc->PrivilegesDowngrade(&sjconf->running);
 
 	listening_unix_socket = sj_bind_unixsocket();
 
-	if (sjconf->running->sj_run == false)
+	if (sjconf->running.sj_run == false)
 		internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it");
 
 	mitm->prepare_conntrack(conntrack);
@@ -674,15 +674,15 @@ int main(int argc, char **argv)
 		mitm->queue_flush();
 
 		if (mitm->is_network_down()) {
-			if (sjconf->running->sj_run == true) {
+			if (sjconf->running.sj_run == true) {
 				internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
-				sjconf->running->sj_run = false;
+				sjconf->running.sj_run = false;
 				restart_on_restore = true;
 			}
 		} else {
 			if (restart_on_restore == true) {
 				internal_log(NULL, ALL_LEVEL, "Network restored, restarting sniffjoke");
-				sjconf->running->sj_run = true;
+				sjconf->running.sj_run = true;
 				restart_on_restore = false;
 			}
 		}

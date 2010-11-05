@@ -6,5 +6,4 @@ fake_close_rst_la_SOURCES = fake_close_rst.cc
 
 fake_close_rst_la_LDFLAGS = -module -avoid-version
 
-LIBS =
-fake_close_rst_la_LIBS =
+CLEANFILES = Makefile.in

@@ -32,7 +32,7 @@ void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *u
 {
 	int blen = ulen > strlen(sjdefault) ? strlen(sjdefault) : ulen;
 
-	/* zero choice: if running->data[0] == 0x00, is the first start: write the default in the empty buffer */
+	/* zero choice: if running.data[0] == 0x00, is the first start: write the default in the empty buffer */
 	memcpy(target, sjdefault, strlen(sjdefault));
 
 	/* first choice: if the user had specify an option (!= default), is used immediatly */
@@ -74,15 +74,15 @@ void UserConf::autodetect_local_interface()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
-	memset(running->interface, 0x00, SMALLBUF);
+	memset(running.interface, 0x00, SMALLBUF);
 	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
-		running->interface[i] = imp_str[i];
+		running.interface[i] = imp_str[i];
 
 	if (i < 3) {
 		internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
 		raise(SIGTERM);
 	} else {
-		internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running->interface);
+		internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running.interface);
 	}
 }
 
@@ -94,19 +94,19 @@ void UserConf::autodetect_local_interface_ip_address()
 	char imp_str[SMALLBUF];
 	unsigned int i;
 	snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
-		running->interface
+		running.interface
 	);
 
-	internal_log(NULL, ALL_LEVEL, "++ detecting interface %s ip address with [%s]", running->interface, cmd);
+	internal_log(NULL, ALL_LEVEL, "++ detecting interface %s ip address with [%s]", running.interface, cmd);
 
 	foca = popen(cmd, "r");
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++)
-		running->local_ip_addr[i] = imp_str[i];
+		running.local_ip_addr[i] = imp_str[i];
 
-	internal_log(NULL, ALL_LEVEL, "  == acquired local ip address: %s", running->local_ip_addr);
+	internal_log(NULL, ALL_LEVEL, "  == acquired local ip address: %s", running.local_ip_addr);
 }
 
 
@@ -124,12 +124,12 @@ void UserConf::autodetect_gw_ip_address()
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++) 
-		running->gw_ip_addr[i] = imp_str[i];
-	if (strlen(running->gw_ip_addr) < 7) {
+		running.gw_ip_addr[i] = imp_str[i];
+	if (strlen(running.gw_ip_addr) < 7) {
 		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
 		raise(SIGTERM);
 	} else  {
-		internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running->gw_ip_addr);
+		internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running.gw_ip_addr);
 	}
 }
 
@@ -139,30 +139,30 @@ void UserConf::autodetect_gw_mac_address()
 	FILE *foca;
 	char imp_str[SMALLBUF];
 	unsigned int i;
-	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", running->gw_ip_addr);
+	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", running.gw_ip_addr);
 
-	internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running->gw_ip_addr, cmd);
+	internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running.gw_ip_addr, cmd);
 	
 	system(cmd);
 	usleep(50000);
 	memset(cmd, 0x00, MEDIUMBUF);
-	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running->gw_ip_addr);
+	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running.gw_ip_addr);
 	internal_log(NULL, ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
 	foca = popen(cmd, "r");
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); i++)
-		running->gw_mac_str[i] = imp_str[i];
+		running.gw_mac_str[i] = imp_str[i];
 	if (i != 17) {
 		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
 		raise(SIGTERM);
 	} else {
-		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running->gw_mac_str);
+		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running.gw_mac_str);
 		unsigned int mac[6];
-		sscanf(running->gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+		sscanf(running.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
 	        for (i=0; i<6; i++)
-        	        running->gw_mac_addr[i] = mac[i];
+        	        running.gw_mac_addr[i] = mac[i];
 	}
 }
 
@@ -175,7 +175,7 @@ void UserConf::autodetect_first_available_tunnel_interface()
 	internal_log(NULL, ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd);
 	
 	foca = popen(cmd, "r");
-	for (running->tun_number = 0; ; running->tun_number++)
+	for (running.tun_number = 0; ; running.tun_number++)
 	{
 		memset(imp_str, 0x00, SMALLBUF);
 		fgets(imp_str, SMALLBUF, foca);
@@ -183,7 +183,7 @@ void UserConf::autodetect_first_available_tunnel_interface()
 			break;
 	}
 	pclose(foca);
-	internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running->tun_number);
+	internal_log(NULL, ALL_LEVEL, "  == detected %d as first unused tunnel device", running.tun_number);
 }
 
 /* this method is used only in the ProcessType = SERVICE CHILD */
@@ -191,7 +191,7 @@ void UserConf::network_setup(void)
 {
 	internal_log(NULL, DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
 
-	if(running->sj_run)
+	if(running.sj_run)
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke loaded to run immediatly");
 	else
 		internal_log(NULL, VERBOSE_LEVEL, "-- sniffjoke loaded and stopped at the moment, waiting for \"sniffjoke start\" command");
@@ -203,14 +203,14 @@ void UserConf::network_setup(void)
 	autodetect_gw_mac_address();
 	autodetect_first_available_tunnel_interface();
 
-	internal_log(NULL, VERBOSE_LEVEL, "-- system local interface: %s, %s address", running->interface, running->local_ip_addr);
-	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway mac address: %s", running->gw_mac_str);
-	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway ip address: %s", running->gw_ip_addr);
-	internal_log(NULL, VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", running->tun_number);
+	internal_log(NULL, VERBOSE_LEVEL, "-- system local interface: %s, %s address", running.interface, running.local_ip_addr);
+	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway mac address: %s", running.gw_mac_str);
+	internal_log(NULL, VERBOSE_LEVEL, "-- default gateway ip address: %s", running.gw_ip_addr);
+	internal_log(NULL, VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", running.tun_number);
 
-	if(running->port_conf_set_n) {
+	if(running.port_conf_set_n) {
 		internal_log(NULL, VERBOSE_LEVEL,"-- loaded %d TCP port set, verify them with sniffjoke stat",
-			running->port_conf_set_n
+			running.port_conf_set_n
 		);
 	}
 }
@@ -220,8 +220,6 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
 	int i;
-
-	running = (struct sj_config *)malloc(sizeof(struct sj_config));
 
 	char completefname[LARGEBUF];
 	memset(completefname, 0x00, LARGEBUF);
@@ -251,38 +249,38 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 		}
 		fclose(cF);
 
-		memcpy(running, &readed, sizeof(struct sj_config));
+		memcpy(&running, &readed, sizeof(struct sj_config));
 		
 	} else {
 
 		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found: using defaults", completefname);
-		memset(running, 0x00, sizeof(sj_config));
+		memset(&running, 0x00, sizeof(sj_config));
 
 		/* set up defaults */	   
-		running->MAGIC = magic_check;
-		running->sj_run = false;
-		running->max_ttl_probe = 30;
-		running->max_sex_track = 4096;
+		running.MAGIC = magic_check;
+		running.sj_run = false;
+		running.max_ttl_probe = 30;
+		running.max_sex_track = 4096;
 
 		/* default is to set all TCP ports in "NORMAL" aggressivity level */
-		memset(running->portconf, NORMAL, PORTNUMBER);
+		memset(running.portconf, NORMAL, PORTNUMBER);
 	}
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
-	compare_check_copy(running->user, MEDIUMBUF, user_opt->user, strlen(user_opt->user), DROP_USER);
-	compare_check_copy(running->group, MEDIUMBUF, user_opt->group, strlen(user_opt->group), DROP_GROUP);
-	compare_check_copy(running->chroot_dir, MEDIUMBUF, user_opt->chroot_dir, strlen(user_opt->chroot_dir), CHROOT_DIR);
-	compare_check_copy(running->logfname, MEDIUMBUF, user_opt->logfname, strlen(user_opt->logfname), LOGFILE);
-	compare_check_copy(running->fileconfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
-	compare_check_copy(running->enabler, MEDIUMBUF, user_opt->enabler, strlen(user_opt->enabler), PLUGINSENABLER);
+	compare_check_copy(running.user, MEDIUMBUF, user_opt->user, strlen(user_opt->user), DROP_USER);
+	compare_check_copy(running.group, MEDIUMBUF, user_opt->group, strlen(user_opt->group), DROP_GROUP);
+	compare_check_copy(running.chroot_dir, MEDIUMBUF, user_opt->chroot_dir, strlen(user_opt->chroot_dir), CHROOT_DIR);
+	compare_check_copy(running.logfname, MEDIUMBUF, user_opt->logfname, strlen(user_opt->logfname), LOGFILE);
+	compare_check_copy(running.fileconfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
+	compare_check_copy(running.enabler, MEDIUMBUF, user_opt->enabler, strlen(user_opt->enabler), PLUGINSENABLER);
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(user_opt->debug_level != DEFAULT_DEBUG_LEVEL)
-		running->debug_level = user_opt->debug_level;
+		running.debug_level = user_opt->debug_level;
 
-	if(running->debug_level == 0)
-		running->debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
+	if(running.debug_level == 0)
+		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
 	dump();
 
@@ -302,21 +300,21 @@ void UserConf::dump(void)
 	int ret;
 	float magic_value = (MAGICVAL * 28.26);
 
-	running->MAGIC = magic_value;
+	running.MAGIC = magic_value;
 
 	/* FIXME - we need to query Process object for understand which process we are, ATM, I'm using getuid */
 	if(getuid()) {
-		snprintf(completefname, LARGEBUF, "%s", running->fileconfname);
+		snprintf(completefname, LARGEBUF, "%s", running.fileconfname);
 	}
 	else {
-		snprintf(completefname, LARGEBUF, "%s%s", running->chroot_dir, running->fileconfname);
+		snprintf(completefname, LARGEBUF, "%s%s", running.chroot_dir, running.fileconfname);
 	}
 	
 	if((dumpfd = fopen(completefname, "w")) != NULL) {	
 		internal_log(NULL, VERBOSE_LEVEL, "dumping running configuration to %s",  completefname);
 		check_call_ret("open config file for writing", errno, dumpfd == NULL ? -1 : 0, false);
 
-		ret = fwrite(running, sizeof(struct sj_config), 1, dumpfd);
+		ret = fwrite(&running, sizeof(struct sj_config), 1, dumpfd);
 
 		if(ret != 1) /* ret - 1 because fwrite return the number of written item */
 		{
@@ -366,13 +364,13 @@ char *UserConf::handle_cmd_stat(void)
 		"log level:\t\t%d at file %s\n" \
 		"plugins file:\t\t%s\n" \
 		"chroot directory:\t%s\n",
-		running->sj_run == true ? "TRUE" : "FALSE",
-		running->gw_mac_str,
-		running->gw_ip_addr,
-		running->interface, running->local_ip_addr,
-		running->tun_number,
-		running->debug_level, running->logfname,
-		running->enabler, running->chroot_dir
+		running.sj_run == true ? "TRUE" : "FALSE",
+		running.gw_mac_str,
+		running.gw_ip_addr,
+		running.interface, running.local_ip_addr,
+		running.tun_number,
+		running.debug_level, running.logfname,
+		running.enabler, running.chroot_dir
 	);
 	return &io_buf[0];
 }
@@ -397,7 +395,7 @@ char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, unsigne
 	internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 
 	do {
-		running->portconf[start] = what;
+		running.portconf[start] = what;
 		start++;
 	} while (start <= end);
 
@@ -406,10 +404,10 @@ char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, unsigne
 
 char *UserConf::handle_cmd_stop(void)
 {
-	if (running->sj_run != false) {
+	if (running.sj_run != false) {
 		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
 		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
-		running->sj_run = false;
+		running.sj_run = false;
 	} else /* sniffjoke is already stopped */ {
 		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
 		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
@@ -419,10 +417,10 @@ char *UserConf::handle_cmd_stop(void)
 
 char *UserConf::handle_cmd_start(void)
 {
-	if (running->sj_run != true) {
+	if (running.sj_run != true) {
 		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
 		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
-		running->sj_run = true;
+		running.sj_run = true;
 	} else /* sniffjoke is already running */ {
 		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
 		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
@@ -437,12 +435,12 @@ char *UserConf::handle_cmd_showport(void)
 	memset(io_buf, 0x00, HUGEBUF);
 
 	/* the first port work as initialization */
-	kind = running->portconf[0];
+	kind = running.portconf[0];
 
 	for (i = 1; i < PORTNUMBER; i++) 
 	{
 		/* the kind has changed, so we must print the previous port range */
-		if (running->portconf[i] != kind) 
+		if (running.portconf[i] != kind) 
 		{
 			if (acc_start == (i - 1)) 
 				snprintf(index, HUGEBUF - actual_io, "%s\tdest port: %d\n", resolve_weight_name(kind), acc_start);
@@ -452,7 +450,7 @@ char *UserConf::handle_cmd_showport(void)
 			actual_io = strlen(io_buf);
 			index = &io_buf[actual_io];
 
-			kind = running->portconf[i];
+			kind = running.portconf[i];
 			acc_start = i;
 		}
 	}
@@ -476,8 +474,8 @@ char *UserConf::handle_cmd_log(int newloglevel)
 			ALL_LEVEL, PACKETS_DEBUG
 		);
 	} else {
-		snprintf(io_buf, HUGEBUF, "changing log level since %d to %d\n", running->debug_level, newloglevel);
-		running->debug_level = newloglevel;
+		snprintf(io_buf, HUGEBUF, "changing log level since %d to %d\n", running.debug_level, newloglevel);
+		running.debug_level = newloglevel;
 	}
 
 	return &io_buf[0];

@@ -53,7 +53,6 @@ public:
 
 		ret->position = ANY_POSITION;
 		ret->wtf = INNOCENT;
-		ret->proto = TCP;
 
 		ret->selflog(HACK_NAME, "Hacked packet");
 		return ret;

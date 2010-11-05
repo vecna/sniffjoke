@@ -6,5 +6,4 @@ fake_syn_la_SOURCES = fake_syn.cc ../../src/Packet.cc
 
 fake_syn_la_LDFLAGS = -module -avoid-version
 
-LIBS =
-fake_syn_la_LIBS =
+CLEANFILES = Makefile.in

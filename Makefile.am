@@ -1,12 +1,12 @@
-SUBDIRS =	hacks src
+SUBDIRS =		hacks src
 
-EXTRA_DIST =	AUTHORS \
-		ChangeLog \
-		COPYING \
-		README \
-		README-REALLY-NOW \
-		conf/* \
-		scripts/*
+EXTRA_DIST =		AUTHORS \
+			ChangeLog \
+			COPYING \
+			README \
+			README-REALLY-NOW \
+			conf/* \
+			scripts/*
 
 install-data-hook:	installconf
 
@@ -22,3 +22,17 @@ installconf:
 		echo "Creating chroot dir: $(localstatedir)sniffjoke"; \
 		install -d -m 700 $(localstatedir)/sniffjoke; \
 	fi;
+
+CLEANFILES =		-R aclocal.m4 \
+			autom4te.cache \
+			configure \
+			config.guess \
+			congig.log \
+			config.status \
+			config.sub \
+			depcomp \
+			install-sh \
+			libltdl \
+			ltmain.sh \
+			missing \
+			Makefile.in

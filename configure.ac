@@ -99,5 +99,4 @@ AC_CONFIG_FILES( Makefile
                  hacks/shift_ack/Makefile
                  hacks/valid_rst_fake_seq/Makefile)
 
-
 AC_OUTPUT
