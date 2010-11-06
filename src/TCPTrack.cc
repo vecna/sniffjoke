@@ -743,7 +743,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	pkt.fixIpTcpSum();
 
 	/* corrupted checksum application if required */
-	if (pkt.wtf == GUILTY || pkt.wtf == MALFORMED)
+	if (pkt.wtf == GUILTY)
 		pkt.tcp->check ^= (0xd34d ^ (unsigned short)random());
 
 	pkt.selflog(__func__, "Packet ready to be send");
