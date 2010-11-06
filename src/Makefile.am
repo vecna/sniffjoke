@@ -1,8 +1,6 @@
 bin_PROGRAMS =		sniffjoke
 
-sniffjoke_SOURCES = 	DataDebug.cc \
-			DataDebug.h \
-			hardcoded-defines.h \
+sniffjoke_SOURCES =	hardcoded-defines.h \
 			NetIO.cc \
 			NetIO.h \
 			Packet.cc \

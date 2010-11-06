@@ -145,19 +145,20 @@ HackPacketPool::~HackPacketPool()
 {
 	/* call the distructor loaded from the plugins */
 	vector<PluginTrack>::iterator it;
+	PluginTrack *plugin;
 	for ( it = begin(); it != end(); it++ ) 
 	{
-		internal_log(NULL, VERBOSE_LEVEL, "calling %s destructor (%s)", 
-			(*it).selfObj->hackName,
-			(*it).pluginPath
-		);
+		plugin = &(*it);
+		internal_log(NULL, VERBOSE_LEVEL, "calling %s destructor (%s)",	plugin->selfObj->hackName, plugin->pluginPath);
 
-		(*it).fp_DeleteHackObj((*it).selfObj);
+		plugin->fp_DeleteHackObj(plugin->selfObj);
 
-		if(dlclose((*it).pluginHandler)) 
-			internal_log(NULL, ALL_LEVEL, "unable to close %s plugin: %s", (*it).pluginPath, dlerror());
+		if(dlclose(plugin->pluginHandler)) 
+			internal_log(NULL, ALL_LEVEL, "unable to close %s plugin: %s", plugin->pluginPath, dlerror());
 		else
-			internal_log(NULL, DEBUG_LEVEL, "closed handler of %s", (*it).pluginPath);
+			internal_log(NULL, DEBUG_LEVEL, "closed handler of %s", plugin->pluginPath);
+
+		free(plugin->pluginPath);
 	}
 }
 
@@ -728,23 +729,21 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	}	
 
 	/* IP options, every packet subject if possible, and MALFORMED will be apply */
-
-	if(pkt.evilbit == EVIL) {
-		if(pkt.wtf == MALFORMED)
-			pkt.Inject_BAD_IPOPT();
-		else
-			pkt.Inject_GOOD_IPOPT();
-
-		/* TCP options, every packet subject if possibile */
-		if (!pkt.checkUncommonTCPOPT())
-			pkt.Inject_TCPOPT();
+	if(pkt.wtf == MALFORMED) {
+		pkt.Inject_BAD_IPOPT();
+                if (!pkt.checkUncommonTCPOPT())
+                        pkt.Inject_BAD_TCPOPT();
+	} else {
+		pkt.Inject_GOOD_IPOPT();
+                if (!pkt.checkUncommonTCPOPT())
+                        pkt.Inject_GOOD_TCPOPT();
 	}
 
 	/* fixing the mangled packet */
 	pkt.fixIpTcpSum();
 
 	/* corrupted checksum application if required */
-	if (pkt.wtf == GUILTY && pkt.wtf == MALFORMED)
+	if (pkt.wtf == GUILTY || pkt.wtf == MALFORMED)
 		pkt.tcp->check ^= (0xd34d ^ (unsigned short)random());
 
 	pkt.selflog(__func__, "Packet ready to be send");

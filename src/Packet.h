@@ -108,19 +108,20 @@ public:
 	void fixIpTcpSum(void);
 
 	/* autochecking */
-	bool checkUncommonTCPOPT();
-	bool checkUncommonIPOPT();
+	bool checkUncommonTCPOPT(void);
+	bool checkUncommonIPOPT(void);
 	bool SelfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
 	void increasePbuf(unsigned int);
 	void resizePayload(unsigned int);
-	void fillRandomPayload();
+	void fillRandomPayload(void);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */
 	void Inject_BAD_IPOPT(void);
 	void Inject_GOOD_IPOPT(void);
-	void Inject_TCPOPT(void);
+        void Inject_BAD_TCPOPT(void);
+	void Inject_GOOD_TCPOPT(void);
 
 	/* utilities */
 	void selflog(const char *, const char *);

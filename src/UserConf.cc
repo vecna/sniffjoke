@@ -74,7 +74,6 @@ void UserConf::autodetect_local_interface()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
-	memset(running.interface, 0x00, SMALLBUF);
 	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
 		running.interface[i] = imp_str[i];
 
@@ -161,8 +160,9 @@ void UserConf::autodetect_gw_mac_address()
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running.gw_mac_str);
 		unsigned int mac[6];
 		sscanf(running.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-	        for (i=0; i<6; i++)
-        	        running.gw_mac_addr[i] = mac[i];
+		for (i=0; i<6; i++)
+			running.gw_mac_addr[i] = mac[i];
+	
 	}
 }
 
@@ -220,6 +220,8 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
 	int i;
+	
+	memset(&running, 0x00, sizeof(sj_config));
 
 	char completefname[LARGEBUF];
 	memset(completefname, 0x00, LARGEBUF);
@@ -228,33 +230,28 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 
 	if ((cF = fopen(completefname, "r")) != NULL) 
 	{
-		struct sj_config readed;
+		memset(&running, 0x00, sizeof(struct sj_config));
 
-		memset(&readed, 0x00, sizeof(struct sj_config));
-
-		if((i = fread((void *)&readed, sizeof(struct sj_config), 1, cF)) != 1) {
+		if((i = fread((void *)&running, sizeof(struct sj_config), 1, cF)) != 1) {
 			internal_log(NULL, ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
-				sizeof(readed), completefname, strerror(errno)
+				sizeof(running), completefname, strerror(errno)
 			);
 			check_call_ret("unable to read config file, check your parm or the default", EINVAL, -1, true);
 		}
 
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", completefname, i * sizeof(struct sj_config));
 
-		if (readed.MAGIC != magic_check) {
+		if (running.MAGIC != magic_check) {
 			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seem to be corrupted - delete or check the argument",
 				completefname
 			);
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
 		}
 		fclose(cF);
-
-		memcpy(&running, &readed, sizeof(struct sj_config));
 		
 	} else {
 
 		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found: using defaults", completefname);
-		memset(&running, 0x00, sizeof(sj_config));
 
 		/* set up defaults */	   
 		running.MAGIC = magic_check;
@@ -268,12 +265,12 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
+	compare_check_copy(running.cfgfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
+	compare_check_copy(running.enabler, MEDIUMBUF, user_opt->enabler, strlen(user_opt->enabler), PLUGINSENABLER);
 	compare_check_copy(running.user, MEDIUMBUF, user_opt->user, strlen(user_opt->user), DROP_USER);
 	compare_check_copy(running.group, MEDIUMBUF, user_opt->group, strlen(user_opt->group), DROP_GROUP);
 	compare_check_copy(running.chroot_dir, MEDIUMBUF, user_opt->chroot_dir, strlen(user_opt->chroot_dir), CHROOT_DIR);
 	compare_check_copy(running.logfname, MEDIUMBUF, user_opt->logfname, strlen(user_opt->logfname), LOGFILE);
-	compare_check_copy(running.fileconfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
-	compare_check_copy(running.enabler, MEDIUMBUF, user_opt->enabler, strlen(user_opt->enabler), PLUGINSENABLER);
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(user_opt->debug_level != DEFAULT_DEBUG_LEVEL)
@@ -304,10 +301,10 @@ void UserConf::dump(void)
 
 	/* FIXME - we need to query Process object for understand which process we are, ATM, I'm using getuid */
 	if(getuid()) {
-		snprintf(completefname, LARGEBUF, "%s", running.fileconfname);
+		snprintf(completefname, LARGEBUF, "%s", running.cfgfname);
 	}
 	else {
-		snprintf(completefname, LARGEBUF, "%s%s", running.chroot_dir, running.fileconfname);
+		snprintf(completefname, LARGEBUF, "%s%s", running.chroot_dir, running.cfgfname);
 	}
 	
 	if((dumpfd = fopen(completefname, "w")) != NULL) {	

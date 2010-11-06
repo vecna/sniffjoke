@@ -48,12 +48,12 @@ enum size_buf_t {
 };
 
 struct sj_useropt {
-		const char *cfgfname;
-		const char *user;
-		const char *group;
-		const char *chroot_dir;
-		const char *logfname;
-		const char *enabler;
+		char cfgfname[MEDIUMBUF];
+                char enabler[MEDIUMBUF];
+		char user[MEDIUMBUF];
+		char group[MEDIUMBUF];
+		char chroot_dir[MEDIUMBUF];
+		char logfname[MEDIUMBUF];
 		unsigned int debug_level;
 		bool go_foreground;
 		bool force_restart;
@@ -65,10 +65,11 @@ struct sj_useropt {
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool sj_run;				/* default: false = NO RUNNING */
+		char cfgfname[MEDIUMBUF];
 		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
+		char enabler[MEDIUMBUF];		/* default: idem */
 		char group[MEDIUMBUF];			/* default: idem */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
-		char enabler[MEDIUMBUF];		/* default: idem */
 		char logfname[MEDIUMBUF];		/* default: idem */
 		unsigned int debug_level;		/* default: idem */
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -81,7 +82,6 @@ struct sj_config {
 		int tun_number;				/* tunnel interface number */
 		unsigned int port_conf_set_n;		/* number of "set" usage */
 		unsigned char portconf[PORTNUMBER];
-		char fileconfname[MEDIUMBUF];
 
 		char *error;
 };

@@ -36,6 +36,7 @@ Packet::Packet(const unsigned char* buff, int size) :
 	updatePointers();
 	
 	orig_pktlen = ntohs(ip->tot_len);
+	memset(debugbuf, 0x00, LARGEBUF);
 }
 
 Packet::Packet(const Packet& pkt) :
@@ -303,8 +304,13 @@ void Packet::Inject_BAD_IPOPT(void)
 	selflog(__func__, "after IPopt injection");
 }
 
+/* not implemented ATM */
+void Packet::Inject_GOOD_TCPOPT(void)
+{
+}
+
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
-void Packet::Inject_TCPOPT(void)
+void Packet::Inject_BAD_TCPOPT(void)
 {
 	const int faketcpopt = 4;
 	const int needed_space = faketcpopt;

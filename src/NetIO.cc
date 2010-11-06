@@ -229,15 +229,15 @@ void NetIO::network_io(void)
 	{
 		nfds = poll(fds, 2, timeout_ms);
 
-		if (nfds == -1) {
-			internal_log(NULL, ALL_LEVEL, "Strange and dangerous error in poll: %s", strerror(errno));
-			check_call_ret("error in poll", errno, nfds, true);
+		if (nfds <= 0) {
+			if (nfds == -1) {
+	                        internal_log(NULL, ALL_LEVEL, "Strange and dangerous error in poll: %s", strerror(errno));
+        	                check_call_ret("error in poll", errno, nfds, true);
+			}
+			break;
 		}
 
-		if (!nfds)
-			break;
-
-		if (fds[0].revents & POLLIN) {
+		if (fds[0].revents) { // POLLIN is the unique event managed
 			if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 				{
@@ -254,7 +254,7 @@ void NetIO::network_io(void)
 			}
 		}
 
-		if (fds[1].revents & POLLIN) {
+		if (fds[1].revents) { // POLLIN is the unique event managed
 			if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
 		//			internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));

@@ -27,7 +27,7 @@ CLEANFILES =		-R aclocal.m4 \
 			autom4te.cache \
 			configure \
 			config.guess \
-			congig.log \
+			config.log \
 			config.status \
 			config.sub \
 			depcomp \
@@ -35,4 +35,5 @@ CLEANFILES =		-R aclocal.m4 \
 			libltdl \
 			ltmain.sh \
 			missing \
+			Makefile \
 			Makefile.in

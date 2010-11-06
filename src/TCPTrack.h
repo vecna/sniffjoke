@@ -40,7 +40,7 @@ public:
 	constructor_f *fp_CreateHackObj;
 	destructor_f *fp_DeleteHackObj;
 	HackPacket *selfObj;
-	const char *pluginPath;
+	char *pluginPath;
 	bool enabled;
 	PluginTrack() {
 		pluginHandler = NULL;

@@ -381,16 +381,15 @@ void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...
 		loglevel = useropt.debug_level;
 
 	if (errorlevel <= loglevel) { 
-		char *time = strdup(asctime(localtime(&now)));
+		char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
+		strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
 		va_start(arguments, msg);
-		time[strlen(time) -1] = ' ';
-		fprintf(output_flow, "%s ", time);
+		fprintf(output_flow, "%s ", time_str);
 		vfprintf(output_flow, msg, arguments);
 		fprintf(output_flow, "\n");
 		fflush(output_flow);
 		va_end(arguments);
-		free(time);
 	}
 }
 
@@ -410,14 +409,13 @@ int main(int argc, char **argv)
 	pid_t previous_pid;
 	
 	/* set the default values in the configuration struct */
-	useropt.cfgfname = CONF_FILE;
-	useropt.user = DROP_USER;
-	useropt.group = DROP_GROUP;
-	useropt.chroot_dir = CHROOT_DIR;
-	useropt.logfname = LOGFILE;
+	snprintf(useropt.cfgfname, MEDIUMBUF, CONF_FILE);
+	snprintf(useropt.enabler, MEDIUMBUF, PLUGINSENABLER);
+	snprintf(useropt.user, MEDIUMBUF, DROP_USER);
+	snprintf(useropt.group, MEDIUMBUF, DROP_GROUP);
+	snprintf(useropt.chroot_dir, MEDIUMBUF, CHROOT_DIR);
+	snprintf(useropt.logfname, MEDIUMBUF, LOGFILE);
 	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
-	useropt.enabler = PLUGINSENABLER;
-
 	useropt.go_foreground = false;
 	useropt.force_restart = false;
 	useropt.logstream = stdout;
@@ -480,22 +478,25 @@ int main(int argc, char **argv)
 	}
 
 	if (command_input == NULL) {
-		while ((charopt = getopt_long(argc, argv, "f:u:g:c:d:l:e:xrhv", sj_option, NULL)) != -1) {
+		while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhv", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
-					useropt.cfgfname = strdup(optarg);
+					snprintf(useropt.cfgfname, MEDIUMBUF, "%s", optarg);
+					break;
+				case 'e':
+					snprintf(useropt.enabler, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'u':
-					useropt.user = strdup(optarg);
+					snprintf(useropt.user, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'g':
-					useropt.group = strdup(optarg);
+					snprintf(useropt.group, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'c':
-					useropt.chroot_dir = strdup(optarg);
+					snprintf(useropt.chroot_dir, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'l':
-					useropt.logfname = strdup(optarg);
+					snprintf(useropt.logfname, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'd':
 					useropt.debug_level = atoi(optarg);
@@ -509,9 +510,6 @@ int main(int argc, char **argv)
 				case 'v':
 					sj_version(argv[0]);
 					return 0;
-				case 'e':
-					useropt.enabler = strdup(optarg);
-					break;
 				default:
 					sj_help(argv[0], useropt.chroot_dir);
 					return -1;
@@ -642,9 +640,13 @@ int main(int argc, char **argv)
 			sprintf(tmpfname, "%s.packets", useropt.logfname);
 			if ((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
 				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				free(tmpfname);
 				raise(SIGTERM);
-			} 
-			internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
+
+			} else {
+				internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
+				free(tmpfname);
+			}
 		}
 
 		if (useropt.debug_level >= SESSION_DEBUG) {
@@ -652,9 +654,12 @@ int main(int argc, char **argv)
 			sprintf(tmpfname, "%s.session", useropt.logfname);
 			if ((useropt.session_logstream = fopen(tmpfname, "a+")) == NULL) {
 				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+				free(tmpfname);
 				raise(SIGTERM);
+			} else {
+				internal_log(NULL, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
+				free(tmpfname);
 			}
-			internal_log(NULL, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
 		}
 	}
 
@@ -669,7 +674,9 @@ int main(int argc, char **argv)
 
 	/* main block */
 	while (1) {
+
 		SjProc->sigtrapDisable();
+
 		mitm->network_io();
 		mitm->queue_flush();
 
@@ -688,8 +695,8 @@ int main(int argc, char **argv)
 		}
 		
 		read_unixsock(listening_unix_socket, sjconf);
-		SjProc->sigtrapEnable();
 
+		SjProc->sigtrapEnable();
 	}
 	/* nevah here */
 }
