@@ -91,17 +91,6 @@ bool TTLFocus::isProbeIntervalPassed(const struct timespec& now)
     return false;
 }
 
-
-TTLFocusMap::TTLFocusMap()
-{
-	load();
-}
-
-TTLFocusMap::~TTLFocusMap()
-{
-	dump();
-}
-
 void TTLFocusMap::load()
 {
 	FILE *loadfd;

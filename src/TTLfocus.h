@@ -70,8 +70,6 @@ public:
 
 class TTLFocusMap : public map<const unsigned int, TTLFocus> {
 public:
-	TTLFocusMap();
-        ~TTLFocusMap();
         void dump();
         void load();
 };

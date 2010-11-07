@@ -251,7 +251,7 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 		fclose(cF);
 		
 	} else {
-
+		int i;
 		internal_log(NULL, ALL_LEVEL, "configuration file: %s not found: using defaults", completefname);
 
 		/* set up defaults */	   
@@ -261,7 +261,8 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 		running.max_sex_track = 4096;
 
 		/* default is to set all TCP ports in "NORMAL" aggressivity level */
-		memset(running.portconf, NORMAL, PORTNUMBER);
+		for(i = 0; i < PORTNUMBER; i++)
+			running.portconf[i] = NORMAL;
 	}
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
@@ -336,7 +337,6 @@ char *UserConf::handle_cmd_info(void)
 
 char *UserConf::handle_cmd_quit(void)
 {
-
 	memset(io_buf, 0x00, HUGEBUF);
 
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
@@ -350,6 +350,7 @@ char *UserConf::handle_cmd_quit(void)
 
 char *UserConf::handle_cmd_stat(void) 
 {
+	memset(io_buf, 0x00, HUGEBUF);
 	internal_log(NULL, VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, HUGEBUF, 
 		"\nsniffjoke running:\t\t%s\n" \
@@ -371,9 +372,10 @@ char *UserConf::handle_cmd_stat(void)
 	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, unsigned char what)
+char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength what)
 {
 	const char *what_weightness;
+	memset(io_buf, 0x00, HUGEBUF);
 
 	switch(what) {
 		case HEAVY: what_weightness = "heavy"; break;
@@ -381,25 +383,30 @@ char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, unsigne
 		case LIGHT: what_weightness = "light"; break;
 		case NONE: what_weightness = "no hacking"; break;
 		default: 
-			snprintf(io_buf, HUGEBUF, "ERROR!! invalid code (0x%2x) in %s:%s:%d\n", what, __FILE__, __func__, __LINE__);
+			snprintf(io_buf, HUGEBUF, "invalid strength code for TCP ports\n");
 			internal_log(NULL, ALL_LEVEL, "BAD ERROR: %s", io_buf);
 			return &io_buf[0];
-			break;
 	}
 
 	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
 	internal_log(NULL, ALL_LEVEL, "%s", io_buf);
 
+	if(end == PORTNUMBER) {
+		running.portconf[PORTNUMBER -1] = what;
+		end--;
+	}
+
 	do {
 		running.portconf[start] = what;
 		start++;
-	} while (start <= end);
+	} while (start <= end );
 
 	return &io_buf[0];
 }
 
 char *UserConf::handle_cmd_stop(void)
 {
+	memset(io_buf, 0x00, HUGEBUF);
 	if (running.sj_run != false) {
 		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
 		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
@@ -413,6 +420,7 @@ char *UserConf::handle_cmd_stop(void)
 
 char *UserConf::handle_cmd_start(void)
 {
+	memset(io_buf, 0x00, HUGEBUF);
 	if (running.sj_run != true) {
 		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
 		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
@@ -427,8 +435,9 @@ char *UserConf::handle_cmd_start(void)
 char *UserConf::handle_cmd_showport(void) 
 {
 	int i, acc_start = 0, kind, actual_io = 0;
-	char *index = &io_buf[0];
+	char *index = &io_buf[1];
 	memset(io_buf, 0x00, HUGEBUF);
+	io_buf[0] = '\n';
 
 	/* the first port work as initialization */
 	kind = running.portconf[0];
@@ -439,9 +448,9 @@ char *UserConf::handle_cmd_showport(void)
 		if (running.portconf[i] != kind) 
 		{
 			if (acc_start == (i - 1)) 
-				snprintf(index, HUGEBUF - actual_io, "%s\tdest port: %d\n", resolve_weight_name(kind), acc_start);
+				snprintf(index, HUGEBUF - actual_io, " %d\t%s\n", acc_start, resolve_weight_name(kind));
 			else
-				snprintf(index, HUGEBUF - actual_io, "%s\tdest ports: %d:%d\n", resolve_weight_name(kind), acc_start, i - 1);
+				snprintf(index, HUGEBUF - actual_io, " %d:%d\t%s\n", acc_start, i - 1, resolve_weight_name(kind));
 
 			actual_io = strlen(io_buf);
 			index = &io_buf[actual_io];
@@ -451,13 +460,14 @@ char *UserConf::handle_cmd_showport(void)
 		}
 	}
 
-	snprintf(index, HUGEBUF - actual_io, "%s\t dest ports %d:65535\n", resolve_weight_name(kind), acc_start);
+	snprintf(index, HUGEBUF - actual_io, " %d:%d\t%s\n", acc_start, PORTNUMBER, resolve_weight_name(kind));
 
 	return &io_buf[0];
 }
 
 char *UserConf::handle_cmd_log(int newloglevel)
 {
+	memset(io_buf, 0x00, HUGEBUF);
 	if(newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
 		snprintf(io_buf, HUGEBUF, 
 			"error in the new loglevel requested: accepted >= %d and <= %d\n\n"\

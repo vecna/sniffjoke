@@ -72,7 +72,7 @@ public:
 	fake_data_anticipation(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = 50;
+		hack_frequency = COMMON;
 	}
 };
 

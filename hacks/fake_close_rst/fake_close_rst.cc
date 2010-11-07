@@ -70,8 +70,7 @@ public:
 	fake_close_rst(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = 5;
-		prescription_probability = 98;
+		hack_frequency = TIMEBASED20S;
 	}
 };
 

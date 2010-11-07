@@ -29,7 +29,7 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 /* TTL related define */
-#define TTLFOCUSMAP_FILE		INSTALL_STATEDIR "ttlfocus.bin"
+#define TTLFOCUSMAP_FILE		"ttlfocus.bin"
 
 /* the maximum value of bruteforced TTL */
 #define STARTING_ARB_TTL		46

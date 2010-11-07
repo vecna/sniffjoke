@@ -62,18 +62,17 @@ bool HackPacketPool::verifyPluginIntegirty(PluginTrack *plugload, HackPacket *lo
  *
  * (class TCPTrack).hack_pool is the name of the unique HackPacketPool element
  */
-HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf) 
+HackPacketPool::HackPacketPool(char* enabler) :
+	fail(false) 
 {
 	char plugabspath[MEDIUMBUF];
 	FILE *plugfile;
 
 	PluginTrack plugin;
 
-	*fail = false;
-
-	if((plugfile = fopen(sjconf->enabler, "r")) == NULL) {
-		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", sjconf->enabler, strerror(errno));
-		*fail = true;
+	if((plugfile = fopen(enabler, "r")) == NULL) {
+		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", enabler, strerror(errno));
+		fail = true;
 		return;
 	}
 
@@ -102,7 +101,7 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 		void *handler = dlopen(plugabspath, RTLD_NOW);
 		if(handler == NULL) {
 			internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugabspath, dlerror());
-			*fail = true;
+			fail = true;
 			break;
 		}
 		internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugabspath);
@@ -119,7 +118,7 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 		if(!verifyPluginIntegirty(&plugin, plugin.selfObj)) {
 			internal_log(NULL, ALL_LEVEL, "plugin %s incorret implementation: read the documentation!",
 				basename(plugin.pluginPath) );
-			*fail = true;
+			fail = true;
 		} else {
 			internal_log(NULL, DEBUG_LEVEL, "plugin %s implementation accepted", plugin.selfObj->hackName);
 			push_back(plugin);
@@ -127,7 +126,7 @@ HackPacketPool::HackPacketPool(bool *fail, struct sj_config *sjconf)
 
 	} while(!feof(plugfile));
 
-	if(*fail || !size()) {
+	if(fail || !size()) {
 		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins: FAILURE while loading detected", size());
 		return;
 	} else
@@ -162,12 +161,12 @@ HackPacketPool::~HackPacketPool()
 	}
 }
 
-TCPTrack::TCPTrack(UserConf *sjconf) :
-	runcopy(&sjconf->running),
+TCPTrack::TCPTrack(sj_config& runcfg, HackPacketPool& hpp) :
+	runcopy(runcfg),
 	youngpacketspresent(false),
 	/* fail is the public member used to signal a failure in plugin's loading, 
 	 * hack_pool is a "class HackPacketPool", that extend a vector of HackPacketPoolElem */
-	hack_pool(&fail, &sjconf->running)
+	hack_pool(hpp)
 {
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
@@ -178,6 +177,7 @@ TCPTrack::TCPTrack(UserConf *sjconf) :
 
 TCPTrack::~TCPTrack(void) 
 {
+	ttlfocus_map.dump();
 	internal_log(NULL, DEBUG_LEVEL, "~TCPTrack()");
 }
 
@@ -219,41 +219,86 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 	return true;
 }
 
-/* 
- * this two functions is required on hacks injection, because that 
- * injection should happens ALWAYS, but give the less possible elements
- * to the attacker for detects sniffjoke working style
- */
-bool TCPTrack::percentage(float math_choosed, unsigned int vecna_choosed)
-{
-	return ((random() % 100) <= ((int)(math_choosed * vecna_choosed) / 100));
-}
-
-/*  the variable is used from the sniffjoke routing for decreete the possibility of
+/*  
+ *  the variable is used from the sniffjoke routing for decreete the possibility of
  *  an hack happens. this variable are mixed in probabiliy with the session->packet_number, because
  *  the hacks must happens, for the most, in the start of the session (the first 10 packets),
- *  other hacks injection should happen in the randomic mode express in logarithm function.
+ *  other hacks injection should happen during the session. Those value are mixed with thr
+ *  selecter port Strengh (none|light|normal|heavy) and the Hack frequency,
+ *  better explanation about this algorithm in http://www.delirandom.net/sniffjoke/plugin
  */
-float TCPTrack::logarithm(int packet_number)
+bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Strength weightness)
 {
-	int blah;
+	unsigned int this_percentage, freqret = 0;
+	time_t now;
+	switch(freqkind) {
+		case RARE:
+			freqret = 3;
+			break;
+		case COMMON:
+			freqret = 7;
+			break;
+		case PACKETS10PEEK:
+			if( !(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10) )
+				freqret = 10;
+			else
+				freqret = 1;
+			break;
+		case PACKETS30PEEK:
+			if( !(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30) )
+				freqret = 10;
+			else
+				freqret = 1;
+			break;
+		case TIMEBASED5S:
+			now = time(NULL);
+			if( !((unsigned int)now % 5) )
+				freqret = 12;
+			else
+				freqret = 1;
+			break;
+		case TIMEBASED20S:
+			now = time(NULL);
+			if( !((unsigned int)now % 20) )
+				freqret = 12;
+			else
+				freqret = 1;
+			break;
+		case STARTPEEK:
+			if( packet_number < 20)
+				freqret = 10;
+			else if ( packet_number < 40)
+				freqret = 5;
+			else
+				freqret = 1;
+			break;
+		case LONGPEEK:
+			if( packet_number < 60)
+				freqret = 8;
+			else if ( packet_number < 120)
+				freqret = 4;
+			else
+				freqret = 1;
+			break;
+	}
 
-	if (packet_number < 20)
-		return 150.9;
+	/* the "NORMAL" transform a freqret of "10" in 80% of hack probability */
+	switch(weightness) {
+		case NONE:
+			this_percentage = freqret * 0;
+			break;
+		case LIGHT:
+			this_percentage = freqret * 4;
+			break;
+		case NORMAL:
+			this_percentage = freqret * 8;
+			break;
+		case HEAVY:
+			this_percentage = freqret * 12;
+			break;
+	}
 
-	if (packet_number > 10000)
-		blah = (packet_number / 10000) * 10000;
-	else if (packet_number > 1000)
-		blah = (packet_number / 1000) * 1000;
-	else if (packet_number > 100)
-		blah = (packet_number / 100) * 100;
-	else
-		return 2.2; /* x > 20 && x < 100 */
-
-	if (blah == packet_number)
-		return 90.0;
-	else
-		return 0.08;
+	return ( ( ( random() + 1 ) % 100) + 1 <= this_percentage );
 }
 
 SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt) 
@@ -264,7 +309,7 @@ SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt)
 	if (it != sex_map.end())
 		return &(it->second);
 	else {
-		if(sex_map.size() == runcopy->max_sex_track) {
+		if(sex_map.size() == runcopy.max_sex_track) {
 			/* if we reach sextrackmax probably we have a lot of dead sessions tracked */
 			/* we can make a complete clear() resetting sex_map without problems */
 			sex_map.clear();
@@ -345,7 +390,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 
 bool TCPTrack::analyze_ttl_stats(TTLFocus &ttlfocus)
 {
-	if (ttlfocus.sent_probe == runcopy->max_ttl_probe) {
+	if (ttlfocus.sent_probe == runcopy.max_ttl_probe) {
 		ttlfocus.status = TTL_UNKNOWN;
 		return true;
 	}
@@ -569,7 +614,11 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 		hppe = &(*it);
 		hppe->enabled = true;
 		hppe->enabled &= hppe->selfObj->Condition(orig_pkt);
-		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->selfObj->hack_frequency);
+		hppe->enabled &= percentage(
+					session->packet_number,
+					hppe->selfObj->hack_frequency,
+					runcopy.portconf[ntohs(orig_pkt.tcp->dest)]
+				);
 	}
 
 	/* -- RANDOMIZE HACKS APPLICATION */
@@ -593,7 +642,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 			internal_log(NULL, ALL_LEVEL, "invalid packet generated by hack %s", hppe->selfObj->hackName);
 
 			/* if you are running with --debug 6, I suppose you are the developing the plugins */
-			if(runcopy->debug_level == PACKETS_DEBUG) 
+			if(runcopy.debug_level == PACKETS_DEBUG) 
 				raise(SIGTERM);
 
 			/* otherwise, the error was reported and sniffjoke continue to work */
@@ -789,7 +838,7 @@ Packet* TCPTrack::readpacket()
 	Packet *pkt = p_queue.get(SEND, ANY_SOURCE, ANY_PROTO, false);
 	if (pkt != NULL) {
 		p_queue.remove(*pkt);
-		if (runcopy->sj_run == true)
+		if (runcopy.sj_run == true)
 			last_pkt_fix(*pkt);
 	}
 	return pkt;
@@ -860,7 +909,7 @@ void TCPTrack::analyze_packets_queue()
 	while (pkt != NULL) {
 
 		/* no hacks required for this destination port */
-		if (runcopy->portconf[ntohs(pkt->tcp->dest)] == NONE) {
+		if (runcopy.portconf[ntohs(pkt->tcp->dest)] == NONE) {
 			pkt->status = SEND; 
 			continue;
 		}

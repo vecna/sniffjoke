@@ -64,23 +64,23 @@ class HackPacketPool : public vector<PluginTrack> {
 private:
 	bool verifyPluginIntegirty(PluginTrack *, HackPacket *);
 public:
-	HackPacketPool(bool *, struct sj_config *);
+	bool fail;
+	HackPacketPool(char*);
 	~HackPacketPool();
 };
 
 class TCPTrack {
 private:
-	struct sj_config *runcopy;
+	struct sj_config &runcopy;
 	bool youngpacketspresent;
 	struct timespec clock;
 	PacketQueue p_queue;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
-	HackPacketPool hack_pool;
+	HackPacketPool &hack_pool;
 
 	bool check_evil_packet(const unsigned char*, unsigned int);
-	bool percentage(float, unsigned int);
-	float logarithm(int);
+	bool percentage(unsigned int, Frequency, Strength);
 
 	SessionTrack* init_sessiontrack(const Packet&);
 	void clear_session(SessionTrackMap::iterator stm_it);
@@ -101,15 +101,13 @@ private:
 	void last_pkt_fix(Packet&);
 
 public:
-	TCPTrack(UserConf*);
+	TCPTrack(sj_config&, HackPacketPool&);
 	~TCPTrack(void);
 
 	bool writepacket(const source_t, const unsigned char*, int);
 	Packet* readpacket(void);
 	void analyze_packets_queue(void);
 	void force_send(void);
-
-	bool fail;
 };
 
 #endif /* SJ_TCPTRACK_H */
