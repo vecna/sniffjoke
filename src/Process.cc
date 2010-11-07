@@ -93,15 +93,17 @@ void Process::detach()
 	internal_log(NULL, DEBUG_LEVEL, "forked process continue sniffjoke running, pid %d", getpid());
 }
 
-void Process::jail(const char *chroot_dir, struct sj_config *running) 
+void Process::jail() 
 {
-	userinfo = getpwnam(running->user);
-	groupinfo = getgrnam(running->group);
+	if(chroot_dir == NULL) {
+                internal_log(stderr, ALL_LEVEL, "jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
+                failure = true;
+	}
 
 	mkdir(chroot_dir, 0700);
 
 	if (chown(chroot_dir, userinfo->pw_uid, groupinfo->gr_gid)) {
-                internal_log(stderr, ALL_LEVEL, "chown of %s to %s:%s failed: %s: unable to start sniffjoke", chroot_dir, running->user, running->group, strerror(errno));
+                internal_log(stderr, ALL_LEVEL, "chown of %s to %s:%s failed: %s: unable to start sniffjoke", chroot_dir, user, group, strerror(errno));
 		failure = true;
 		return;
 	}
@@ -114,14 +116,8 @@ void Process::jail(const char *chroot_dir, struct sj_config *running)
 	internal_log(NULL, VERBOSE_LEVEL, "chroot'ed process %d in %s", getpid(), chroot_dir);
 }
 
-void Process::privilegesDowngrade(struct sj_config *running)
+void Process::privilegesDowngrade()
 {
-	if (userinfo == NULL || groupinfo == NULL) {
-		internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s, %s", running->user, running->group);
-		failure = true;
-		return;
-	}
-
 	if (setgid(groupinfo->gr_gid) || setuid(userinfo->pw_uid)) {
 		internal_log(stderr, ALL_LEVEL, "error loosing root privileges: unable to start sniffjoke");
 		raise(SIGTERM);
@@ -189,7 +185,7 @@ void Process::unlinkPidfile(void)
 	FILE *pidf = fopen(SJ_PIDFILE, "r");
 
 	if (pidf == NULL) {
-		internal_log(NULL, ALL_LEVEL, "warning: requested unlink of %s seem impossibile: %s", SJ_PIDFILE, strerror(errno));
+		internal_log(NULL, ALL_LEVEL, "warning: requested unlink of %s seems impossibile: %s", SJ_PIDFILE, strerror(errno));
 	}
 	fclose(pidf);
 	if(unlink(SJ_PIDFILE)) {
@@ -252,11 +248,23 @@ void Process::isolation()
 }
 
 /* startup of the process */
-Process::Process(struct sj_useropt *useropt) 
+Process::Process(const char* usr, const char* grp, const char* chdir)
 {
 	if (getuid() || geteuid())  {
 		printf("required root privileges\n");
 		failure = true;
 		return;
 	}
+
+	user = usr;
+	group = grp;
+	chroot_dir = chdir;
+
+	userinfo = getpwnam(user);
+	groupinfo = getgrnam(group);
+
+        if (userinfo == NULL || groupinfo == NULL) {
+                internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s, %s", user, group);
+                raise(SIGTERM);
+        }
 }

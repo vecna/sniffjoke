@@ -29,8 +29,13 @@
 
 class Process {
 private:
-	struct passwd *userinfo;
-	struct group *groupinfo;
+
+	const char* user;
+	const char* group;
+	const char* chroot_dir;
+
+        struct passwd *userinfo;
+        struct group *groupinfo;
 
 	sigset_t sig_nset;
 	sigset_t sig_oset;
@@ -41,7 +46,7 @@ public:
 	pid_t tracked_child_pid;
 	bool failure;
 	
-	Process(struct sj_useropt *useropt);
+	Process(const char* user, const char* group, const char* chroot_dir);
 
 	pid_t readPidfile();
 	void writePidfile();
@@ -49,8 +54,8 @@ public:
 	void openPidfile();
 
 	void detach() ;
-	void jail(const char *chroot_dir, struct sj_config *running);
-	void privilegesDowngrade(struct sj_config *running);
+	void jail();
+	void privilegesDowngrade();
 	void sigtrapSetup(sig_t sigtrap_function);
 	void sigtrapEnable();
 	void sigtrapDisable();

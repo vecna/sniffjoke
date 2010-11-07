@@ -5,5 +5,3 @@ pkglib_LTLIBRARIES = fake_seq.la
 fake_seq_la_SOURCES = fake_seq.cc ../../src/Packet.cc
 
 fake_seq_la_LDFLAGS = -module -avoid-version
-
-CLEANFILES = Makefile.in

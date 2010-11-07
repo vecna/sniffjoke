@@ -22,18 +22,3 @@ installconf:
 		echo "Creating chroot dir: $(localstatedir)sniffjoke"; \
 		install -d -m 700 $(localstatedir)/sniffjoke; \
 	fi;
-
-CLEANFILES =		-R aclocal.m4 \
-			autom4te.cache \
-			configure \
-			config.guess \
-			config.log \
-			config.status \
-			config.sub \
-			depcomp \
-			install-sh \
-			libltdl \
-			ltmain.sh \
-			missing \
-			Makefile \
-			Makefile.in

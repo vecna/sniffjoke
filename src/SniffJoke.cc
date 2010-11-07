@@ -534,13 +534,13 @@ int main(int argc, char **argv)
 	
 	}
 
-	proc = auto_ptr<Process> (new Process(&useropt));
+	userconf = auto_ptr<UserConf> (new UserConf(useropt));
+
+	proc = auto_ptr<Process> (new Process(userconf->running.user, userconf->running.group, userconf->running.chroot_dir));
 	if (proc->failure) {
 		sj_help(argv[0], useropt.chroot_dir);
 		return 0;
 	}
-
-	userconf = auto_ptr<UserConf> (new UserConf(&useropt));
 
 	/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
 	if (command_input != NULL) 
@@ -553,13 +553,13 @@ int main(int argc, char **argv)
 		}
 	
 		/* if a user and a group ar not specified, defaults are used */
-		proc->jail(useropt.chroot_dir, &userconf->running);
+		proc->jail();
 		if (proc->failure == true) {
 			internal_log(NULL, ALL_LEVEL, "error in proc handling, closing");
 			return 0;
 		}
 
-		proc->privilegesDowngrade(&userconf->running);
+		proc->privilegesDowngrade();
 
 		client_send_command(command_input);
 
@@ -609,7 +609,7 @@ int main(int argc, char **argv)
 	proc->sigtrapSetup(sj_sigtrap);
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
-	mitm = auto_ptr<NetIO> (new NetIO(userconf.get()));
+	mitm = auto_ptr<NetIO> (new NetIO(userconf->running));
 
 	if (mitm->is_network_down())
 	{
@@ -629,7 +629,7 @@ int main(int argc, char **argv)
 	}
 
 	/* jail chroot + privileges downgrade */	
-	proc->jail(useropt.chroot_dir, &userconf->running);
+	proc->jail();
 
 	/* background running, with different loglevel. logfile opened below: */
 	if (!useropt.go_foreground) {	
@@ -668,7 +668,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	proc->privilegesDowngrade(&userconf->running);
+	proc->privilegesDowngrade();
 
 	conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf->running, *hack_pool));
 	mitm->prepare_conntrack(conntrack.get());

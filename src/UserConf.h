@@ -59,8 +59,8 @@ struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool sj_run;				/* default: false = NO RUNNING */
 		char cfgfname[MEDIUMBUF];
-		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
 		char enabler[MEDIUMBUF];		/* default: idem */
+		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
 		char group[MEDIUMBUF];			/* default: idem */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
 		char logfname[MEDIUMBUF];		/* default: idem */
@@ -94,7 +94,7 @@ private:
 public:
 		struct sj_config running;
 
-		UserConf(struct sj_useropt *);
+		UserConf(const struct sj_useropt &);
 		~UserConf();
 
 		void dump(void);

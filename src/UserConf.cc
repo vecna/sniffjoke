@@ -216,7 +216,7 @@ void UserConf::network_setup(void)
 	}
 }
 
-UserConf::UserConf(struct sj_useropt *user_opt)
+UserConf::UserConf(const struct sj_useropt &user_opt)
 {
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
@@ -226,7 +226,7 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 
 	char completefname[LARGEBUF];
 	memset(completefname, 0x00, LARGEBUF);
-	snprintf(completefname, LARGEBUF, "%s%s", user_opt->chroot_dir, user_opt->cfgfname);
+	snprintf(completefname, LARGEBUF, "%s%s", user_opt.chroot_dir, user_opt.cfgfname);
 	internal_log(NULL, DEBUG_LEVEL, "opening configuration file: %s", completefname);
 
 	if ((cF = fopen(completefname, "r")) != NULL) 
@@ -243,7 +243,7 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", completefname, i * sizeof(struct sj_config));
 
 		if (running.MAGIC != magic_check) {
-			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seem to be corrupted - delete or check the argument",
+			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seems to be corrupted - delete or check the argument",
 				completefname
 			);
 			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
@@ -267,16 +267,16 @@ UserConf::UserConf(struct sj_useropt *user_opt)
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
-	compare_check_copy(running.cfgfname, MEDIUMBUF, user_opt->cfgfname, strlen(user_opt->cfgfname), CONF_FILE);
-	compare_check_copy(running.enabler, MEDIUMBUF, user_opt->enabler, strlen(user_opt->enabler), PLUGINSENABLER);
-	compare_check_copy(running.user, MEDIUMBUF, user_opt->user, strlen(user_opt->user), DROP_USER);
-	compare_check_copy(running.group, MEDIUMBUF, user_opt->group, strlen(user_opt->group), DROP_GROUP);
-	compare_check_copy(running.chroot_dir, MEDIUMBUF, user_opt->chroot_dir, strlen(user_opt->chroot_dir), CHROOT_DIR);
-	compare_check_copy(running.logfname, MEDIUMBUF, user_opt->logfname, strlen(user_opt->logfname), LOGFILE);
+	compare_check_copy(running.cfgfname, MEDIUMBUF, user_opt.cfgfname, strlen(user_opt.cfgfname), CONF_FILE);
+	compare_check_copy(running.enabler, MEDIUMBUF, user_opt.enabler, strlen(user_opt.enabler), PLUGINSENABLER);
+	compare_check_copy(running.user, MEDIUMBUF, user_opt.user, strlen(user_opt.user), DROP_USER);
+	compare_check_copy(running.group, MEDIUMBUF, user_opt.group, strlen(user_opt.group), DROP_GROUP);
+	compare_check_copy(running.chroot_dir, MEDIUMBUF, user_opt.chroot_dir, strlen(user_opt.chroot_dir), CHROOT_DIR);
+	compare_check_copy(running.logfname, MEDIUMBUF, user_opt.logfname, strlen(user_opt.logfname), LOGFILE);
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
-	if(user_opt->debug_level != DEFAULT_DEBUG_LEVEL)
-		running.debug_level = user_opt->debug_level;
+	if(user_opt.debug_level != DEFAULT_DEBUG_LEVEL)
+		running.debug_level = user_opt.debug_level;
 
 	if(running.debug_level == 0)
 		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL

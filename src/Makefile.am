@@ -12,6 +12,8 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			SessionTrack.cc \
 			SessionTrack.h \
 			SniffJoke.cc \
+			HackPacketPool.cc \
+			HackPacketPool.h \
 			TCPTrack.cc \
 			TCPTrack.h \
 			TTLfocus.cc \
@@ -22,10 +24,3 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 
 AM_CPPFLAGS =		-ansi -pedantic -Wall
 sniffjoke_LDFLAGS =	-lrt -Wl,-export-dynamic
-
-CLEANFILES =		.deps/ \
-			.libs/ \
-			config.h \
-			config.h.in \
-			stamp-h1 \
-			Makefile.in

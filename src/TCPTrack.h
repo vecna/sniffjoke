@@ -27,47 +27,10 @@
 #include "PacketQueue.h"
 #include "SessionTrack.h"
 #include "TTLfocus.h"
+#include "HackPacketPool.h"
 
 /* in debug mode, an invalid plugin cause sniffjoke to sucide himself via SIGTERM */
-#include <signal.h>
-
-#include <vector>
-using namespace std;
-
-class PluginTrack {
-public:
-	void *pluginHandler;	
-	constructor_f *fp_CreateHackObj;
-	destructor_f *fp_DeleteHackObj;
-	HackPacket *selfObj;
-	char *pluginPath;
-	bool enabled;
-	PluginTrack() {
-		pluginHandler = NULL;
-		fp_CreateHackObj = NULL;
-		fp_DeleteHackObj = NULL;
-		selfObj = NULL;
-		pluginPath = NULL;
-		enabled = NULL;
-	}
-	PluginTrack(const PluginTrack& cpy) {
-		pluginHandler = cpy.pluginHandler;
-		fp_CreateHackObj = cpy.fp_CreateHackObj;
-		fp_DeleteHackObj = cpy.fp_DeleteHackObj;
-		selfObj = cpy.selfObj;
-		pluginPath = cpy.pluginPath;
-		enabled = cpy.enabled;
-	}
-};
-
-class HackPacketPool : public vector<PluginTrack> {
-private:
-	bool verifyPluginIntegirty(PluginTrack *, HackPacket *);
-public:
-	bool fail;
-	HackPacketPool(char*);
-	~HackPacketPool();
-};
+//#include <signal.h>
 
 class TCPTrack {
 private:

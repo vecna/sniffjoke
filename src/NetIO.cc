@@ -28,7 +28,8 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-NetIO::NetIO(UserConf *sjconf)
+NetIO::NetIO(sj_config& runcfg) :
+	runcopy(runcfg)
 {
 	struct ifreq orig_gw;
 	struct ifreq ifr;
@@ -36,8 +37,6 @@ NetIO::NetIO(UserConf *sjconf)
 	int ret;
 	int tmpfd;
 	char tmpsyscmd[MEDIUMBUF];
-
-	runcopy = &sjconf->running;
 
 	networkdown_condition = false;
 	
@@ -47,15 +46,15 @@ NetIO::NetIO(UserConf *sjconf)
 	}
 
 	/* pseudo sanity check of received data, sjconf had already make something */
-	if (strlen(runcopy->gw_ip_addr) < 7 || strlen(runcopy->gw_ip_addr) > 17) {
-		internal_log(NULL, ALL_LEVEL, "invalid ip address [%s] is not an IPv4, check the config", runcopy->gw_ip_addr);
+	if (strlen(runcopy.gw_ip_addr) < 7 || strlen(runcopy.gw_ip_addr) > 17) {
+		internal_log(NULL, ALL_LEVEL, "invalid ip address [%s] is not an IPv4, check the config", runcopy.gw_ip_addr);
 		check_call_ret("ip address", EINVAL, -1, false);
 		networkdown_condition = true;
 		return;
 	}
 
-	if (strlen(runcopy->gw_mac_str) != 17) {
-		internal_log(NULL, ALL_LEVEL, "invalid mac address [%s] is not a MAC addr, check the config", runcopy->gw_mac_str);
+	if (strlen(runcopy.gw_mac_str) != 17) {
+		internal_log(NULL, ALL_LEVEL, "invalid mac address [%s] is not a MAC addr, check the config", runcopy.gw_mac_str);
 		check_call_ret("mac address", EINVAL, -1, false);
 		networkdown_condition = true;
 		return;
@@ -113,27 +112,27 @@ NetIO::NetIO(UserConf *sjconf)
 
 	snprintf(tmpsyscmd, MEDIUMBUF, 
 		"/sbin/ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d", 
-		runcopy->tun_number,
-		runcopy->local_ip_addr,
+		runcopy.tun_number,
+		runcopy.local_ip_addr,
 		MTU_FAKE
 	);
 	internal_log(NULL, VERBOSE_LEVEL, "setting up tun%d with the %s's IP (%s) command [%s]",
-		runcopy->tun_number, runcopy->interface,
-		runcopy->local_ip_addr, tmpsyscmd
+		runcopy.tun_number, runcopy.interface,
+		runcopy.local_ip_addr, tmpsyscmd
 	);
 	system(tmpsyscmd);
 
 	internal_log(NULL, VERBOSE_LEVEL, "setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
 	system("/sbin/route add default gw 1.198.10.5");
 
-	strcpy(orig_gw.ifr_name, (const char *)runcopy->interface);
+	strcpy(orig_gw.ifr_name, (const char *)runcopy.interface);
 	tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	
 	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
 	{
 		internal_log(NULL, ALL_LEVEL, 
 			"fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand", 
-			runcopy->interface
+			runcopy.interface
 		);
 		check_call_ret("unable to SIOCGIFINDEX network interface", errno, ret, true);
 	}
@@ -155,7 +154,7 @@ NetIO::NetIO(UserConf *sjconf)
 	send_ll.sll_pkttype = PACKET_HOST;
 	send_ll.sll_halen = ETH_ALEN;
 
-	memcpy(send_ll.sll_addr, runcopy->gw_mac_addr, ETH_ALEN);
+	memcpy(send_ll.sll_addr, runcopy.gw_mac_addr, ETH_ALEN);
 
 	if ((ret = bind(netfd, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) {
 		internal_log(NULL, ALL_LEVEL, "unable to bind datalink layer interface: %s - fix your routing table by hand",
@@ -196,12 +195,12 @@ NetIO::~NetIO(void)
 	internal_log(NULL, VERBOSE_LEVEL, "NetIO: deleting our default gw [route del default]");
 	system("route del default");
 
-	snprintf(tmpsyscmd, MEDIUMBUF, "ifconfig tun%d down", runcopy->tun_number);
-	internal_log(NULL, VERBOSE_LEVEL, "NetIO: shutting down tun%d interface [%s]", runcopy->tun_number, tmpsyscmd);
+	snprintf(tmpsyscmd, MEDIUMBUF, "ifconfig tun%d down", runcopy.tun_number);
+	internal_log(NULL, VERBOSE_LEVEL, "NetIO: shutting down tun%d interface [%s]", runcopy.tun_number, tmpsyscmd);
 	system(tmpsyscmd);
 	close(tunfd);
 
-	snprintf(tmpsyscmd, MEDIUMBUF, "route add default gw %s", runcopy->gw_ip_addr);
+	snprintf(tmpsyscmd, MEDIUMBUF, "route add default gw %s", runcopy.gw_ip_addr);
 	internal_log(NULL, VERBOSE_LEVEL, "NetIO: restoring previous default gateway [%s]", tmpsyscmd);
 	system(tmpsyscmd);
 
@@ -247,7 +246,7 @@ void NetIO::network_io(void)
 				}
 			} else {
 		//		internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network correctly: %d bytes [sniffjoke %s]", 
-		//					 size, runcopy->sj_run == true ? "running" : "stopped");
+		//					 size, runcopy.sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
 				conntrack->writepacket(NETWORK, pktbuf, size);
@@ -263,7 +262,7 @@ void NetIO::network_io(void)
 				}
 			} else {
 		//		internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel correctly: %d bytes [sniffjoke %s]", 
-		//				size, runcopy->sj_run == true ? "running" : "stopped");
+		//				size, runcopy.sj_run == true ? "running" : "stopped");
 
 				/* add packet in connection tracking queue */
 				conntrack->writepacket(TUNNEL, pktbuf, size);
@@ -271,7 +270,7 @@ void NetIO::network_io(void)
 		}
 	}
 
-	if(runcopy->sj_run == true) {
+	if(runcopy.sj_run == true) {
 		/* when sniffjoke is running the packet are analyzed and mangled */
 		conntrack->analyze_packets_queue();
 	} else { /* running->sj_run == false */
@@ -296,7 +295,7 @@ void NetIO::queue_flush(void)
 				check_call_ret("Writing in tunnel", errno, size, false);
 			} else {
 //				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
-//							size, runcopy->sj_run == true ? "running" : "stopped");
+//							size, runcopy.sj_run == true ? "running" : "stopped");
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
@@ -307,7 +306,7 @@ void NetIO::queue_flush(void)
 				check_call_ret("Writing in network", errno, size, false);
 			} else {
 //				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
-//							 size, runcopy->sj_run == true ? "running" : "stopped");
+//							 size, runcopy.sj_run == true ? "running" : "stopped");
 			}
 		}
 		delete pkt;

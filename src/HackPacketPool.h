@@ -19,55 +19,35 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_NETIO_H
-#define SJ_NETIO_H
+#ifndef SJ_HACKPACKETPOOL_H
+#define SJ_HACKPACKETPOOL_H
 
-#include "hardcoded-defines.h"
-#include "UserConf.h"
-#include "TCPTrack.h"
+#include <vector>
+using namespace std;
 
-#include <poll.h>
-#include <netpacket/packet.h>
 
-#define BURSTSIZE       10
+struct PluginTrackError { };
 
-class NetIO {
-private:
-	/* 
-	 * these data are required for handle 
-	 * tunnel/ethernet man in the middle
-	 */
-	struct sockaddr_ll send_ll;
-	struct sj_config &runcopy;
-
-	/* tunfd/netfd: file descriptor for I/O purpose */
-	int tunfd;
-	int netfd;
-
-        /* poll variables, two file descriptors */
-        struct pollfd fds[2];
-
-	TCPTrack *conntrack;
-
-	unsigned char pktbuf[MTU];
-	int size;
-	Packet *pkt;
-
-	bool networkdown_condition;
-
+class PluginTrack {
 public:
+	void *pluginHandler;	
+	constructor_f *fp_CreateHackObj;
+	destructor_f *fp_DeleteHackObj;
+	HackPacket *selfObj;
+	char *pluginPath;
+	bool enabled;
+	unsigned int trackIndex;
 
-	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
-	 *	   --- but not killed!
-	 */
-
-	NetIO(sj_config &);
-	~NetIO(void);
-	void prepare_conntrack(TCPTrack*);
-	void network_io(void);
-	void queue_flush(void);
-	bool is_network_down(void);
-	void set_running(bool);
+	PluginTrack(const char *, unsigned int);
+	PluginTrack(const PluginTrack&);
+	bool verifyPluginIntegrity(void);
 };
 
-#endif /* SJ_NETIO_H */
+class HackPacketPool : public vector<PluginTrack> {
+public:
+	bool fail;
+	HackPacketPool(char*);
+	~HackPacketPool();
+};
+
+#endif /* SJ_HACKPACKETPOOL_H */
