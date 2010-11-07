@@ -1,1 +1,27 @@
 SniffJoke 0.3, transition for 0.4
+
+Requirement:
+
+	Linux OS with tunnel device,
+	wifi/eth default gateway supported only,
+
+Installation (sniffjoke check for the path in your system)
+
+	/usr/local/bin/sniffjoke
+		The binary, service and client
+
+	/usr/local/etc/sniffjoke/plugins_enabled.txt
+		configuration file for plugins enable/disable
+
+	/usr/local/lib/sniffjoke/*
+		SniffJoke plugins
+
+	/usr/local/var/sniffjoke/
+		logfile, chroot directory, unix socket, binary conf & ttl cache
+
+HOW TO INSTALL:
+
+./autogen.sh
+./configure
+make
+make install

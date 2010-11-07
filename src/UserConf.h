@@ -27,17 +27,6 @@
 
 #include <net/ethernet.h>
 
-#define HEAVY		0x04
-#define NORMAL		0x03
-#define LIGHT		0x02
-#define NONE		0x01
-
-#define PORTNUMBER  65535
-
-struct port_range {
-		unsigned short start;
-		unsigned short end;
-};
 
 enum size_buf_t {
 		SMALLBUF = 64,
@@ -62,6 +51,10 @@ struct sj_useropt {
 		FILE *session_logstream;
 };
 
+/* those are the value used for track port strength of TCP coverage */
+#define PORTNUMBER  65535
+enum Strength { NONE = 0, LIGHT = 5, NORMAL = 10, HEAVY = 30 };
+
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool sj_run;				/* default: false = NO RUNNING */
@@ -81,7 +74,8 @@ struct sj_config {
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
 		int tun_number;				/* tunnel interface number */
 		unsigned int port_conf_set_n;		/* number of "set" usage */
-		unsigned char portconf[PORTNUMBER];
+
+		Strength portconf[PORTNUMBER];
 
 		char *error;
 };
@@ -112,9 +106,10 @@ public:
 		char *handle_cmd_start(void);
 		char *handle_cmd_quit(void);
 		char *handle_cmd_info(void);
-		char *handle_cmd_set(unsigned short, unsigned short, unsigned char);
+		char *handle_cmd_set(unsigned short, unsigned short, Strength);
 		char *handle_cmd_showport(void);
 		char *handle_cmd_log(int);
+		char *handle_cmd_status(void);
 };
 
 #endif /* SJ_CONF_H */

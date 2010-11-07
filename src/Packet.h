@@ -143,10 +143,11 @@ public:
 ****/
 
 
+enum Frequency { RARE = 1, UNCOMMON = 10, COMMON = 20, COMPULSIVE = 40 };
 class HackPacket {
 public:
 	unsigned int prescription_probability;
-	unsigned int hack_frequency;
+	Frequency hack_frequency;
 	const char *hackName;
 
 	/* set by constructor of the hacks classess */

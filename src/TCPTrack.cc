@@ -219,23 +219,18 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 	return true;
 }
 
-/* 
- * this two functions is required on hacks injection, because that 
- * injection should happens ALWAYS, but give the less possible elements
- * to the attacker for detects sniffjoke working style
- */
-bool TCPTrack::percentage(float math_choosed, unsigned int vecna_choosed)
-{
-	return ((random() % 100) <= ((int)(math_choosed * vecna_choosed) / 100));
-}
-
 /*  the variable is used from the sniffjoke routing for decreete the possibility of
  *  an hack happens. this variable are mixed in probabiliy with the session->packet_number, because
  *  the hacks must happens, for the most, in the start of the session (the first 10 packets),
- *  other hacks injection should happen in the randomic mode express in logarithm function.
+ *  other hacks injection should happen during the session. Those value are mixed with thr
+ *  selecter port Strengh (none|light|normal|heavy) and the Hack frequency, sets in every hacks plugin
  */
-float TCPTrack::logarithm(int packet_number)
+bool TCPTrack::percentage(unsigned int packet_number, Frequency req_freq, Strength weightness)
 {
+	return true;
+#if 0
+	return ((random() % 100) <= ((int)(math_choosed * vecna_choosed) / 100));
+
 	int blah;
 
 	if (packet_number < 20)
@@ -254,6 +249,7 @@ float TCPTrack::logarithm(int packet_number)
 		return 90.0;
 	else
 		return 0.08;
+#endif
 }
 
 SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt) 
@@ -569,7 +565,11 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 		hppe = &(*it);
 		hppe->enabled = true;
 		hppe->enabled &= hppe->selfObj->Condition(orig_pkt);
-		hppe->enabled &= percentage(logarithm(session->packet_number), hppe->selfObj->hack_frequency);
+		hppe->enabled &= percentage(
+					session->packet_number,
+					hppe->selfObj->hack_frequency,
+					runcopy->portconf[ntohs(orig_pkt.tcp->dest)]
+				);
 	}
 
 	/* -- RANDOMIZE HACKS APPLICATION */

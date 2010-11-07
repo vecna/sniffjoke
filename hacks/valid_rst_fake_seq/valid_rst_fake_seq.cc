@@ -71,7 +71,7 @@ public:
 	valid_rst_fake_seq(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = 8;
+		hack_frequency = RARE;
 	}
 
 };

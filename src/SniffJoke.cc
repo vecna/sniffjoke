@@ -208,6 +208,32 @@ static int sj_bind_unixsocket()
 	return sock;
 }
 
+/* this is the parsing system used in TCP ports configuration */
+static bool parse_port_weight(char *weightstr, Strength *Value) 
+{
+	struct parsedata {
+		const char *keyword;
+		const int keylen;
+		Strength equiv;
+	};
+#define keywordToParse	4
+	struct parsedata wParse[] = {
+		{ "none", 	strlen("none"), 	NONE },
+		{ "light", 	strlen("light"), 	LIGHT },
+		{ "normal", 	strlen("normal"), 	NORMAL },
+		{ "heavy", 	strlen("heavy"), 	HEAVY }
+	};
+	int i;
+
+	for(i = 0; i < keywordToParse; i++) {
+		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
+			*Value = wParse[i].equiv;
+			return true;
+		}
+	}
+	return false;
+}
+
 /* function used in in order to receive command and modify the running conf, display stats and so on */
 static void read_unixsock(int srvsock, UserConf *confobj)
 {
@@ -234,24 +260,36 @@ static void read_unixsock(int srvsock, UserConf *confobj)
 	} else if (!memcmp(r_command, "info", strlen("info"))) {
 		output = sjconf->handle_cmd_info();
 	} else if (!memcmp(r_command, "set", strlen("set"))) {
-		int start_port, end_port, value;
+		int start_port, end_port;
+		Strength setValue;
+		char weight[MEDIUMBUF];
 
-		sscanf(r_command, "set %d %d %d", &start_port, &end_port, &value);
+		sscanf(r_command, "set %d %d %s", &start_port, &end_port, weight);
 
-		if (start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER || 
-			value < 0 || value >= 0x05) 
-		{
+		if (start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER)
+			goto handle_set_error;
+
+		if (!parse_port_weight(weight, &setValue))
+			goto handle_set_error;
+
+		if (start_port > end_port)
+			goto handle_set_error;
+
+		output = sjconf->handle_cmd_set(start_port, end_port, setValue);
+
+handle_set_error:
+		if(output == NULL) {
 			internal_buf = (char *)malloc(MEDIUMBUF);
-			snprintf(internal_buf, MEDIUMBUF, "invalid port, %d or %d, must be > 0 and < %d",
-				start_port, end_port, PORTNUMBER);
+			snprintf(internal_buf, MEDIUMBUF, "invalid set command: [startport] [endport] VALUE\n"\
+				"startport and endport need to be less than %d\n"\
+				"startport nedd to be less or equal endport\n"\
+				"value would be: none|light|normal|heavy\n", PORTNUMBER);
 			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		}
-		else {
-			output = sjconf->handle_cmd_set(start_port, end_port, value);
-		}
 	} else if (!memcmp(r_command, "clear", strlen("clear"))) {
-		output = sjconf->handle_cmd_set(1, PORTNUMBER, NONE);
+		Strength clearValue = NONE;
+		output = sjconf->handle_cmd_set(0, PORTNUMBER, clearValue);
 	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
 		output = sjconf->handle_cmd_showport();
 	} else if (!memcmp(r_command, "loglevel", strlen("loglevel")))  {

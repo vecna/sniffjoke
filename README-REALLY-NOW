@@ -29,14 +29,15 @@ only under Linux environment.
 
 HOW TO COMPILE/INSTALL:
 
-./configure && make 
-cd src/
-./sniffjoke --help
+./configure && make && make install
+(sniffjoke is installed in /usr/local/bin, check your path when you do):
+
+# sniffjoke --help
 
 FEW TECHNICAL INFO:
 
-1) If you start SniffJoke without the configuration parameter sniffjoke will use
-   settings present in /var/sniffjoke/sjconf.bin ).
+1) If you start SniffJoke without the configuration parameter sniffjoke will initialize
+   a new one, 
    If that file does not exist SniffJoke will initialize it with default setting
    or settings provided in command line arguments.
 2) SniffJoke is a software that mangles kernel traffic in userspace. To satisfy
@@ -49,8 +50,8 @@ FEW TECHNICAL INFO:
    how the command line are created grepping for the system() functions, or 
    read the sniffjoke algorithm and commands in:
    http://www.delirandom.net/sniffjoke/network_commands
-5) sjconf.bin is BINARY, should not be edited from the user, and keep track about 
-   your ports setting
+5) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
+   and keep track about your ports setting
 
 Feel free to contribute in the code: GIT= http://github.com/vecna/sniffjoke
 Feel free to contribute in the wiki: http://www.delirandom.net/sniffjoke

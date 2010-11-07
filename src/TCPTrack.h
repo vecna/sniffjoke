@@ -79,8 +79,7 @@ private:
 	HackPacketPool hack_pool;
 
 	bool check_evil_packet(const unsigned char*, unsigned int);
-	bool percentage(float, unsigned int);
-	float logarithm(int);
+	bool percentage(unsigned int, Frequency, Strength);
 
 	SessionTrack* init_sessiontrack(const Packet&);
 	void clear_session(SessionTrackMap::iterator stm_it);

@@ -71,7 +71,7 @@ public:
 	fake_close_fin(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = 5;
+		hack_frequency = COMMON;
 		prescription_probability = 98;
 	}
 };

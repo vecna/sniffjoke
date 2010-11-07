@@ -60,7 +60,7 @@ public:
 	fake_zero_window(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = 5;
+		hack_frequency = RARE;
 		prescription_probability = 93;
 	}
 
