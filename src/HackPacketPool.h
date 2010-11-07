@@ -25,9 +25,6 @@
 #include <vector>
 using namespace std;
 
-
-struct PluginTrackError { };
-
 class PluginTrack {
 public:
 	void *pluginHandler;	
