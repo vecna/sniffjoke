@@ -28,22 +28,26 @@
 #include "TCPTrack.h"
 
 #include <csignal>
+#include <memory>
 #include <fcntl.h>
 #include <getopt.h>
 #include <sys/un.h>
 #include <sys/param.h>
 
-/* process configuration, data struct defined in sniffjoke.h */
+/* proc configuration, data struct defined in sniffjoke.h */
 static struct sj_useropt useropt;
 
+/* proc tracking, handling, killing, breeding, ecc... */
+static auto_ptr<Process> proc;
+
 /* Sniffjoke networking and feature configuration */
-static UserConf *sjconf = NULL;
+static auto_ptr<UserConf> userconf;
+
 /* Sniffjoke man in the middle class and functions */
-static NetIO *mitm = NULL;
+static auto_ptr<NetIO> mitm;
+
 /* Sniffjoke connection tracking class and functions */
-static TCPTrack *conntrack = NULL;
-/* process tracking, handling, killing, breeding, ecc... */
-static Process *SjProc = NULL;
+static auto_ptr<TCPTrack> conntrack;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
@@ -86,31 +90,6 @@ static void sj_version(const char *pname)
 	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
-static void ForcePreviousQuit(pid_t pid)
-{
-	/* the function return when the process is dead */  
-	bool dead = false;
-	int killret;
-
-	/* kill! */
-	killret = kill(pid, SIGTERM);
-	
-	while (!dead) {
-		if (!killret)
-			usleep(50000);
-		else if (errno == EPERM) {
-			internal_log(NULL, ALL_LEVEL, "you have not privileges to kill process (%d)", pid);
-			exit(0);
-		} else /* (errno == ESRCH) */ {
-			dead = true;
-			internal_log(NULL, ALL_LEVEL, "Termination of process: (%d) success (process is dead)", pid);
-		}
-		
-		/* test if the pid is running again */
-		killret = kill(pid, SIGUSR1);
-	}
-}
-
 static void sj_sigtrap(int signal) 
 {
 	if (signal)
@@ -118,25 +97,19 @@ static void sj_sigtrap(int signal)
 		
 	/* different way for closing sniffjoke if the signal come from the father or the child */
 	if(getuid()) {
-		SjProc->ServiceChildClose();
+		proc->serviceChildClose();
 	} 
 	else {
-		if (mitm != NULL)
-			delete mitm;
-		if (conntrack != NULL)
-			delete conntrack;
-		if (sjconf != NULL)
-			delete sjconf;
 
-		SjProc->unlinkPidfile();
-		SjProc->ServiceFatherClose();
+		proc->unlinkPidfile();
+		proc->serviceFatherClose();
 
 		/* ServiceFatherClose don't exit, but verify that the child is die too, because
 		 * is easy for the exiting child be notify in the father, but if the father receive 
 		 * a ^C (foreground) or a SIGTERM, the child must be terminated here
 		 */
 		kill(0, SIGTERM);
-		usleep(50000);
+		sleep(1);
 		exit(0);
 	}
 }
@@ -170,7 +143,7 @@ static int sj_bind_unixsocket()
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
-		SjProc->ServiceFatherClose();
+		proc->serviceFatherClose();
 	}
 
 	memset(&sjsrv, 0x00, sizeof(sjsrv));
@@ -181,7 +154,7 @@ static int sj_bind_unixsocket()
 		if (unlink(sniffjoke_socket_path)) {
 			internal_log(NULL, ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
 				sniffjoke_socket_path, strerror(errno));
-			SjProc->ServiceFatherClose();
+			proc->serviceFatherClose();
 		}
 	}
 								
@@ -190,9 +163,7 @@ static int sj_bind_unixsocket()
 		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
 			 sniffjoke_socket_path, strerror(errno)
 		);
-		delete sjconf;
-		delete mitm;
-		SjProc->ServiceFatherClose();
+		proc->serviceFatherClose();
 	}
 
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
@@ -201,7 +172,7 @@ static int sj_bind_unixsocket()
 			sniffjoke_socket_path, strerror(errno)
 		);
 
-		SjProc->ServiceFatherClose();
+		proc->serviceFatherClose();
 	}
 	internal_log(NULL, VERBOSE_LEVEL, "Successful binding of unix socket in %s", sniffjoke_socket_path);
 
@@ -209,7 +180,7 @@ static int sj_bind_unixsocket()
 }
 
 /* function used in in order to receive command and modify the running conf, display stats and so on */
-static void read_unixsock(int srvsock, UserConf *confobj)
+static void read_unixsock(int srvsock, UserConf *confobj, bool &alive)
 {
 	char r_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
 	int rlen;
@@ -224,15 +195,16 @@ static void read_unixsock(int srvsock, UserConf *confobj)
 	internal_log(NULL, VERBOSE_LEVEL, "received command from the client: %s", r_command);
 
 	if (!memcmp(r_command, "stat", strlen("stat"))) {
-		output = sjconf->handle_cmd_stat();
+		output = userconf->handle_cmd_stat();
 	} else if (!memcmp(r_command, "start", strlen("start"))) {
-		output = sjconf->handle_cmd_start();
+		output = userconf->handle_cmd_start();
 	} else if (!memcmp(r_command, "stop", strlen("stop"))) {
-		output = sjconf->handle_cmd_stop();
+		output = userconf->handle_cmd_stop();
 	} else if (!memcmp(r_command, "quit", strlen("quit"))) {
-		output = sjconf->handle_cmd_quit();
+		output = userconf->handle_cmd_quit();
+		alive = false;
 	} else if (!memcmp(r_command, "info", strlen("info"))) {
-		output = sjconf->handle_cmd_info();
+		output = userconf->handle_cmd_info();
 	} else if (!memcmp(r_command, "set", strlen("set"))) {
 		int start_port, end_port, value;
 
@@ -248,12 +220,12 @@ static void read_unixsock(int srvsock, UserConf *confobj)
 			output = internal_buf;
 		}
 		else {
-			output = sjconf->handle_cmd_set(start_port, end_port, value);
+			output = userconf->handle_cmd_set(start_port, end_port, value);
 		}
 	} else if (!memcmp(r_command, "clear", strlen("clear"))) {
-		output = sjconf->handle_cmd_set(1, PORTNUMBER, NONE);
+		output = userconf->handle_cmd_set(1, PORTNUMBER, NONE);
 	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
-		output = sjconf->handle_cmd_showport();
+		output = userconf->handle_cmd_showport();
 	} else if (!memcmp(r_command, "loglevel", strlen("loglevel")))  {
 		int loglevel;
 
@@ -264,7 +236,7 @@ static void read_unixsock(int srvsock, UserConf *confobj)
 			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		} else {
-			output = sjconf->handle_cmd_log(loglevel);
+			output = userconf->handle_cmd_log(loglevel);
 		}
 	} else {
 		internal_log(NULL, ALL_LEVEL, "wrong command %s", r_command);
@@ -373,10 +345,10 @@ void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...
 	if (errorlevel == SESSION_DEBUG && useropt.session_logstream != NULL)
 		output_flow = useropt.session_logstream;
 
-	/* is checked sjconf->running->debug_level instead of useropt.debug_level
+	/* is checked userconf->running->debug_level instead of useropt.debug_level
 	 * because the user should chage it with the "set" command */
-	if(sjconf != NULL)
-		loglevel = sjconf->running.debug_level;
+	if(userconf.get() != NULL)
+		loglevel = userconf->running.debug_level;
 	else
 		loglevel = useropt.debug_level;
 
@@ -521,36 +493,32 @@ int main(int argc, char **argv)
 	
 	}
 
-	SjProc = new Process(&useropt);
-	if (SjProc->failure) {
+	proc = auto_ptr<Process> (new Process(&useropt));
+	if (proc->failure) {
 		sj_help(argv[0], useropt.chroot_dir);
-		delete SjProc;
 		return 0;
 	}
 
+	userconf = auto_ptr<UserConf> (new UserConf(&useropt));
 
 	/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
 	if (command_input != NULL) 
 	{
-		pid_t service_pid = SjProc->readPidfile();
+		pid_t service_pid = proc->readPidfile();
 
 		if (!service_pid) {
 			internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command %s ignored", command_input);
 			return 0;
 		}
 	
-		/* configuration is required for the client, too, for this reason a service started with a non-default
-		 * chroot need to be used as argument in the client too. */	
-		sjconf = new UserConf(&useropt);
-
 		/* if a user and a group ar not specified, defaults are used */
-		SjProc->Jail(useropt.chroot_dir, &sjconf->running);
-		if (SjProc->failure == true) {
-			internal_log(NULL, ALL_LEVEL, "error in process handling, closing");
-			delete SjProc;
+		proc->jail(useropt.chroot_dir, &userconf->running);
+		if (proc->failure == true) {
+			internal_log(NULL, ALL_LEVEL, "error in proc handling, closing");
+			return 0;
 		}
 
-		SjProc->PrivilegesDowngrade(&sjconf->running);
+		proc->privilegesDowngrade(&userconf->running);
 
 		client_send_command(command_input);
 
@@ -564,7 +532,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if ((previous_pid = SjProc->readPidfile()) != 0)
+	if ((previous_pid = proc->readPidfile()) != 0)
 	{
 		if (previous_pid && !useropt.force_restart) {
 			internal_log(stderr, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
@@ -573,35 +541,23 @@ int main(int argc, char **argv)
 		}
 
 		internal_log(NULL, VERBOSE_LEVEL, "forcing exit of previous running service %d ...", previous_pid);
-		ForcePreviousQuit(previous_pid); 
+		system("sniffjoke quit");
+		sleep(5);
 		internal_log(NULL, ALL_LEVEL, "A new instance of sniffjoke is going running in background");
-		/* required because the previous sniffjoke must cleanup the routing ambaradam, fifty thousand millisecs */
-		usleep(50000);
-		/* for two times, because sometime I get the race condition of an unfound gateway */
-		usleep(50000);
 	} 
 
-	/* the configuration of sniffjoke for the service instance is readed after the possibile killing of 
-	 * the previous instance. */	
-	sjconf = new UserConf(&useropt);
-
 	/* running the network setup before the background, for keep the software output visible on the console */
-	sjconf->network_setup();
-
-	/* loading the plugins used for tcp hacking */
-	conntrack = new TCPTrack(sjconf);
-	if(conntrack->fail == true) {
-		internal_log(NULL, ALL_LEVEL, "fatal error in initialization hacks plugin, aborted");
-		return 0;
-	}
+	userconf->network_setup();
 
 	if (!useropt.go_foreground) 
 	{
-		SjProc->SjBackground();
-		SjProc->processIsolation();
+		proc->background();
+		proc->isolation();
 
-		if (SjProc->failure) 
-			delete SjProc;
+		if (proc->failure) {
+			internal_log(NULL, ALL_LEVEL, "error in proc handling, closing");
+			return 0;
+		} 
 	}
 	else {
 		useropt.logstream = stdout;
@@ -609,10 +565,10 @@ int main(int argc, char **argv)
 	}
 
 	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
-	SjProc->sigtrapSetup(sj_sigtrap);
+	proc->sigtrapSetup(sj_sigtrap);
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
-	mitm = new NetIO(sjconf);
+	mitm = auto_ptr<NetIO> (new NetIO(userconf.get()));
 
 	if (mitm->is_network_down())
 	{
@@ -620,11 +576,21 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	/* processDetatch, with root permission open the pidfile and in user perm write the child's pid */
-	SjProc->processDetach();
+	/* ProcessDetatch, with root permission open the pidfile and in user perm write the child's pid */
 
-	/* Jail chroot + privileges downgrade */	
-	SjProc->Jail(useropt.chroot_dir, &sjconf->running);
+	proc->detach();
+
+	/* loading the plugins used for tcp hacking */
+	conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.get()));
+	if(conntrack->fail == true) {
+		internal_log(NULL, ALL_LEVEL, "fatal error in initialization hacks plugin, aborted");
+		return 0;
+	}
+
+	mitm->prepare_conntrack(conntrack.get());
+
+	/* jail chroot + privileges downgrade */	
+	proc->jail(useropt.chroot_dir, &userconf->running);
 
 	/* background running, with different loglevel. logfile opened below: */
 	if (!useropt.go_foreground) {	
@@ -663,40 +629,38 @@ int main(int argc, char **argv)
 		}
 	}
 
-	SjProc->PrivilegesDowngrade(&sjconf->running);
+	proc->privilegesDowngrade(&userconf->running);
 
 	listening_unix_socket = sj_bind_unixsocket();
 
-	if (sjconf->running.sj_run == false)
+	if (userconf->running.sj_run == false)
 		internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it");
 
-	mitm->prepare_conntrack(conntrack);
-
 	/* main block */
-	while (1) {
+	bool alive = true;
+	while (alive) {
 
-		SjProc->sigtrapDisable();
+		proc->sigtrapDisable();
 
 		mitm->network_io();
 		mitm->queue_flush();
 
 		if (mitm->is_network_down()) {
-			if (sjconf->running.sj_run == true) {
+			if (userconf->running.sj_run == true) {
 				internal_log(NULL, ALL_LEVEL, "Network is down, interrupting sniffjoke");
-				sjconf->running.sj_run = false;
+				userconf->running.sj_run = false;
 				restart_on_restore = true;
 			}
 		} else {
 			if (restart_on_restore == true) {
 				internal_log(NULL, ALL_LEVEL, "Network restored, restarting sniffjoke");
-				sjconf->running.sj_run = true;
+				userconf->running.sj_run = true;
 				restart_on_restore = false;
 			}
 		}
 		
-		read_unixsock(listening_unix_socket, sjconf);
+		read_unixsock(listening_unix_socket, userconf.get(), alive);
 
-		SjProc->sigtrapEnable();
+		proc->sigtrapEnable();
 	}
-	/* nevah here */
 }

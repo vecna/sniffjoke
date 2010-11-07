@@ -8,8 +8,8 @@ fake_close_fin.so
 fake_data_anticipation.so
 fake_data_posticipation.so
 fake_seq.so
-fake_syn.so
-fake_zero_window.so
-shift_ack.so
+#fake_syn.so
+#fake_zero_window.so
+#shift_ack.so
 valid_rst_fake_seq.so
 # regards

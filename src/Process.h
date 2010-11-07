@@ -48,17 +48,17 @@ public:
 	void unlinkPidfile();
 	void openPidfile();
 
-	void processDetach() ;
-	void Jail(const char *chroot_dir, struct sj_config *running);
-	void PrivilegesDowngrade(struct sj_config *running);
+	void detach() ;
+	void jail(const char *chroot_dir, struct sj_config *running);
+	void privilegesDowngrade(struct sj_config *running);
 	void sigtrapSetup(sig_t sigtrap_function);
 	void sigtrapEnable();
 	void sigtrapDisable();
-	void SjBackground();
-	void processIsolation() ;
+	void background();
+	void isolation() ;
 
-	void ServiceFatherClose();
-	void ServiceChildClose();
+	void serviceFatherClose();
+	void serviceChildClose();
 };
 
 #endif /* SJ_Process_H */

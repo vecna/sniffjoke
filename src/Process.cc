@@ -30,7 +30,7 @@
 #include <wait.h>
 #include <sys/un.h>
 
-void Process::processDetach() 
+void Process::detach() 
 {
 	pid_t pid, pid_child;
 	int pdes[2];
@@ -83,7 +83,7 @@ void Process::processDetach()
 		/* the pidfile contains the child pid, whenever is killed, the father detect via waitpid */
 		Process::writePidfile();
 
-		processIsolation();
+		isolation();
 		pid = getpid();
 
 		close(pdes[0]);
@@ -93,7 +93,7 @@ void Process::processDetach()
 	internal_log(NULL, DEBUG_LEVEL, "forked process continue sniffjoke running, pid %d", getpid());
 }
 
-void Process::Jail(const char *chroot_dir, struct sj_config *running) 
+void Process::jail(const char *chroot_dir, struct sj_config *running) 
 {
 	userinfo = getpwnam(running->user);
 	groupinfo = getgrnam(running->group);
@@ -114,11 +114,12 @@ void Process::Jail(const char *chroot_dir, struct sj_config *running)
 	internal_log(NULL, VERBOSE_LEVEL, "chroot'ed process %d in %s", getpid(), chroot_dir);
 }
 
-void Process::PrivilegesDowngrade(struct sj_config *running)
+void Process::privilegesDowngrade(struct sj_config *running)
 {
 	if (userinfo == NULL || groupinfo == NULL) {
 		internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s, %s", running->user, running->group);
 		failure = true;
+		return;
 	}
 
 	if (setgid(groupinfo->gr_gid) || setuid(userinfo->pw_uid)) {
@@ -133,14 +134,14 @@ void Process::PrivilegesDowngrade(struct sj_config *running)
 /* these Servece*Closed routines are called by a runtime execution or from the 
  * signal handler, the objects are been already deleted - for this reason 
  * internal_log is not called */
-void Process::ServiceFatherClose() 
+void Process::serviceFatherClose() 
 {
 	kill(tracked_child_pid, SIGTERM); // FIXME - tracked_child_pid is not correct
 	/* let the child express his last desire */
 	waitpid(tracked_child_pid, NULL, WUNTRACED);
 }
 
-void Process::ServiceChildClose() {
+void Process::serviceChildClose() {
 	/* ServiceChildClose can't use debugging line because the instance object could be already deleted */
 	exit(0);
 }
@@ -228,7 +229,7 @@ void Process::writePidfile(void)
 	}
 }
 
-void Process::SjBackground() 
+void Process::background() 
 {
 	int i;
 
@@ -244,7 +245,7 @@ void Process::SjBackground()
 	
 }
 
-void Process::processIsolation()
+void Process::isolation()
 {
 	setsid();
 	umask(027);
@@ -256,5 +257,6 @@ Process::Process(struct sj_useropt *useropt)
 	if (getuid() || geteuid())  {
 		printf("required root privileges\n");
 		failure = true;
+		return;
 	}
 }

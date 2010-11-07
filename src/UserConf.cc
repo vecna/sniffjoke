@@ -143,7 +143,7 @@ void UserConf::autodetect_gw_mac_address()
 	internal_log(NULL, ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running.gw_ip_addr, cmd);
 	
 	system(cmd);
-	usleep(50000);
+	sleep(1);
 	memset(cmd, 0x00, MEDIUMBUF);
 	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running.gw_ip_addr);
 	internal_log(NULL, ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
@@ -189,6 +189,7 @@ void UserConf::autodetect_first_available_tunnel_interface()
 /* this method is used only in the ProcessType = SERVICE CHILD */
 void UserConf::network_setup(void)
 {
+
 	internal_log(NULL, DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
 
 	if(running.sj_run)
@@ -335,17 +336,15 @@ char *UserConf::handle_cmd_info(void)
 
 char *UserConf::handle_cmd_quit(void)
 {
+
+	memset(io_buf, 0x00, HUGEBUF);
+
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
 	/* dump the configuration in the binconf file */
 	dump();
 
-	if(!fork()) {
-		usleep(500); 
-		kill(getppid(), SIGTERM); 
-		raise(SIGTERM);
-	}
+	snprintf(io_buf, HUGEBUF, "dumped configuration, starting shutdown\n");
 
-	snprintf(io_buf, HUGEBUF, "dumped configuration, selfkilling with SIGTERM\n");
 	return &io_buf[0];
 }
 

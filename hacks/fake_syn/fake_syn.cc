@@ -77,11 +77,6 @@ public:
 		return ret;
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
-	{
-		return (orig_packet.payload != NULL);
-	}
-
 	fake_syn(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
