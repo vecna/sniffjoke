@@ -86,8 +86,7 @@ public:
 	fake_seq(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = RARE;
-		prescription_probability = 98;
+		hack_frequency = TIMEBASED5S;
 	}
 
 };

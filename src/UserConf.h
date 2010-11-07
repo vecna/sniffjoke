@@ -53,7 +53,7 @@ struct sj_useropt {
 
 /* those are the value used for track port strength of TCP coverage */
 #define PORTNUMBER  65535
-enum Strength { NONE = 0, LIGHT = 5, NORMAL = 10, HEAVY = 30 };
+enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */

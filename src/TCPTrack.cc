@@ -219,37 +219,86 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 	return true;
 }
 
-/*  the variable is used from the sniffjoke routing for decreete the possibility of
+/*  
+ *  the variable is used from the sniffjoke routing for decreete the possibility of
  *  an hack happens. this variable are mixed in probabiliy with the session->packet_number, because
  *  the hacks must happens, for the most, in the start of the session (the first 10 packets),
  *  other hacks injection should happen during the session. Those value are mixed with thr
- *  selecter port Strengh (none|light|normal|heavy) and the Hack frequency, sets in every hacks plugin
+ *  selecter port Strengh (none|light|normal|heavy) and the Hack frequency,
+ *  better explanation about this algorithm in http://www.delirandom.net/sniffjoke/plugin
  */
-bool TCPTrack::percentage(unsigned int packet_number, Frequency req_freq, Strength weightness)
+bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Strength weightness)
 {
-	return true;
-#if 0
-	return ((random() % 100) <= ((int)(math_choosed * vecna_choosed) / 100));
+	unsigned int this_percentage, freqret = 0;
+	time_t now;
+	switch(freqkind) {
+		case RARE:
+			freqret = 3;
+			break;
+		case COMMON:
+			freqret = 7;
+			break;
+		case PACKETS10PEEK:
+			if( !(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10) )
+				freqret = 10;
+			else
+				freqret = 1;
+			break;
+		case PACKETS30PEEK:
+			if( !(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30) )
+				freqret = 10;
+			else
+				freqret = 1;
+			break;
+		case TIMEBASED5S:
+			now = time(NULL);
+			if( !((unsigned int)now % 5) )
+				freqret = 12;
+			else
+				freqret = 1;
+			break;
+		case TIMEBASED20S:
+			now = time(NULL);
+			if( !((unsigned int)now % 20) )
+				freqret = 12;
+			else
+				freqret = 1;
+			break;
+		case STARTPEEK:
+			if( packet_number < 20)
+				freqret = 10;
+			else if ( packet_number < 40)
+				freqret = 5;
+			else
+				freqret = 1;
+			break;
+		case LONGPEEK:
+			if( packet_number < 60)
+				freqret = 8;
+			else if ( packet_number < 120)
+				freqret = 4;
+			else
+				freqret = 1;
+			break;
+	}
 
-	int blah;
+	/* the "NORMAL" transform a freqret of "10" in 80% of hack probability */
+	switch(weightness) {
+		case NONE:
+			this_percentage = freqret * 0;
+			break;
+		case LIGHT:
+			this_percentage = freqret * 4;
+			break;
+		case NORMAL:
+			this_percentage = freqret * 8;
+			break;
+		case HEAVY:
+			this_percentage = freqret * 12;
+			break;
+	}
 
-	if (packet_number < 20)
-		return 150.9;
-
-	if (packet_number > 10000)
-		blah = (packet_number / 10000) * 10000;
-	else if (packet_number > 1000)
-		blah = (packet_number / 1000) * 1000;
-	else if (packet_number > 100)
-		blah = (packet_number / 100) * 100;
-	else
-		return 2.2; /* x > 20 && x < 100 */
-
-	if (blah == packet_number)
-		return 90.0;
-	else
-		return 0.08;
-#endif
+	return ( ( ( random() + 1 ) % 100) + 1 <= this_percentage );
 }
 
 SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt) 

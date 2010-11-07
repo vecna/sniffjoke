@@ -66,7 +66,7 @@ public:
 	shift_ack(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = COMPULSIVE;
+		hack_frequency = RARE;
 	}
 
 };

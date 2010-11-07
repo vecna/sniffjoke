@@ -142,11 +142,12 @@ public:
  *
 ****/
 
+/* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
+enum Frequency { RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
+		 TIMEBASED5S = 5, TIMEBASED20S = 6, STARTPEEK = 7, LONGPEEK = 8 };
 
-enum Frequency { RARE = 1, UNCOMMON = 10, COMMON = 20, COMPULSIVE = 40 };
 class HackPacket {
 public:
-	unsigned int prescription_probability;
 	Frequency hack_frequency;
 	const char *hackName;
 
@@ -162,7 +163,7 @@ public:
 
 typedef HackPacket * constructor_f(const int); 
 	// extern(ed) "C" as HackPacket* CreateHackObject
-typedef void destructor_f(HackPacket *);  // TODO - need to be used and is not used in the destruction routine
+typedef void destructor_f(HackPacket *);  
 	// extern(ed) "C" as void DeleteHackObject
 
 #endif /* SJ_PACKET_H */

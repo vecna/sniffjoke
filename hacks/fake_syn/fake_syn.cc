@@ -85,8 +85,7 @@ public:
 	fake_syn(int plugin_index) {
 		track_index = plugin_index;
 		hackName = HACK_NAME;
-		hack_frequency = UNCOMMON;
-		prescription_probability = 98;
+		hack_frequency = RARE;
 	}
 
 };
