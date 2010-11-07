@@ -628,8 +628,6 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	mitm->prepare_conntrack(conntrack.get());
-
 	/* jail chroot + privileges downgrade */	
 	proc->jail(useropt.chroot_dir, &userconf->running);
 
@@ -671,6 +669,9 @@ int main(int argc, char **argv)
 	}
 
 	proc->privilegesDowngrade(&userconf->running);
+
+	conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf->running, *hack_pool));
+	mitm->prepare_conntrack(conntrack.get());
 
 	listening_unix_socket = sj_bind_unixsocket();
 
