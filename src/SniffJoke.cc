@@ -537,27 +537,18 @@ int main(int argc, char **argv)
 	userconf = auto_ptr<UserConf> (new UserConf(useropt));
 
 	proc = auto_ptr<Process> (new Process(userconf->running.user, userconf->running.group, userconf->running.chroot_dir));
-	if (proc->failure) {
-		sj_help(argv[0], useropt.chroot_dir);
-		return 0;
-	}
 
 	/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
-	if (command_input != NULL) 
-	{
+	if (command_input != NULL) {
 		pid_t service_pid = proc->readPidfile();
 
 		if (!service_pid) {
 			internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command %s ignored", command_input);
 			return 0;
 		}
-	
-		/* if a user and a group ar not specified, defaults are used */
+
+		/* chroot jail */
 		proc->jail();
-		if (proc->failure == true) {
-			internal_log(NULL, ALL_LEVEL, "error in proc handling, closing");
-			return 0;
-		}
 
 		proc->privilegesDowngrade();
 
@@ -573,8 +564,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if ((previous_pid = proc->readPidfile()) != 0)
-	{
+	if ((previous_pid = proc->readPidfile()) != 0) {
 		if (previous_pid && !useropt.force_restart) {
 			internal_log(stderr, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
 			internal_log(stderr, ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, previous_pid);
@@ -590,17 +580,10 @@ int main(int argc, char **argv)
 	/* running the network setup before the background, for keep the software output visible on the console */
 	userconf->network_setup();
 
-	if (!useropt.go_foreground) 
-	{
+	if (!useropt.go_foreground) {
 		proc->background();
 		proc->isolation();
-
-		if (proc->failure) {
-			internal_log(NULL, ALL_LEVEL, "error in proc handling, closing");
-			return 0;
-		} 
-	}
-	else {
+	} else {
 		useropt.logstream = stdout;
 		internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 	}
@@ -611,8 +594,7 @@ int main(int argc, char **argv)
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = auto_ptr<NetIO> (new NetIO(userconf->running));
 
-	if (mitm->is_network_down())
-	{
+	if (mitm->is_network_down()) {
 		internal_log(stderr, ALL_LEVEL, "detected network error in NetIO constructor: unable to start sniffjoke");
 		return 0;
 	}
@@ -628,7 +610,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	/* jail chroot + privileges downgrade */	
+	/* chroot jail */
 	proc->jail();
 
 	/* background running, with different loglevel. logfile opened below: */

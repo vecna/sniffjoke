@@ -42,8 +42,7 @@ void Process::detach()
 
 	if ((pid_child = fork()) == -1) {
 		internal_log(NULL, ALL_LEVEL, "unable to fork (calling pid %d, parent %d)", getpid(), getppid());
-		failure = true;
-		return;
+		raise(SIGTERM);
 	}
 
 	if (pid_child)
@@ -97,22 +96,21 @@ void Process::jail()
 {
 	if(chroot_dir == NULL) {
                 internal_log(stderr, ALL_LEVEL, "jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
-                failure = true;
+                raise(SIGTERM);
 	}
 
 	mkdir(chroot_dir, 0700);
 
 	if (chown(chroot_dir, userinfo->pw_uid, groupinfo->gr_gid)) {
                 internal_log(stderr, ALL_LEVEL, "chown of %s to %s:%s failed: %s: unable to start sniffjoke", chroot_dir, user, group, strerror(errno));
-		failure = true;
-		return;
+		raise(SIGTERM);
 	}
 
 	if (chdir(chroot_dir) || chroot(chroot_dir)) {
 		internal_log(stderr, ALL_LEVEL, "chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
-		failure = true;
-		return;
+		raise(SIGTERM);
 	}
+
 	internal_log(NULL, VERBOSE_LEVEL, "chroot'ed process %d in %s", getpid(), chroot_dir);
 }
 
@@ -252,8 +250,7 @@ Process::Process(const char* usr, const char* grp, const char* chdir)
 {
 	if (getuid() || geteuid())  {
 		printf("required root privileges\n");
-		failure = true;
-		return;
+		raise(SIGTERM);
 	}
 
 	user = usr;

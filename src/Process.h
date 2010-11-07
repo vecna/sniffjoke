@@ -44,7 +44,6 @@ private:
 	FILE *pidFile;
 public:
 	pid_t tracked_child_pid;
-	bool failure;
 	
 	Process(const char* user, const char* group, const char* chroot_dir);
 
