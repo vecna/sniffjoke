@@ -32,35 +32,36 @@
  * KNOW BUGS:
  */
 
-#include "Packet.h"
-#include "Utils.h"
+#include "Hack.h"
 
-class fake_close_fin : public HackPacket
+class fake_close_fin : public Hack
 {
 #define HACK_NAME	"Fake Fin"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual void createHack(Packet &orig_packet)
 	{
-		Packet* ret = new Packet(orig_packet);
-		
-		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		Packet* pkt = new Packet(orig_packet);
 
-		ret->resizePayload(0);
-		ret->fillRandomPayload();
+		orig_packet.selflog(HACK_NAME, "Original packet");		
 
-		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
-		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) - original_size + 1);
+		const int original_size = pkt->orig_pktlen - (pkt->ip->ihl * 4) - (pkt->tcp->doff * 4);
 
-		ret->tcp->psh = 0;
-		ret->tcp->fin = 1;
+		pkt->resizePayload(0);
+		pkt->fillRandomPayload();
 
-		ret->position = ANTICIPATION;
-		ret->wtf = RANDOMDAMAGE;
-		ret->proto = TCP;
+		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - original_size + 1);
 
-		ret->selflog(HACK_NAME, "Hacked packet");
-		return ret;
+		pkt->tcp->psh = 0;
+		pkt->tcp->fin = 1;
+
+		pkt->position = ANTICIPATION;
+		pkt->wtf = RANDOMDAMAGE;
+		pkt->proto = TCP;
+
+		pkt->selflog(HACK_NAME, "Hacked packet");
+
+		pktVector.push_back(pkt);
 	}
 
 	virtual bool Condition(const Packet &orig_packet)
@@ -68,17 +69,16 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	fake_close_fin(int plugin_index) {
-		track_index = plugin_index;
+	fake_close_fin() {
 		hackName = HACK_NAME;
-		hack_frequency = PACKETS30PEEK;
+		hackFrequency = PACKETS30PEEK;
 	}
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
-	return new fake_close_fin(plugin_tracking_index);
+extern "C"  Hack* CreateHackObject() {
+	return new fake_close_fin();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }

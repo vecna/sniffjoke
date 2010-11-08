@@ -34,32 +34,33 @@
  * 	      from your box.
  */
 
-#include "Packet.h"
+#include "Hack.h"
 
-class fake_close_rst : public HackPacket
+class fake_close_rst : public Hack
 {
 #define HACK_NAME	"Fake RST"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual void createHack(Packet &orig_packet)
 	{
-		Packet* ret = new Packet(orig_packet);
+		Packet* pkt = new Packet(orig_packet);
+
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-		const int original_size = ret->orig_pktlen - (ret->ip->ihl * 4) - (ret->tcp->doff * 4);
+		const int original_size = pkt->orig_pktlen - (pkt->ip->ihl * 4) - (pkt->tcp->doff * 4);
 
-		ret->resizePayload(0);
-		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
-		ret->tcp->psh = 0;
-		ret->tcp->rst = 1;
-		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) - original_size + 1);
-		ret->fillRandomPayload();
+		pkt->resizePayload(0);
+		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+		pkt->tcp->psh = 0;
+		pkt->tcp->rst = 1;
+		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - original_size + 1);
+		pkt->fillRandomPayload();
 
-		ret->position = ANTICIPATION;
-		ret->wtf = RANDOMDAMAGE;
+		pkt->position = ANTICIPATION;
+		pkt->wtf = RANDOMDAMAGE;
 
-		ret->selflog(HACK_NAME, "Hacked packet");
+		pkt->selflog(HACK_NAME, "Hacked packet");
 
-		return ret;
+		pktVector.push_back(pkt);
 	}
 
 	virtual bool Condition(const Packet &orig_packet)
@@ -67,17 +68,16 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	fake_close_rst(int plugin_index) {
-		track_index = plugin_index;
+	fake_close_rst() {
 		hackName = HACK_NAME;
-		hack_frequency = TIMEBASED20S;
+		hackFrequency = TIMEBASED20S;
 	}
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracked_index) {
-	return new fake_close_rst(plugin_tracked_index);
+extern "C"  Hack* CreateHackObject() {
+	return new fake_close_rst();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }

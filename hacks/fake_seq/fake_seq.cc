@@ -34,48 +34,49 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "Packet.h"
+#include "Hack.h"
 
-class fake_seq : public HackPacket
+class fake_seq : public Hack
 {
 #define HACK_NAME	"Fake SEQ"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual void createHack(Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
-		Packet* ret = new Packet(orig_packet);
 
-		int diff = ntohs(ret->ip->tot_len) - ((ret->ip->ihl * 4) + (ret->tcp->doff * 4));
+		Packet* pkt = new Packet(orig_packet);
+
+		int diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
 		
 		if(diff > 200) {
 			diff = random() % 200;
-			ret->resizePayload(diff);
+			pkt->resizePayload(diff);
 		}	
 		
 		int what = (random() % 3);
 
-		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
+		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 
 		if (what == 0)
 			what = 2;
 
 		if (what == 1) 
-			ret->tcp->seq = htonl(ntohl(ret->tcp->seq) - (random() % 5000));
+			pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
 
 		if (what == 2)
-			ret->tcp->seq = htonl(ntohl(ret->tcp->seq) + (random() % 5000));
+			pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
 				
-		ret->tcp->window = htons((random() % 80) * 64);
-		ret->tcp->ack = ret->tcp->ack_seq = 0;
+		pkt->tcp->window = htons((random() % 80) * 64);
+		pkt->tcp->ack = pkt->tcp->ack_seq = 0;
 
-		ret->fillRandomPayload();
+		pkt->fillRandomPayload();
 
-		ret->position = ANY_POSITION;
-		ret->wtf = RANDOMDAMAGE;
+		pkt->position = ANY_POSITION;
+		pkt->wtf = RANDOMDAMAGE;
 
-		ret->selflog(HACK_NAME, "Hacked packet");
+		pkt->selflog(HACK_NAME, "Hacked packet");
 
-		return ret;
+		pktVector.push_back(pkt);
 	}
 
 	virtual bool Condition(const Packet &orig_packet)
@@ -83,18 +84,17 @@ public:
 		return (orig_packet.payload != NULL);
 	}
 
-	fake_seq(int plugin_index) {
-		track_index = plugin_index;
+	fake_seq() {
 		hackName = HACK_NAME;
-		hack_frequency = TIMEBASED5S;
+		hackFrequency = TIMEBASED5S;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
-	return new fake_seq(plugin_tracking_index);
+extern "C"  Hack* CreateHackObject() {
+	return new fake_seq();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }

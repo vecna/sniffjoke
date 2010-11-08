@@ -19,8 +19,10 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_HACKPACKETPOOL_H
-#define SJ_HACKPACKETPOOL_H
+#ifndef SJ_HACKPOOL_H
+#define SJ_HACKPOOL_H
+
+#include "Hack.h"
 
 #include <vector>
 using namespace std;
@@ -30,7 +32,7 @@ public:
 	void *pluginHandler;	
 	constructor_f *fp_CreateHackObj;
 	destructor_f *fp_DeleteHackObj;
-	HackPacket *selfObj;
+	Hack* selfObj;
 	char *pluginPath;
 	bool enabled;
 	unsigned int trackIndex;
@@ -40,11 +42,11 @@ public:
 	bool verifyPluginIntegrity(void);
 };
 
-class HackPacketPool : public vector<PluginTrack> {
+class HackPool : public vector<PluginTrack> {
 public:
 	bool fail;
-	HackPacketPool(char*);
-	~HackPacketPool();
+	HackPool(char*);
+	~HackPool();
 };
 
-#endif /* SJ_HACKPACKETPOOL_H */
+#endif /* SJ_HACKPOOL_H */

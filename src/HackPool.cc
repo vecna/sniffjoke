@@ -75,7 +75,7 @@ bool PluginTrack::verifyPluginIntegrity(void)
 		return false;
 	}
 
-	if(selfObj->hack_frequency == 0) {
+	if(selfObj->hackFrequency == 0) {
 		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d (%s) lack of ->hack_frequency", 
 			trackIndex, selfObj->hackName);
 		return false;
@@ -85,15 +85,15 @@ bool PluginTrack::verifyPluginIntegrity(void)
 }
 
 /*
- * the constructor of HackPacketPool is called once; in the TCPTrack constructor the class member
+ * the constructor of HackPool is called once; in the TCPTrack constructor the class member
  * hack_pool is instanced. what we need here is to read the entire plugin list, open and fix the
  * list, keeping track in listOfHacks variable
  *
  *    hack_pool(sjconf->running)
  *
- * (class TCPTrack).hack_pool is the name of the unique HackPacketPool element
+ * (class TCPTrack).hack_pool is the name of the unique HackPool element
  */
-HackPacketPool::HackPacketPool(char* enabler) :
+HackPool::HackPool(char* enabler) :
 	fail(false) 
 {
 	char plugabspath[MEDIUMBUF];
@@ -163,7 +163,7 @@ HackPacketPool::HackPacketPool(char* enabler) :
 	 */
 }
 
-HackPacketPool::~HackPacketPool() 
+HackPool::~HackPool() 
 {
 	/* call the distructor loaded from the plugins */
 	vector<PluginTrack>::iterator it;

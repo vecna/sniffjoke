@@ -27,10 +27,7 @@
 #include "PacketQueue.h"
 #include "SessionTrack.h"
 #include "TTLfocus.h"
-#include "HackPacketPool.h"
-
-/* in debug mode, an invalid plugin cause sniffjoke to sucide himself via SIGTERM */
-//#include <signal.h>
+#include "HackPool.h"
 
 class TCPTrack {
 private:
@@ -40,7 +37,7 @@ private:
 	PacketQueue p_queue;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
-	HackPacketPool &hack_pool;
+	HackPool &hack_pool;
 
 	bool check_evil_packet(const unsigned char*, unsigned int);
 	bool percentage(unsigned int, Frequency, Strength);
@@ -64,7 +61,7 @@ private:
 	void last_pkt_fix(Packet&);
 
 public:
-	TCPTrack(sj_config&, HackPacketPool&);
+	TCPTrack(sj_config&, HackPool&);
 	~TCPTrack(void);
 
 	bool writepacket(const source_t, const unsigned char*, int);

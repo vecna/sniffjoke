@@ -33,43 +33,44 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "Packet.h"
+#include "Hack.h"
 
-class fake_zero_window : public HackPacket
+class fake_zero_window : public Hack
 {
 #define HACK_NAME	"Fake 0-window"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual void createHack(Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
-		Packet* ret = new Packet(orig_packet);
 
-		ret->resizePayload(0);
+		Packet* pkt = new Packet(orig_packet);
 
-		ret->tcp->syn = ret->tcp->fin = ret->tcp->rst = 0;
-		ret->tcp->psh = ret->tcp->ack = 0;
-		ret->tcp->window = 0;
+		pkt->resizePayload(0);
 
-		ret->position = ANY_POSITION;
-		ret->wtf = RANDOMDAMAGE;
+		pkt->tcp->syn = pkt->tcp->fin = pkt->tcp->rst = 0;
+		pkt->tcp->psh = pkt->tcp->ack = 0;
+		pkt->tcp->window = 0;
 
-		ret->selflog(HACK_NAME, "Hacked packet");
-		return ret;
+		pkt->position = ANY_POSITION;
+		pkt->wtf = RANDOMDAMAGE;
+
+		pkt->selflog(HACK_NAME, "Hacked packet");
+
+		pktVector.push_back(pkt);
 	}
 
-	fake_zero_window(int plugin_index) {
-		track_index = plugin_index;
+	fake_zero_window() {
 		hackName = HACK_NAME;
-		hack_frequency = TIMEBASED20S;
+		hackFrequency = TIMEBASED20S;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
-	return new fake_zero_window(plugin_tracking_index);
+extern "C"  Hack* CreateHackObject() {
+	return new fake_zero_window();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }
 

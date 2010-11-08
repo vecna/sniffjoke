@@ -37,25 +37,27 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "Packet.h"
+#include "Hack.h"
 
-class shift_ack : public HackPacket
+class shift_ack : public Hack
 {
 #define HACK_NAME	"unexpected ACK shift"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual void createHack(Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
-		Packet* ret = new Packet(orig_packet);
 
-		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
-		ret->tcp->ack_seq = htonl(ntohl(ret->tcp->ack_seq) + 65535);
+		Packet* pkt = new Packet(orig_packet);
 
-		ret->position = ANY_POSITION;
-		ret->wtf = INNOCENT;
+		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) + 65535);
 
-		ret->selflog(HACK_NAME, "Hacked packet");
-		return ret;
+		pkt->position = ANY_POSITION;
+		pkt->wtf = INNOCENT;
+
+		pkt->selflog(HACK_NAME, "Hacked packet");
+
+		pktVector.push_back(pkt);
 	}
 
 	virtual bool Condition(const Packet &orig_packet)
@@ -63,19 +65,18 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	shift_ack(int plugin_index) {
-		track_index = plugin_index;
+	shift_ack() {
 		hackName = HACK_NAME;
-		hack_frequency = RARE;
+		hackFrequency = RARE;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
-	return new shift_ack(plugin_tracking_index);
+extern "C"  Hack* CreateHackObject() {
+	return new shift_ack();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }
 

@@ -34,61 +34,61 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "Packet.h"
+#include "Hack.h"
 
-class fake_syn : public HackPacket
+class fake_syn : public Hack
 {
 #define HACK_NAME	"Fake SYN"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual	void createHack(Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
-		Packet* ret = new Packet(orig_packet);
 
-		ret->resizePayload(0);
+		Packet* pkt = new Packet(orig_packet);
+
+		pkt->resizePayload(0);
 	  
-		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
+		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 
-		ret->tcp->psh = 0;
-		ret->tcp->syn = 1;
+		pkt->tcp->psh = 0;
+		pkt->tcp->syn = 1;
 
-		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) + 65535 + (random() % 5000));
+		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
 
 		/* 20% is a SYN ACK */
 		if ((random() % 5) == 0) { 
-			ret->tcp->ack = 1;
-			ret->tcp->ack_seq = random();
+			pkt->tcp->ack = 1;
+			pkt->tcp->ack_seq = random();
 		} else {
-			ret->tcp->ack = ret->tcp->ack_seq = 0;
+			pkt->tcp->ack = pkt->tcp->ack_seq = 0;
 		}
 
 		/* 20% had source and dest port reversed */
 		if ((random() % 5) == 0) {
-			unsigned short swap = ret->tcp->source;
-			ret->tcp->source = ret->tcp->dest;
-			ret->tcp->dest = swap;
+			unsigned short swap = pkt->tcp->source;
+			pkt->tcp->source = pkt->tcp->dest;
+			pkt->tcp->dest = swap;
 		}
 
-		ret->position = ANTICIPATION;
-		ret->wtf = RANDOMDAMAGE;
+		pkt->position = ANTICIPATION;
+		pkt->wtf = RANDOMDAMAGE;
 		
-		ret->selflog(HACK_NAME, "Hacked packet");
+		pkt->selflog(HACK_NAME, "Hacked packet");
 
-		return ret;
+		pktVector.push_back(pkt);
 	}
 
-	fake_syn(int plugin_index) {
-		track_index = plugin_index;
+	fake_syn() {
 		hackName = HACK_NAME;
-		hack_frequency = RARE;
+		hackFrequency = RARE;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
-	return new fake_syn(plugin_tracking_index);
+extern "C"  Hack* CreateHackObject() {
+	return new fake_syn();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }

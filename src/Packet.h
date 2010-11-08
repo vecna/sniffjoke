@@ -128,42 +128,4 @@ public:
 	char debugbuf[LARGEBUF];
 };
 
-/* 
- * HackPacket - pure virtual methods 
- *
- * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
- * we understand how to do. HackPacket classes is implemented by the external
- * module and the programmer should implement Condition and createHack, constructor
- * and distructor methods.
- *
- * at the end of every plugin code, is required the two extern "C", pointing
- * to the constructor and the destructor method. the constructon instace
- * your/the plugin with your/the Condition and createHack code.
- *
-****/
-
-/* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
-enum Frequency { RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
-		 TIMEBASED5S = 5, TIMEBASED20S = 6, STARTPEEK = 7, LONGPEEK = 8 };
-
-class HackPacket {
-public:
-	Frequency hack_frequency;
-	const char *hackName;
-
-	/* set by constructor of the hacks classess */
-	int track_index;
-
-	/* number of packets generated from the hack */
-	int num_pkt_gen;
-
-	virtual bool Condition(const Packet &) { return true; };
-	virtual Packet *createHack(Packet &) = 0;
-};
-
-typedef HackPacket * constructor_f(const int); 
-	// extern(ed) "C" as HackPacket* CreateHackObject
-typedef void destructor_f(HackPacket *);  
-	// extern(ed) "C" as void DeleteHackObject
-
 #endif /* SJ_PACKET_H */

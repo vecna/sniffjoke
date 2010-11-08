@@ -91,8 +91,7 @@ AC_CONFIG_FILES( Makefile
                  hacks/Makefile
                  hacks/fake_close_fin/Makefile
                  hacks/fake_close_rst/Makefile
-                 hacks/fake_data_anticipation/Makefile
-                 hacks/fake_data_posticipation/Makefile
+                 hacks/fake_data/Makefile
                  hacks/fake_seq/Makefile
                  hacks/fake_syn/Makefile
                  hacks/fake_zero_window/Makefile

@@ -47,7 +47,7 @@ static auto_ptr<UserConf> userconf;
 static auto_ptr<NetIO> mitm;
 
 /* Sniffjoke plugin loader */
-static auto_ptr<HackPacketPool> hack_pool;
+static auto_ptr<HackPool> hack_pool;
 
 /* Sniffjoke connection tracking class and functions */
 static auto_ptr<TCPTrack> conntrack;
@@ -575,7 +575,7 @@ int main(int argc, char **argv)
 		system("sniffjoke quit");
 		sleep(5);
 		internal_log(NULL, ALL_LEVEL, "A new instance of sniffjoke is going running in background");
-	} 
+	}
 
 	/* running the network setup before the background, for keep the software output visible on the console */
 	userconf->network_setup();
@@ -588,8 +588,8 @@ int main(int argc, char **argv)
 		internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 	}
 
-	/* setting ^C, SIGTERM and other signal trapped for clean network environment */
-	proc->sigtrapSetup(sj_sigtrap);
+        /* setting ^C, SIGTERM and other signal trapped for clean network environment */
+        proc->sigtrapSetup(sj_sigtrap);
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = auto_ptr<NetIO> (new NetIO(userconf->running));
@@ -604,7 +604,7 @@ int main(int argc, char **argv)
 	proc->detach();
 
 	/* loading the plugins used for tcp hacking */
-	hack_pool = auto_ptr<HackPacketPool> (new HackPacketPool(userconf->running.enabler));
+	hack_pool = auto_ptr<HackPool> (new HackPool(userconf->running.enabler));
 	if(hack_pool->fail == true) {
 		internal_log(NULL, ALL_LEVEL, "fatal error in initialization hacks plugin, aborted");
 		return 0;

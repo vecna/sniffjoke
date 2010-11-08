@@ -36,31 +36,33 @@
  *
  */
 
-#include "Packet.h"
+#include "Hack.h"
 
-class valid_rst_fake_seq : public HackPacket
+class valid_rst_fake_seq : public Hack
 {
 #define HACK_NAME	"true RST w/ invalid SEQ"
 public:
-	virtual Packet *createHack(Packet &orig_packet)
+	virtual void createHack(Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
-		Packet* ret = new Packet(orig_packet);
 
-		ret->resizePayload(0);
+		Packet* pkt = new Packet(orig_packet);
 
-		ret->ip->id = htons(ntohs(ret->ip->id) + (random() % 10));
-		ret->tcp->seq = htonl(ntohl(ret->tcp->seq) + 65535 + (random() % 12345));
-		ret->tcp->window = htons((unsigned short)(-1));
-		ret->tcp->rst = ret->tcp->ack = 1;
-		ret->tcp->ack_seq = htonl(ntohl(ret->tcp->seq) + 1);
-		ret->tcp->fin = ret->tcp->psh = ret->tcp->syn = 0;
+		pkt->resizePayload(0);
 
-		ret->position = ANY_POSITION;
-		ret->wtf = INNOCENT;
+		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
+		pkt->tcp->window = htons((unsigned short)(-1));
+		pkt->tcp->rst = pkt->tcp->ack = 1;
+		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
+		pkt->tcp->fin = pkt->tcp->psh = pkt->tcp->syn = 0;
 
-		ret->selflog(HACK_NAME, "Hacked packet");
-		return ret;
+		pkt->position = ANY_POSITION;
+		pkt->wtf = INNOCENT;
+
+		pkt->selflog(HACK_NAME, "Hacked packet");
+
+		pktVector.push_back(pkt);
 	}
 
 	virtual bool Condition(const Packet &orig_packet)
@@ -68,18 +70,17 @@ public:
 		return (orig_packet.tcp->ack != 0);
 	}
 
-	valid_rst_fake_seq(int plugin_index) {
-		track_index = plugin_index;
+	valid_rst_fake_seq() {
 		hackName = HACK_NAME;
-		hack_frequency = STARTPEEK;
+		hackFrequency = STARTPEEK;
 	}
 
 };
 
-extern "C"  HackPacket* CreateHackObject(int plugin_tracking_index) {
-	return new valid_rst_fake_seq(plugin_tracking_index);
+extern "C"  Hack* CreateHackObject() {
+	return new valid_rst_fake_seq();
 }
 
-extern "C" void DeleteHackObject(HackPacket *who) {
+extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }

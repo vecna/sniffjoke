@@ -5,8 +5,7 @@
 fake_close_fin.so
 # 
 #fake_close_rst.so
-fake_data_anticipation.so
-fake_data_posticipation.so
+fake_data.so
 fake_seq.so
 #fake_syn.so
 #fake_zero_window.so
