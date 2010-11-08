@@ -151,6 +151,11 @@ bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Streng
 			else
 				freqret = 1;
 			break;
+		case FREQUENCYUNASSIGNED:
+			/* nevah here */
+			internal_log(NULL, ALL_LEVEL, "%s: nevah here", __func__);
+			raise(SIGTERM);
+			break;
 	}
 
 	/* the "NORMAL" transform a freqret of "10" in 80% of hack probability */
@@ -551,6 +556,11 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 			}
 		}
 		hppe->selfObj->pktVector.clear();
+		
+		if(hppe->selfObj->removeOrigPkt == true) {
+			p_queue.remove(orig_pkt);
+			delete &orig_pkt;
+		}
 	}
 }
 

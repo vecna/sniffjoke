@@ -27,6 +27,9 @@
 #include <vector>
 using namespace std;
 
+typedef Hack* constructor_f();
+typedef void destructor_f(Hack *);
+
 class PluginTrack {
 public:
 	void *pluginHandler;	
@@ -35,9 +38,8 @@ public:
 	Hack* selfObj;
 	char *pluginPath;
 	bool enabled;
-	unsigned int trackIndex;
 
-	PluginTrack(const char *, unsigned int);
+	PluginTrack(const char *);
 	PluginTrack(const PluginTrack&);
 	bool verifyPluginIntegrity(void);
 };

@@ -42,23 +42,20 @@ using namespace std;
 ****/
 
 /* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
-enum Frequency { RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
+enum Frequency { FREQUENCYUNASSIGNED = 0, RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
 		 TIMEBASED5S = 5, TIMEBASED20S = 6, STARTPEEK = 7, LONGPEEK = 8 };
 
 class Hack {
 public:
-	Frequency hackFrequency;
 	const char *hackName;
+	Frequency hackFrequency;
+	bool removeOrigPkt;
 
 	vector<Packet*> pktVector;
 
+	Hack() : hackName(NULL), hackFrequency(FREQUENCYUNASSIGNED), removeOrigPkt(false) {};
 	virtual bool Condition(const Packet &) { return true; };
 	virtual void createHack(Packet &) = 0;
 };
-
-typedef Hack* constructor_f(const int);
-	// extern(ed) "C" as Hack* CreateHackObject
-typedef void destructor_f(Hack *);
-	// extern(ed) "C" as void DeleteHackObject
 
 #endif /* SJ_HACK_H */

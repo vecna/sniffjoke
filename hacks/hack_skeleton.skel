@@ -1,0 +1,119 @@
+/*
+ *   SniffJoke is a software able to confuse the Internet traffic analysis,
+ *   developed with the aim to improve digital privacy in communications and
+ *   to show and test some securiy weakness in traffic analysis software.
+ *   
+ *   Copyright (C) 2010 vecna <vecna@delirandom.net>
+ *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+/*
+ * This file represents a simple skeleton source for sniffjoke hacks;
+ * With this We want to give a little demostration of the capabilities of the
+ * sniffjoke infrastructure giving some useful information for researchers and
+ * contributors.
+ */
+
+/*
+ * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * malfunction, or KILL THE INTERNET :)
+ *
+ * Every hacks need to be commented out, and the comment must be extensive.
+ * An hack not well decribed will result a unuseful.
+ * 
+ * The last part of the decription must include a short tag description
+ * uniformed to the others present in others hacks.
+ * A simple example follow:
+ * 
+ * SOURCE: [ deduction? ], [ software analysis? ]
+ * VERIFIED IN: [linux 2.6.36?]
+ * KNOW BUGS: [does not work in some circumstances?]
+ * WRITTEN IN VERSION: [v ersion of sniffjoke at the time the hack was written and verified ]
+ */
+
+#include "Hack.h"
+
+class ##HACK_CLASS_NAME## : public Hack
+{
+#define HACK_NAME "##HACK_SHORT_DESCRIPTION##"
+public:
+
+	/* mandatory createHack function, works as a constructor for the hack. */
+	virtual void createHack(Packet &orig_packet)
+	{
+		orig_packet.selflog(HACK_NAME, "Original packet");
+
+
+		/* One or more hack packet can be created using new allocation*/
+		Packet* pkt1 = new Packet(orig_packet);
+		Packet* pkt2 = new Packet(orig_packet);
+
+
+		/* Hack can be manipolated using functions defined in Packet.h */
+
+		pkt1->fillRandomPayload();
+		pkt2->fillRandomPayload();
+		
+
+		/* Hacks options can be setted like hack position */
+
+		pkt1->position = ANTICIPATION;
+		pkt2->position = POSTICIPATION;
+		pkt1->wtf = RANDOMDAMAGE;
+		pkt2->wtf = RANDOMDAMAGE;
+
+
+		/* A self log message could be outputted onto hack creation */
+
+		pkt1->selflog(HACK_NAME, "Hacked packet");
+		pkt2->selflog(HACK_NAME, "Hacked packet");
+
+		/* The hacks constructed must be pushed inside pktVector */
+
+		pktVector.push_back(pkt1);
+		pktVector.push_back(pkt2);
+	}
+
+	/* Optional condition that the orig_packet must fulfil to make this hack work */
+	virtual bool Condition(const Packet &orig_packet)
+	{
+		return (orig_packet.payload != NULL);		
+	}
+
+	/* constructor, here hackName and HackFrequency must be defined */
+	##HACK_CLASS_NAME##() {
+		hackName = HACK_NAME;
+		hackFrequency = COMMON;
+	}
+};
+
+/*
+ * extern C function used for dynamic linking, must be implemented as is
+ * except for the name of the function called.
+ */
+extern "C"  Hack* CreateHackObject() {
+	return new ##HACK_CLASS_NAME##();
+}
+
+/*
+ * Hack destructor.
+ * Here can be defined cleanup operation for the hack
+ *
+ */
+extern "C" void DeleteHackObject(Hack *who) {
+	delete who;
+}

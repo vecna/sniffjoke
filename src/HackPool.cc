@@ -24,7 +24,7 @@
 
 #include <dlfcn.h>
 
-PluginTrack::PluginTrack(const char *plugabspath, unsigned int num) :
+PluginTrack::PluginTrack(const char *plugabspath) :
 	pluginHandler(NULL),
 	fp_CreateHackObj(NULL),
 	fp_DeleteHackObj(NULL),
@@ -46,8 +46,6 @@ PluginTrack::PluginTrack(const char *plugabspath, unsigned int num) :
 	fp_CreateHackObj = (constructor_f *)dlsym(handler, "CreateHackObject");
 	fp_DeleteHackObj = (destructor_f *)dlsym(handler, "DeleteHackObject");
 
-	trackIndex = num;
-
 }
 
 PluginTrack::PluginTrack(const PluginTrack& cpy) {
@@ -57,27 +55,26 @@ PluginTrack::PluginTrack(const PluginTrack& cpy) {
 	selfObj = cpy.selfObj;
 	pluginPath = cpy.pluginPath;
 	enabled = cpy.enabled;
-	trackIndex = cpy.trackIndex;
 }
 
 /* Check if the constructor has make a good job - further checks need to be addedd */
 bool PluginTrack::verifyPluginIntegrity(void)
 {
 	if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL) {
-		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d lack of create/delete object", trackIndex);
+		internal_log(NULL, DEBUG_LEVEL, "Hack plugin %s lack of create/delete object", pluginPath);
 		return false;
 	}
 
-	selfObj = fp_CreateHackObj(trackIndex);
+	selfObj = fp_CreateHackObj();
 
 	if(selfObj->hackName == NULL) {
-		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d lack of ->hackName member", trackIndex);
+		internal_log(NULL, DEBUG_LEVEL, "Hack plugin %s lack of ->hackName member", pluginPath);
 		return false;
 	}
 
-	if(selfObj->hackFrequency == 0) {
+	if(selfObj->hackFrequency == FREQUENCYUNASSIGNED) {
 		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d (%s) lack of ->hack_frequency", 
-			trackIndex, selfObj->hackName);
+			selfObj->hackName);
 		return false;
 	}
 
@@ -135,7 +132,7 @@ HackPool::HackPool(char* enabler) :
 		}
 		internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugabspath);
 
-		PluginTrack plugin(plugabspath, (unsigned int)size() + 1);
+		PluginTrack plugin(plugabspath);
 		if(!plugin.verifyPluginIntegrity()){	
 			internal_log(NULL, ALL_LEVEL, "plugin %s incorret implementation: read the documentation!",
 				basename(plugin.pluginPath) );
