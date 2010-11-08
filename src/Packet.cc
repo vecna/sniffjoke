@@ -30,6 +30,7 @@ Packet::Packet(const unsigned char* buff, int size) :
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
+	position(POSITIONUNASSIGNED),
         pbuf(size)
 {
 	memcpy(&(pbuf[0]), buff, size);
@@ -46,6 +47,7 @@ Packet::Packet(const Packet& pkt) :
 	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
+	position(POSITIONUNASSIGNED),
 	pbuf(pkt.pbuf),
 	orig_pktlen(pkt.orig_pktlen)
 {
