@@ -51,7 +51,6 @@
 #define PACKETS_DEBUG		6
 #define PACKETS_DEBUG_NAME      "packets"
 
-void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal);
 void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...);
 void* memset_random(void *s, size_t n);
 

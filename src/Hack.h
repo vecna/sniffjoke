@@ -25,6 +25,7 @@
 #include "Packet.h"
 
 #include <vector>
+
 using namespace std;
 
 /* 
@@ -32,7 +33,7 @@ using namespace std;
  *
  * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
  * we understand how to do. HackPacket classes is implemented by the external
- * module and the programmer should implement Condition and createHack, constructor
+ * module and the programmer shoulds implement Condition and createHack, constructor
  * and distructor methods.
  *
  * at the end of every plugin code, is required the two extern "C", pointing

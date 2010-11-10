@@ -158,6 +158,9 @@
 /* Define if you have the shl_load function. */
 /* #undef HAVE_SHL_LOAD */
 
+/* Define to 1 if you have the <stdexcept> header file. */
+#define HAVE_STDEXCEPT 1
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 

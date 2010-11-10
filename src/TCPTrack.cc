@@ -22,15 +22,15 @@
 #include "Utils.h"
 #include "TCPTrack.h"
 
-#include <dlfcn.h>
-
 #include <algorithm>
-using namespace std;
+#include <stdexcept>
 
 #include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+using namespace std;
 
 TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	runcopy(runcfg),
@@ -648,9 +648,8 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		case RANDOMDAMAGE:
 		case JUDGEUNASSIGNED:
 		default:
-			pkt.selflog(__func__, "last log - DEBUG - TOGLIERE UNA VOLTA APPURATO CHE NON SUCCEDE");
 			internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-			raise(SIGTERM);
+			throw runtime_error("");
 	}
 
 	/* TTL modification - every packet subjected if possible */
@@ -827,7 +826,8 @@ analyze_keep_packets:
 	while (pkt != NULL) {
 		ttlfocus_map_it = ttlfocus_map.find(pkt->ip->daddr);
 		if (ttlfocus_map_it == ttlfocus_map.end())
-			 check_call_ret("unforeseen bug: ttlfocus == NULL in TCPTrack.cc, contact the package mantainer, sorry. analyze_packet_queue", 0, -1, true);
+			internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+			throw runtime_error("");
 		
 		ttlfocus = &(ttlfocus_map_it->second);
 		if (ttlfocus->status == TTL_BRUTALFORCE)  {

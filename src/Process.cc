@@ -23,6 +23,9 @@
 #include "UserConf.h"
 #include "Utils.h"
 
+#include <stdexcept>
+using namespace std;
+
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
@@ -36,13 +39,9 @@ void Process::detach()
 	int pdes[2];
 	pipe(pdes);
 
-	/* the pidfile is opened here because otherwise doesn't contains the correct PID, 
-	 * and this is the last segment of root code that should open in /var/run/sniffjoke.pid */
-	Process::openPidfile();
-
 	if ((pid_child = fork()) == -1) {
 		internal_log(NULL, ALL_LEVEL, "unable to fork (calling pid %d, parent %d)", getpid(), getppid());
-		raise(SIGTERM);
+		throw runtime_error("");	
 	}
 
 	if (pid_child)
@@ -69,9 +68,9 @@ void Process::detach()
 		if (WIFSTOPPED(deadtrace))
 			internal_log(NULL, VERBOSE_LEVEL, "child %d WIFSTOPPED", pid_child);
 
-		internal_log(NULL, DEBUG_LEVEL, "child %d die, sending sigterm to %d", pid_child, getpid());
-		/* whenever the child die, the father restore the network via signal handling */
-		raise(SIGTERM);
+		internal_log(NULL, DEBUG_LEVEL, "child %d died, going to shutdown", pid_child);
+
+		throw runtime_error("");
 	} 
 	else 
 	{
@@ -92,57 +91,48 @@ void Process::detach()
 	internal_log(NULL, DEBUG_LEVEL, "forked process continue sniffjoke running, pid %d", getpid());
 }
 
-void Process::jail() 
+void Process::jail(bool &chrooted) 
 {
+
+	chrooted = false;
+
 	if(chroot_dir == NULL) {
                 internal_log(stderr, ALL_LEVEL, "jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
-                raise(SIGTERM);
+		throw runtime_error("");
 	}
 
 	mkdir(chroot_dir, 0700);
 
-	if (chown(chroot_dir, userinfo->pw_uid, groupinfo->gr_gid)) {
+	if (chown(chroot_dir, userinfo.pw_uid, groupinfo.gr_gid)) {
                 internal_log(stderr, ALL_LEVEL, "chown of %s to %s:%s failed: %s: unable to start sniffjoke", chroot_dir, user, group, strerror(errno));
-		raise(SIGTERM);
+		throw runtime_error("");
 	}
 
 	if (chdir(chroot_dir) || chroot(chroot_dir)) {
 		internal_log(stderr, ALL_LEVEL, "chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
-		raise(SIGTERM);
+		throw runtime_error("");
 	}
+
+	chrooted = true;
 
 	internal_log(NULL, VERBOSE_LEVEL, "chroot'ed process %d in %s", getpid(), chroot_dir);
 }
 
 void Process::privilegesDowngrade()
 {
-	if (setgid(groupinfo->gr_gid) || setuid(userinfo->pw_uid)) {
+	if (setgid(groupinfo.gr_gid) || setuid(userinfo.pw_uid)) {
 		internal_log(stderr, ALL_LEVEL, "error loosing root privileges: unable to start sniffjoke");
-		raise(SIGTERM);
+		throw runtime_error("");
 	}
 
 	internal_log(NULL, VERBOSE_LEVEL, "process %d downgrade privileges to uid %d gid %d", 
-		getpid(), userinfo->pw_uid, groupinfo->gr_gid);
-}
-
-/* these Servece*Closed routines are called by a runtime execution or from the 
- * signal handler, the objects are been already deleted - for this reason 
- * internal_log is not called */
-void Process::serviceFatherClose() 
-{
-	kill(tracked_child_pid, SIGTERM); // FIXME - tracked_child_pid is not correct
-	/* let the child express his last desire */
-	waitpid(tracked_child_pid, NULL, WUNTRACED);
-}
-
-void Process::serviceChildClose() {
-	/* ServiceChildClose can't use debugging line because the instance object could be already deleted */
-	exit(0);
+		getpid(), userinfo.pw_uid, groupinfo.gr_gid);
 }
 
 void Process::sigtrapSetup(sig_t sigtrap_function)
 {
 	struct sigaction ignore;
+	memset(&ignore, 0, sizeof(struct sigaction));
 
 	sigemptyset(&sig_nset);
 	sigaddset(&sig_nset, SIGINT);
@@ -150,7 +140,8 @@ void Process::sigtrapSetup(sig_t sigtrap_function)
 	sigaddset(&sig_nset, SIGTERM);
 	sigaddset(&sig_nset, SIGQUIT);
 	sigaddset(&sig_nset, SIGCHLD);
-	
+
+	memset(&action, 0, sizeof(struct sigaction));	
 	action.sa_handler = sigtrap_function;
 	action.sa_mask = sig_nset;
 	
@@ -178,50 +169,52 @@ void Process::sigtrapDisable()
 	sigprocmask(SIG_BLOCK, &sig_nset, &sig_oset);	
 }
 
-void Process::unlinkPidfile(void) 
-{
-	FILE *pidf = fopen(SJ_PIDFILE, "r");
-
-	if (pidf == NULL) {
-		internal_log(NULL, ALL_LEVEL, "warning: requested unlink of %s seems impossibile: %s", SJ_PIDFILE, strerror(errno));
-	}
-	fclose(pidf);
-	if(unlink(SJ_PIDFILE)) {
-		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", SJ_PIDFILE, strerror(errno));
-	}
-}
-
 pid_t Process::readPidfile(void)
 {
 	int ret = 0;
-	FILE *pidf = fopen(SJ_PIDFILE, "r");
 
-	if (pidf != NULL) { 
-		char tmpstr[10];
-		if (fgets(tmpstr, 100, pidf) != NULL)
-			ret = atoi(tmpstr);
-		fclose(pidf);
-	} else {
+        FILE *pidFile;
+        if((pidFile = fopen(SJ_PIDFILE, "r")) == NULL) {
 		internal_log(NULL, DEBUG_LEVEL, "pidfile %s not present: %s", SJ_PIDFILE, strerror(errno));
+		return ret;
 	}
+
+	char tmpstr[10];
+	if (fgets(tmpstr, 100, pidFile) != NULL)
+		ret = atoi(tmpstr);
+	fclose(pidFile);
+
 
 	return ret;
 }
 
-/* the root-father open the pidfile, anche the child write on them */
-void Process::openPidfile(void) {
-
-	if((pidFile = fopen(SJ_PIDFILE, "w+")) == NULL) 
-		internal_log(NULL, ALL_LEVEL, "unpleasent error: unable to open pidfile %s for pid %d", SJ_PIDFILE, getpid());
-}
-
 void Process::writePidfile(void)
 {
-	if (pidFile != NULL) { 
-		fprintf(pidFile, "%d", getpid());
-		fclose(pidFile);
+        FILE *pidFile;
+        if((pidFile = fopen(SJ_PIDFILE, "w+")) == NULL) {
+                internal_log(NULL, ALL_LEVEL, "error: unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
+                throw runtime_error("");
+        }
+
+	fprintf(pidFile, "%d", getpid());
+	fclose(pidFile);
+}
+
+void Process::unlinkPidfile(void) 
+{
+	FILE *pidFile = fopen(SJ_PIDFILE, "r");
+
+	if (pidFile == NULL) {
+		internal_log(NULL, ALL_LEVEL, "warning: requested unlink of %s seems impossibile: %s", SJ_PIDFILE, strerror(errno));
+		throw runtime_error("");
+	}
+	fclose(pidFile);
+	if(unlink(SJ_PIDFILE)) {
+		internal_log(NULL, ALL_LEVEL, "unable to unlink %s: %s", SJ_PIDFILE, strerror(errno));
+		throw runtime_error("");
 	}
 }
+
 
 void Process::background() 
 {
@@ -246,22 +239,44 @@ void Process::isolation()
 }
 
 /* startup of the process */
-Process::Process(const char* usr, const char* grp, const char* chdir)
+Process::Process(const char* usr, const char* grp, const char* chdir) :
+	userinfo_buf(NULL),
+	groupinfo_buf(NULL)
 {
 	if (getuid() || geteuid())  {
-		printf("required root privileges\n");
-		raise(SIGTERM);
+		internal_log(NULL, ALL_LEVEL, "required root privileges");
+		throw runtime_error("");
 	}
 
 	user = usr;
 	group = grp;
 	chroot_dir = chdir;
 
-	userinfo = getpwnam(user);
-	groupinfo = getgrnam(group);
+        struct passwd *userinfo_result;
+        struct group *groupinfo_result;
 
-        if (userinfo == NULL || groupinfo == NULL) {
+	size_t userinfo_buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
+	size_t groupinfo_buf_len = sysconf(_SC_GETGR_R_SIZE_MAX);
+
+	userinfo_buf = calloc(1, userinfo_buf_len);
+	groupinfo_buf = calloc(1, groupinfo_buf_len);
+
+	if(userinfo_buf == NULL || groupinfo_buf == NULL) {
+                internal_log(NULL, ALL_LEVEL, "problem in memory allocation for userinfo or groupinfo");
+                throw runtime_error("");
+	}
+
+        getpwnam_r(user, &userinfo, (char*)userinfo_buf, userinfo_buf_len, &userinfo_result);
+	getgrnam_r(group, &groupinfo, (char*)groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
+
+        if (userinfo_result == NULL || groupinfo_result == NULL) {
                 internal_log(NULL, ALL_LEVEL, "invalid user or group specified: %s, %s", user, group);
-                raise(SIGTERM);
+		throw runtime_error("");
         }
+}
+
+Process::~Process()
+{
+	free(userinfo_buf);
+	free(groupinfo_buf);
 }

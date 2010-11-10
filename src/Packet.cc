@@ -21,9 +21,14 @@
  */
 #include "Packet.h"
 #include "Utils.h"
-#include <csignal>
+
+#include <stdexcept>
+
+using namespace std;
 
 Packet::Packet(const unsigned char* buff, int size) :
+	prev(NULL),
+	next(NULL),
 	packet_id(make_pkt_id(buff)),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
@@ -31,6 +36,10 @@ Packet::Packet(const unsigned char* buff, int size) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+        ip(NULL),
+        tcp(NULL),
+        icmp(NULL),
+        payload(NULL),
         pbuf(size)
 {
 	memcpy(&(pbuf[0]), buff, size);
@@ -41,6 +50,8 @@ Packet::Packet(const unsigned char* buff, int size) :
 }
 
 Packet::Packet(const Packet& pkt) :
+	prev(NULL),
+	next(NULL),
 	packet_id(0),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
@@ -48,7 +59,11 @@ Packet::Packet(const Packet& pkt) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
-	pbuf(pkt.pbuf),
+        ip(NULL),
+        tcp(NULL),
+        icmp(NULL),
+        payload(NULL),
+        pbuf(pkt.pbuf),
 	orig_pktlen(pkt.orig_pktlen)
 {
 	updatePointers();
@@ -431,7 +446,7 @@ void Packet::selflog(const char *func, const char *loginfo)
 			break;
 		case ANY_PROTO:
 			internal_log(NULL, ALL_LEVEL, "Packet.cc: proto = ANY_PROTO, this wouldn't happen");
-			raise(SIGTERM);
+			throw runtime_error("");
 			break;
 	}
 

@@ -42,7 +42,7 @@
  * SOURCE: [ deduction? ], [ software analysis? ]
  * VERIFIED IN: [linux 2.6.36?]
  * KNOW BUGS: [does not work in some circumstances?]
- * WRITTEN IN VERSION: [v ersion of sniffjoke at the time the hack was written and verified ]
+ * WRITTEN IN VERSION: [version of sniffjoke at the time the hack was written and verified ]
  */
 
 #include "Hack.h"

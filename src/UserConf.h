@@ -57,11 +57,12 @@ enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
-		bool sj_run;				/* default: false = NO RUNNING */
+		bool sj_run;				/* default: false = NOT RUNNING */
 		char cfgfname[MEDIUMBUF];
 		char enabler[MEDIUMBUF];		/* default: idem */
 		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
 		char group[MEDIUMBUF];			/* default: idem */
+		bool chrooted;				/* defauit: false = NOT CHROOTED */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
 		char logfname[MEDIUMBUF];		/* default: idem */
 		unsigned int debug_level;		/* default: idem */

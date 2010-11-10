@@ -23,9 +23,11 @@
 #include "Utils.h"
 
 #include <cctype>
-#include <csignal>
+#include <stdexcept>
 
 #include <sys/stat.h>
+
+using namespace std;
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
 void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *useropt, unsigned int ulen, const char *sjdefault)
@@ -79,7 +81,7 @@ void UserConf::autodetect_local_interface()
 
 	if (i < 3) {
 		internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
-		raise(SIGTERM);
+		throw runtime_error("");
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running.interface);
 	}
@@ -126,7 +128,7 @@ void UserConf::autodetect_gw_ip_address()
 		running.gw_ip_addr[i] = imp_str[i];
 	if (strlen(running.gw_ip_addr) < 7) {
 		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
-		raise(SIGTERM);
+		throw runtime_error("");
 	} else  {
 		internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running.gw_ip_addr);
 	}
@@ -155,7 +157,7 @@ void UserConf::autodetect_gw_mac_address()
 		running.gw_mac_str[i] = imp_str[i];
 	if (i != 17) {
 		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
-		raise(SIGTERM);
+		throw runtime_error("");
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running.gw_mac_str);
 		unsigned int mac[6];
@@ -237,7 +239,7 @@ UserConf::UserConf(const struct sj_useropt &user_opt)
 			internal_log(NULL, ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
 				sizeof(running), completefname, strerror(errno)
 			);
-			check_call_ret("unable to read config file, check your parm or the default", EINVAL, -1, true);
+			throw runtime_error("");
 		}
 
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", completefname, i * sizeof(struct sj_config));
@@ -246,7 +248,7 @@ UserConf::UserConf(const struct sj_useropt &user_opt)
 			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seems to be corrupted - delete or check the argument",
 				completefname
 			);
-			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
+			throw runtime_error("");
 		}
 		fclose(cF);
 		
@@ -281,6 +283,8 @@ UserConf::UserConf(const struct sj_useropt &user_opt)
 	if(running.debug_level == 0)
 		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
+	running.chrooted = false;
+
 	dump();
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
@@ -301,17 +305,13 @@ void UserConf::dump(void)
 
 	running.MAGIC = magic_value;
 
-	/* FIXME - we need to query Process object for understand which process we are, ATM, I'm using getuid */
-	if(getuid()) {
-		snprintf(completefname, LARGEBUF, "%s", running.cfgfname);
-	}
-	else {
+	if(!running.chrooted)
 		snprintf(completefname, LARGEBUF, "%s%s", running.chroot_dir, running.cfgfname);
-	}
+	else
+		snprintf(completefname, LARGEBUF, "%s", running.cfgfname);
 	
 	if((dumpfd = fopen(completefname, "w")) != NULL) {	
 		internal_log(NULL, VERBOSE_LEVEL, "dumping running configuration to %s",  completefname);
-		check_call_ret("open config file for writing", errno, dumpfd == NULL ? -1 : 0, false);
 
 		ret = fwrite(&running, sizeof(struct sj_config), 1, dumpfd);
 
@@ -320,7 +320,6 @@ void UserConf::dump(void)
 			internal_log(NULL, ALL_LEVEL, "unable to write configuration to %s: %s", 
 				completefname, strerror(errno)
 			);
-			check_call_ret("writing config file", errno, (ret - 1), false);
 		}
 		fclose(dumpfd);
 	}
@@ -329,7 +328,6 @@ void UserConf::dump(void)
 char *UserConf::handle_cmd_info(void)
 {
 	memset(io_buf, 0x00, HUGEBUF);
-
 	snprintf(io_buf, HUGEBUF, "NOT IMPLEMENTED - analyze TTL and session\n");
 
 	return &io_buf[0];
@@ -338,7 +336,6 @@ char *UserConf::handle_cmd_info(void)
 char *UserConf::handle_cmd_quit(void)
 {
 	memset(io_buf, 0x00, HUGEBUF);
-
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
 	/* dump the configuration in the binconf file */
 	dump();
