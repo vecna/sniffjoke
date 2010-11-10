@@ -26,6 +26,7 @@
 #include "UserConf.h"
 
 #include <map>
+
 using namespace std;
 
 #define TTLPROBEINTERVAL 50000 // ns
@@ -68,7 +69,7 @@ public:
 	char debugbuf[LARGEBUF];
 };
 
-class TTLFocusMap : public map<const unsigned int, TTLFocus> {
+class TTLFocusMap : public std::map<const unsigned int, TTLFocus> {
 public:
         void dump();
         void load();

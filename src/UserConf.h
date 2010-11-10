@@ -57,11 +57,12 @@ enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
-		bool sj_run;				/* default: false = NO RUNNING */
+		bool sj_run;				/* default: false = NOT RUNNING */
 		char cfgfname[MEDIUMBUF];
 		char enabler[MEDIUMBUF];		/* default: idem */
 		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
 		char group[MEDIUMBUF];			/* default: idem */
+		bool chrooted;				/* defauit: false = NOT CHROOTED */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
 		char logfname[MEDIUMBUF];		/* default: idem */
 		unsigned int debug_level;		/* default: idem */
@@ -92,6 +93,8 @@ private:
 		void autodetect_first_available_tunnel_interface(void);
 
 public:
+
+		bool chroot_status;
 		struct sj_config running;
 
 		UserConf(const struct sj_useropt &);
@@ -101,15 +104,15 @@ public:
 		void setup_active_hacks(void);
 		void network_setup(void);
 		
-		char *handle_cmd_stat(void);
-		char *handle_cmd_stop(void);
 		char *handle_cmd_start(void);
+		char *handle_cmd_stop(void);
 		char *handle_cmd_quit(void);
+		char *handle_cmd_saveconfig(void);
+		char *handle_cmd_stat(void);
 		char *handle_cmd_info(void);
-		char *handle_cmd_set(unsigned short, unsigned short, Strength);
 		char *handle_cmd_showport(void);
-		char *handle_cmd_log(int);
-		char *handle_cmd_status(void);
+		char *handle_cmd_set(unsigned short, unsigned short, Strength);
+		char *handle_cmd_loglevel(int);
 };
 
 #endif /* SJ_CONF_H */

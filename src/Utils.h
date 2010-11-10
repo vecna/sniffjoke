@@ -33,6 +33,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <stdexcept>
+#include <sstream>
 
 #include <unistd.h>
 
@@ -51,7 +53,8 @@
 #define PACKETS_DEBUG		6
 #define PACKETS_DEBUG_NAME      "packets"
 
-void check_call_ret(const char *umsg, int objerrno, int ret, bool fatal);
+#define SJ_RUNTIME_EXCEPTION()	throw sj_runtime_exception(__func__, __FILE__, __LINE__)
+std::runtime_error sj_runtime_exception(const char* func, const char* file, long line);
 void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...);
 void* memset_random(void *s, size_t n);
 

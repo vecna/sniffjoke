@@ -23,7 +23,6 @@
 #include "Utils.h"
 
 #include <cctype>
-#include <csignal>
 
 #include <sys/stat.h>
 
@@ -79,7 +78,7 @@ void UserConf::autodetect_local_interface()
 
 	if (i < 3) {
 		internal_log(NULL, ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
-		raise(SIGTERM);
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == detected external interface with default gateway: %s", running.interface);
 	}
@@ -126,7 +125,7 @@ void UserConf::autodetect_gw_ip_address()
 		running.gw_ip_addr[i] = imp_str[i];
 	if (strlen(running.gw_ip_addr) < 7) {
 		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
-		raise(SIGTERM);
+		SJ_RUNTIME_EXCEPTION();
 	} else  {
 		internal_log(stdout, ALL_LEVEL, "  == acquired gateway ip address: %s", running.gw_ip_addr);
 	}
@@ -155,7 +154,7 @@ void UserConf::autodetect_gw_mac_address()
 		running.gw_mac_str[i] = imp_str[i];
 	if (i != 17) {
 		internal_log(NULL, ALL_LEVEL, "  -- unable to autodetect gateway mac address");
-		raise(SIGTERM);
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, ALL_LEVEL, "  == automatically acquired mac address: %s", running.gw_mac_str);
 		unsigned int mac[6];
@@ -216,7 +215,8 @@ void UserConf::network_setup(void)
 	}
 }
 
-UserConf::UserConf(const struct sj_useropt &user_opt)
+UserConf::UserConf(const struct sj_useropt &user_opt) :
+	chroot_status(false)
 {
 	float magic_check = (MAGICVAL * 28.26);
 	FILE *cF;
@@ -237,7 +237,7 @@ UserConf::UserConf(const struct sj_useropt &user_opt)
 			internal_log(NULL, ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
 				sizeof(running), completefname, strerror(errno)
 			);
-			check_call_ret("unable to read config file, check your parm or the default", EINVAL, -1, true);
+			SJ_RUNTIME_EXCEPTION();
 		}
 
 		internal_log(NULL, DEBUG_LEVEL, "reading of %s: %d byte readed", completefname, i * sizeof(struct sj_config));
@@ -246,7 +246,7 @@ UserConf::UserConf(const struct sj_useropt &user_opt)
 			internal_log(NULL, ALL_LEVEL, "sniffjoke config: %s seems to be corrupted - delete or check the argument",
 				completefname
 			);
-			check_call_ret("invalid checksum of config file", EINVAL, -1, true);
+			SJ_RUNTIME_EXCEPTION();
 		}
 		fclose(cF);
 		
@@ -301,17 +301,13 @@ void UserConf::dump(void)
 
 	running.MAGIC = magic_value;
 
-	/* FIXME - we need to query Process object for understand which process we are, ATM, I'm using getuid */
-	if(getuid()) {
-		snprintf(completefname, LARGEBUF, "%s", running.cfgfname);
-	}
-	else {
+	if(!chroot_status)
 		snprintf(completefname, LARGEBUF, "%s%s", running.chroot_dir, running.cfgfname);
-	}
+	else
+		snprintf(completefname, LARGEBUF, "%s", running.cfgfname);
 	
 	if((dumpfd = fopen(completefname, "w")) != NULL) {	
 		internal_log(NULL, VERBOSE_LEVEL, "dumping running configuration to %s",  completefname);
-		check_call_ret("open config file for writing", errno, dumpfd == NULL ? -1 : 0, false);
 
 		ret = fwrite(&running, sizeof(struct sj_config), 1, dumpfd);
 
@@ -320,30 +316,58 @@ void UserConf::dump(void)
 			internal_log(NULL, ALL_LEVEL, "unable to write configuration to %s: %s", 
 				completefname, strerror(errno)
 			);
-			check_call_ret("writing config file", errno, (ret - 1), false);
 		}
 		fclose(dumpfd);
 	}
 }
 
-char *UserConf::handle_cmd_info(void)
+char *UserConf::handle_cmd_start(void)
 {
 	memset(io_buf, 0x00, HUGEBUF);
+	if (running.sj_run != true) {
+		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
+		running.sj_run = true;
+	} else /* sniffjoke is already running */ {
+		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
+	}
+	return &io_buf[0];
+}
 
-	snprintf(io_buf, HUGEBUF, "NOT IMPLEMENTED - analyze TTL and session\n");
-
+char *UserConf::handle_cmd_stop(void)
+{
+	memset(io_buf, 0x00, HUGEBUF);
+	if (running.sj_run != false) {
+		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
+		running.sj_run = false;
+	} else /* sniffjoke is already stopped */ {
+		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
+		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
+	}
 	return &io_buf[0];
 }
 
 char *UserConf::handle_cmd_quit(void)
 {
 	memset(io_buf, 0x00, HUGEBUF);
-
 	internal_log(NULL, VERBOSE_LEVEL, "quit command requested: dumping configuration");
 	/* dump the configuration in the binconf file */
 	dump();
 
 	snprintf(io_buf, HUGEBUF, "dumped configuration, starting shutdown\n");
+
+	return &io_buf[0];
+}
+
+char *UserConf::handle_cmd_saveconfig()
+{
+	memset(io_buf, 0x00, HUGEBUF);
+	
+	dump();
+
+	snprintf(io_buf, HUGEBUF, "configuration file dumped\n");
 
 	return &io_buf[0];
 }
@@ -372,63 +396,11 @@ char *UserConf::handle_cmd_stat(void)
 	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength what)
-{
-	const char *what_weightness;
-	memset(io_buf, 0x00, HUGEBUF);
-
-	switch(what) {
-		case HEAVY: what_weightness = "heavy"; break;
-		case NORMAL: what_weightness = "normal"; break;
-		case LIGHT: what_weightness = "light"; break;
-		case NONE: what_weightness = "no hacking"; break;
-		default: 
-			snprintf(io_buf, HUGEBUF, "invalid strength code for TCP ports\n");
-			internal_log(NULL, ALL_LEVEL, "BAD ERROR: %s", io_buf);
-			return &io_buf[0];
-	}
-
-	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
-	internal_log(NULL, ALL_LEVEL, "%s", io_buf);
-
-	if(end == PORTNUMBER) {
-		running.portconf[PORTNUMBER -1] = what;
-		end--;
-	}
-
-	do {
-		running.portconf[start] = what;
-		start++;
-	} while (start <= end );
-
-	return &io_buf[0];
-}
-
-char *UserConf::handle_cmd_stop(void)
+char *UserConf::handle_cmd_info(void)
 {
 	memset(io_buf, 0x00, HUGEBUF);
-	if (running.sj_run != false) {
-		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
-		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
-		running.sj_run = false;
-	} else /* sniffjoke is already stopped */ {
-		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
-		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
-	}
-	return &io_buf[0];
-}
+	snprintf(io_buf, HUGEBUF, "NOT IMPLEMENTED - analyze TTL and session\n");
 
-char *UserConf::handle_cmd_start(void)
-{
-	memset(io_buf, 0x00, HUGEBUF);
-	if (running.sj_run != true) {
-		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
-		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
-		running.sj_run = true;
-	} else /* sniffjoke is already running */ {
-		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
-		internal_log(NULL, VERBOSE_LEVEL, "%s", io_buf);
-	}
 	return &io_buf[0];
 }
 
@@ -465,7 +437,39 @@ char *UserConf::handle_cmd_showport(void)
 	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_log(int newloglevel)
+char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength what)
+{
+	const char *what_weightness;
+	memset(io_buf, 0x00, HUGEBUF);
+
+	switch(what) {
+		case HEAVY: what_weightness = "heavy"; break;
+		case NORMAL: what_weightness = "normal"; break;
+		case LIGHT: what_weightness = "light"; break;
+		case NONE: what_weightness = "no hacking"; break;
+		default: 
+			snprintf(io_buf, HUGEBUF, "invalid strength code for TCP ports\n");
+			internal_log(NULL, ALL_LEVEL, "BAD ERROR: %s", io_buf);
+			return &io_buf[0];
+	}
+
+	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
+	internal_log(NULL, ALL_LEVEL, "%s", io_buf);
+
+	if(end == PORTNUMBER) {
+		running.portconf[PORTNUMBER -1] = what;
+		end--;
+	}
+
+	do {
+		running.portconf[start] = what;
+		start++;
+	} while (start <= end );
+
+	return &io_buf[0];
+}
+
+char *UserConf::handle_cmd_loglevel(int newloglevel)
 {
 	memset(io_buf, 0x00, HUGEBUF);
 	if(newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {

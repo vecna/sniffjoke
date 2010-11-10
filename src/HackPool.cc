@@ -32,20 +32,37 @@ PluginTrack::PluginTrack(const char *plugabspath) :
 	pluginPath(NULL),
 	enabled(false)
 {
-	void *handler = dlopen(plugabspath, RTLD_NOW);
-	if(handler == NULL) {
-		internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugabspath, dlerror());
-		return;
+	pluginHandler = dlopen(plugabspath, RTLD_NOW);
+	if(pluginHandler == NULL) {
+		internal_log(NULL, ALL_LEVEL, "PluginTrack(): unable to load plugin %s: %s", plugabspath, dlerror());
+		SJ_RUNTIME_EXCEPTION();
 	}
-	internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugabspath);
 
-	pluginHandler = handler;
+	internal_log(NULL, DEBUG_LEVEL, "PluginTrack(): opened %s plugin", plugabspath);
+
 	pluginPath = strdup(plugabspath);
 
-	/* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
-	fp_CreateHackObj = (constructor_f *)dlsym(handler, "CreateHackObject");
-	fp_DeleteHackObj = (destructor_f *)dlsym(handler, "DeleteHackObject");
+        /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
+        fp_CreateHackObj = (constructor_f *)dlsym(pluginHandler, "CreateHackObject");
+        fp_DeleteHackObj = (destructor_f *)dlsym(pluginHandler, "DeleteHackObject");
 
+        if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL) {
+                internal_log(NULL, DEBUG_LEVEL, "PluginTrack(): hack plugin %s lack of create/delete object", pluginPath);
+		SJ_RUNTIME_EXCEPTION();
+        }
+
+        selfObj = fp_CreateHackObj();
+
+        if(selfObj->hackName == NULL) {
+                internal_log(NULL, DEBUG_LEVEL, "PluginTrack(): hack plugin %s lack of ->hackName member", pluginPath);
+		SJ_RUNTIME_EXCEPTION();
+        }
+
+        if(selfObj->hackFrequency == FREQUENCYUNASSIGNED) {
+                internal_log(NULL, DEBUG_LEVEL, "PluginTrack(): hack plugin #%d (%s) lack of ->hack_frequency",
+                        selfObj->hackName);
+		SJ_RUNTIME_EXCEPTION();
+	}
 }
 
 PluginTrack::PluginTrack(const PluginTrack& cpy) {
@@ -57,30 +74,6 @@ PluginTrack::PluginTrack(const PluginTrack& cpy) {
 	enabled = cpy.enabled;
 }
 
-/* Check if the constructor has make a good job - further checks need to be addedd */
-bool PluginTrack::verifyPluginIntegrity(void)
-{
-	if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL) {
-		internal_log(NULL, DEBUG_LEVEL, "Hack plugin %s lack of create/delete object", pluginPath);
-		return false;
-	}
-
-	selfObj = fp_CreateHackObj();
-
-	if(selfObj->hackName == NULL) {
-		internal_log(NULL, DEBUG_LEVEL, "Hack plugin %s lack of ->hackName member", pluginPath);
-		return false;
-	}
-
-	if(selfObj->hackFrequency == FREQUENCYUNASSIGNED) {
-		internal_log(NULL, DEBUG_LEVEL, "Hack plugin #%d (%s) lack of ->hack_frequency", 
-			selfObj->hackName);
-		return false;
-	}
-
-	return true;
-}
-
 /*
  * the constructor of HackPool is called once; in the TCPTrack constructor the class member
  * hack_pool is instanced. what we need here is to read the entire plugin list, open and fix the
@@ -90,16 +83,14 @@ bool PluginTrack::verifyPluginIntegrity(void)
  *
  * (class TCPTrack).hack_pool is the name of the unique HackPool element
  */
-HackPool::HackPool(char* enabler) :
-	fail(false) 
+HackPool::HackPool(char* enabler)
 {
 	char plugabspath[MEDIUMBUF];
 	FILE *plugfile;
 
 	if((plugfile = fopen(enabler, "r")) == NULL) {
-		internal_log(NULL, ALL_LEVEL, "unable to open in reading %s: %s", enabler, strerror(errno));
-		fail = true;
-		return;
+		internal_log(NULL, ALL_LEVEL, "HackPool(): unable to open in reading %s: %s", enabler, strerror(errno));
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	int line = 0;
@@ -117,40 +108,30 @@ HackPool::HackPool(char* enabler) :
 
 		/* 4 is the minimum length of a ?.so plugin */
 		if(strlen(plugrelpath) < 4 || feof(plugfile)) {
-			internal_log(NULL, VERBOSE_LEVEL, "reading %s: importend %d plugins, matched interruption at line %d",
+			internal_log(NULL, VERBOSE_LEVEL, "HackPool(): reading %s: importend %d plugins, matched interruption at line %d",
 				PLUGINSENABLER, size(), line);
 			break;
 		}
 
 		snprintf(plugabspath, SMALLBUF * 2, "%s%s", INSTALL_LIBDIR, plugrelpath);
 
-		void *handler = dlopen(plugabspath, RTLD_NOW);
-		if(handler == NULL) {
-			internal_log(NULL, ALL_LEVEL, "fatal error: unable to load %s: %s", plugabspath, dlerror());
-			fail = true;
-			break;
-		}
-		internal_log(NULL, DEBUG_LEVEL, "opened %s plugin", plugabspath);
-
-		PluginTrack plugin(plugabspath);
-		if(!plugin.verifyPluginIntegrity()){	
-			internal_log(NULL, ALL_LEVEL, "plugin %s incorret implementation: read the documentation!",
-				basename(plugin.pluginPath) );
-			fail = true;
-			break;
-		} else {
+		try {
+			PluginTrack plugin(plugabspath);
 			push_back(plugin);
+			internal_log(NULL, DEBUG_LEVEL, "HackPool(): plugin %s implementation accepted", plugin.selfObj->hackName);
+		} catch (runtime_error &e) {
+			internal_log(NULL, ALL_LEVEL, "HackPool(): unable to load plugin %s", plugrelpath);
 		}
-
-		internal_log(NULL, DEBUG_LEVEL, "plugin %s implementation accepted", plugin.selfObj->hackName);
 
 	} while(!feof(plugfile));
 
-	if(fail || !size()) {
-		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins: FAILURE while loading detected", size());
-		return;
+	fclose(plugfile);
+
+	if(!size()) {
+		internal_log(NULL, ALL_LEVEL, "HackPool(): loaded correctly 0 plugins: FAILURE while loading detected");
+		SJ_RUNTIME_EXCEPTION();
 	} else
-		internal_log(NULL, ALL_LEVEL, "loaded correctly %d plugins", size());
+		internal_log(NULL, ALL_LEVEL, "HackPool(): loaded correctly %d plugins", size());
 
 	/* 
 	 * TCPTrack.cc:86: warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
@@ -168,14 +149,14 @@ HackPool::~HackPool()
 	for ( it = begin(); it != end(); it++ ) 
 	{
 		plugin = &(*it);
-		internal_log(NULL, VERBOSE_LEVEL, "calling %s destructor (%s)",	plugin->selfObj->hackName, plugin->pluginPath);
+		internal_log(NULL, VERBOSE_LEVEL, "~HackPool(): calling %s destructor (%s)",	plugin->selfObj->hackName, plugin->pluginPath);
 
 		plugin->fp_DeleteHackObj(plugin->selfObj);
 
 		if(dlclose(plugin->pluginHandler)) 
-			internal_log(NULL, ALL_LEVEL, "unable to close %s plugin: %s", plugin->pluginPath, dlerror());
+			internal_log(NULL, ALL_LEVEL, "~HackPool(): unable to close %s plugin: %s", plugin->pluginPath, dlerror());
 		else
-			internal_log(NULL, DEBUG_LEVEL, "closed handler of %s", plugin->pluginPath);
+			internal_log(NULL, DEBUG_LEVEL, "~HackPool(): closed handler of %s", plugin->pluginPath);
 
 		free(plugin->pluginPath);
 	}

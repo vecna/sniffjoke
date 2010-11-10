@@ -26,19 +26,17 @@
 #include "UserConf.h"
 #include "hardcoded-defines.h"
 
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
-using namespace std;
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 
-#include <cstdio>
-#include <cstdlib>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
+using namespace std;
 
 /* if the packet is inject from sniffjoke is marked with the evilbit */
 enum evilbit_t { MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2 };
@@ -64,11 +62,11 @@ enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP =
 enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 3 };
 
 class Packet {
+private:
+	Packet *prev;
+	Packet *next;
+	friend class PacketQueue;
 public:
-
-	Packet* prev;
-	Packet* next;
-
 	/* 
 	 * this packet_id are useful to avoid packet duplication
 	 * due to sniffjoke queue, I don't want avoid packet 
@@ -101,16 +99,16 @@ public:
 
 	struct icmphdr *icmp;
 	
-	Packet(const unsigned char*, int);
+	Packet(const unsigned char *, int);
 	Packet(const Packet &);
 	virtual ~Packet(void) {};
 
-	unsigned int make_pkt_id(const unsigned char*) const;
+	unsigned int make_pkt_id(const unsigned char *) const;
 	void mark(source_t, status_t, evilbit_t);
 	void mark(source_t, status_t, judge_t, evilbit_t);
 	void updatePointers(void);
 	
-	unsigned int half_cksum(const void*, int);
+	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
 

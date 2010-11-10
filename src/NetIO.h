@@ -53,8 +53,6 @@ private:
 	int size;
 	Packet *pkt;
 
-	bool networkdown_condition;
-
 public:
 
 	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
@@ -63,10 +61,9 @@ public:
 
 	NetIO(sj_config &);
 	~NetIO(void);
-	void prepare_conntrack(TCPTrack*);
+	void prepare_conntrack(TCPTrack *);
 	void network_io(void);
 	void queue_flush(void);
-	bool is_network_down(void);
 	void set_running(bool);
 };
 

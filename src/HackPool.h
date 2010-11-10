@@ -25,6 +25,7 @@
 #include "Hack.h"
 
 #include <vector>
+
 using namespace std;
 
 typedef Hack* constructor_f();
@@ -41,12 +42,10 @@ public:
 
 	PluginTrack(const char *);
 	PluginTrack(const PluginTrack&);
-	bool verifyPluginIntegrity(void);
 };
 
-class HackPool : public vector<PluginTrack> {
+class HackPool : public std::vector<PluginTrack> {
 public:
-	bool fail;
 	HackPool(char*);
 	~HackPool();
 };

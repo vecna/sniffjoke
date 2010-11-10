@@ -47,7 +47,6 @@
 #define MTU				1500
 #define MTU_FAKE			1420
 
-
 #define MSGBUF				512
 
 #endif /* SJ_DEFINES_H */
