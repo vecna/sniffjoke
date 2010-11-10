@@ -26,12 +26,9 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <stdexcept>
 
 #include <unistd.h>
 #include <arpa/inet.h>
-
-using namespace std;
 
 TTLFocus::TTLFocus(unsigned int destip) :
 	daddr(destip),
@@ -142,7 +139,7 @@ void TTLFocusMap::load()
 		internal_log(NULL, ALL_LEVEL, "unable to read ttlfocus from %s: %s",
 			TTLFOCUSMAP_FILE, strerror(errno)
 		);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 	internal_log(NULL, VERBOSE_LEVEL, "ttlfocusmap load completed: %d records loaded", i);
 }

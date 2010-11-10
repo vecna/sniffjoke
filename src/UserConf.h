@@ -93,6 +93,8 @@ private:
 		void autodetect_first_available_tunnel_interface(void);
 
 public:
+
+		bool chroot_status;
 		struct sj_config running;
 
 		UserConf(const struct sj_useropt &);
@@ -102,15 +104,15 @@ public:
 		void setup_active_hacks(void);
 		void network_setup(void);
 		
-		char *handle_cmd_stat(void);
-		char *handle_cmd_stop(void);
 		char *handle_cmd_start(void);
+		char *handle_cmd_stop(void);
 		char *handle_cmd_quit(void);
+		char *handle_cmd_saveconfig(void);
+		char *handle_cmd_stat(void);
 		char *handle_cmd_info(void);
-		char *handle_cmd_set(unsigned short, unsigned short, Strength);
 		char *handle_cmd_showport(void);
-		char *handle_cmd_log(int);
-		char *handle_cmd_status(void);
+		char *handle_cmd_set(unsigned short, unsigned short, Strength);
+		char *handle_cmd_loglevel(int);
 };
 
 #endif /* SJ_CONF_H */

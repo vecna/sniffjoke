@@ -22,15 +22,11 @@
 #include "NetIO.h"
 #include "Utils.h"
 
-#include <stdexcept>
-
 #include <fcntl.h>
 #include <poll.h>
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
-
-using namespace std;
 
 NetIO::NetIO(sj_config& runcfg) :
 	runcopy(runcfg)
@@ -43,23 +39,23 @@ NetIO::NetIO(sj_config& runcfg) :
 	char tmpsyscmd[MEDIUMBUF];
 
 	if (getuid() || geteuid())
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 
 	/* pseudo sanity check of received data, sjconf had already make something */
 	if (strlen(runcopy.gw_ip_addr) < 7 || strlen(runcopy.gw_ip_addr) > 17) {
 		internal_log(NULL, ALL_LEVEL, "NetIO(): invalid ip address [%s] is not an IPv4, check the config", runcopy.gw_ip_addr);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	if (strlen(runcopy.gw_mac_str) != 17) {
 		internal_log(NULL, ALL_LEVEL, "NetIO(): invalid mac address [%s] is not a MAC addr, check the config", runcopy.gw_mac_str);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	if ((tunfd = open("/dev/net/tun", O_RDWR)) == -1) {
 		/* this is a serious problem, sniffjoke treat them as FATAL error */
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): /dev/net/tun opened successfull");
 	}
@@ -72,7 +68,7 @@ NetIO::NetIO(sj_config& runcfg) :
 
 	if ((ret = ioctl (tunfd, TUNSETIFF, (void *) &ifr)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to set flags in tunnel interface: %s", strerror(errno));
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): setting TUN flags correctly");
 	}
@@ -82,7 +78,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	netifr.ifr_qlen = 100;
 	if ((ret = ioctl (tmpfd, SIOCSIFTXQLEN, (void *) &netifr)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to set SIOCSIFTXQLEN in interface %s: %s", ifr.ifr_name, strerror(errno));
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): setting SIOCSIFTXQLEN correctly in %s", ifr.ifr_name);
 	}
@@ -90,14 +86,14 @@ NetIO::NetIO(sj_config& runcfg) :
 		
 	if ((ret = fcntl (tunfd, F_SETFL, O_NONBLOCK)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to set non blocking socket: how is this possibile !? %s", strerror(errno));
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): set NONBLOCK in socket successful");
 	}
 
 	if ((ret = fcntl (tunfd, F_SETFD, FD_CLOEXEC)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to fcntl FD_CLOEXEC in tunnel: %s", strerror(errno));
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): set CLOSE on EXIT flag in TUN successful");
 	}
@@ -126,7 +122,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	{
 		internal_log(NULL, ALL_LEVEL, "NetIO(): fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand",
 			runcopy.interface);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	close(tmpfd);
@@ -135,7 +131,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to open datalink layer packet: %s - fix your routing table by hand",
 			strerror(errno)
 		);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): open successful datalink layer socket packet");
 	}
@@ -154,7 +150,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to bind datalink layer interface: %s - fix your routing table by hand",
 			strerror(errno)
 		);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): binding successful datalink layer interface");
 	}
@@ -163,7 +159,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		internal_log(NULL, ALL_LEVEL, "NetIO(): unable to set socket in non blocking mode: %s - fix your routing table by hand",
 			strerror(errno)
 		);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	} else {
 		internal_log(NULL, DEBUG_LEVEL, "NetIO(): setting network socket to non blocking mode successfull");
 	}
@@ -186,7 +182,7 @@ NetIO::~NetIO(void)
 		return;
 	}
 
-	internal_log(NULL, VERBOSE_LEVEL, "NetIO(): deleting our default gw [route del default]");
+	internal_log(NULL, VERBOSE_LEVEL, "~NetIO(): deleting our default gw [route del default]");
 	system("route del default");
 
 	snprintf(tmpsyscmd, MEDIUMBUF, "ifconfig tun%d down", runcopy.tun_number);
@@ -223,7 +219,7 @@ void NetIO::network_io(void)
 		if (nfds <= 0) {
 			if (nfds == -1) {
 	                        internal_log(NULL, ALL_LEVEL, "network_io(): strange and dangerous error in poll: %s", strerror(errno));
-				throw runtime_error("");
+				SJ_RUNTIME_EXCEPTION();
 			}
 			break;
 		}
@@ -232,7 +228,7 @@ void NetIO::network_io(void)
 			if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 				{
-					internal_log(NULL, DEBUG_LEVEL, "network_io/recv from network: error: %s", strerror(errno));
+					internal_log(NULL, DEBUG_LEVEL, "network_io(): recv from network: error: %s", strerror(errno));
 					break;
 				}
 			} else {
@@ -244,7 +240,7 @@ void NetIO::network_io(void)
 		if (fds[1].revents) { /* POLLIN is the unique event managed */
 			if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-					internal_log(NULL, DEBUG_LEVEL, "network_io/read from tunnel: error: %s", strerror(errno));
+					internal_log(NULL, DEBUG_LEVEL, "network_io(): read from tunnel: error: %s", strerror(errno));
 					break;
 				}
 			} else {
@@ -274,20 +270,20 @@ void NetIO::queue_flush(void)
 	while ((pkt = conntrack->readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
 			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size())) == -1) {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel error: %s", strerror(errno));
-				throw runtime_error("");
+				internal_log(NULL, DEBUG_LEVEL, "queue_flush(): write in tunnel error: %s", strerror(errno));
+				SJ_RUNTIME_EXCEPTION();
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in tunnel %d successfull [sniffjoke %s]", 
+				internal_log(NULL, DEBUG_LEVEL, "queue_flush(): write in tunnel %d successfull [sniffjoke %s]", 
 					size, runcopy.sj_run == true ? "running" : "stopped");
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
 				ntohs(pkt->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network error: %s", strerror(errno));
-				throw runtime_error("");
+				internal_log(NULL, DEBUG_LEVEL, "queue_flush(): write in network error: %s", strerror(errno));
+				SJ_RUNTIME_EXCEPTION();
 			} else {
-				internal_log(NULL, DEBUG_LEVEL, "network_io/write in network %d successfull [sniffjoke %s]",
+				internal_log(NULL, DEBUG_LEVEL, "queue_flush(): write in network %d successfull [sniffjoke %s]",
 					size, runcopy.sj_run == true ? "running" : "stopped");
 			}
 		}

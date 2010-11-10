@@ -23,6 +23,7 @@
 #define SJ_PROCESS_H
 
 #include "hardcoded-defines.h"
+#include "UserConf.h"
 
 #include <csignal>
 #include <cstdio>
@@ -34,9 +35,7 @@
 class Process {
 private:
 
-	const char* user;
-	const char* group;
-	const char* chroot_dir;
+	UserConf &usercfg;
 
         struct passwd userinfo;
 	void* userinfo_buf;
@@ -49,7 +48,7 @@ private:
 public:
 	pid_t tracked_child_pid;
 	
-	Process(const char* user, const char* group, const char* chroot_dir);
+	Process(UserConf &);
 	~Process();
 
 	pid_t readPidfile();
@@ -57,9 +56,9 @@ public:
 	void unlinkPidfile();
 
 	void detach() ;
-	void jail(bool &chrooted);
+	void jail();
 	void privilegesDowngrade();
-	void sigtrapSetup(sig_t sigtrap_function);
+	void sigtrapSetup(sig_t);
 	void sigtrapEnable();
 	void sigtrapDisable();
 	void background();

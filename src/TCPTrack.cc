@@ -23,14 +23,11 @@
 #include "TCPTrack.h"
 
 #include <algorithm>
-#include <stdexcept>
 
 #include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-using namespace std;
 
 TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	runcopy(runcfg),
@@ -152,9 +149,8 @@ bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Streng
 				freqret = 1;
 			break;
 		case FREQUENCYUNASSIGNED:
-			/* nevah here */
-			internal_log(NULL, ALL_LEVEL, "%s: nevah here", __func__);
-			raise(SIGTERM);
+                        internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+                        SJ_RUNTIME_EXCEPTION();
 			break;
 	}
 
@@ -524,7 +520,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 
 				/* if you are running with --debug 6, I suppose you are the developing the plugins */
 				if(runcopy.debug_level == PACKETS_DEBUG) 
-					raise(SIGTERM);
+					throw runtime_error("aaa");
 
 				/* otherwise, the error was reported and sniffjoke continue to work */
 				delete injpkt;
@@ -551,8 +547,8 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 						p_queue.insert_after(*injpkt, orig_pkt);
 					break;
 				case POSITIONUNASSIGNED:
-					internal_log(NULL, ALL_LEVEL, "TCPTrack.cc: injpkt->position = POSITIONUNASSIGNED, this wouldn't happen");
-					raise(SIGTERM);
+		                        internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+		                        SJ_RUNTIME_EXCEPTION();
 			}
 		}
 		hppe->selfObj->pktVector.clear();
@@ -649,7 +645,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		case JUDGEUNASSIGNED:
 		default:
 			internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-			throw runtime_error("");
+			SJ_RUNTIME_EXCEPTION();
 	}
 
 	/* TTL modification - every packet subjected if possible */
@@ -825,9 +821,10 @@ analyze_keep_packets:
 	pkt = p_queue.get(KEEP, TUNNEL, TCP, false);
 	while (pkt != NULL) {
 		ttlfocus_map_it = ttlfocus_map.find(pkt->ip->daddr);
-		if (ttlfocus_map_it == ttlfocus_map.end())
+		if (ttlfocus_map_it == ttlfocus_map.end()) {
 			internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-			throw runtime_error("");
+			SJ_RUNTIME_EXCEPTION();
+		}
 		
 		ttlfocus = &(ttlfocus_map_it->second);
 		if (ttlfocus->status == TTL_BRUTALFORCE)  {

@@ -26,6 +26,8 @@
 
 #include <vector>
 
+using namespace std;
+
 typedef Hack* constructor_f();
 typedef void destructor_f(Hack *);
 

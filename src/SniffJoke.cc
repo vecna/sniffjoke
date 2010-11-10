@@ -73,13 +73,14 @@ static auto_ptr<TCPTrack> conntrack;
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
+	" saveconfig\t\tdump config file\n\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n\n"\
 	" info\t\t\tget massive info about sniffjoke internet stats\n\n"\
+	" showport\t\tshow TCP ports strongness of injection\n"\
 	" set start end value\tset per tcp ports the strongness of injection\n"\
 	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
-	" showport\t\tshow TCP ports strongness of injection\n"\
 	" loglevel\t\t[1-6] change the loglevel\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
@@ -141,7 +142,7 @@ static int sj_bind_unixsocket()
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
 		internal_log(NULL, ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	memset(&sjsrv, 0x00, sizeof(sjsrv));
@@ -152,7 +153,7 @@ static int sj_bind_unixsocket()
 		if (unlink(sniffjoke_socket_path)) {
 			internal_log(NULL, ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
 				sniffjoke_socket_path, strerror(errno));
-			throw runtime_error("");
+			SJ_RUNTIME_EXCEPTION();
 		}
 	}
 								
@@ -161,7 +162,7 @@ static int sj_bind_unixsocket()
 		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
 			 sniffjoke_socket_path, strerror(errno)
 		);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
@@ -169,7 +170,7 @@ static int sj_bind_unixsocket()
 		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
 			sniffjoke_socket_path, strerror(errno)
 		);
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 	}
 	internal_log(NULL, VERBOSE_LEVEL, "Successful binding of unix socket in %s", sniffjoke_socket_path);
 
@@ -210,24 +211,28 @@ static void read_unixsock(int srvsock, UserConf *confobj, bool &alive)
 	struct sockaddr_un fromaddr;
 
 	if ((rlen = service_listener(srvsock, r_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
-		throw runtime_error("");
+		SJ_RUNTIME_EXCEPTION();
 
 	if (!rlen)
 		return;
 
 	internal_log(NULL, VERBOSE_LEVEL, "received command from the client: %s", r_command);
 
-	if (!memcmp(r_command, "stat", strlen("stat"))) {
-		output = userconf->handle_cmd_stat();
-	} else if (!memcmp(r_command, "start", strlen("start"))) {
+	if (!memcmp(r_command, "start", strlen("start"))) {
 		output = userconf->handle_cmd_start();
 	} else if (!memcmp(r_command, "stop", strlen("stop"))) {
 		output = userconf->handle_cmd_stop();
 	} else if (!memcmp(r_command, "quit", strlen("quit"))) {
 		output = userconf->handle_cmd_quit();
 		alive = false;
+	} else if (!memcmp(r_command, "saveconfig", strlen("saveconfig"))) {
+		output = userconf->handle_cmd_saveconfig();
+	} else if (!memcmp(r_command, "stat", strlen("stat"))) {
+		output = userconf->handle_cmd_stat();
 	} else if (!memcmp(r_command, "info", strlen("info"))) {
 		output = userconf->handle_cmd_info();
+	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
+		output = userconf->handle_cmd_showport();
 	} else if (!memcmp(r_command, "set", strlen("set"))) {
 		int start_port, end_port;
 		Strength setValue;
@@ -259,8 +264,6 @@ handle_set_error:
 	} else if (!memcmp(r_command, "clear", strlen("clear"))) {
 		Strength clearValue = NONE;
 		output = userconf->handle_cmd_set(0, PORTNUMBER, clearValue);
-	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
-		output = userconf->handle_cmd_showport();
 	} else if (!memcmp(r_command, "loglevel", strlen("loglevel")))  {
 		int loglevel;
 
@@ -271,7 +274,7 @@ handle_set_error:
 			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		} else {
-			output = userconf->handle_cmd_log(loglevel);
+			output = userconf->handle_cmd_loglevel(loglevel);
 		}
 	} else {
 		internal_log(NULL, ALL_LEVEL, "wrong command %s", r_command);
@@ -336,6 +339,13 @@ static void client_send_command(char *cmdstring)
 	close(sock);
 }
 
+std::runtime_error sj_runtime_exception(const char* func, const char* file, long line)
+{
+	std::stringstream stream;
+	stream << file << "(" << line << ") function: " << func << "()";
+	return std::runtime_error(stream.str());
+}
+
 /* forceflow is almost useless, use NULL in the normal logging options */
 void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...) 
 {
@@ -388,7 +398,6 @@ void* memset_random(void *s, size_t n)
 
 int main(int argc, char **argv)
 {
-	bool restart_on_restore = false;
 	char command_buffer[MEDIUMBUF], *command_input = NULL;
 	int charopt, listening_unix_socket;
 	pid_t previous_pid;
@@ -508,7 +517,10 @@ int main(int argc, char **argv)
 
 	try {
 		userconf = auto_ptr<UserConf> (new UserConf(useropt));
-		proc = auto_ptr<Process> (new Process(userconf->running.user, userconf->running.group, userconf->running.chroot_dir));
+		proc = auto_ptr<Process> (new Process(*userconf));
+
+		/* setting ^C, SIGTERM and other signal trapped for clean network environment */
+		proc->sigtrapSetup(sj_sigtrap);
 
 		/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
 		if (command_input != NULL) {
@@ -520,7 +532,7 @@ int main(int argc, char **argv)
 			}
 
 			/* chroot jail */
-			proc->jail(userconf->running.chrooted);
+			proc->jail();
 
 			proc->privilegesDowngrade();
 
@@ -570,14 +582,14 @@ int main(int argc, char **argv)
 		hack_pool = auto_ptr<HackPool> (new HackPool(userconf->running.enabler));
 
 		/* proc->jail(): chroot + userconf->running.chrooted = true */
-		proc->jail(userconf->running.chrooted);
+		proc->jail();
 
 		/* background running, with different loglevel. logfile opened below: */
 		if (!useropt.go_foreground) {
 			char tmpfname[LARGEBUF];	
 			if ((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
 				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
-				throw runtime_error("");
+				SJ_RUNTIME_EXCEPTION();
 			}
 			else
 				internal_log(stderr, DEBUG_LEVEL, "opened log file %s", useropt.logfname);
@@ -586,7 +598,7 @@ int main(int argc, char **argv)
 				snprintf(tmpfname, LARGEBUF, "%s.packets", useropt.logfname);
 				if ((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
 					internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
-					throw runtime_error("");
+					SJ_RUNTIME_EXCEPTION();
 
 				} else {
 					internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
@@ -597,7 +609,7 @@ int main(int argc, char **argv)
 				snprintf(tmpfname, LARGEBUF, "%s.session", useropt.logfname);
 				if ((useropt.session_logstream = fopen(tmpfname, "a+")) == NULL) {
 					internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
-					throw runtime_error("");
+					SJ_RUNTIME_EXCEPTION();
 				} else {
 					internal_log(NULL, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
 				}
@@ -630,6 +642,6 @@ int main(int argc, char **argv)
 
 		}
 	} catch (runtime_error &exception) {
-		internal_log(NULL, ALL_LEVEL, "Runtime exception, going shutdown");
+		internal_log(NULL, ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
 	}
 }

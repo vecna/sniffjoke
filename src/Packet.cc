@@ -22,10 +22,6 @@
 #include "Packet.h"
 #include "Utils.h"
 
-#include <stdexcept>
-
-using namespace std;
-
 Packet::Packet(const unsigned char* buff, int size) :
 	prev(NULL),
 	next(NULL),
@@ -162,25 +158,25 @@ void Packet::fixIpTcpSum(void)
 bool Packet::SelfIntegrityCheck(const char *pluginName)
 {
 	if(source != SOURCEUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "in %s (source_t)source must not be set: ignored value", pluginName);
+		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s (source_t)source must not be set: ignored value", pluginName);
 	}
 
 	if(status != STATUSUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "in %s (status_t)status must not be set: ignored value", pluginName);
+		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s (status_t)status must not be set: ignored value", pluginName);
 	}
 
 	if(wtf == JUDGEUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;
 	}
 
 	if(proto == PROTOUNASSIGNED) {
-		internal_log(NULL, ALL_LEVEL, "in %s not set \"proto\" field, required", pluginName);
+		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"proto\" field, required", pluginName);
 		goto errorinfo;
 	}
 
 	if(position == POSITIONUNASSIGNED) {
-		internal_log(NULL, ALL_LEVEL, "in %s not set \"position\" field, required", pluginName);
+		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"position\" field, required", pluginName);
 		goto errorinfo;
 	}
 
@@ -445,8 +441,8 @@ void Packet::selflog(const char *func, const char *loginfo)
 			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
 			break;
 		case ANY_PROTO:
-			internal_log(NULL, ALL_LEVEL, "Packet.cc: proto = ANY_PROTO, this wouldn't happen");
-			throw runtime_error("");
+			internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+			SJ_RUNTIME_EXCEPTION();
 			break;
 	}
 
