@@ -100,7 +100,7 @@ bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
  */
 bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Strength weightness)
 {
-	unsigned int this_percentage, freqret = 0;
+	unsigned int this_percentage = 0, freqret = 0;
 	time_t now;
 	switch(freqkind) {
 		case RARE:
@@ -174,7 +174,7 @@ bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Streng
 			break;
 	}
 
-	return ( ( ( random() + 1 ) % 100) + 1 <= this_percentage );
+	return ( ( (unsigned int)( random() % 100) + 1 <= this_percentage ) );
 }
 
 SessionTrack* TCPTrack::init_sessiontrack(const Packet &pkt) 

@@ -1,4 +1,4 @@
-SniffJoke 0.3, transition for 0.4
+SniffJoke 0.4 beta 1
 
 Requirement:
 
@@ -25,3 +25,18 @@ HOW TO INSTALL:
 ./configure
 make
 make install
+
+KNOWLEDGE LINKs:
+
+	the file:
+		README-REALLY-NOW
+	official 0.3 page:
+		http://www.delirandom.net/sniffjoke
+	academic research:
+		http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
+	hacker's bread:
+		http://www.phrack.org/issues.html?issue=54&id=10#article
+	MacOSx ports as kernel module:
+		http://en.roolz.org/trafscrambler.html
+	Wireshark thread about Sj 0.3:
+		http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html

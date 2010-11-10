@@ -22,6 +22,7 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
+#include "HDRoptions.h"
 #include "UserConf.h"
 #include "hardcoded-defines.h"
 
@@ -86,13 +87,19 @@ public:
 	proto_t proto;
 	position_t position;	
 
-	struct iphdr *ip;
-	struct tcphdr *tcp;
-	struct icmphdr *icmp;
-	unsigned char *payload;
-
 	vector<unsigned char> pbuf;
-	int orig_pktlen;
+	int pktlen;
+
+	struct iphdr *ip;
+	int iphdrlen;
+
+	struct tcphdr *tcp;
+	int tcphdrlen;
+
+	unsigned char *payload;
+	int datalen;
+
+	struct icmphdr *icmp;
 	
 	Packet(const unsigned char*, int);
 	Packet(const Packet &);
@@ -116,6 +123,10 @@ public:
 	void increasePbuf(unsigned int);
 	void resizePayload(unsigned int);
 	void fillRandomPayload(void);
+
+	/* function used for header mangling in IP/TCP options hacks */
+	void IPHDR_shift(unsigned int, unsigned int);
+	void TCPHDR_shift(unsigned int, unsigned int);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */
 	void Inject_BAD_IPOPT(void);

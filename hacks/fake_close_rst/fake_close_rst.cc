@@ -46,13 +46,11 @@ public:
 
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-		const int original_size = pkt->orig_pktlen - (pkt->ip->ihl * 4) - (pkt->tcp->doff * 4);
-
 		pkt->resizePayload(0);
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->psh = 0;
 		pkt->tcp->rst = 1;
-		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - original_size + 1);
+		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
 		pkt->fillRandomPayload();
 
 		pkt->position = ANTICIPATION;
