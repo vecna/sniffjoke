@@ -22,7 +22,7 @@
 #ifndef HDROPTIONS_H
 #define HDROPTIONS_H
 
-#include "Packets.h"
+#include "Packet.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -30,27 +30,45 @@
 class HDRoptions {
 private:
 	int force_next;
-	bool lsrr_set;
+	bool lsrr_set, ssrr_set;
 	int actual_length, target_length;
 
-	int IPOPT_RA(unsigned int *, bool);
-	int IPOPT_SEC(unsigned int *, bool);
-	int IPOPT_SID(unsigned int *, bool);
-	int IPOPT_NOOP(unsigned int *, bool);
-	int IPOPT_SSRR(unsigned int *, bool);
-	int IPOPT_LSRR(unsigned int *, bool);
-	int IPOPT_CIPSO(unsigned int *, bool);
-	int IPOPT_TIMESTAMP(unsigned int *, bool);
-	int IPOPT_TS_TSONLY(unsigned int *, bool);
-	int IPOPT_TS_PRESPEC(unsigned int *, bool);
-	int IPOPT_TS_TSANDADDR(unsigned int *, bool);
+#define CONST_RA_SIZE	4
+	int m_IPOPT_RA(unsigned int *, bool);
+#define CONST_SEC_SIZE	11
+	int m_IPOPT_SEC(unsigned int *, bool);
+	int m_IPOPT_SID(unsigned int *, bool);
+	int m_IPOPT_NOOP(unsigned int *, bool);
+	int m_IPOPT_CIPSO(unsigned int *, bool);
+
+	int m_IPOPT_TIMESTAMP(unsigned int *, bool);
+	int m_IPOPT_TS_TSONLY(unsigned int *, bool);
+	int m_IPOPT_TS_PRESPEC(unsigned int *, bool);
+	int m_IPOPT_TS_TSANDADDR(unsigned int *, bool);
+
+	/* will be random between 8 and 40, but until we are not sure that is useful, is keep const */
+#define CONST_LSRR_SIZE	8
+	int m_IPOPT_LSRR(unsigned int *, bool);
+
+	/* little difference */
+#define CONST_SSRR_SIZE	12
+	int m_IPOPT_SSRR(unsigned int *, bool);
 
 private:
-	int TCPOPT_
+	int m_TCPOPT_TIMESTAMP(unsigned int *, bool);
+	int m_TCPOPT_EOL(unsigned int *, bool);
+	int m_TCPOPT_NOP(unsigned int *, bool);
+	int m_TCPOPT_MAXSEG(unsigned int *, bool);
+	int m_TCPOPT_WINDOW(unsigned int *, bool);
+	int m_TCPOPT_SACK_PERMITTED(unsigned int *, bool);
+	int m_TCPOPT_SACK(unsigned int *, bool);
 
 public:
+#define SSRR_SJ_OPT	0
+#define LSRR_SJ_OPT	1
+#define RA_SJ_OPT	2
 	int randomInjector(bool);
-	HDRoptions(unsigned char *, proto_t);
+	HDRoptions(unsigned char *, proto_t, unsigned int, unsigned int);
 	~HDRoptions();
 };
 

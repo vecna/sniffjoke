@@ -19,6 +19,8 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			TCPTrack.h \
 			TTLfocus.cc \
 			TTLfocus.h \
+			HDRoptions.cc \
+			HDRoptions.h \
 			UserConf.cc \
 			UserConf.h \
 			Utils.h

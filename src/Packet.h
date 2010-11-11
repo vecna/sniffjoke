@@ -22,7 +22,6 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
-#include "HDRoptions.h"
 #include "UserConf.h"
 #include "hardcoded-defines.h"
 
@@ -56,7 +55,7 @@ enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG 
 enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, MALFORMED = 4, RANDOMDAMAGE = 5 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
-enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
+enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4, IP = 5 };
 
 /* a sniffjoke packet should be send before the oroginal packet or after the original packet */
 enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 3 };
@@ -86,16 +85,16 @@ public:
 	position_t position;	
 
 	vector<unsigned char> pbuf;
-	int pktlen;
+	unsigned int pktlen;
 
 	struct iphdr *ip;
-	int iphdrlen;
+	unsigned int iphdrlen;
 
 	struct tcphdr *tcp;
-	int tcphdrlen;
+	unsigned int tcphdrlen;
 
 	unsigned char *payload;
-	int datalen;
+	unsigned int datalen;
 
 	struct icmphdr *icmp;
 	
@@ -123,14 +122,12 @@ public:
 	void fillRandomPayload(void);
 
 	/* function used for header mangling in IP/TCP options hacks */
-	void IPHDR_shift(unsigned int, unsigned int);
-	void TCPHDR_shift(unsigned int, unsigned int);
+	void IPHDR_shift(unsigned int);
+	void TCPHDR_shift(unsigned int);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */
-	void Inject_BAD_IPOPT(void);
-	void Inject_GOOD_IPOPT(void);
-        void Inject_BAD_TCPOPT(void);
-	void Inject_GOOD_TCPOPT(void);
+	void Inject_IPOPT(bool, bool);
+	void Inject_TCPOPT(bool, bool);
 
 	/* utilities */
 	void selflog(const char *, const char *);

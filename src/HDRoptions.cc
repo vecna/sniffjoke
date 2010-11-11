@@ -14,100 +14,134 @@
  *   http://www.iana.org/assignments/ip-parameters 
  *   test versus BSD/win/Linux, submit to our, we are happy every bit 
  *   of randomization available.
+ *
+ * I'm based a lot of consideration on:
+ * http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L250
+ *
+ * but checking:
+ * http://www.faqs.org/rfcs/rfc1812.html
+ * seem that some weird ipoptions will cause a packet to be discarged
+ * on the route, without ever reach the server. we aim to create 
+ * ipoptions accepted by the router, and discarded from the remote host
  */
 
-
-int HDRoptions::IPOPT_SSRR(bool isgood, char *optptr) 
+int HDRoptions::m_IPOPT_SSRR(bool isgood, char *optptr) 
 {
-	int i, proposed_size = (target_length - actual_length);
-	int maxsize = MAX_LSRR_SIZE - actual_length;
+	int i, available_size = (target_length - actual_length);
 
-	if(proposed_size < MIN_SSRR_SIZE)
+	if( available_size < CONST_SSRR_SIZE)
 		return;
 
-	/* prop size will be max of 40, 4 + 9 ipaddress,
-	 * when is_good = true, is acceptable the entire ip options
-	 * is filled with *SRR opt, but when is evil, we need other
-	 * options able to invalidate it.
-	 */
-	proposed_size = 4 + (random() %  (is_good ? maxsize : (maxsize / 2) / 4));
-
-	if(is_good && (ssrr_set | lsrr_set) )
+	if(isgood && (ssrr_set | lsrr_set) )
 		return;
 
 	ssrr_set = true;
 
-	*optptr = IPOPT_SSRR;
-	*++optptr = proposed_size;
-	*++optptr = 4;
-	*++optptr = IPOPT_NOOP;
+	optptr[0] = IPOPT_SSRR;
+	optptr[1] = CONST_SSRR_SIZE;
+	optptr[2] = 4;
+	optptr[3] = IPOPT_NOOP;
 
-	for(i = 4, ++optptr; i < proposed_size; i += 4) {
+	for(i = 4; i < CONST_SSRR_SIZE ; i += 4) {
 		unsigned int fake = random();
-		memcpy(optptr, &fake, sizeof(unsigned int));
+		memcpy(&optptr[i], &fake, sizeof(unsigned int));
 	}
 
 	/* corrupt or set the next able to generate error */
-	if(is_good == false && lsrr_set == false) {
-		/* RANDOM20PERCENT */
+	if(isgood == false && lsrr_set == false) {
+		/* 
+		 * VERIFY two kind of elements:
+		 * 1) if the option arrive in fact to the remote host
+		 * 2) if a corruption of the option is not a better way
+		 */
 		*next = LSRR_SJ_OPT;
 	}
 
-	actual_length += proposed_size;
+	actual_length += CONST_SSRR_SIZE;
+	optptr += CONST_SSRR_SIZE;
 }
 
-void HDRoptions::IPOPT_LSRR(unsigned int *next, bool is_good) 
+void HDRoptions::m_IPOPT_LSRR(unsigned int *next, bool isgood) 
 {
-	int i, proposed_size = (target_length - actual_length);
-	int maxsize = MAX_LSRR_SIZE - actual_length;
+	int i, available_size = (target_length - actual_length);
 
-	if(proposed_size < MIN_LSRR_SIZE)
+	if( available_size < CONST_LSRR_SIZE )
 		return;
 
-	/* prop size will be max of 40, 4 + 9 ipaddress,
-	 * when is_good = true, is acceptable the entire ip options
-	 * is filled with *SRR opt, but when is evil, we need other
-	 * options able to invalidate it.
-	 */
-	proposed_size = 4 + (random() %  (is_good ? maxsize : (maxsize / 2) / 4));
-
-	if(is_good && (ssrr_set | lsrr_set) )
+	if(isgood && (ssrr_set | lsrr_set) )
 		return;
 
 	lsrr_set = true;
 
-	*optptr = IPOPT_LSRR;
-	*++optptr = proposed_size;
-	*++optptr = 4;
-	*++optptr = IPOPT_NOOP;
+	optptr[0] = IPOPT_LSRR;
+	optptr[1] = CONST_LSRR_SIZE;
+	optptr[2] = 4;
+	optptr[3] = IPOPT_NOOP;
 
-	for(i = 4, ++optptr; i < proposed_size; i += 4) {
+	for(i = 4; i < CONST_LSRR_SIZE; i += 4) {
 		unsigned int fake = random();
-		memcpy(optptr, &fake, sizeof(unsigned int));
+		memcpy(&optptr[i], &fake, sizeof(unsigned int));
 	}
 
 	/* corrupt or set the next able to generate error */
-	if(is_good == false && ssrr_set == false) {
-		/* RANDOM20PERCENT */
+	if(isgood == false && ssrr_set == false) {
+		/* SAME VERIFY of SSRR method before */
 		*next = SSRR_SJ_OPT;
 	}
 
-	actual_length += proposed_size;
+	actual_length += CONST_LSRR_SIZE;
+	optptr += CONST_LSRR_SIZE;
 }
 
-void HDRoptions::IPOPT_RA(unsigned int *next, bool is_good) 
+void HDRoptions::m_IPOPT_RA(unsigned int *next, bool isgood) 
 {
+	optptr[0] = IPOPT_RA;
+	optptr[1] = CONST_RA_SIZE;
+	/* VERIFY: http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L428 */
+	optptr[2] = 0;
+	optptr[3] = 0;
+
+	actual_length += CONST_RA_SIZE;
+	optptr += CONST_RA_SIZE;
 }
 
-void HDRoptions::IPOPT_SEC(unsigned int *next, bool is_good) { }
-void HDRoptions::IPOPT_SID(unsigned int *next, bool is_good) { }
-void HDRoptions::IPOPT_NOOP(unsigned int *next, bool is_good) { }
-void HDRoptions::IPOPT_TIMESTAMP(unsigned int *next, bool is_good) { }
-void HDRoptions::IPOPT_TS_TSONLY(unsigned int *next, bool is_good) { }
-void HDRoptions::IPOPT_TS_TSANDADDR(unsigned int *next, bool is_good) { }
-void HDRoptions::IPOPT_TS_PRESPEC(unsigned int *next, bool is_good) { }
+void HDRoptions::m_IPOPT_SEC(bool isgood)
+{
+	/* TODO - data for security TODO - how much is good ? */
+	/* http://www.faqs.org/rfcs/rfc791.html "Security" */
+	optptr[0] = IPOPT_SEC;
+	optptr[1] = CONST_SEC_SIZE; // 11
+	optptr[2] = 0;
+	optptr[3] = 0;
+	optptr[4] = 0;
+	optptr[5] = 0;
+	optptr[6] = 0;
+	optptr[7] = 0;
+	optptr[8] = 0;
+	optptr[9] = 0;
+	optptr[10] = 0;
+	optptr[11] = IPOPT_NOP;
 
-void HDRoptions::IPOPT_CIPSO(unsigned int *next, bool is_good) { }
+	actual_length += CONST_RA_SIZE + 1;
+	optptr += CONST_RA_SIZE + 1;
+}
+
+void HDRoptions::m_IPOPT_SID(unsigned int *, bool ); 
+void HDRoptions::m_IPOPT_NOOP(unsigned int *, bool );
+void HDRoptions::m_IPOPT_TIMESTAMP(unsigned int *, bool );
+void HDRoptions::m_IPOPT_TS_TSONLY(unsigned int *, bool );
+void HDRoptions::m_IPOPT_TS_TSANDADDR(unsigned int *, bool );
+void HDRoptions::m_IPOPT_TS_PRESPEC(unsigned int *, bool );
+void HDRoptions::m_IPOPT_CIPSO(unsigned int *, bool );
+
+void HDRoptions::m_TCPOPT_TIMESTAMP(unsigned int *, bool);
+void HDRoptions::m_TCPOPT_EOL(unsigned int *, bool);
+void HDRoptions::m_TCPOPT_NOP(unsigned int *, bool);
+void HDRoptions::m_TCPOPT_MAXSEG(unsigned int *, bool);
+void HDRoptions::m_TCPOPT_WINDOW(unsigned int *, bool);
+void HDRoptions::m_TCPOPT_SACK_PERMITTED( bool);
+void HDRoptions::m_TCPOPT_SACK(unsigned int *, bool);
+
 
 int HDRoptions::randomInjector(bool is_good) 
 {
@@ -125,85 +159,78 @@ int HDRoptions::randomInjector(bool is_good)
 	if(selected_proto == IP) 
 	{
 		/* % 10 of force_next return the same value */
-		switch(randomval % 12) 
+		switch(randomval % 13) 
 		{
-			case 0:
-				return IPOPT_SSRR(&force_next, is_good);
-			case 1:
-				return IPOPT_LSRR(&force_next, is_good);
-			case 2:
-				return IPOPT_RA(&force_next, is_good);
+			case SSRR_SJ_OPT:
+				m_IPOPT_SSRR(is_good);
+				return actual_length;
+			case LSRR_SJ_OPT:
+				m_IPOPT_LSRR(is_good);
+				return actual_length;
+			case RA_SJ_OPT:
+				m_IPOPT_RA(is_good);
+				return actual_length;
 			case 4:
-				return IPOPT_CIPSO(&force_next, is_good);
+				m_IPOPT_CIPSO(is_good);
+				return actual_length;
 			case 5:
-				return IPOPT_SEC(&force_next, is_good);
+				m_IPOPT_SEC(is_good);
+				return actual_length;
 			case 6:
-				return IPOPT_SID(&force_next, is_good);
+				m_IPOPT_SID(is_good);
+				return actual_length;
 			case 7:
-				return IPOPT_NOOP(&force_next, is_good);
+				m_IPOPT_NOOP(is_good);
+				return actual_length;
 			case 8:
-				return IPOPT_TIMESTAMP(&force_next, is_good);
+				m_IPOPT_TIMESTAMP(is_good);
+				return actual_length;
 			case 10:
-				return IPOPT_TS_TSONLY(&force_next, is_good);
+				m_IPOPT_TS_TSONLY(is_good);
+				return actual_length;
 			case 11:
-				return IPOPT_TS_TSANDADDR(&force_next, is_good);
+				m_IPOPT_TS_TSANDADDR(is_good);
+				return actual_length;
 			case 12:
-				return IPOPT_TS_PRESPEC(&force_next, is_good);
+				m_IPOPT_TS_PRESPEC(is_good);
+				return actual_length;
 		}
 	} else /* TCP */ {
-		switch(random % 6) 
+		switch(random % 7) 
 		{
 			case 0:
+				m_TCPOPT_TIMESTAMP(is_good);
+				return actual_length;
 			case 1:
+				m_TCPOPT_EOL(is_good);
+				return actual_length;
 			case 2:
+				m_TCPOPT_NOP(is_good);
+				return actual_length;
 			case 3:
+				m_TCPOPT_MAXSEG(is_good);
+				return actual_length;
 			case 4:
+				m_TCPOPT_WINDOW(&force_next, is_good);
+				return actual_length;
+			case 5:
+				m_TCPOPT_SACK_PERMITTED(is_good);
+				return actual_length;
+			case 6:
+				m_TCPOPT_SACK(, is_good);
+				return actual_length;
 		}
 	}
 }
 
-HDRoptions::HDRoptions(unsigned char *header_end, protocol_t proto) :
+HDRoptions::HDRoptions(unsigned char *header_end, protocol_t proto, int actual_size, int target_size) :
 	selected_proto(proto),
-	optptr(header_end)
+	optptr(header_end),
+	actual_length(actual_size),
+	target_length(target_size)
 {
 	force_next = -1;
 	lsrr_set = ssrr_set = false;
 }
 
 HDRoptions::~HDRoptions() { }
-
-
-/* ENDIANESS possibile problem here ? */
-void HDRoptions::OptApply(unsigned int offset, unsigned int abcd) {
-        unsigned int *ptr = (unsigned char *)&(pbuf[offset]);
-        ptr[0] = abcd;
-}
-
-void Packet::Inject_GOOD_IPOPT(void)
-{
-        struct injipopt {
-                unsigned char OPT;
-                unsigned char tot_len;
-                unsigned char opt_len;
-        };
-#define VARIABLE        0xff
-        struct injipopt supported[] = {
-        /*        IPOPT_OPVAL, IPOPT_OLEN       */
-                { IPOPT_SSRR, VARIABLE },
-                { IPOPT_LSRR, VARIABLE },
-                { IPOPT_RR,   VARIABLE }
-        };
-#define SUPPORTED_NUM   (sizeof(supported) / sizeof(struct injipopt))
-
-        int wannabeinjected = random() % 6;
-        int done = 0;
-
-        do {
-                int i = random() % SUPPORTED_N;
-
-                if(supported[i].opt_len == VARIABLE) {
-                }
-
-        } while(done != wannabeinject);
-/*
- *

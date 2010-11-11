@@ -390,9 +390,9 @@ void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...
 
 void* memset_random(void *s, size_t n)
 {
-	char *cp = (char*)s;
+	unsigned char *cp = (unsigned char*)s;
 	while (n-- > 0)
-		*cp++ = (char)random();
+		*cp++ = (unsigned char)random();
 	return s;
 }
 

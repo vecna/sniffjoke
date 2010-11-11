@@ -662,14 +662,33 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 
 	/* IP options, every packet subject if possible, and MALFORMED will be apply */
 	if(pkt.wtf == MALFORMED) {
-		pkt.Inject_BAD_IPOPT();
+		pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true);
+#if 0	// VERIFY - TCP doesn't cause a failure of the packet, the BAD TCPOPT will be used always
                 if (!pkt.checkUncommonTCPOPT())
                         pkt.Inject_BAD_TCPOPT();
+#endif
 	} else {
-		pkt.Inject_GOOD_IPOPT();
+		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options */ false);
+#if 0	// the same
                 if (!pkt.checkUncommonTCPOPT())
                         pkt.Inject_GOOD_TCPOPT();
+#endif
 	}
+
+#if 0
+	// VERIFY effective impact of every TCP OPTION
+	if (!pkt.checkUncommonTCPOPT() && RANDOM20PERCENT) {
+		if RANDOM50PERCENT
+			pkt.Inject_TCPOPT(/* corrupt ? */ false, /* stript previous ? */ true);
+		else
+			pkt.Inject_TCPOPT(/* corrupt ? */ true, /* stript previous ? */ true);
+			
+	}
+	// ipoption GOOD added in evey packets != of MALFORMED
+	if (!pkt.checkUncommonIPOPT() && RANDOM20PERCENT && pkt->wtf != MALFORMED)
+		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
+	
+#endif
 
 	/* fixing the mangled packet */
 	pkt.fixIpTcpSum();
