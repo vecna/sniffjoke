@@ -48,7 +48,7 @@ public:
 		pkt->fillRandomPayload();
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
-		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - datalen + 1);
+		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
 
 		pkt->tcp->psh = 0;
 		pkt->tcp->fin = 1;

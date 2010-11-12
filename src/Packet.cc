@@ -33,10 +33,11 @@ Packet::Packet(const unsigned char* buff, int size) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+        pbuf(size),
         ip(NULL),
         tcp(NULL),
-        icmp(NULL),
-        pbuf(size)
+        payload(NULL),
+        icmp(NULL)
 {
 	memcpy(&(pbuf[0]), buff, size);
 	updatePointers();
@@ -55,12 +56,12 @@ Packet::Packet(const Packet& pkt) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+        pbuf(pkt.pbuf),
+	pktlen(pkt.pktlen),
         ip(NULL),
         tcp(NULL),
-        icmp(NULL),
         payload(NULL),
-        pbuf(pkt.pbuf),
-	pktlen(pkt.pktlen)
+        icmp(NULL)
 {
 	updatePointers();
 	memset(debugbuf, 0x00, LARGEBUF);
@@ -319,7 +320,7 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	/* used to keep track of header growing */
 	unsigned int actual_iphdrlen = 0; 
 
-	HDRoptions IPInjector( (unsigned char *)ip + sizeof(struct iphdr), IP, iphdrlen, target_iphdrlen);
+	HDRoptions IPInjector( (unsigned char *)ip + sizeof(struct iphdr), iphdrlen, target_iphdrlen);
 	int MAXITERATION = 10;
 
 	do {
@@ -331,6 +332,7 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 
 /* called by TCPTrack.cc */
+#if 0
 void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 {
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) 
@@ -345,7 +347,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	/* VERIFY - TODO: randomize the dimension of the injection */
 	unsigned int actual_tcphdrlen, target_tcphdrlen = 40;
 
-	HDRoptions TCPInjector( (unsigned char *)tcp + sizeof(struct tcphdr), TCP, tcphdrlen, target_tcphdrlen);
+	HDRoptions TCPInjector( (unsigned char *)tcp + sizeof(struct tcphdr), tcphdrlen, target_tcphdrlen);
 	int MAXITERATION = 6;
 
 	do {
@@ -353,6 +355,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
 	} while( target_tcphdrlen != actual_tcphdrlen && --MAXITERATION ); 
 }
+#endif
 
 #if 0 // OLD - use as reference and delete 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
@@ -469,7 +472,6 @@ void Packet::selflog(const char *func, const char *loginfo)
 			);
 			break;
 		case OTHER_IP:
-		case IP:
 			snprintf(protoinfo, MEDIUMBUF, "Other proto: %d", ip->protocol);
 			break;
 		case PROTOUNASSIGNED:

@@ -27,48 +27,68 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
+/* present in linux/ip.h */
+#define IPOPT_CIPSO	(6 |IPOPT_CONTROL|IPOPT_COPY)
+
 class HDRoptions {
 private:
 	int force_next;
 	bool lsrr_set, ssrr_set;
-	int actual_length, target_length;
+	unsigned int actual_length, target_length;
 
 #define CONST_RA_SIZE	4
-	int m_IPOPT_RA(unsigned int *, bool);
+	void m_IPOPT_RA(bool);
 #define CONST_SEC_SIZE	11
-	int m_IPOPT_SEC(unsigned int *, bool);
-	int m_IPOPT_SID(unsigned int *, bool);
-	int m_IPOPT_NOOP(unsigned int *, bool);
-	int m_IPOPT_CIPSO(unsigned int *, bool);
+	void m_IPOPT_SEC(bool);
+#define CONST_SID_SIZE	4
+	void m_IPOPT_SID(bool);
+#define CONST_NOOP_SIZE	1
+	void m_IPOPT_NOOP(bool);
+#define CONST_CIPSO_SIZE 8
+	void m_IPOPT_CIPSO(bool);
 
-	int m_IPOPT_TIMESTAMP(unsigned int *, bool);
-	int m_IPOPT_TS_TSONLY(unsigned int *, bool);
-	int m_IPOPT_TS_PRESPEC(unsigned int *, bool);
-	int m_IPOPT_TS_TSANDADDR(unsigned int *, bool);
+#define TMP_TIMESTAMP_SIZE	8
+	// TMP because only TS_TSONLY is the next supported option
+	void m_IPOPT_TIMESTAMP(bool);
+	void m_IPOPT_TS_TSONLY(bool);
+	void m_IPOPT_TS_PRESPEC(bool);
+	void m_IPOPT_TS_TSANDADDR(bool);
 
 	/* will be random between 8 and 40, but until we are not sure that is useful, is keep const */
 #define CONST_LSRR_SIZE	8
-	int m_IPOPT_LSRR(unsigned int *, bool);
+	void m_IPOPT_LSRR(bool);
 
 	/* little difference */
 #define CONST_SSRR_SIZE	12
-	int m_IPOPT_SSRR(unsigned int *, bool);
+	void m_IPOPT_SSRR(bool);
 
 private:
-	int m_TCPOPT_TIMESTAMP(unsigned int *, bool);
-	int m_TCPOPT_EOL(unsigned int *, bool);
-	int m_TCPOPT_NOP(unsigned int *, bool);
-	int m_TCPOPT_MAXSEG(unsigned int *, bool);
-	int m_TCPOPT_WINDOW(unsigned int *, bool);
-	int m_TCPOPT_SACK_PERMITTED(unsigned int *, bool);
-	int m_TCPOPT_SACK(unsigned int *, bool);
-
+#if 0
+	void m_TCPOPT_TIMESTAMP(unsigned int *, bool);
+	void m_TCPOPT_EOL(unsigned int *, bool);
+	void m_TCPOPT_NOP(unsigned int *, bool);
+	void m_TCPOPT_MAXSEG(unsigned int *, bool);
+	void m_TCPOPT_WINDOW(unsigned int *, bool);
+	void m_TCPOPT_SACK_PERMITTED(unsigned int *, bool);
+	void m_TCPOPT_SACK(unsigned int *, bool);
+#endif
 public:
-#define SSRR_SJ_OPT	0
-#define LSRR_SJ_OPT	1
-#define RA_SJ_OPT	2
+	/* used for internal definition of IP opt functions */
+#define SSRR_SJIP_OPT	0
+#define LSRR_SJIP_OPT	1
+#define RA_SJIP_OPT	2
+#define CIPSO_SJIP_OPT	3
+#define SEC_SJIP_OPT	4
+#define SID_SJIP_OPT	5
+#define NOOP_SJIP_OPT	6
+#define TS_SJIP_OPT	7
+#define TSONLY_SJIP_OPT	8
+
+	/* used for internal definition of TCP opt functions */
+
+	unsigned char *optptr;
 	int randomInjector(bool);
-	HDRoptions(unsigned char *, proto_t, unsigned int, unsigned int);
+	HDRoptions(unsigned char *, unsigned int, unsigned int);
 	~HDRoptions();
 };
 
