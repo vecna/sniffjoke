@@ -22,7 +22,7 @@
 #ifndef SJ_PROCESS_H
 #define SJ_PROCESS_H
 
-#include "hardcoded-defines.h"
+#include "Utils.h"
 #include "UserConf.h"
 
 #include <csignal>
@@ -35,7 +35,7 @@
 class Process {
 private:
 
-	UserConf &usercfg;
+	UserConf &userconf;
 
         struct passwd userinfo;
 	void* userinfo_buf;
@@ -55,14 +55,14 @@ public:
 	void writePidfile();
 	void unlinkPidfile();
 
-	void detach() ;
+	int detach();
 	void jail();
 	void privilegesDowngrade();
 	void sigtrapSetup(sig_t);
 	void sigtrapEnable();
 	void sigtrapDisable();
 	void background();
-	void isolation() ;
+	void isolation();
 };
 
-#endif /* SJ_Process_H */
+#endif /* SJ_PROCESS_H */

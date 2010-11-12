@@ -19,11 +19,11 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_PACKET_QUEUE_H
 #define SJ_PACKET_QUEUE_H
 
-#include "UserConf.h"
-#include "hardcoded-defines.h"
+#include "Utils.h"
 #include "Packet.h"
 
 enum priority_t { HIGH = 0, LOW = 1 };

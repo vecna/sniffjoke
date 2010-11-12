@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "PacketQueue.h"
-#include "Utils.h"
 
 PacketQueue::PacketQueue() :
 	front(new Packet*[2]),
@@ -28,7 +28,7 @@ PacketQueue::PacketQueue() :
 	cur_prio(0),
 	cur_pkt(NULL)
 {
-	internal_log(NULL, DEBUG_LEVEL, "PacketQueue()");
+	debug.log(DEBUG_LEVEL, "PacketQueue()");
 	memset(front, NULL, sizeof(Packet*)*2);
 	memset(back, NULL, sizeof(Packet*)*2);
 }
@@ -36,7 +36,7 @@ PacketQueue::PacketQueue() :
 
 PacketQueue::~PacketQueue(void)
 {
-	internal_log(NULL, DEBUG_LEVEL, "~PacketQueue()");
+	debug.log(DEBUG_LEVEL, "~PacketQueue()");
 	Packet *tmp = get(false);
 	while (tmp != NULL) {
 		delete tmp;

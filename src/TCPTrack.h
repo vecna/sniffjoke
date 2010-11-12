@@ -22,6 +22,7 @@
 #ifndef SJ_TCPTRACK_H
 #define SJ_TCPTRACK_H
 
+#include "Utils.h"
 #include "UserConf.h"
 #include "Packet.h"
 #include "PacketQueue.h"
@@ -31,7 +32,7 @@
 
 class TCPTrack {
 private:
-	struct sj_config &runcopy;
+	struct sj_config &runconfig;
 	bool youngpacketspresent;
 	struct timespec clock;
 	PacketQueue p_queue;

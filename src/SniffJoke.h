@@ -19,52 +19,47 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SJ_NETIO_H
-#define SJ_NETIO_H
+#ifndef SJ_SNIFFJOKE_H
+#define SJ_SNIFFJOKE_H
 
 #include "Utils.h"
 #include "UserConf.h"
-#include "TCPTrack.h"
+#include "Process.h"
+#include "NetIO.h"
 
-#include <poll.h>
-#include <netpacket/packet.h>
+#include <csignal>
+#include <cstdio>
+#include <memory>
 
-#define BURSTSIZE       10
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 
-class NetIO {
+using namespace std;
+
+class SniffJoke {
 private:
-	/* 
-	 * these data are required for handle 
-	 * tunnel/ethernet man in the middle
-	 */
-	struct sockaddr_ll send_ll;
-	struct sj_config &runcopy;
+	auto_ptr<Process> proc;
+	auto_ptr<UserConf> userconf;
+	auto_ptr<NetIO> mitm;
+	auto_ptr<HackPool> hack_pool;
+	auto_ptr<TCPTrack> conntrack;
 
-	/* tunfd/netfd: file descriptor for I/O purpose */
-	int tunfd;
-	int netfd;
+	pid_t service_pid;
+	int listening_unix_socket;
 
-        /* poll variables, two file descriptors */
-        struct pollfd fds[2];
-
-	TCPTrack *conntrack;
-
-	unsigned char pktbuf[MTU];
-	int size;
-	Packet *pkt;
-
+	void kill_child();
+	int bind_unixsocket();
+	void handle_unixsocket(int srvsock, bool &alive);
+	int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);	
+	bool parse_port_weight(char *weightstr, Strength *Value);
 public:
-
-	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
-	 *	   --- but not killed!
-	 */
-
-	NetIO(sj_config &);
-	~NetIO(void);
-	void prepare_conntrack(TCPTrack *);
-	void network_io(void);
-	void queue_flush(void);
-	void set_running(bool);
+	SniffJoke(const struct sj_cmdline_opts &);
+	void client(const char *);
+	void server(bool, bool);
+	void server_root_cleanup();
+	void server_user_cleanup();
+	void send_command(const char *cmdstring);
 };
 
-#endif /* SJ_NETIO_H */
+#endif /* SJ_SNIFFJOKE_H */

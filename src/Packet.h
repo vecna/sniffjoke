@@ -22,8 +22,8 @@
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
+#include "Utils.h"
 #include "UserConf.h"
-#include "hardcoded-defines.h"
 
 #include <cstdio>
 #include <cstdlib>

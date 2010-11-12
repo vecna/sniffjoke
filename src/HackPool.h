@@ -22,6 +22,7 @@
 #ifndef SJ_HACKPOOL_H
 #define SJ_HACKPOOL_H
 
+#include "Utils.h"
 #include "Hack.h"
 
 #include <vector>

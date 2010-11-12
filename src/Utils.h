@@ -38,6 +38,9 @@
 
 #include <unistd.h>
 
+#include "Debug.h"
+#include "hardcoded-defines.h"
+
 /* not used ATM */
 #define SUPPRESS_LOG		1
 
@@ -55,7 +58,7 @@
 
 #define SJ_RUNTIME_EXCEPTION()	throw sj_runtime_exception(__func__, __FILE__, __LINE__)
 std::runtime_error sj_runtime_exception(const char* func, const char* file, long line);
-void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...);
 void* memset_random(void *s, size_t n);
+void sigtrap(int signal);
 
 #endif /* SJ_UTILS_H */

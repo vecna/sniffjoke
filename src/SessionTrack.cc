@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "SessionTrack.h"
 
 SessionTrack::SessionTrack(const Packet &pkt) :
@@ -52,7 +53,7 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 
 void SessionTrack::selflog(const char *func, const char *lmsg) 
 {
-	internal_log(NULL, SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x shutdown %s #pkt %d: [%s]",
+	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x shutdown %s #pkt %d: [%s]",
 		func, ntohs(sport), 
 		inet_ntoa(*((struct in_addr *)&daddr)),
                 ntohl(isn),

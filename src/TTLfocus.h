@@ -22,10 +22,12 @@
 #ifndef SJ_TTLFOCUS_H
 #define SJ_TTLFOCUS_H
 
-#include "time.h"
+#include "Utils.h"
 #include "UserConf.h"
 
 #include <map>
+
+#include "time.h"
 
 using namespace std;
 

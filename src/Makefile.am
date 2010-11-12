@@ -1,27 +1,31 @@
 bin_PROGRAMS =		sniffjoke
 
 sniffjoke_SOURCES =	hardcoded-defines.h \
-			NetIO.cc \
-			NetIO.h \
-			Packet.cc \
+			Debug.h \
+			Debug.cc \
+			Utils.h \
 			Packet.h \
-			PacketQueue.cc \
+			Packet.cc \
 			PacketQueue.h \
-			Process.cc \
-			Process.h \
-			SessionTrack.cc \
-			SessionTrack.h \
-			SniffJoke.cc \
+			PacketQueue.cc \
 			Hack.h \
-			HackPool.cc \
 			HackPool.h \
-			TCPTrack.cc \
-			TCPTrack.h \
-			TTLfocus.cc \
+			HackPool.cc \
 			TTLfocus.h \
-			UserConf.cc \
+			TTLfocus.cc \
+			SessionTrack.h \
+			SessionTrack.cc \
+			TCPTrack.h \
+			TCPTrack.cc \
+			NetIO.h \
+			NetIO.cc \
+			Process.h \
+			Process.cc \
 			UserConf.h \
-			Utils.h
+			UserConf.cc \
+			SniffJoke.cc \
+			SniffJoke.h \
+			main.cc
 
 AM_CPPFLAGS =		-ansi -pedantic -Wall
 sniffjoke_LDFLAGS =	-lrt -Wl,-export-dynamic

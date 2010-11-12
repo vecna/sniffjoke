@@ -1,222 +1,183 @@
-/*
- *   SniffJoke is a software able to confuse the Internet traffic analysis,
- *   developed with the aim to improve digital privacy in communications and
- *   to show and test some securiy weakness in traffic analysis software.
- *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
- *
- *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-#include "hardcoded-defines.h"
+#include "SniffJoke.h"
 
-#include "UserConf.h"
-#include "Process.h"
-#include "Utils.h"
-#include "NetIO.h"
-#include "TCPTrack.h"
-
-#include <stdexcept>
-#include <csignal>
-#include <memory>
 #include <fcntl.h>
-#include <getopt.h>
+#include <sys/types.h>
 #include <sys/un.h>
-#include <sys/param.h>
+#include <sys/wait.h>
 
-using namespace std;
-
-/* proc configuration, data struct defined in sniffjoke.h */
-static struct sj_useropt useropt;
-
-/* proc tracking, handling, killing, breeding, ecc... */
-static auto_ptr<Process> proc;
-
-/* Sniffjoke networking and feature configuration */
-static auto_ptr<UserConf> userconf;
-
-/* Sniffjoke man in the middle class and functions */
-static auto_ptr<NetIO> mitm;
-
-/* Sniffjoke plugin loader */
-static auto_ptr<HackPool> hack_pool;
-
-/* Sniffjoke connection tracking class and functions */
-static auto_ptr<TCPTrack> conntrack;
-
-#define SNIFFJOKE_HELP_FORMAT \
-	"%s [command] or %s --options:\n"\
-	" --debug [level 1-6]\tset up verbosoty level [default: %d]\n"\
-	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
-	" --logfile [file]\tset a logfile, [default: %s%s]\n"\
-	" --user [username]\tdowngrade priviledge to the specified user [default: %s]\n"\
-	" --group [groupname]\tdowngrade priviledge to the specified group [default: %s]\n"\
-	" --chroot-dir [dir]\truns chroted into the specified dir [default: %s]\n"\
-	" --force\t\tforce restart if sniffjoke service\n"\
-	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --config [filename]\tconfig file [default: %s%s]\n"\
-	" --enabler [filename]\tplugins enabler file [default: %s]\n"\
-	" --version\t\tshow sniffjoke version\n"\
-	" --help\t\t\tshow this help (special --help hacking)\n\n"\
-	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
-	" start\t\t\tstart sniffjoke hijacking/injection\n"\
-	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
-	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
-	" saveconfig\t\tdump config file\n\n"\
-	" stat\t\t\tget statistics about sniffjoke configuration and network\n\n"\
-	" info\t\t\tget massive info about sniffjoke internet stats\n\n"\
-	" showport\t\tshow TCP ports strongness of injection\n"\
-	" set start end value\tset per tcp ports the strongness of injection\n"\
-	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
-	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
-	" clear\t\t\talias to \"set 1 65535 none\"\n"\
-	" loglevel\t\t[1-6] change the loglevel\n\n"\
-	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
-
-static void sj_help(const char *pname, const char *basedir)
-{
-	printf(SNIFFJOKE_HELP_FORMAT, pname, pname, DEFAULT_DEBUG_LEVEL, 
-		basedir, LOGFILE, 
-		DROP_USER, DROP_GROUP, 
-		basedir, basedir, CONF_FILE, PLUGINSENABLER);
+SniffJoke::SniffJoke(const struct sj_cmdline_opts &cmdline_opts) {
+	userconf = auto_ptr<UserConf> (new UserConf(cmdline_opts));
+	proc = auto_ptr<Process> (new Process(*userconf));
 }
 
-static void sj_version(const char *pname)
-{
-	printf("%s %s\n", SW_NAME, SW_VERSION);
-}
-
-static void sj_sigtrap(int signal) 
-{
-	if (signal)
-		internal_log(NULL, ALL_LEVEL, "received signal %d, pid %d cleaning sniffjoke objects...", signal, getpid());
-		
-	/* different way for closing sniffjoke if the signal come from the father or the child */
-	if(getuid()) {
-		exit(0);
-	} else {
-		proc->unlinkPidfile();
-		system("sniffjoke quit");
-		sleep(5);
-		exit(0);
+void SniffJoke::client(const char* command_input) {
+	service_pid = proc->readPidfile();
+	if (!service_pid) {
+		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command %s ignored", command_input);
+		return;
 	}
+
+	proc->jail();
+	proc->privilegesDowngrade();
+	send_command(command_input);
+
+	return;
 }
 
-/* internal routine called in client_send_command and read_unixsock */
-static int service_listener(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
-{
-	memset(databuf, 0x00, bufsize);
+void SniffJoke::server(bool go_foreground, bool force_restart) {
 
-	/* we receive up to bufsize -1 having databuf[bufsize] = 0 and saving us from future segfaults */
-
-	int fromlen = sizeof(struct sockaddr_un), ret;
-
-	if ((ret = recvfrom(sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			return 0;
+	service_pid = proc->readPidfile();
+	if (service_pid != 0) {
+		if (!force_restart) {
+			debug.log(ALL_LEVEL, "SniffJoke is already running, use --force or check --help");
+			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, service_pid);
+			return;
+		} else {
+			debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", service_pid);
+			/* FIXME */
+			// system("SniffJoke quit");
+			// sleep(5);
+			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going running in background");
 		}
-
-		internal_log(error_flow, ALL_LEVEL, "unable to receive local socket: %s: %s", usermsg, strerror(errno));
 	}
+	
+	/* running the network setup before the background, for keep the software output visible on the console */
+	userconf->network_setup();
 
-	return ret;
+	if (!go_foreground) {
+		proc->background();
+		proc->isolation();
+	}
+	
+	proc->writePidfile();
+
+	/* the code flow reach here, SniffJoke is ready to instance network environment */
+	mitm = auto_ptr<NetIO> (new NetIO(userconf->running));
+
+	/* proc->detach(): fork() into two processes, 
+	   from now on the real configuration is the one mantained by the child */
+	service_pid = proc->detach();
+	
+	proc->sigtrapSetup(sigtrap);
+	
+	if(service_pid) {
+		int deadtrace;
+		
+		waitpid(service_pid, &deadtrace, WUNTRACED);
+
+		if (WIFEXITED(deadtrace))
+			debug.log(VERBOSE_LEVEL, "child %d WIFEXITED", service_pid);
+		if (WIFSIGNALED(deadtrace))
+			debug.log(VERBOSE_LEVEL, "child %d WIFSIGNALED", service_pid);
+		if (WIFSTOPPED(deadtrace))
+			debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
+
+		debug.log(DEBUG_LEVEL, "child %d died, going to shutdown", service_pid);
+	} else {
+		
+		/* loading the plugins used for tcp hacking, MUST be done before proc->jail() */
+		hack_pool = auto_ptr<HackPool> (new HackPool(userconf->running.enabler));
+
+		/* proc->jail(): chroot + userconf->running.chrooted = true */
+		proc->jail();
+
+		proc->privilegesDowngrade();
+
+		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf->running, *hack_pool));
+		mitm->prepare_conntrack(conntrack.get());
+
+		listening_unix_socket = bind_unixsocket();
+
+		if (userconf->running.active == false)
+			debug.log(ALL_LEVEL, "SniffJoke is running and INACTIVE: use \"SniffJoke start\" command to start it");
+
+		/* main block */
+		bool alive = true;
+		while (alive) {
+
+			proc->sigtrapDisable();
+
+			mitm->network_io();
+			mitm->queue_flush();
+
+			handle_unixsocket(listening_unix_socket, alive);
+
+			proc->sigtrapEnable();
+		}
+	}
 }
 
-static int sj_bind_unixsocket() 
+void SniffJoke::server_root_cleanup()
 {
-	const char *sniffjoke_socket_path = SJ_SERVICE_UNIXSOCK; 
+	debug.log(VERBOSE_LEVEL, "server_root_cleanup()");
+	
+	kill(service_pid, SIGTERM);
+	waitpid(service_pid, NULL, 0);
+	proc->unlinkPidfile();
+}
+
+void SniffJoke::server_user_cleanup()
+{
+	debug.log(VERBOSE_LEVEL, "client_user_cleanup()");
+}
+
+
+int SniffJoke::bind_unixsocket()
+{
+	const char *SniffJoke_socket_path = SJ_SERVICE_UNIXSOCK; 
 	struct sockaddr_un sjsrv;
 	int sock;
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
+		debug.log(ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
 		SJ_RUNTIME_EXCEPTION();
 	}
 
 	memset(&sjsrv, 0x00, sizeof(sjsrv));
 	sjsrv.sun_family = AF_UNIX;
-	memcpy(sjsrv.sun_path, sniffjoke_socket_path, strlen(sniffjoke_socket_path));
+	memcpy(sjsrv.sun_path, SniffJoke_socket_path, strlen(SniffJoke_socket_path));
 
-	if (!access(sniffjoke_socket_path, F_OK)) {
-		if (unlink(sniffjoke_socket_path)) {
-			internal_log(NULL, ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
-				sniffjoke_socket_path, strerror(errno));
+	if (!access(SniffJoke_socket_path, F_OK)) {
+		if (unlink(SniffJoke_socket_path)) {
+			debug.log(ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
+				SniffJoke_socket_path, strerror(errno));
 			SJ_RUNTIME_EXCEPTION();
 		}
 	}
 								
 	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
 		close(sock);
-		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
-			 sniffjoke_socket_path, strerror(errno)
+		debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
+			 SniffJoke_socket_path, strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION();
 	}
 
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
 		close(sock);
-		internal_log(NULL, ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
-			sniffjoke_socket_path, strerror(errno)
+		debug.log(ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
+			SniffJoke_socket_path, strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION();
 	}
-	internal_log(NULL, VERBOSE_LEVEL, "Successful binding of unix socket in %s", sniffjoke_socket_path);
+	debug.log(VERBOSE_LEVEL, "Successful binding of unix socket in %s", SniffJoke_socket_path);
 
 	return sock;
 }
 
-/* this is the parsing system used in TCP ports configuration */
-static bool parse_port_weight(char *weightstr, Strength *Value) 
+void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
 {
-	struct parsedata {
-		const char *keyword;
-		const int keylen;
-		Strength equiv;
-	};
-#define keywordToParse	4
-	struct parsedata wParse[] = {
-		{ "none", 	strlen("none"), 	NONE },
-		{ "light", 	strlen("light"), 	LIGHT },
-		{ "normal", 	strlen("normal"), 	NORMAL },
-		{ "heavy", 	strlen("heavy"), 	HEAVY }
-	};
-	int i;
-
-	for(i = 0; i < keywordToParse; i++) {
-		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
-			*Value = wParse[i].equiv;
-			return true;
-		}
-	}
-	return false;
-}
-
-/* function used in in order to receive command and modify the running conf, display stats and so on */
-static void read_unixsock(int srvsock, UserConf *confobj, bool &alive)
-{
-	char r_command[MEDIUMBUF], *output =NULL, *internal_buf =NULL;
+	char r_command[MEDIUMBUF], *output = NULL, *internal_buf = NULL;
 	int rlen;
 	struct sockaddr_un fromaddr;
 
-	if ((rlen = service_listener(srvsock, r_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
+	if ((rlen = recv_command(srvsock, r_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
 		SJ_RUNTIME_EXCEPTION();
 
 	if (!rlen)
 		return;
 
-	internal_log(NULL, VERBOSE_LEVEL, "received command from the client: %s", r_command);
+	debug.log(VERBOSE_LEVEL, "received command from the client: %s", r_command);
 
 	if (!memcmp(r_command, "start", strlen("start"))) {
 		output = userconf->handle_cmd_start();
@@ -258,7 +219,7 @@ handle_set_error:
 				"startport and endport need to be less than %d\n"\
 				"startport nedd to be less or equal endport\n"\
 				"value would be: none|light|normal|heavy\n", PORTNUMBER);
-			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
+			debug.log(ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		}
 	} else if (!memcmp(r_command, "clear", strlen("clear"))) {
@@ -271,24 +232,24 @@ handle_set_error:
 		if (loglevel < 0 || loglevel > PACKETS_DEBUG) {
 			internal_buf = (char *)malloc(MEDIUMBUF);
 			snprintf(internal_buf, MEDIUMBUF, "invalid log value: %d, must be > 0 and < than %d", loglevel, PACKETS_DEBUG);
-			internal_log(NULL, ALL_LEVEL, "%s", internal_buf);
+			debug.log(ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		} else {
 			output = userconf->handle_cmd_loglevel(loglevel);
 		}
 	} else {
-		internal_log(NULL, ALL_LEVEL, "wrong command %s", r_command);
+		debug.log(ALL_LEVEL, "wrong command %s", r_command);
 	}
 
 	/* send the answer message to the client */
-	if (output != NULL)
+	if(output != NULL) 
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
 
 	if (internal_buf != NULL)
 		free(internal_buf);
 }
 
-static void client_send_command(char *cmdstring)
+void SniffJoke::send_command(const char *cmdstring)
 {
 	int sock;
 	char received_buf[HUGEBUF];
@@ -299,7 +260,7 @@ static void client_send_command(char *cmdstring)
 	
 	/* Create a UNIX datagram socket for client */
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL: unable to open UNIX/DGRAM socket for connect to sniffjoke service: %s", strerror(errno));
+		debug.log(ALL_LEVEL, "FATAL: unable to open UNIX/DGRAM socket for connect to SniffJoke service: %s", strerror(errno));
 		exit(0);
 	}
 		
@@ -313,8 +274,8 @@ static void client_send_command(char *cmdstring)
 
 	unlink(SJ_CLIENT_UNIXSOCK);
 	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL: unable to bind client to %s: %s", SJ_CLIENT_UNIXSOCK, strerror(errno));
-		exit(0);
+		debug.log(ALL_LEVEL, "FATAL: unable to bind client to %s: %s", SJ_CLIENT_UNIXSOCK, strerror(errno));
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	/* Set up address structure for server/service socket */
@@ -323,325 +284,63 @@ static void client_send_command(char *cmdstring)
 	strcpy(servaddr.sun_path, SJ_SERVICE_UNIXSOCK);
 
 	if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		internal_log(NULL, ALL_LEVEL, "FATAL: unable to send message [%s] via %s: %s - Rembember: what sniffjoke run with --chroot-dir or --config parms, you need to pass the same options in the client (the unix socket used reside under chroot dir)", cmdstring, SJ_SERVICE_UNIXSOCK, strerror(errno));
-		exit(0);
+		debug.log(ALL_LEVEL, "FATAL: unable to send message [%s] via %s: %s - Rembember: what SniffJoke run with --chroot-dir or --config parms, you need to pass the same options in the client (the unix socket used reside under chroot dir)", cmdstring, SJ_SERVICE_UNIXSOCK, strerror(errno));
+		SJ_RUNTIME_EXCEPTION();
 	}
 
 	/* We receive a max of HUGEBUF -1 saving us from segfault during printf */
-	if ((rlen = service_listener(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1) 
-		exit(0); 
+	if ((rlen = recv_command(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1)
+		SJ_RUNTIME_EXCEPTION();
 
 	if (rlen == 0)
-		internal_log(NULL, ALL_LEVEL, "unreceived response for the command [%s]", cmdstring);
+		debug.log(ALL_LEVEL, "unreceived response for the command [%s]", cmdstring);
 	else	/* the output */ 
-		printf("<sniffjoke service>: %s", received_buf);
+		printf("<SniffJoke service>: %s", received_buf);
 	
 	close(sock);
 }
 
-std::runtime_error sj_runtime_exception(const char* func, const char* file, long line)
+int SniffJoke::recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
 {
-	std::stringstream stream;
-	stream << file << "(" << line << ") function: " << func << "()";
-	return std::runtime_error(stream.str());
-}
+	memset(databuf, 0x00, bufsize);
 
-/* forceflow is almost useless, use NULL in the normal logging options */
-void internal_log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...) 
-{
-	va_list arguments;
-	time_t now = time(NULL);
-	FILE *output_flow;
-	unsigned int loglevel;
+	/* we receive up to bufsize -1 having databuf[bufsize] = 0 and saving us from future segfaults */
 
-	if (forceflow == NULL && useropt.logstream == NULL)
-		return;
+	int fromlen = sizeof(struct sockaddr_un), ret;
 
-	if (forceflow != NULL)
-		output_flow = forceflow;
-	else
-		output_flow = useropt.logstream;
-
-	if (errorlevel == PACKETS_DEBUG && useropt.packet_logstream != NULL)
-		output_flow = useropt.packet_logstream;
-
-	if (errorlevel == SESSION_DEBUG && useropt.session_logstream != NULL)
-		output_flow = useropt.session_logstream;
-
-	/* is checked userconf->running->debug_level instead of useropt.debug_level
-	 * because the user should chage it with the "set" command */
-	if(userconf.get() != NULL)
-		loglevel = userconf->running.debug_level;
-	else
-		loglevel = useropt.debug_level;
-
-	if (errorlevel <= loglevel) { 
-		char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
-		strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
-
-		va_start(arguments, msg);
-		fprintf(output_flow, "%s ", time_str);
-		vfprintf(output_flow, msg, arguments);
-		fprintf(output_flow, "\n");
-		fflush(output_flow);
-		va_end(arguments);
-	}
-}
-
-void* memset_random(void *s, size_t n)
-{
-	char *cp = (char*)s;
-	while (n-- > 0)
-		*cp++ = (char)random();
-	return s;
-}
-
-int main(int argc, char **argv)
-{
-	char command_buffer[MEDIUMBUF], *command_input = NULL;
-	int charopt, listening_unix_socket;
-	pid_t previous_pid;
-	
-	/* set the default values in the configuration struct */
-	snprintf(useropt.cfgfname, MEDIUMBUF, CONF_FILE);
-	snprintf(useropt.enabler, MEDIUMBUF, PLUGINSENABLER);
-	snprintf(useropt.user, MEDIUMBUF, DROP_USER);
-	snprintf(useropt.group, MEDIUMBUF, DROP_GROUP);
-	snprintf(useropt.chroot_dir, MEDIUMBUF, CHROOT_DIR);
-	snprintf(useropt.logfname, MEDIUMBUF, LOGFILE);
-	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
-	useropt.go_foreground = false;
-	useropt.force_restart = false;
-	useropt.logstream = stdout;
-	useropt.packet_logstream = stdout;
-	useropt.session_logstream = stdout;
-	
-	struct option sj_option[] =
+	if ((ret = recvfrom(sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
 	{
-		{ "config", required_argument, NULL, 'f' },
-		{ "user", required_argument, NULL, 'u' },
-		{ "group", required_argument, NULL, 'g' },
-		{ "chroot-dir", required_argument, NULL, 'c' },
-		{ "debug", required_argument, NULL, 'd' },
-		{ "logfile", required_argument, NULL, 'l' },
-		{ "enabler", required_argument, NULL, 'e' },
-		{ "foreground", no_argument, NULL, 'x' },
-		{ "force", no_argument, NULL, 'r' },
-		{ "help", no_argument, NULL, 'h' },
-		{ "version", no_argument, NULL, 'v' },
-		{ NULL, 0, NULL, 0 }
-	};
-
-	memset(command_buffer, 0x00, MEDIUMBUF);
-	/* check for direct commands */
-	if ((argc >= 2) && !memcmp(argv[1], "start", strlen("start"))) {
-		snprintf(command_buffer, MEDIUMBUF, "start");
-		command_input = argv[1];
-	}
-	if ((argc >= 2) && !memcmp(argv[1], "stop", strlen("stop"))) {
-		snprintf(command_buffer, MEDIUMBUF, "stop");
-		command_input = argv[1];
-	}
-	if ((argc >= 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
-		snprintf(command_buffer, MEDIUMBUF, "stat");
-		command_input = argv[1];
-	}
-	if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
-		snprintf(command_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
-		command_input = command_buffer;
-	} 
-	if ((argc == 2) && !memcmp(argv[1], "clear", strlen("clear"))) {
-		snprintf(command_buffer, MEDIUMBUF, "clear");
-		command_input = command_buffer;
-	} 
-	if ((argc == 2) && !memcmp(argv[1], "showport", strlen("showport"))) {
-		snprintf(command_buffer, MEDIUMBUF, "showport");
-		command_input = command_buffer;
-	} 
-	if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
-		snprintf(command_buffer, MEDIUMBUF, "quit");
-		command_input = command_buffer;
-	}
-	if ((argc == 2) && !memcmp(argv[1], "info", strlen("info"))) {
-		snprintf(command_buffer, MEDIUMBUF, "info");
-		command_input = command_buffer;
-	}
-	if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
-		snprintf(command_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
-		command_input = command_buffer;
-	}
-
-	if (command_input == NULL) {
-		while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhv", sj_option, NULL)) != -1) {
-			switch(charopt) {
-				case 'f':
-					snprintf(useropt.cfgfname, MEDIUMBUF, "%s", optarg);
-					break;
-				case 'e':
-					snprintf(useropt.enabler, MEDIUMBUF, "%s", optarg);
-					break;
-				case 'u':
-					snprintf(useropt.user, MEDIUMBUF, "%s", optarg);
-					break;
-				case 'g':
-					snprintf(useropt.group, MEDIUMBUF, "%s", optarg);
-					break;
-				case 'c':
-					snprintf(useropt.chroot_dir, MEDIUMBUF, "%s", optarg);
-					break;
-				case 'l':
-					snprintf(useropt.logfname, MEDIUMBUF, "%s", optarg);
-					break;
-				case 'd':
-					useropt.debug_level = atoi(optarg);
-					break;
-				case 'x':
-					useropt.go_foreground = true;
-					break;
-				case 'r':
-					useropt.force_restart = true;
-					break;
-				case 'v':
-					sj_version(argv[0]);
-					return 0;
-				default:
-					sj_help(argv[0], useropt.chroot_dir);
-					return -1;
-
-				argc -= optind;
-				argv += optind;
-			}
-		}
-	
-	}
-
-	try {
-		userconf = auto_ptr<UserConf> (new UserConf(useropt));
-		proc = auto_ptr<Process> (new Process(*userconf));
-
-		/* setting ^C, SIGTERM and other signal trapped for clean network environment */
-		proc->sigtrapSetup(sj_sigtrap);
-
-		/* client-like usage: if a command line is present, send the command to the running sniffjoke service */
-		if (command_input != NULL) {
-			pid_t service_pid = proc->readPidfile();
-
-			if (!service_pid) {
-				internal_log(NULL, ALL_LEVEL, "warning: sniffjoke is not running, command %s ignored", command_input);
-				return 0;
-			}
-
-			/* chroot jail */
-			proc->jail();
-
-			proc->privilegesDowngrade();
-
-			client_send_command(command_input);
-
-			/* sniffjoke in client mode don't require any specific cleaning */
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
 			return 0;
 		}
-		
-		if (argc > 1 && argv[1][0] != '-') {
-			internal_log(stderr, ALL_LEVEL, "wrong usage of sniffjoke: beside commands, only --long-opt are accepted");
-			sj_help(argv[0], useropt.chroot_dir);
-			return -1;
-		}
 
-		if ((previous_pid = proc->readPidfile()) != 0) {
-			if (previous_pid && !useropt.force_restart) {
-				internal_log(stderr, ALL_LEVEL, "sniffjoke is already running, use --force or check --help");
-				internal_log(stderr, ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, previous_pid);
-				return 0;
-			}
-
-			internal_log(NULL, VERBOSE_LEVEL, "forcing exit of previous running service %d ...", previous_pid);
-			system("sniffjoke quit");
-			sleep(5);
-			internal_log(NULL, ALL_LEVEL, "A new instance of sniffjoke is going running in background");
-		}
-
-		/* running the network setup before the background, for keep the software output visible on the console */
-		userconf->network_setup();
-
-		if (!useropt.go_foreground) {
-			proc->background();
-			proc->isolation();
-		} else {
-			useropt.logstream = stdout;
-			internal_log(NULL, ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
-		}
-
-		/* the code flow reach here, SniffJoke is ready to instance network environment */
-		mitm = auto_ptr<NetIO> (new NetIO(userconf->running));
-
-		/* proc->detach(): fork() into two processes, only the child will continue */
-		proc->detach();
-
-		/* loading the plugins used for tcp hacking, MUST be done before proc->jail() */
-		hack_pool = auto_ptr<HackPool> (new HackPool(userconf->running.enabler));
-
-		/* proc->jail(): chroot + userconf->running.chrooted = true */
-		proc->jail();
-
-		/* background running, with different loglevel. logfile opened below: */
-		if (!useropt.go_foreground) {
-			char tmpfname[LARGEBUF];	
-			if ((useropt.logstream = fopen(useropt.logfname, "a+")) == NULL) {
-				internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", useropt.logfname, strerror(errno));
-				SJ_RUNTIME_EXCEPTION();
-			}
-			else
-				internal_log(stderr, DEBUG_LEVEL, "opened log file %s", useropt.logfname);
-				
-			if (useropt.debug_level >= PACKETS_DEBUG) {
-				snprintf(tmpfname, LARGEBUF, "%s.packets", useropt.logfname);
-				if ((useropt.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
-					internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
-					SJ_RUNTIME_EXCEPTION();
-
-				} else {
-					internal_log(NULL, ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
-				}
-			}
-
-			if (useropt.debug_level >= SESSION_DEBUG) {
-				snprintf(tmpfname, LARGEBUF, "%s.session", useropt.logfname);
-				if ((useropt.session_logstream = fopen(tmpfname, "a+")) == NULL) {
-					internal_log(stderr, ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
-					SJ_RUNTIME_EXCEPTION();
-				} else {
-					internal_log(NULL, ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
-				}
-			}
-		}
-
-		proc->privilegesDowngrade();
-
-		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf->running, *hack_pool));
-		mitm->prepare_conntrack(conntrack.get());
-
-		listening_unix_socket = sj_bind_unixsocket();
-
-		if (userconf->running.sj_run == false)
-			internal_log(NULL, ALL_LEVEL, "sniffjoke is running and INACTIVE: use \"sniffjoke start\" command to start it");
-
-		/* main block */
-		bool alive = true;
-		while (alive) {
-
-			proc->sigtrapDisable();
-
-			mitm->network_io();
-			
-			mitm->queue_flush();
-
-			read_unixsock(listening_unix_socket, userconf.get(), alive);
-
-			proc->sigtrapEnable();
-
-		}
-	} catch (runtime_error &exception) {
-		internal_log(NULL, ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
+		debug.log(ALL_LEVEL, "unable to receive local socket: %s: %s", usermsg, strerror(errno));
 	}
+
+	return ret;
+}
+
+bool SniffJoke::parse_port_weight(char *weightstr, Strength *value)
+{
+	struct parsedata {
+		const char *keyword;
+		const int keylen;
+		Strength equiv;
+	};
+#define keywordToParse	4
+	struct parsedata wParse[] = {
+		{ "none", 	strlen("none"), 	NONE },
+		{ "light", 	strlen("light"), 	LIGHT },
+		{ "normal", 	strlen("normal"), 	NORMAL },
+		{ "heavy", 	strlen("heavy"), 	HEAVY }
+	};
+	int i;
+
+	for(i = 0; i < keywordToParse; i++) {
+		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
+			*value = wParse[i].equiv;
+			return true;
+		}
+	}
+	return false;
 }

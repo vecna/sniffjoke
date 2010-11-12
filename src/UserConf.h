@@ -22,7 +22,6 @@
 #ifndef SJ_CONF_H
 #define SJ_CONF_H
 
-#include "hardcoded-defines.h"
 #include "Utils.h"
 
 #include <net/ethernet.h>
@@ -36,7 +35,8 @@ enum size_buf_t {
 		GARGANTUABUF = 4096 * 4
 };
 
-struct sj_useropt {
+struct sj_cmdline_opts {
+		/* START OF COMMON PART WITH sj_config_opt */
 		char cfgfname[MEDIUMBUF];
                 char enabler[MEDIUMBUF];
 		char user[MEDIUMBUF];
@@ -44,6 +44,8 @@ struct sj_useropt {
 		char chroot_dir[MEDIUMBUF];
 		char logfname[MEDIUMBUF];
 		unsigned int debug_level;
+		/* END OF COMMON PART WITH sj_config_opt */
+		
 		bool go_foreground;
 		bool force_restart;
 		FILE *logstream;
@@ -57,26 +59,30 @@ enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
-		bool sj_run;				/* default: false = NOT RUNNING */
-		char cfgfname[MEDIUMBUF];
-		char enabler[MEDIUMBUF];		/* default: idem */
-		char user[MEDIUMBUF];			/* default: check hardcoded-defines.h */
-		char group[MEDIUMBUF];			/* default: idem */
+		bool active;				/* default: false = NOT ACTIVE */
 		bool chrooted;				/* defauit: false = NOT CHROOTED */
+	
+		/* START OF COMMON PART WITH sj_cmdline_opt */
+		char cfgfname[MEDIUMBUF];		/* default: check hardcoded-defines.h */
+		char enabler[MEDIUMBUF];		/* default: idem */
+		char user[MEDIUMBUF];			/* default: idem */
+		char group[MEDIUMBUF];			/* default: idem */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
 		char logfname[MEDIUMBUF];		/* default: idem */
 		unsigned int debug_level;		/* default: idem */
+		/* END OF COMMON PART WITH sj_cmdline_opt */
+
+		unsigned short max_ttl_probe;		/* default: idem */
+		unsigned int max_sex_track;		/* default: idem */
+		Strength portconf[PORTNUMBER];
+	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
-		char gw_mac_addr[ETH_ALEN];		/* the conversion of _str */
-		unsigned short max_ttl_probe;		/* default: 30 */
-		unsigned int max_sex_track;		/* default: 4096 */
+		char gw_mac_addr[ETH_ALEN];		/* default: autodetect, the conversion of _str */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
-		int tun_number;				/* tunnel interface number */
+		int tun_number;				/* default: autodetect */
 		unsigned int port_conf_set_n;		/* number of "set" usage */
-
-		Strength portconf[PORTNUMBER];
 
 		char *error;
 };
@@ -91,15 +97,16 @@ private:
 		void autodetect_gw_ip_address(void);
 		void autodetect_gw_mac_address(void);
 		void autodetect_first_available_tunnel_interface(void);
+		void setup_debug(const struct sj_cmdline_opts &cmdline_opts);
 
 public:
-
 		bool chroot_status;
 		struct sj_config running;
 
-		UserConf(const struct sj_useropt &);
+		UserConf(const struct sj_cmdline_opts &);
 		~UserConf();
 
+		bool load(const char *);
 		void dump(void);
 		void setup_active_hacks(void);
 		void network_setup(void);

@@ -19,8 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "Packet.h"
-#include "Utils.h"
 
 Packet::Packet(const unsigned char* buff, int size) :
 	prev(NULL),
@@ -158,32 +158,32 @@ void Packet::fixIpTcpSum(void)
 bool Packet::SelfIntegrityCheck(const char *pluginName)
 {
 	if(source != SOURCEUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s (source_t)source must not be set: ignored value", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s (source_t)source must not be set: ignored value", pluginName);
 	}
 
 	if(status != STATUSUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s (status_t)status must not be set: ignored value", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s (status_t)status must not be set: ignored value", pluginName);
 	}
 
 	if(wtf == JUDGEUNASSIGNED ) {
-		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;
 	}
 
 	if(proto == PROTOUNASSIGNED) {
-		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"proto\" field, required", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"proto\" field, required", pluginName);
 		goto errorinfo;
 	}
 
 	if(position == POSITIONUNASSIGNED) {
-		internal_log(NULL, ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"position\" field, required", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"position\" field, required", pluginName);
 		goto errorinfo;
 	}
 
 	return true;
 
 errorinfo:
-	internal_log(NULL, DEBUG_LEVEL, "Documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
+	debug.log(DEBUG_LEVEL, "Documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
 	return false;
 }
 
@@ -250,7 +250,7 @@ bool Packet::checkUncommonTCPOPT()
 		}
 	}
 
-	internal_log(NULL, PACKETS_DEBUG,
+	debug.log(PACKETS_DEBUG,
 		"%s %s: sport %d -> dport %d, TCP OPT %s", __FILE__, __func__,
 		ntohs(tcp->source), ntohs(tcp->dest), ret ? "true" : "false");
 
@@ -441,12 +441,12 @@ void Packet::selflog(const char *func, const char *loginfo)
 			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
 			break;
 		case ANY_PROTO:
-			internal_log(NULL, ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
 			SJ_RUNTIME_EXCEPTION();
 			break;
 	}
 
-	internal_log(NULL, PACKETS_DEBUG, "%s :%x: E|%d status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+	debug.log(PACKETS_DEBUG, "%s :%x: E|%d status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
 		func, packet_id, evilstr, statustr, wtfstr, sourcestr,
 		swapaddr, inet_ntoa(*((struct in_addr *)&ip->daddr)),
 		protoinfo, ip->ttl, loginfo

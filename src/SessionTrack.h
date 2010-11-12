@@ -22,7 +22,7 @@
 #ifndef SJ_SESSIONTRACK_H
 #define SJ_SESSIONTRACK_H
 
-#include "hardcoded-defines.h"
+#include "Utils.h"
 #include "Packet.h"
 #include "TTLfocus.h"
 

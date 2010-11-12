@@ -20,8 +20,6 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "TTLfocus.h"
-#include "hardcoded-defines.h"
-#include "Utils.h"
 
 #include <cerrno>
 #include <cstdlib>
@@ -103,7 +101,7 @@ void TTLFocus::selflog(const char *func, const char *umsg)
 		default: status_name = "badly unset TTL status"; break;
 	}
 
-	internal_log(NULL, SESSION_DEBUG, 
+	debug.log(SESSION_DEBUG, 
 		"%s [%s] m_sent %d, m_recv %d m_expiring %d [%s]",
 		func, status_name, sent_probe, received_probe, expiring_ttl, umsg
 	);
@@ -118,11 +116,11 @@ void TTLFocusMap::load()
 	int ret;
 	struct ttlfocus_cache_record tmp;
 
-	internal_log(NULL, VERBOSE_LEVEL, "loading ttlfocusmap from %s",  TTLFOCUSMAP_FILE);
+	debug.log(VERBOSE_LEVEL, "loading ttlfocusmap from %s",  TTLFOCUSMAP_FILE);
 	
 	loadfd = fopen(TTLFOCUSMAP_FILE, "r");
 	if(loadfd == NULL) {
-		internal_log(NULL, ALL_LEVEL, "unable to access %s: sniffjoke will start without a ttl cache", TTLFOCUSMAP_FILE);
+		debug.log(ALL_LEVEL, "unable to access %s: sniffjoke will start without a ttl cache", TTLFOCUSMAP_FILE);
         	return;
         }
 
@@ -136,12 +134,12 @@ void TTLFocusMap::load()
 
 	if(ret != 0) {
 		unlink(TTLFOCUSMAP_FILE);
-		internal_log(NULL, ALL_LEVEL, "unable to read ttlfocus from %s: %s",
+		debug.log(ALL_LEVEL, "unable to read ttlfocus from %s: %s",
 			TTLFOCUSMAP_FILE, strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION();
 	}
-	internal_log(NULL, VERBOSE_LEVEL, "ttlfocusmap load completed: %d records loaded", i);
+	debug.log(VERBOSE_LEVEL, "ttlfocusmap load completed: %d records loaded", i);
 }
 
 
@@ -153,11 +151,11 @@ void TTLFocusMap::dump()
 	TTLFocus* tmp;
 	struct ttlfocus_cache_record cache_record;
 
-	internal_log(NULL, VERBOSE_LEVEL, "dumping ttlfocusmap to %s",  TTLFOCUSMAP_FILE);
+	debug.log(VERBOSE_LEVEL, "dumping ttlfocusmap to %s",  TTLFOCUSMAP_FILE);
 
 	dumpfd = fopen(TTLFOCUSMAP_FILE, "w");
         if(dumpfd == NULL) {
-                internal_log(NULL, ALL_LEVEL, "unable to access %s: sniffjoke will not dump ttl cache", TTLFOCUSMAP_FILE);
+                debug.log(ALL_LEVEL, "unable to access %s: sniffjoke will not dump ttl cache", TTLFOCUSMAP_FILE);
                 return;
         }
 
@@ -180,7 +178,7 @@ void TTLFocusMap::dump()
 		{
 			fclose(dumpfd);
 			unlink(TTLFOCUSMAP_FILE);
-			internal_log(NULL, ALL_LEVEL, "unable to write ttlfocus to %s: %s",
+			debug.log(ALL_LEVEL, "unable to write ttlfocus to %s: %s",
 				TTLFOCUSMAP_FILE, strerror(errno)
 			);
 			return;
@@ -188,5 +186,5 @@ void TTLFocusMap::dump()
 	}
 	fclose(dumpfd);
 
-	internal_log(NULL, VERBOSE_LEVEL, "ttlfocusmap dump completed: %d records dumped", i);
+	debug.log(VERBOSE_LEVEL, "ttlfocusmap dump completed: %d records dumped", i);
 }
