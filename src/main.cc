@@ -116,9 +116,9 @@ int main(int argc, char **argv)
 	snprintf(useropt.user, MEDIUMBUF, DROP_USER);
 	snprintf(useropt.group, MEDIUMBUF, DROP_GROUP);
 	snprintf(useropt.chroot_dir, MEDIUMBUF, CHROOT_DIR);
-	snprintf(useropt.logfname, LARGEBUF, "%s%s",CHROOT_DIR, LOGFILE);
-	snprintf(useropt.logfname_packets, LARGEBUF, "%s%s",CHROOT_DIR, LOGFILE_PACKETS);
-	snprintf(useropt.logfname_sessions, LARGEBUF, "%s%s",CHROOT_DIR, LOGFILE_SESSIONS);
+	snprintf(useropt.logfname, LARGEBUF, "%s%s", CHROOT_DIR, LOGFILE);
+	snprintf(useropt.logfname_packets, LARGEBUF, "%s%s", CHROOT_DIR, LOGFILE_PACKETS);
+	snprintf(useropt.logfname_sessions, LARGEBUF, "%s%s", CHROOT_DIR, LOGFILE_SESSIONS);
 	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
 	useropt.go_foreground = false;
 	useropt.force_restart = false;

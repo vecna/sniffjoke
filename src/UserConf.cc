@@ -221,7 +221,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 {
 	debug_setup(cmdline_opts);
 
-	debug.log(DEBUG_LEVEL, "Process()");
+	debug.log(VERBOSE_LEVEL, "Process()");
 
 	char configfile[LARGEBUF];	
 	snprintf(configfile, LARGEBUF, "%s%s", cmdline_opts.chroot_dir, cmdline_opts.cfgfname);	
@@ -360,8 +360,6 @@ char *UserConf::handle_cmd_quit(void)
 {
 	memset(io_buf, 0x00, HUGEBUF);
 	debug.log(VERBOSE_LEVEL, "quit command requested: dumping configuration");
-	/* dump the configuration in the binconf file */
-	dump();
 
 	snprintf(io_buf, HUGEBUF, "dumped configuration, starting shutdown\n");
 
