@@ -45,7 +45,7 @@ public:
 	PluginTrack(const PluginTrack&);
 };
 
-class HackPool : public std::vector<PluginTrack> {
+class HackPool : public vector<PluginTrack> {
 public:
 	HackPool(char*);
 	~HackPool();

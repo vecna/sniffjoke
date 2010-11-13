@@ -84,9 +84,9 @@ static void sj_version(const char *pname)
 	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
-std::runtime_error sj_runtime_exception(const char* func, const char* file, long line)
+runtime_error sj_runtime_exception(const char* func, const char* file, long line)
 {
-	std::stringstream stream;
+	stringstream stream;
 	stream << file << "(" << line << ") function: " << func << "()";
 	return std::runtime_error(stream.str());
 }

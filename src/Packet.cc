@@ -21,6 +21,7 @@
  */
 
 #include "Packet.h"
+#include "HDRoptions.h"
 
 Packet::Packet(const unsigned char* buff, int size) :
 	prev(NULL),
@@ -32,16 +33,16 @@ Packet::Packet(const unsigned char* buff, int size) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+        pbuf(size),
         ip(NULL),
         tcp(NULL),
-        icmp(NULL),
         payload(NULL),
-        pbuf(size)
+        icmp(NULL)
 {
 	memcpy(&(pbuf[0]), buff, size);
 	updatePointers();
 	
-	orig_pktlen = ntohs(ip->tot_len);
+	pktlen = ntohs(ip->tot_len);
 	memset(debugbuf, 0x00, LARGEBUF);
 }
 
@@ -55,12 +56,12 @@ Packet::Packet(const Packet& pkt) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+        pbuf(pkt.pbuf),
+	pktlen(pkt.pktlen),
         ip(NULL),
         tcp(NULL),
-        icmp(NULL),
         payload(NULL),
-        pbuf(pkt.pbuf),
-	orig_pktlen(pkt.orig_pktlen)
+        icmp(NULL)
 {
 	updatePointers();
 	memset(debugbuf, 0x00, LARGEBUF);
@@ -92,24 +93,33 @@ void Packet::mark(source_t source, status_t status, judge_t wtf, evilbit_t moral
 void Packet::updatePointers(void)
 {
 	ip = (struct iphdr *)&(pbuf[0]);
+	iphdrlen = (ip->ihl * 4);
+
 	if (ip->protocol == IPPROTO_TCP) {
 		proto = TCP;
-		tcp = (struct tcphdr *)((unsigned char *)(ip) + (ip->ihl * 4));
-		icmp = NULL;
-		if ((ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4))) > 0)
-			payload = (unsigned char *)tcp + tcp->doff * 4;
+
+		tcp = (struct tcphdr *)((unsigned char *)(ip + iphdrlen));
+		tcphdrlen = tcp->doff * 4;
+
+		datalen = ntohs(ip->tot_len) - iphdrlen - tcphdrlen;
+		if(datalen)
+			payload = (unsigned char *)tcp + tcphdrlen;
 		else
 			payload = NULL;
+
+		icmp = NULL;
 	} else if (ip->protocol == IPPROTO_ICMP) {
 		proto = ICMP;
+		icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
 		tcp = NULL;
-		icmp = (struct icmphdr *)((unsigned char *)(ip) + (ip->ihl * 4));
 		payload = NULL;
+		datalen = tcphdrlen = 0;
 	} else {
 		proto = OTHER_IP;
 		tcp = NULL;
 		icmp = NULL;
 		payload = NULL;
+		datalen = tcphdrlen = 0;
 	}
 }
 
@@ -143,10 +153,10 @@ unsigned short Packet::compute_sum(unsigned int sum)
 void Packet::fixIpTcpSum(void)
 {
 	unsigned int sum;
-	unsigned int l4len = ntohs(ip->tot_len) - (ip->ihl * 4);
+	unsigned int l4len = ntohs(ip->tot_len) - iphdrlen;
 
 	ip->check = 0;
-	sum = half_cksum((const void *)ip, (ip->ihl * 4));
+	sum = half_cksum((const void *)ip, iphdrlen);
 	ip->check = compute_sum(sum);
 	tcp->check = 0;
 	sum = half_cksum((const void *) &ip->saddr, 8);
@@ -198,12 +208,10 @@ void Packet::increasePbuf(unsigned int morespace)
 void Packet::resizePayload(unsigned int newlen) 
 {
 	/* the payload can be incremented or decremented safely */
-	int iphlen = ip->ihl * 4;
-	int tcphlen = tcp->doff * 4;
-	int oldlen = ntohs(ip->tot_len) - (iphlen + tcphlen);
+	int oldlen = ntohs(ip->tot_len) - (iphdrlen + tcphdrlen);
 	unsigned int newpbuf_size = pbuf.size() - oldlen + newlen;
 	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
-	unsigned newtotallen = iphlen + tcphlen + newlen;
+	unsigned newtotallen = iphdrlen + tcphdrlen + newlen;
 	
 	/* IP header copy , TCP header copy, Payload copy, if preserved */
 	int copysize = newtotallen > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newtotallen;
@@ -218,7 +226,7 @@ void Packet::resizePayload(unsigned int newlen)
 
 void Packet::fillRandomPayload()
 {
-	const unsigned diff = ntohs(ip->tot_len) - ((ip->ihl * 4) + (tcp->doff * 4));
+	const unsigned diff = ntohs(ip->tot_len) - (iphdrlen + tcphdrlen);
 	memset_random(payload, diff);
 }
 
@@ -229,7 +237,7 @@ bool Packet::checkUncommonTCPOPT()
 	/* default: there are not uncommon TCPOPT, and the packets should be stripped off */
 	bool ret = false ;
 
-	for (int i = sizeof(struct tcphdr); i < (tcp->doff * 4); i++)
+	for (unsigned int i = sizeof(struct tcphdr); i < tcphdrlen; i++)
 	{
 		check = ((unsigned char *)tcp)[i];
 
@@ -250,9 +258,8 @@ bool Packet::checkUncommonTCPOPT()
 		}
 	}
 
-	debug.log(PACKETS_DEBUG,
-		"%s %s: sport %d -> dport %d, TCP OPT %s", __FILE__, __func__,
-		ntohs(tcp->source), ntohs(tcp->dest), ret ? "true" : "false");
+	if(ret)
+		selflog(__func__, "ARE present!");
 
 	return ret;
 }
@@ -262,66 +269,95 @@ bool Packet::checkUncommonIPOPT() {
 	return false;
 }
 
-/* not implemented ATM */
-void Packet::Inject_GOOD_IPOPT(void)
+void Packet::IPHDR_shift(unsigned int sizetogive) 
 {
+	/* it happen when new ipoptions need to be addedd */
+	if(iphdrlen < sizetogive) {
+		increasePbuf(sizetogive - iphdrlen);
+		memmove(&pbuf[sizetogive], &pbuf[iphdrlen], pktlen - iphdrlen + sizetogive);
+	}
+	else if(iphdrlen == sizetogive) {
+	}
+	else /* iphdrlen > sizetogive */ {
+		memmove(&ip[iphdrlen], &ip[sizetogive], pktlen - sizetogive + iphdrlen);
+	}
+	ip->ihl = (sizetogive / 4);
 }
 
-/* ipopt IPOPT_RR inj*/
-void Packet::Inject_BAD_IPOPT(void)
+void Packet::TCPHDR_shift(unsigned int sizetogive) 
 {
-	const int route_n = random() % 10;
-	const unsigned fakeipopt = ((route_n + 1) * 4);
-	const int needed_space = fakeipopt;
-	const int free_space = pbuf.size() - ntohs(ip->tot_len);
+	unsigned char *tcp_ptr = (unsigned char *)tcp;
 
-	int iphlen = ip->ihl * 4;
-	int tcphlen = tcp->doff * 4;
-	const int l47len = ntohs(ip->tot_len) - iphlen;
+	if(tcphdrlen < sizetogive) 
+	{
+		increasePbuf(sizetogive - tcphdrlen);
 
-	selflog(__func__, "before IPopt injection");
+		if(datalen)
+			memmove(&tcp_ptr[sizetogive], &tcp_ptr[tcphdrlen], pktlen - tcphdrlen + sizetogive);
+	}
+	else if(tcphdrlen == sizetogive) {
+	}
+	else /* tcphdrlen > sizetogive */ {
+		memmove(&tcp_ptr[tcphdrlen], &tcp[sizetogive], pktlen - sizetogive + tcphdrlen);
+	}
+	tcp->doff = (sizetogive / 4);
+}
 
-	if(free_space < needed_space) {
-		/* safety ip size check */
-		if(iphlen + needed_space > 60)
-			return;
-
-		increasePbuf(needed_space - free_space);
+/* called by TCPTrack.cc */
+void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
+{
+	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
+		memmove(&pbuf[sizeof(struct iphdr)], (unsigned char *)tcp, tcphdrlen + datalen);
+		iphdrlen = sizeof(struct iphdr);
+		ip->ihl = iphdrlen / 4;
 	}
 
-	unsigned char *endip = (unsigned char*)&pbuf[0] + iphlen;
+	/* VERIFY - TODO: randomize the dimension of the injection */
+	unsigned int target_iphdrlen = 40;
 
-	iphlen += fakeipopt;
+	IPHDR_shift(target_iphdrlen);
 
-	/* 2: shift the tcphdr and the payload bytes after the reserved space to IPOPT_RR */
-	memmove(endip + fakeipopt, endip, l47len);
+	/* used to keep track of header growing */
+	unsigned int actual_iphdrlen = 0; 
 
-	endip[0] = IPOPT_NOP;
-	endip[1] = IPOPT_RR;		/* IPOPT_OPTVAL */
+	HDRoptions IPInjector( (unsigned char *)ip + sizeof(struct iphdr), iphdrlen, target_iphdrlen);
+	int MAXITERATION = 10;
 
-	/* Here comes the tha hack, 4 more or 4 less the right value*/
-	if (random() % 2)
-		endip[2] = fakeipopt - 1 - (4 * (random() % 5));	/* IPOPT_OLEN   */
-	else
-		endip[2] = fakeipopt - 1 + (4 * (random() % 5));	/* IPOPT_OLEN   */
+	do {
+		actual_iphdrlen = IPInjector.randomInjector(corrupt);
 
-	endip[3] = IPOPT_MINOFF;	/* IPOPT_OFFSET = IPOPT_MINOFF = 4 */
-
-	memset_random(&endip[4], fakeipopt - 4);
-
-	ip->ihl = iphlen / 4;
-	ip->tot_len = htons(iphlen + l47len);
-	tcp = (struct tcphdr *)((unsigned char*)(ip) + iphlen);
-	payload = (unsigned char *)(tcp) + tcphlen;
-
-	selflog(__func__, "after IPopt injection");
+	} while( target_iphdrlen != actual_iphdrlen && --MAXITERATION );
 }
 
-/* not implemented ATM */
-void Packet::Inject_GOOD_TCPOPT(void)
+
+
+/* called by TCPTrack.cc */
+#if 0
+void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 {
-}
+	if(strip_previous && iphdrlen != sizeof(struct iphdr)) 
+	{
+		if(datalen)
+			memmove(&pbuf[iphdrlen + sizeof(struct tcphdr)], payload, datalen);
 
+		tcphdrlen = sizeof(struct tcphdr);
+		tcp->doff = tcphdrlen / 4;
+	}
+
+	/* VERIFY - TODO: randomize the dimension of the injection */
+	unsigned int actual_tcphdrlen, target_tcphdrlen = 40;
+
+	HDRoptions TCPInjector( (unsigned char *)tcp + sizeof(struct tcphdr), tcphdrlen, target_tcphdrlen);
+	int MAXITERATION = 6;
+
+	do {
+		actual_tcphdrlen += TCPInjector.randomInjector(corrupt);
+
+	} while( target_tcphdrlen != actual_tcphdrlen && --MAXITERATION ); 
+}
+#endif
+
+#if 0 // OLD - use as reference and delete 
 /* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
 void Packet::Inject_BAD_TCPOPT(void)
 {
@@ -377,6 +413,7 @@ void Packet::Inject_BAD_TCPOPT(void)
 
 	selflog(__func__, "after TCPopt injection");
 }
+#endif
 
 void Packet::selflog(const char *func, const char *loginfo) 
 {
@@ -424,14 +461,14 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case TCP:
 			snprintf(protoinfo, MEDIUMBUF, "[TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x]",
 				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
-				tcp->rst, orig_pktlen, orig_pktlen - (ip->ihl * 4) - (tcp->doff * 4), 
+				tcp->rst, pktlen, pktlen - iphdrlen - tcphdrlen, 
 				ntohl(tcp->seq), ntohl(tcp->ack_seq)
 			);
 			break;
 		case ICMP:
 			snprintf(protoinfo, MEDIUMBUF, "ICMP type %d code %d len %d(%d)",
 				icmp->type, icmp->code,
-				orig_pktlen, (int)(orig_pktlen - (ip->ihl * 4) - sizeof(struct icmphdr))
+				pktlen, (int)(pktlen - iphdrlen - sizeof(struct icmphdr))
 			);
 			break;
 		case OTHER_IP:

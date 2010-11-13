@@ -4,6 +4,8 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			Debug.h \
 			Debug.cc \
 			Utils.h \
+                        HDRoptions.h \
+                        HDRoptions.cc \
 			Packet.h \
 			Packet.cc \
 			PacketQueue.h \

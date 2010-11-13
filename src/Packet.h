@@ -84,13 +84,19 @@ public:
 	proto_t proto;
 	position_t position;	
 
-	struct iphdr *ip;
-	struct tcphdr *tcp;
-	struct icmphdr *icmp;
-	unsigned char *payload;
-
 	vector<unsigned char> pbuf;
-	int orig_pktlen;
+	unsigned int pktlen;
+
+	struct iphdr *ip;
+	unsigned int iphdrlen;
+
+	struct tcphdr *tcp;
+	unsigned int tcphdrlen;
+
+	unsigned char *payload;
+	unsigned int datalen;
+
+	struct icmphdr *icmp;
 	
 	Packet(const unsigned char *, int);
 	Packet(const Packet &);
@@ -115,11 +121,13 @@ public:
 	void resizePayload(unsigned int);
 	void fillRandomPayload(void);
 
+	/* function used for header mangling in IP/TCP options hacks */
+	void IPHDR_shift(unsigned int);
+	void TCPHDR_shift(unsigned int);
+
 	/* MALFORMED hacks and distortion of INNOCENT packets */
-	void Inject_BAD_IPOPT(void);
-	void Inject_GOOD_IPOPT(void);
-        void Inject_BAD_TCPOPT(void);
-	void Inject_GOOD_TCPOPT(void);
+	void Inject_IPOPT(bool, bool);
+	void Inject_TCPOPT(bool, bool);
 
 	/* utilities */
 	void selflog(const char *, const char *);
