@@ -49,21 +49,23 @@ private:
 	pid_t service_pid;
 	int listening_unix_socket;
 
+	void client();
+	void server();
 	void kill_child();
 	int bind_unixsocket();
 	void handle_unixsocket(int srvsock, bool &alive);
 	int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);	
+	void send_command(const char *cmdstring);
 	bool parse_port_weight(char *weightstr, Strength *Value);
+
 public:
 	SniffJoke(const struct sj_cmdline_opts &);
 	~SniffJoke();
 	void run();
-	void client();
-	void server();
 	void server_root_cleanup();
 	void server_user_cleanup();
 	void client_cleanup();
-	void send_command(const char *cmdstring);
+	void cleanPidfile();
 };
 
 #endif /* SJ_SNIFFJOKE_H */

@@ -67,7 +67,7 @@ void SniffJoke::server() {
 		proc.background();
 		proc.isolation();
 	}
-	
+
 	proc.writePidfile();
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
@@ -90,6 +90,8 @@ void SniffJoke::server() {
 			debug.log(VERBOSE_LEVEL, "child %d WIFSIGNALED", service_pid);
 		if (WIFSTOPPED(deadtrace))
 			debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
+
+		cleanPidfile();
 
 		debug.log(DEBUG_LEVEL, "child %d died, going to shutdown", service_pid);
 
@@ -150,12 +152,16 @@ void SniffJoke::server_root_cleanup()
 	debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
 	kill(service_pid, SIGTERM);
 	waitpid(service_pid, NULL, 0);
-	proc.unlinkPidfile();
 }
 
 void SniffJoke::server_user_cleanup()
 {
 	debug.log(VERBOSE_LEVEL, "client_user_cleanup()");
+}
+
+void SniffJoke::cleanPidfile() {
+	if(cmdline_opts.process_type == SJ_SERVER_PROC)
+		proc.unlinkPidfile();
 }
 
 void SniffJoke::client_cleanup() {

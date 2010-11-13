@@ -268,7 +268,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 UserConf::~UserConf()
 {
 	debug_cleanup();
-	debug.log(ALL_LEVEL, "~UserConf(): pid %d cleaning configuration object", getpid());
+	debug.log(VERBOSE_LEVEL, "~UserConf(): pid %d cleaning configuration object", getpid());
 }
 
 bool UserConf::load(const char* configfile)
@@ -496,9 +496,12 @@ char *UserConf::handle_cmd_loglevel(int newloglevel)
 	return &io_buf[0];
 }
 
-void UserConf::debug_setup(const struct sj_cmdline_opts &cmdline_opts)
+void UserConf::debug_setup(const sj_cmdline_opts &cmdline_opts)
 {
-	if (!cmdline_opts.go_foreground) {
+	if (cmdline_opts.process_type == SJ_SERVER_PROC && !cmdline_opts.go_foreground) {
+		
+		/* Logfiles are used only by a Sniffjoke SERVER runnning in background */
+		
 		if ((debug.logstream = fopen(cmdline_opts.logfname, "a+")) == NULL) {
 			debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname, strerror(errno));
 			SJ_RUNTIME_EXCEPTION();
@@ -525,13 +528,19 @@ void UserConf::debug_setup(const struct sj_cmdline_opts &cmdline_opts)
 			}
 		}
 	} else {
+		
+		/* Foreground SERVER or CLIENT */
+		
 		debug.logstream = stdout;
 		debug.log(ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 	}	
 }
 
 void UserConf::debug_cleanup() {
-	fclose(debug.logstream);
-	fclose(debug.packet_logstream);
-	fclose(debug.session_logstream);
+	if(debug.logstream != NULL && debug.logstream != stdout)
+		fclose(debug.logstream);
+	if(debug.packet_logstream != NULL && debug.packet_logstream != stdout)
+		fclose(debug.packet_logstream);
+	if(debug.session_logstream != NULL && debug.session_logstream != stdout)
+		fclose(debug.session_logstream);
 }
