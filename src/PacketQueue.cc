@@ -51,7 +51,8 @@ void PacketQueue::insert(priority_t prio, Packet &pkt)
 	delete_if_present(pkt.packet_id);
 
 	if (front[prio] == NULL) {
-		pkt.prev = pkt.next = NULL;
+		pkt.prev = NULL;
+		pkt.next = NULL;
 		front[prio] = back[prio] = &pkt;
 	} else {
 		pkt.prev = back[prio];

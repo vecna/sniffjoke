@@ -23,17 +23,9 @@
 #define SJ_CONF_H
 
 #include "Utils.h"
-
 #include <net/ethernet.h>
 
-
-enum size_buf_t {
-		SMALLBUF = 64,
-		MEDIUMBUF = 256,
-		LARGEBUF = 1024,
-		HUGEBUF = 4096,
-		GARGANTUABUF = 4096 * 4
-};
+enum sj_proc_t { SJ_SERVER_PROC = 0, SJ_CLIENT_PROC = 1 };
 
 struct sj_cmdline_opts {
 		/* START OF COMMON PART WITH sj_config_opt */
@@ -42,10 +34,14 @@ struct sj_cmdline_opts {
 		char user[MEDIUMBUF];
 		char group[MEDIUMBUF];
 		char chroot_dir[MEDIUMBUF];
-		char logfname[MEDIUMBUF];
+		char logfname[LARGEBUF];
+		char logfname_packets[LARGEBUF];
+		char logfname_sessions[LARGEBUF];
 		unsigned int debug_level;
 		/* END OF COMMON PART WITH sj_config_opt */
 		
+		sj_proc_t process_type;
+		char cmd_buffer[MEDIUMBUF];
 		bool go_foreground;
 		bool force_restart;
 		FILE *logstream;
@@ -68,7 +64,9 @@ struct sj_config {
 		char user[MEDIUMBUF];			/* default: idem */
 		char group[MEDIUMBUF];			/* default: idem */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
-		char logfname[MEDIUMBUF];		/* default: idem */
+		char logfname[LARGEBUF];		/* default: idem */
+		char logfname_packets[LARGEBUF];	/* default: idem */
+		char logfname_sessions[LARGEBUF];	/* default: idem */
 		unsigned int debug_level;		/* default: idem */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
@@ -97,7 +95,8 @@ private:
 		void autodetect_gw_ip_address(void);
 		void autodetect_gw_mac_address(void);
 		void autodetect_first_available_tunnel_interface(void);
-		void setup_debug(const struct sj_cmdline_opts &cmdline_opts);
+		void debug_setup(const struct sj_cmdline_opts &cmdline_opts);
+		void debug_cleanup();
 
 public:
 		bool chroot_status;

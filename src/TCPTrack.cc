@@ -48,44 +48,6 @@ TCPTrack::~TCPTrack(void)
 	debug.log(DEBUG_LEVEL, "~TCPTrack()");
 }
 
-bool TCPTrack::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
-{
-	struct iphdr *ip = (struct iphdr *)buff;
- 
-	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) ) {
-		debug.log(PACKETS_DEBUG, "%s %s: nbyte %s < (struct iphdr) %d || (ip->tot_len) %d", 
-			__FILE__, __func__, nbyte, sizeof(struct iphdr), ntohs(ip->tot_len)
-		);
-		return false;
-	}
-
-	if (ip->protocol == IPPROTO_TCP) {
-		struct tcphdr *tcp;
-		int iphlen;
-		int tcphlen;
-
-		iphlen = ip->ihl * 4;
-
-		if (nbyte < iphlen + sizeof(struct tcphdr)) {
-			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP] nbyte %d < iphlen + (struct tcphdr) %d",
-				__FILE__, __func__, nbyte, iphlen + sizeof(struct tcphdr)
-			);
-			return false;
-		}
-
-		tcp = (struct tcphdr *)((unsigned char *)ip + iphlen);
-		tcphlen = tcp->doff * 4;
-		
-		if (ntohs(ip->tot_len) < iphlen + tcphlen) {
-			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP][bis] nbyte %d < iphlen + tcphlen %d",
-				__FILE__, __func__, nbyte, iphlen + tcphlen
-			);
-			return false;
-		}
-	}
-	return true;
-}
-
 /*  
  *  the variable is used from the sniffjoke routing for decreete the possibility of
  *  an hack happens. this variable are mixed in probabiliy with the session->packet_number, because
@@ -519,7 +481,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 
 				/* if you are running with --debug 6, I suppose you are the developing the plugins */
 				if(runconfig.debug_level == PACKETS_DEBUG) 
-					throw runtime_error("aaa");
+					throw runtime_error("");
 
 				/* otherwise, the error was reported and sniffjoke continue to work */
 				delete injpkt;
@@ -671,8 +633,8 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	} else {
 		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options */ false);
 #if 0	// the same
-                if (!pkt.checkUncommonTCPOPT())
-                        pkt.Inject_GOOD_TCPOPT();
+		if (!pkt.checkUncommonTCPOPT())
+			pkt.Inject_GOOD_TCPOPT();
 #endif
 	}
 
@@ -688,7 +650,6 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	// ipoption GOOD added in evey packets != of MALFORMED
 	if (!pkt.checkUncommonIPOPT() && RANDOM20PERCENT && pkt->wtf != MALFORMED)
 		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
-	
 #endif
 
 	/* fixing the mangled packet */
@@ -704,36 +665,26 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 /* the packet is add in the packet queue for be analyzed in a second time */
 bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
 {
-	Packet *pkt;
+	try {
+		Packet *pkt = new Packet(buff, nbyte);
+		pkt->mark(source, YOUNG, INNOCENT, GOOD);
 	
-	if (check_evil_packet(buff, nbyte) == false)
+		/* 
+		* the packet from the tunnel are put with lower priority and the
+		* hack-packet, injected from sniffjoke, are put in the higher one.
+		* when the software loop for in p_queue.get(status, source, proto) the 
+		* forged packet are sent before the originals one.
+		*/
+		p_queue.insert(LOW, *pkt);
+		
+		youngpacketspresent = true;
+	
+		return true;
+		
+	} catch (exception &e) {
+		/* malformed packet, ignored */
 		return false;
-
-	/* 
-	 * the packet_id is required because the OS should generate 
-	 * duplicate SYN when didn't receive the expected answer. 
-	 *
-	 * this happens when the first SYN is blocked for TTL bruteforce
-	 * routine. 
-	 *
-	 * the nbyte is added with the max ip/tcp option injection because
-	 * the packets options could be modified by last_pkt_fix
-	 */
-
-	pkt = new Packet(buff, nbyte);
-	pkt->mark(source, YOUNG, INNOCENT, GOOD);
-	
-	/* 
-	 * the packet from the tunnel are put with lower priority and the
-	 * hack-packet, injected from sniffjoke, are put in the higher one.
-	 * when the software loop for in p_queue.get(status, source, proto) the 
-	 * forged packet are sent before the originals one.
-	 */
-	p_queue.insert(LOW, *pkt);
-	
-	youngpacketspresent = true;
-	
-	return true;
+	}
 }
 
 Packet* TCPTrack::readpacket()

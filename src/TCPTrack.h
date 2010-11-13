@@ -40,7 +40,6 @@ private:
 	TTLFocusMap ttlfocus_map;
 	HackPool &hack_pool;
 
-	bool check_evil_packet(const unsigned char*, unsigned int);
 	bool percentage(unsigned int, Frequency, Strength);
 
 	SessionTrack* init_sessiontrack(const Packet&);

@@ -38,8 +38,16 @@
 
 #include <unistd.h>
 
-#include "Debug.h"
 #include "hardcoded-defines.h"
+#include "Debug.h"
+
+enum size_buf_t {
+		SMALLBUF = 64,
+		MEDIUMBUF = 256,
+		LARGEBUF = 1024,
+		HUGEBUF = 4096,
+		GARGANTUABUF = 4096 * 4
+};
 
 /* not used ATM */
 #define SUPPRESS_LOG		1

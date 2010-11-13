@@ -219,7 +219,9 @@ void UserConf::network_setup(void)
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 	chroot_status(false)
 {
-	setup_debug(cmdline_opts);
+	debug_setup(cmdline_opts);
+
+	debug.log(DEBUG_LEVEL, "Process()");
 
 	char configfile[LARGEBUF];	
 	snprintf(configfile, LARGEBUF, "%s%s", cmdline_opts.chroot_dir, cmdline_opts.cfgfname);	
@@ -248,7 +250,9 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 	compare_check_copy(running.user, MEDIUMBUF, cmdline_opts.user, strlen(cmdline_opts.user), DROP_USER);
 	compare_check_copy(running.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
 	compare_check_copy(running.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
-	compare_check_copy(running.logfname, MEDIUMBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
+	compare_check_copy(running.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
+	compare_check_copy(running.logfname_packets, LARGEBUF, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets), LOGFILE_PACKETS);
+	compare_check_copy(running.logfname_sessions, LARGEBUF, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions), LOGFILE_SESSIONS);
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
@@ -257,15 +261,14 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 	if(running.debug_level == 0)
 		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
-	dump();
-
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 }
 
 UserConf::~UserConf()
 {
-	debug.log(ALL_LEVEL, "UserConf: pid %d cleaning configuration object", getpid());
+	debug_cleanup();
+	debug.log(ALL_LEVEL, "~UserConf(): pid %d cleaning configuration object", getpid());
 }
 
 bool UserConf::load(const char* configfile)
@@ -495,10 +498,9 @@ char *UserConf::handle_cmd_loglevel(int newloglevel)
 	return &io_buf[0];
 }
 
-void UserConf::setup_debug(const struct sj_cmdline_opts &cmdline_opts)
+void UserConf::debug_setup(const struct sj_cmdline_opts &cmdline_opts)
 {
 	if (!cmdline_opts.go_foreground) {
-		char tmpfname[LARGEBUF];
 		if ((debug.logstream = fopen(cmdline_opts.logfname, "a+")) == NULL) {
 			debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname, strerror(errno));
 			SJ_RUNTIME_EXCEPTION();
@@ -508,26 +510,30 @@ void UserConf::setup_debug(const struct sj_cmdline_opts &cmdline_opts)
 	
 		debug.debuglevel = cmdline_opts.debug_level;
 		if (debug.debuglevel >= PACKETS_DEBUG) {
-			snprintf(tmpfname, LARGEBUF, "%s.packets", cmdline_opts.logfname);
-			if ((debug.packet_logstream = fopen(tmpfname, "a+")) == NULL) {
-				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+			if ((debug.packet_logstream = fopen(cmdline_opts.logfname_packets, "a+")) == NULL) {
+				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname_packets, strerror(errno));
 				SJ_RUNTIME_EXCEPTION();
 			} else {
-				debug.log(ALL_LEVEL, "opened for packets debug: %s successful", tmpfname);
+				debug.log(ALL_LEVEL, "opened for packets debug: %s successful", cmdline_opts.logfname_packets);
 			}
 		}
 
 		if (debug.debuglevel >= SESSION_DEBUG) {
-			snprintf(tmpfname, LARGEBUF, "%s.session", cmdline_opts.logfname);
-			if ((debug.session_logstream = fopen(tmpfname, "a+")) == NULL) {
-				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", tmpfname, strerror(errno));
+			if ((debug.session_logstream = fopen(cmdline_opts.logfname_sessions, "a+")) == NULL) {
+				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname_sessions, strerror(errno));
 				SJ_RUNTIME_EXCEPTION();
 			} else {
-				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", tmpfname);
+				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", cmdline_opts.logfname_sessions);
 			}
 		}
 	} else {
 		debug.logstream = stdout;
 		debug.log(ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
 	}	
+}
+
+void UserConf::debug_cleanup() {
+	fclose(debug.logstream);
+	fclose(debug.packet_logstream);
+	fclose(debug.session_logstream);
 }

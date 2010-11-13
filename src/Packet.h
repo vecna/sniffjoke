@@ -102,10 +102,12 @@ public:
 	Packet(const Packet &);
 	virtual ~Packet(void) {};
 
+
+	bool check_evil_packet(const unsigned char *buff, unsigned int nbyte);
 	unsigned int make_pkt_id(const unsigned char *) const;
 	void mark(source_t, status_t, evilbit_t);
 	void mark(source_t, status_t, judge_t, evilbit_t);
-	void updatePointers(void);
+	void updatePacketMetadata(void);
 	
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);

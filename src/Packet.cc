@@ -33,16 +33,18 @@ Packet::Packet(const unsigned char* buff, int size) :
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
-        pbuf(size),
+	pbuf(size),
         ip(NULL),
         tcp(NULL),
         payload(NULL),
         icmp(NULL)
 {
+	if(check_evil_packet(buff, size) == false)
+		throw exception();
+
 	memcpy(&(pbuf[0]), buff, size);
-	updatePointers();
+	updatePacketMetadata();
 	
-	pktlen = ntohs(ip->tot_len);
 	memset(debugbuf, 0x00, LARGEBUF);
 }
 
@@ -63,7 +65,7 @@ Packet::Packet(const Packet& pkt) :
         payload(NULL),
         icmp(NULL)
 {
-	updatePointers();
+	updatePacketMetadata();
 	memset(debugbuf, 0x00, LARGEBUF);
 }
 
@@ -90,15 +92,22 @@ void Packet::mark(source_t source, status_t status, judge_t wtf, evilbit_t moral
 	mark(source, status, morality);
 }
 
-void Packet::updatePointers(void)
+void Packet::updatePacketMetadata(void)
 {
 	ip = (struct iphdr *)&(pbuf[0]);
 	iphdrlen = (ip->ihl * 4);
+	pktlen = ntohs(ip->tot_len);
+	
+	tcp = NULL;
+	tcphdrlen = 0;
+	payload = NULL;
+	datalen = 0;
+	icmp = NULL;
 
 	if (ip->protocol == IPPROTO_TCP) {
 		proto = TCP;
 
-		tcp = (struct tcphdr *)((unsigned char *)(ip + iphdrlen));
+		tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
 		tcphdrlen = tcp->doff * 4;
 
 		datalen = ntohs(ip->tot_len) - iphdrlen - tcphdrlen;
@@ -107,19 +116,11 @@ void Packet::updatePointers(void)
 		else
 			payload = NULL;
 
-		icmp = NULL;
 	} else if (ip->protocol == IPPROTO_ICMP) {
 		proto = ICMP;
 		icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
-		tcp = NULL;
-		payload = NULL;
-		datalen = tcphdrlen = 0;
 	} else {
 		proto = OTHER_IP;
-		tcp = NULL;
-		icmp = NULL;
-		payload = NULL;
-		datalen = tcphdrlen = 0;
 	}
 }
 
@@ -202,7 +203,7 @@ void Packet::increasePbuf(unsigned int morespace)
 	/* the pbuf can only be incremented safaly, not decremented */
 	pbuf.resize(pbuf.size() + morespace);
 	
-	updatePointers();
+	updatePacketMetadata();
 }
 
 void Packet::resizePayload(unsigned int newlen) 
@@ -211,17 +212,16 @@ void Packet::resizePayload(unsigned int newlen)
 	int oldlen = ntohs(ip->tot_len) - (iphdrlen + tcphdrlen);
 	unsigned int newpbuf_size = pbuf.size() - oldlen + newlen;
 	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
-	unsigned newtotallen = iphdrlen + tcphdrlen + newlen;
 	
 	/* IP header copy , TCP header copy, Payload copy, if preserved */
-	int copysize = newtotallen > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newtotallen;
+	int copysize = newpbuf_size > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newpbuf_size;
 	memcpy(&(newpbuf[0]), &(pbuf[0]), copysize );
 	pbuf = newpbuf;
 
         ip = (struct iphdr *)&(pbuf[0]);
-        ip->tot_len = htons(newtotallen);
+        ip->tot_len = htons(newpbuf_size);
 
-	updatePointers();
+	updatePacketMetadata();
 }
 
 void Packet::fillRandomPayload()
@@ -490,4 +490,43 @@ void Packet::selflog(const char *func, const char *loginfo)
        	);
 
 	memset(debugbuf, 0x00, LARGEBUF);
+}
+
+
+bool Packet::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
+{
+	struct iphdr *ip = (struct iphdr *)buff;
+ 
+	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) ) {
+		debug.log(PACKETS_DEBUG, "%s %s: nbyte %s < (struct iphdr) %d || (ip->tot_len) %d", 
+			__FILE__, __func__, nbyte, sizeof(struct iphdr), ntohs(ip->tot_len)
+		);
+		return false;
+	}
+
+	if (ip->protocol == IPPROTO_TCP) {
+		struct tcphdr *tcp;
+		int iphlen;
+		int tcphlen;
+
+		iphlen = ip->ihl * 4;
+
+		if (nbyte < iphlen + sizeof(struct tcphdr)) {
+			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP] nbyte %d < iphlen + (struct tcphdr) %d",
+				__FILE__, __func__, nbyte, iphlen + sizeof(struct tcphdr)
+			);
+			return false;
+		}
+
+		tcp = (struct tcphdr *)((unsigned char *)ip + iphlen);
+		tcphlen = tcp->doff * 4;
+		
+		if (ntohs(ip->tot_len) < iphlen + tcphlen) {
+			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP][bis] nbyte %d < iphlen + tcphlen %d",
+				__FILE__, __func__, nbyte, iphlen + tcphlen
+			);
+			return false;
+		}
+	}
+	return true;
 }

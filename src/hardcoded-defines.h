@@ -18,8 +18,10 @@
 #define CHROOT_DIR			INSTALL_STATEDIR
 #define PLUGINSENABLER			INSTALL_SYSCONFDIR "plugins_enabled.txt"
 #define MAXPLUGINS			32
-#define CONF_FILE 			"sjconf.bin"     //used INSIDE chroot
-#define LOGFILE                         "sniffjoke.log"  //used INSIDE chroot
+#define CONF_FILE 			"sjconf.bin"     		//relative to chroot_dir
+#define LOGFILE                         "sniffjoke.log"			//relative to chroot_dir
+#define LOGFILE_PACKETS                 "sniffjoke_packets.log"		//relative to chroot_dir
+#define LOGFILE_SESSIONS                "sniffjoke_sessions.log"	//relative to chroot_dir
 #define DEFAULT_DEBUG_LEVEL             2
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"

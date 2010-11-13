@@ -21,10 +21,9 @@
  */
 #include "hardcoded-defines.h"
 
+#include "Utils.h"
 #include "UserConf.h"
 #include "SniffJoke.h"
-#include "Debug.h"
-#include "Utils.h"
 
 #include <stdexcept>
 #include <csignal>
@@ -91,12 +90,6 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
 	return std::runtime_error(stream.str());
 }
 
-/* forceflow is almost useless, use NULL in the normal logging options */
-void log(FILE *forceflow, unsigned int errorlevel, const char *msg, ...) 
-{
-
-}
-
 void* memset_random(void *s, size_t n)
 {
 	unsigned char *cp = (unsigned char*)s;
@@ -110,28 +103,22 @@ void sigtrap(int signal)
 	if (signal)
 		debug.log(ALL_LEVEL, "received signal %d, pid %d cleaning SniffJoke objects...", signal, getpid());
 		
-	/* different way for closing SniffJoke if the signal come from the father or the child */
-	if (getuid() || geteuid()) {
-		sniffjoke->server_user_cleanup();
-		exit(0);
-	} else {
-		sniffjoke->server_root_cleanup();
-		exit(0);
-	}
+	sniffjoke.reset();
+	
+	exit(0);
 }
 
 int main(int argc, char **argv)
 {
-	char command_buffer[MEDIUMBUF], *command_input = NULL;
-	int charopt;
-	
 	/* set the default values in the configuration struct */
 	snprintf(useropt.cfgfname, MEDIUMBUF, CONF_FILE);
 	snprintf(useropt.enabler, MEDIUMBUF, PLUGINSENABLER);
 	snprintf(useropt.user, MEDIUMBUF, DROP_USER);
 	snprintf(useropt.group, MEDIUMBUF, DROP_GROUP);
 	snprintf(useropt.chroot_dir, MEDIUMBUF, CHROOT_DIR);
-	snprintf(useropt.logfname, MEDIUMBUF, LOGFILE);
+	snprintf(useropt.logfname, LARGEBUF, "%s%s",CHROOT_DIR, LOGFILE);
+	snprintf(useropt.logfname_packets, LARGEBUF, "%s%s",CHROOT_DIR, LOGFILE_PACKETS);
+	snprintf(useropt.logfname_sessions, LARGEBUF, "%s%s",CHROOT_DIR, LOGFILE_SESSIONS);
 	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
 	useropt.go_foreground = false;
 	useropt.force_restart = false;
@@ -155,46 +142,34 @@ int main(int argc, char **argv)
 		{ NULL, 0, NULL, 0 }
 	};
 
-	memset(command_buffer, 0x00, MEDIUMBUF);
+	useropt.process_type = SJ_CLIENT_PROC;
+
+	memset(useropt.cmd_buffer, 0x00, MEDIUMBUF);
 	/* check for direct commands */
 	if ((argc >= 2) && !memcmp(argv[1], "start", strlen("start"))) {
-		snprintf(command_buffer, MEDIUMBUF, "start");
-		command_input = argv[1];
-	}
-	if ((argc >= 2) && !memcmp(argv[1], "stop", strlen("stop"))) {
-		snprintf(command_buffer, MEDIUMBUF, "stop");
-		command_input = argv[1];
-	}
-	if ((argc >= 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
-		snprintf(command_buffer, MEDIUMBUF, "stat");
-		command_input = argv[1];
-	}
-	if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
-		snprintf(command_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
-		command_input = command_buffer;
-	} 
-	if ((argc == 2) && !memcmp(argv[1], "clear", strlen("clear"))) {
-		snprintf(command_buffer, MEDIUMBUF, "clear");
-		command_input = command_buffer;
-	} 
-	if ((argc == 2) && !memcmp(argv[1], "showport", strlen("showport"))) {
-		snprintf(command_buffer, MEDIUMBUF, "showport");
-		command_input = command_buffer;
-	} 
-	if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
-		snprintf(command_buffer, MEDIUMBUF, "quit");
-		command_input = command_buffer;
-	}
-	if ((argc == 2) && !memcmp(argv[1], "info", strlen("info"))) {
-		snprintf(command_buffer, MEDIUMBUF, "info");
-		command_input = command_buffer;
-	}
-	if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
-		snprintf(command_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
-		command_input = command_buffer;
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "start");
+	} else if ((argc >= 2) && !memcmp(argv[1], "stop", strlen("stop"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stop");
+	} else if ((argc >= 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stat");
+	} else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
+	} else if ((argc == 2) && !memcmp(argv[1], "clear", strlen("clear"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "clear");
+	} else if ((argc == 2) && !memcmp(argv[1], "showport", strlen("showport"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "showport");
+	}  else if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "quit");
+	} else if ((argc == 2) && !memcmp(argv[1], "info", strlen("info"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "info");
+	} else if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
+	} else {
+		useropt.process_type = SJ_SERVER_PROC;
 	}
 
-	if (command_input == NULL) {
+	if (useropt.process_type == SJ_SERVER_PROC) {
+		int charopt;
 		while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhv", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
@@ -240,15 +215,12 @@ int main(int argc, char **argv)
 
 	try {
 		sniffjoke = auto_ptr<SniffJoke> (new SniffJoke(useropt));
-		if (command_input != NULL) {
-			/* SNIFFJOKE COMMAND CLIENT */
-			sniffjoke->client(command_input);
-		} else {
-			/* SNIFFJOKE SERVER */
-			sniffjoke->server(useropt.go_foreground, useropt.force_restart);
-		}
+		sniffjoke->run();
 	
 	} catch (runtime_error &exception) {
 		debug.log(ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
-	}	
+		
+		sniffjoke.reset();
+		exit(0);
+	}
 }

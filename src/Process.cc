@@ -79,7 +79,6 @@ int Process::detach()
 
 void Process::jail() 
 {
-
 	userconf.running.chrooted = false;
 
 	if(userconf.running.chroot_dir == NULL) {

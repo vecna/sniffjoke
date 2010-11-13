@@ -39,8 +39,9 @@ using namespace std;
 
 class SniffJoke {
 private:
-	auto_ptr<Process> proc;
-	auto_ptr<UserConf> userconf;
+	sj_cmdline_opts cmdline_opts;
+	UserConf userconf;
+	Process proc;
 	auto_ptr<NetIO> mitm;
 	auto_ptr<HackPool> hack_pool;
 	auto_ptr<TCPTrack> conntrack;
@@ -55,10 +56,13 @@ private:
 	bool parse_port_weight(char *weightstr, Strength *Value);
 public:
 	SniffJoke(const struct sj_cmdline_opts &);
-	void client(const char *);
-	void server(bool, bool);
+	~SniffJoke();
+	void run();
+	void client();
+	void server();
 	void server_root_cleanup();
 	void server_user_cleanup();
+	void client_cleanup();
 	void send_command(const char *cmdstring);
 };
 

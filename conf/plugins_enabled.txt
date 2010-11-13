@@ -2,7 +2,7 @@
 #
 # comment supported
 #
-fake_close_fin.so
+##fake_close_fin.so
 # 
 #fake_close_rst.so
 fake_data.so

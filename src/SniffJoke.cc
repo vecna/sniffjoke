@@ -5,66 +5,85 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-SniffJoke::SniffJoke(const struct sj_cmdline_opts &cmdline_opts) {
-	userconf = auto_ptr<UserConf> (new UserConf(cmdline_opts));
-	proc = auto_ptr<Process> (new Process(*userconf));
+SniffJoke::SniffJoke(const struct sj_cmdline_opts &cmdline_options) :
+	cmdline_opts(cmdline_options),
+	userconf(cmdline_opts),
+	proc(userconf)
+{
 }
 
-void SniffJoke::client(const char* command_input) {
-	service_pid = proc->readPidfile();
+void SniffJoke::run()
+{
+	switch (cmdline_opts.process_type) {
+		case SJ_SERVER_PROC:
+			server();
+			break;
+		case SJ_CLIENT_PROC:
+			client();
+			break;
+	}	
+}
+
+void SniffJoke::client() {
+	service_pid = proc.readPidfile();
 	if (!service_pid) {
-		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command %s ignored", command_input);
+		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command %s ignored", cmdline_opts.cmd_buffer);
 		return;
 	}
 
-	proc->jail();
-	proc->privilegesDowngrade();
-	send_command(command_input);
+	proc.jail();
+	proc.privilegesDowngrade();
+	send_command(cmdline_opts.cmd_buffer);
 
 	return;
 }
 
-void SniffJoke::server(bool go_foreground, bool force_restart) {
+void SniffJoke::server() {
 
-	service_pid = proc->readPidfile();
+	service_pid = proc.readPidfile();
 	if (service_pid != 0) {
-		if (!force_restart) {
+		if (!cmdline_opts.force_restart) {
 			debug.log(ALL_LEVEL, "SniffJoke is already running, use --force or check --help");
 			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, service_pid);
 			return;
 		} else {
 			debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", service_pid);
-			/* FIXME */
-			// system("SniffJoke quit");
-			// sleep(5);
+			
+			/* we have to do quite the same as in sniffjoke_server_cleanhup,
+			 * but relative to the service_pid read with readPidfile;
+			 * here we can not use the waitpid because the process to kill it's not a child of us;
+			 * we can use a sleep(5) instead. */
+			kill(service_pid, SIGTERM);
+			sleep(5);
+			proc.unlinkPidfile();
 			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going running in background");
 		}
 	}
 	
 	/* running the network setup before the background, for keep the software output visible on the console */
-	userconf->network_setup();
+	userconf.network_setup();
 
-	if (!go_foreground) {
-		proc->background();
-		proc->isolation();
+	if (!cmdline_opts.go_foreground) {
+		proc.background();
+		proc.isolation();
 	}
 	
-	proc->writePidfile();
+	proc.writePidfile();
 
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
-	mitm = auto_ptr<NetIO> (new NetIO(userconf->running));
+	mitm = auto_ptr<NetIO> (new NetIO(userconf.running));
 
-	/* proc->detach(): fork() into two processes, 
+	/* proc.detach(): fork() into two processes, 
 	   from now on the real configuration is the one mantained by the child */
-	service_pid = proc->detach();
+	service_pid = proc.detach();
 	
-	proc->sigtrapSetup(sigtrap);
+	proc.sigtrapSetup(sigtrap);
 	
 	if(service_pid) {
 		int deadtrace;
 		
 		waitpid(service_pid, &deadtrace, WUNTRACED);
-
+		
 		if (WIFEXITED(deadtrace))
 			debug.log(VERBOSE_LEVEL, "child %d WIFEXITED", service_pid);
 		if (WIFSIGNALED(deadtrace))
@@ -73,47 +92,65 @@ void SniffJoke::server(bool go_foreground, bool force_restart) {
 			debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
 
 		debug.log(DEBUG_LEVEL, "child %d died, going to shutdown", service_pid);
+
 	} else {
 		
-		/* loading the plugins used for tcp hacking, MUST be done before proc->jail() */
-		hack_pool = auto_ptr<HackPool> (new HackPool(userconf->running.enabler));
+		/* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
+		hack_pool = auto_ptr<HackPool> (new HackPool(userconf.running.enabler));
 
-		/* proc->jail(): chroot + userconf->running.chrooted = true */
-		proc->jail();
+		/* proc.jail(): chroot + userconf.running.chrooted = true */
+		proc.jail();
 
-		proc->privilegesDowngrade();
+		proc.privilegesDowngrade();
 
-		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf->running, *hack_pool));
+		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.running, *hack_pool));
 		mitm->prepare_conntrack(conntrack.get());
 
 		listening_unix_socket = bind_unixsocket();
 
-		if (userconf->running.active == false)
+		if (userconf.running.active == false)
 			debug.log(ALL_LEVEL, "SniffJoke is running and INACTIVE: use \"SniffJoke start\" command to start it");
 
 		/* main block */
 		bool alive = true;
 		while (alive) {
 
-			proc->sigtrapDisable();
+			proc.sigtrapDisable();
 
 			mitm->network_io();
 			mitm->queue_flush();
 
 			handle_unixsocket(listening_unix_socket, alive);
 
-			proc->sigtrapEnable();
+			proc.sigtrapEnable();
 		}
 	}
 }
 
+SniffJoke::~SniffJoke()
+{
+	switch (cmdline_opts.process_type) {
+		case SJ_SERVER_PROC:
+			if (getuid() || geteuid()) {
+				server_user_cleanup();
+			} else {
+				server_root_cleanup();
+			}	
+			break;
+		case SJ_CLIENT_PROC:
+			client_cleanup();
+			break;
+	}
+
+	debug.log(ALL_LEVEL, "~Sniffjoke()");
+}
+
 void SniffJoke::server_root_cleanup()
 {
-	debug.log(VERBOSE_LEVEL, "server_root_cleanup()");
-	
+	debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
 	kill(service_pid, SIGTERM);
 	waitpid(service_pid, NULL, 0);
-	proc->unlinkPidfile();
+	proc.unlinkPidfile();
 }
 
 void SniffJoke::server_user_cleanup()
@@ -121,6 +158,9 @@ void SniffJoke::server_user_cleanup()
 	debug.log(VERBOSE_LEVEL, "client_user_cleanup()");
 }
 
+void SniffJoke::client_cleanup() {
+
+}
 
 int SniffJoke::bind_unixsocket()
 {
@@ -180,20 +220,20 @@ void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
 	debug.log(VERBOSE_LEVEL, "received command from the client: %s", r_command);
 
 	if (!memcmp(r_command, "start", strlen("start"))) {
-		output = userconf->handle_cmd_start();
+		output = userconf.handle_cmd_start();
 	} else if (!memcmp(r_command, "stop", strlen("stop"))) {
-		output = userconf->handle_cmd_stop();
+		output = userconf.handle_cmd_stop();
 	} else if (!memcmp(r_command, "quit", strlen("quit"))) {
-		output = userconf->handle_cmd_quit();
+		output = userconf.handle_cmd_quit();
 		alive = false;
 	} else if (!memcmp(r_command, "saveconfig", strlen("saveconfig"))) {
-		output = userconf->handle_cmd_saveconfig();
+		output = userconf.handle_cmd_saveconfig();
 	} else if (!memcmp(r_command, "stat", strlen("stat"))) {
-		output = userconf->handle_cmd_stat();
+		output = userconf.handle_cmd_stat();
 	} else if (!memcmp(r_command, "info", strlen("info"))) {
-		output = userconf->handle_cmd_info();
+		output = userconf.handle_cmd_info();
 	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
-		output = userconf->handle_cmd_showport();
+		output = userconf.handle_cmd_showport();
 	} else if (!memcmp(r_command, "set", strlen("set"))) {
 		int start_port, end_port;
 		Strength setValue;
@@ -210,7 +250,7 @@ void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
 		if (start_port > end_port)
 			goto handle_set_error;
 
-		output = userconf->handle_cmd_set(start_port, end_port, setValue);
+		output = userconf.handle_cmd_set(start_port, end_port, setValue);
 
 handle_set_error:
 		if(output == NULL) {
@@ -224,7 +264,7 @@ handle_set_error:
 		}
 	} else if (!memcmp(r_command, "clear", strlen("clear"))) {
 		Strength clearValue = NONE;
-		output = userconf->handle_cmd_set(0, PORTNUMBER, clearValue);
+		output = userconf.handle_cmd_set(0, PORTNUMBER, clearValue);
 	} else if (!memcmp(r_command, "loglevel", strlen("loglevel")))  {
 		int loglevel;
 
@@ -235,7 +275,7 @@ handle_set_error:
 			debug.log(ALL_LEVEL, "%s", internal_buf);
 			output = internal_buf;
 		} else {
-			output = userconf->handle_cmd_loglevel(loglevel);
+			output = userconf.handle_cmd_loglevel(loglevel);
 		}
 	} else {
 		debug.log(ALL_LEVEL, "wrong command %s", r_command);
@@ -263,7 +303,7 @@ void SniffJoke::send_command(const char *cmdstring)
 		debug.log(ALL_LEVEL, "FATAL: unable to open UNIX/DGRAM socket for connect to SniffJoke service: %s", strerror(errno));
 		exit(0);
 	}
-		
+
 	/*
 	 * Client will bind to an address so the server/service will get an address in its recvfrom call and use it to
 	 * send data back to the client.  
