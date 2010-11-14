@@ -66,7 +66,7 @@ Process::Process(const struct sj_cmdline_opts &opts) :
 
 Process::~Process()
 {
-	debug.log(VERBOSE_LEVEL, __func__);
+	debug.log(DEBUG_LEVEL, "%s [process %d, uid %d]", __func__, getpid(), getuid());
 	free(userinfo_buf);
 	free(groupinfo_buf);
 }
@@ -230,20 +230,21 @@ void Process::unlinkPidfile(void)
 	FILE *pidFile = fopen(SJ_PIDFILE, "r");
 
 	if (pidFile == NULL) {
-		debug.log(ALL_LEVEL, "unlinkPidfile: requested unlink of %s seems impossibile: %s", SJ_PIDFILE, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		debug.log(ALL_LEVEL, "%s: not fatal error: unlink of %s impossibile: %s", __func__, SJ_PIDFILE, strerror(errno));
+		return;
 	}
+
 	fclose(pidFile);
 	if(unlink(SJ_PIDFILE)) {
-		debug.log(ALL_LEVEL, "unlinkPidfile: unable to unlink %s: %s", SJ_PIDFILE, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		debug.log(VERBOSE_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
+                SJ_RUNTIME_EXCEPTION();
 	}
 }
 
 
 void Process::background() 
 {
-	debug.log(DEBUG_LEVEL, "background: the pid %d, uid %d is going background and closing std*", getpid(), getuid());
+	debug.log(VERBOSE_LEVEL, "The starting process is going to close the output logging. Follow the logfile");
 
 	int i;
 	if (fork())

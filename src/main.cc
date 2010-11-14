@@ -59,9 +59,9 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
-	" saveconfig\t\tdump config file\n\n"\
-	" stat\t\t\tget statistics about sniffjoke configuration and network\n\n"\
-	" info\t\t\tget massive info about sniffjoke internet stats\n\n"\
+	" saveconfig\t\tdump config file\n"\
+	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
+	" info\t\t\tget massive info about sniffjoke internet stats\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
 	" set start end value\tset per tcp ports the strongness of injection\n"\
 	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
@@ -162,10 +162,18 @@ int main(int argc, char **argv)
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "quit");
 	} else if ((argc == 2) && !memcmp(argv[1], "info", strlen("info"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "info");
+	} else if ((argc == 2) && !memcmp(argv[1], "saveconfig", strlen("saveconfig"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "saveconfig");
 	} else if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
 	} else {
 		useropt.process_type = SJ_SERVER_PROC;
+	}
+
+	/* someone has made a "sniffjoke typo" */
+	if(useropt.process_type == SJ_SERVER_PROC && argc > 1 && argv[1][1] != '-') {
+		sj_help(argv[0], useropt.chroot_dir);
+		return -1;
 	}
 
 	if (useropt.process_type == SJ_SERVER_PROC) {
@@ -210,7 +218,6 @@ int main(int argc, char **argv)
 				argv += optind;
 			}
 		}
-	
 	}
 
 	try {

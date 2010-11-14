@@ -69,11 +69,13 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+	dump();
 }
 
 UserConf::~UserConf()
 {
-	debug.log(VERBOSE_LEVEL, __func__);
+	debug.log(DEBUG_LEVEL, "%s [process %d chroot %s], referred config file %s",
+		 __func__, getpid(), chroot_status ? "YES" : "NO", running.cfgfname);
 }
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
@@ -244,11 +246,6 @@ void UserConf::network_setup(void)
 
 	debug.log(DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
 
-	if(running.active)
-		debug.log(VERBOSE_LEVEL, "-- sniffjoke loaded to run immediatly");
-	else
-		debug.log(VERBOSE_LEVEL, "-- sniffjoke loaded and stopped at the moment, waiting for \"sniffjoke start\" command");
-
 	/* autodetect is always used, we should not trust the preloaded configuration */
 	autodetect_local_interface();
 	autodetect_local_interface_ip_address();
@@ -324,7 +321,10 @@ void UserConf::dump(void)
 			);
 		}
 		fclose(dumpfd);
+	} else {
+		debug.log(ALL_LEVEL, "unable to open configuration to %s: %s", configfile, strerror(errno));
 	}
+	
 }
 
 char *UserConf::handle_cmd_start(void)
@@ -386,9 +386,9 @@ char *UserConf::handle_cmd_stat(void)
 		"gateway ip address:\t\t%s\n" \
 		"local interface:\t\t%s, %s address\n" \
 		"dynamic tunnel interface:\ttun%d\n" \
-		"log level:\t\t%d at file %s\n" \
-		"plugins file:\t\t%s\n" \
-		"chroot directory:\t%s\n",
+		"log level:\t\t\t%d at file %s\n" \
+		"plugins file:\t\t\t%s\n" \
+		"chroot directory:\t\t%s\n",
 		running.active == true ? "TRUE" : "FALSE",
 		running.gw_mac_str,
 		running.gw_ip_addr,

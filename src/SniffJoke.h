@@ -73,7 +73,7 @@ public:
 	void server_root_cleanup();
 	void server_user_cleanup();
 	void client_cleanup();
-	void debug_setup();
+	void debug_setup(FILE *);
 	void debug_cleanup();
 };
 

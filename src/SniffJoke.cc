@@ -11,7 +11,7 @@ SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
 	proc(opts),
 	service_pid(0)
 {
-	debug_setup();
+	debug_setup(stdout);
 	debug.log(VERBOSE_LEVEL, __func__);
 }
 
@@ -47,31 +47,38 @@ void SniffJoke::server() {
 	if (old_service_pid != 0) {
 		if (!opts.force_restart) {
 			debug.log(ALL_LEVEL, "SniffJoke is already running, use --force or check --help");
-			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, service_pid);
+			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, old_service_pid);
 			return;
 		} else {
-			debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", service_pid);
+			debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", old_service_pid);
 			
-			/* we have to do quite the same as in sniffjoke_server_cleanhup,
+			/* we have to do quite the same as in sniffjoke_server_cleanup,
 			 * but relative to the service_pid read with readPidfile;
 			 * here we can not use the waitpid because the process to kill it's not a child of us;
-			 * we can use a sleep(5) instead. */
+			 * we can use a sleep(2) instead. */
 			kill(old_service_pid, SIGTERM);
-			sleep(5);
+			sleep(2);
 			proc.unlinkPidfile();
 			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going running in background");
 		}
 	}
-	
+
+	if(!old_service_pid && opts.force_restart)
+		debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously running SniffJoke");
+
 	/* running the network setup before the background, for keep the software output visible on the console */
 	userconf.network_setup();
+
+	if (!userconf.running.active)
+		debug.log(ALL_LEVEL, "SniffJoke is INACTIVE: use \"sniffjoke start\" command to start it");
+	else
+		debug.log(VERBOSE_LEVEL, "SniffJoke resumed as ACTIVE");
 
 	if (!opts.go_foreground) {
 		proc.background();
 
-		sleep(10);
 		/* Log Object must be reinitialized after background */
-		debug_setup();
+		debug_setup(NULL);
 
 		proc.isolation();
 	}
@@ -84,9 +91,12 @@ void SniffJoke::server() {
 	/* proc.detach: fork() into two processes, 
 	   from now on the real configuration is the one mantained by the child */
 	service_pid = proc.detach();
-	
+
+	/* sigtrap handler mapped the same in both Sj processes */
 	proc.sigtrapSetup(sigtrap);
-	
+
+	/* this is the root privileges thread, need to run for restore the network
+	 * environment in shutdown */
 	if(service_pid) {
 		int deadtrace;
 		
@@ -117,9 +127,6 @@ void SniffJoke::server() {
 
 		listening_unix_socket = bind_unixsocket();
 
-		if (userconf.running.active == false)
-			debug.log(ALL_LEVEL, "SniffJoke is running and INACTIVE: use \"SniffJoke start\" command to start it");
-
 		/* main block */
 		bool alive = true;
 		while (alive) {
@@ -138,7 +145,8 @@ void SniffJoke::server() {
 
 SniffJoke::~SniffJoke()
 {
-	debug.log(VERBOSE_LEVEL, __func__);
+	debug.log(DEBUG_LEVEL, "%s [process %d, role %s]", __func__, getpid(), 
+		opts.process_type == SJ_SERVER_PROC ? "service" : "client" );
 
 	switch (opts.process_type) {
 		case SJ_SERVER_PROC:
@@ -155,7 +163,7 @@ SniffJoke::~SniffJoke()
 			client_cleanup();
 			break;
 	}
-	
+
 	debug_cleanup();
 }
 
@@ -400,10 +408,15 @@ bool SniffJoke::parse_port_weight(char *weightstr, Strength *value)
 }
 
 
-void SniffJoke::debug_setup()
+void SniffJoke::debug_setup(FILE *forcedoutput)
 {
-	debug.log(ALL_LEVEL, __func__);
 	debug.debuglevel = opts.debug_level;
+
+	/* when sniffjoke start force the output to be stdout */
+	if(forcedoutput != NULL) {
+		debug.logstream = forcedoutput;
+		return;
+	}
 	
 	if (opts.process_type == SJ_SERVER_PROC && !opts.go_foreground) {
 		
@@ -433,13 +446,13 @@ void SniffJoke::debug_setup()
 				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", opts.logfname_sessions);
 			}
 		}
-	} else {
-		
-		/* Foreground SERVER or CLIENT */
-		
+	} else if(opts.process_type == SJ_CLIENT_PROC) {
 		debug.logstream = stdout;
-		debug.log(ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
-	}	
+		debug.log(DEBUG_LEVEL, "client write a verbose output on stdout, whenever a block happen, use ^c");
+	} else /* opts.go_foreground */ {
+		debug.logstream = stdout;
+		debug.log(ALL_LEVEL, "forground logging enable, use ^c for quit SniffJoke");
+	}
 }
 
 void SniffJoke::debug_cleanup() {
