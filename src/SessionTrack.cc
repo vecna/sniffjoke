@@ -29,7 +29,14 @@ SessionTrack::SessionTrack(const Packet &pkt) :
 	isn(pkt.tcp->seq),
 	packet_number(1),
 	shutdown(false)
-{}
+{
+	debug.log(DEBUG_LEVEL, "%s: daddr(%d) sport(%d) dport(%d) isn(%d)", __func__, daddr, sport, dport, isn);
+}
+
+SessionTrack::~SessionTrack()
+{
+	debug.log(DEBUG_LEVEL, "%s: daddr(%d) sport(%d) dport(%d) isn(%d)", __func__, daddr, sport, dport, isn);
+}
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {

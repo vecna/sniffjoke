@@ -40,6 +40,7 @@ public:
 	bool shutdown;
 
 	SessionTrack(const Packet &pb);
+	~SessionTrack();
 	void selflog(const char *, const char *);
 	/* no personal buffer used in selflog, maybe in the future */
 };

@@ -35,17 +35,17 @@ TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	 * hack_pool is a "class HackPacketPool", that extend a vector of HackPacketPoolElem */
 	hack_pool(hpp)
 {
+	debug.log(VERBOSE_LEVEL, __func__);
+	
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
 		srandom((unsigned int)time(NULL) ^ random());
-	
-	debug.log(DEBUG_LEVEL, "TCPTrack()");
 }
 
 TCPTrack::~TCPTrack(void) 
 {
+	debug.log(VERBOSE_LEVEL, __func__);
 	ttlfocus_map.dump();
-	debug.log(DEBUG_LEVEL, "~TCPTrack()");
 }
 
 /*  
@@ -406,7 +406,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 
 			/* a closed or shutdown session don't require to be hacked */
 			pkt.selflog(__func__, "injecting pkt in queue");
-			inject_hack_in_queue(pkt, session);		
+			//inject_hack_in_queue(pkt, session);		
 		}
 	}
 }
@@ -622,23 +622,22 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	}	
 
 	/* IP options, every packet subject if possible, and MALFORMED will be apply */
-	if(pkt.wtf == MALFORMED) {
 #if 0
+	if(pkt.wtf == MALFORMED) {
+		
 		pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true);
-#endif
-#if 0	// VERIFY - TCP doesn't cause a failure of the packet, the BAD TCPOPT will be used always
+
+		// VERIFY - TCP doesn't cause a failure of the packet, the BAD TCPOPT will be used always
                 if (!pkt.checkUncommonTCPOPT())
                         pkt.Inject_BAD_TCPOPT();
-#endif
 	} else {
 		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options */ false);
-#if 0	// the same
+	
+		// the same
 		if (!pkt.checkUncommonTCPOPT())
 			pkt.Inject_GOOD_TCPOPT();
-#endif
 	}
 
-#if 0
 	// VERIFY effective impact of every TCP OPTION
 	if (!pkt.checkUncommonTCPOPT() && RANDOM20PERCENT) {
 		if RANDOM50PERCENT

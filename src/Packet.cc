@@ -169,25 +169,25 @@ void Packet::fixIpTcpSum(void)
 bool Packet::SelfIntegrityCheck(const char *pluginName)
 {
 	if(source != SOURCEUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s (source_t)source must not be set: ignored value", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
 	}
 
 	if(status != STATUSUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s (status_t)status must not be set: ignored value", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s (status_t)status must not be set: ignored value", pluginName);
 	}
 
 	if(wtf == JUDGEUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;
 	}
 
 	if(proto == PROTOUNASSIGNED) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"proto\" field, required", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
 		goto errorinfo;
 	}
 
 	if(position == POSITIONUNASSIGNED) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck(): in %s not set \"position\" field, required", pluginName);
+		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
 		goto errorinfo;
 	}
 
@@ -418,16 +418,20 @@ void Packet::Inject_BAD_TCPOPT(void)
 void Packet::selflog(const char *func, const char *loginfo) 
 {
 	const char *evilstr, *statustr, *wtfstr, *sourcestr;
+	char *p, protoinfo[MEDIUMBUF]; 
+
 	/* inet_ntoa use a static buffer */
-	char *p, swapaddr[MEDIUMBUF], protoinfo[MEDIUMBUF]; 
+	char saddr[MEDIUMBUF], daddr[MEDIUMBUF];
 
 	p = inet_ntoa(*((struct in_addr *)&(ip->saddr)));
-	memcpy(swapaddr, p, strlen(p));
-	swapaddr[strlen(p)] =0x00;
+	strncpy(saddr, p, MEDIUMBUF);
+
+	p = inet_ntoa(*((struct in_addr *)&(ip->daddr)));
+	strncpy(daddr, p, MEDIUMBUF);
 
 	switch(evilbit) {
 		case GOOD: evilstr = "good"; break;
-		case EVIL: evilstr = "evil"; /* evil packets are the pks generate from sniffjoke */ break;
+		case EVIL: evilstr = "evil"; break;
                 default: case MORALITYUNASSIGNED: evilstr = "unassigned evilbit"; break;
 
 	}
@@ -436,7 +440,7 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case YOUNG:  statustr = "young"; break;
 		case SEND: statustr = "send"; break;
 		case KEEP: statustr = "keep"; break;
-                default: case STATUSUNASSIGNED: statustr = "unassigned"; break;
+                default: case STATUSUNASSIGNED: statustr = "unassigned status"; break;
 	}
 
 	switch(wtf) {
@@ -445,7 +449,7 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case INNOCENT: wtfstr ="innocent"; break;
 		case GUILTY: wtfstr ="badcksum"; break;
 		case MALFORMED: wtfstr ="malformetIP"; break;
-                default: case JUDGEUNASSIGNED: wtfstr ="unsass"; break;
+                default: case JUDGEUNASSIGNED: wtfstr = "unassigned wtf"; break;
 	}
 
 	switch(source) {
@@ -453,7 +457,7 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case LOCAL: sourcestr = "local"; break;
 		case NETWORK: sourcestr = "network"; break;
 		case TTLBFORCE: sourcestr = "ttl force"; break;
-		default: case SOURCEUNASSIGNED: sourcestr = "source fault: unassigned"; break;
+		default: case SOURCEUNASSIGNED: sourcestr = "unassigned source"; break;
 	}
 
 	memset(protoinfo, 0x0, MEDIUMBUF);
@@ -477,17 +481,19 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case PROTOUNASSIGNED:
 			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
 			break;
-		case ANY_PROTO:
+		default: case ANY_PROTO:
 			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
 			SJ_RUNTIME_EXCEPTION();
 			break;
 	}
 
-	debug.log(PACKETS_DEBUG, "%s :%x: E|%d status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+	/*
+	debug.log(PACKETS_DEBUG, "%s :%x: E|%s status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
 		func, packet_id, evilstr, statustr, wtfstr, sourcestr,
-		swapaddr, inet_ntoa(*((struct in_addr *)&ip->daddr)),
+		saddr, daddr,
 		protoinfo, ip->ttl, loginfo
        	);
+       	*/
 
 	memset(debugbuf, 0x00, LARGEBUF);
 }

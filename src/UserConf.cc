@@ -25,6 +25,57 @@
 
 #include <sys/stat.h>
 
+UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
+	chroot_status(false)
+{
+	debug.log(VERBOSE_LEVEL, __func__);
+
+	char configfile[LARGEBUF];	
+	snprintf(configfile, LARGEBUF, "%s%s", cmdline_opts.chroot_dir, cmdline_opts.cfgfname);	
+	
+	memset(&running, 0x00, sizeof(sj_config));
+	
+	if(!load(configfile)) {
+		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
+
+		/* set up defaults */	   
+		running.MAGIC = MAGICVAL;
+		running.active = false;
+		running.max_ttl_probe = 30;
+		running.max_sex_track = 4096;
+
+		/* default is to set all TCP ports in "NORMAL" aggressivity level */
+		for(int i = 0; i < PORTNUMBER; i++)
+			running.portconf[i] = NORMAL;
+	}
+
+	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
+	 * we need only to check if the previous value was different from the default */
+	compare_check_copy(running.cfgfname, MEDIUMBUF, cmdline_opts.cfgfname, strlen(cmdline_opts.cfgfname), CONF_FILE);
+	compare_check_copy(running.enabler, MEDIUMBUF, cmdline_opts.enabler, strlen(cmdline_opts.enabler), PLUGINSENABLER);
+	compare_check_copy(running.user, MEDIUMBUF, cmdline_opts.user, strlen(cmdline_opts.user), DROP_USER);
+	compare_check_copy(running.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
+	compare_check_copy(running.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
+	compare_check_copy(running.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
+	compare_check_copy(running.logfname_packets, LARGEBUF, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets), LOGFILE_PACKETS);
+	compare_check_copy(running.logfname_sessions, LARGEBUF, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions), LOGFILE_SESSIONS);
+
+	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
+	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
+		running.debug_level = cmdline_opts.debug_level;
+
+	if(running.debug_level == 0)
+		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
+
+	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
+	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+}
+
+UserConf::~UserConf()
+{
+	debug.log(VERBOSE_LEVEL, __func__);
+}
+
 /* Read command line values if present, preserve the previous options, and otherwise import default */
 void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *useropt, unsigned int ulen, const char *sjdefault)
 {
@@ -140,8 +191,11 @@ void UserConf::autodetect_gw_mac_address()
 
 	debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running.gw_ip_addr, cmd);
 	
-	system(cmd);
-	sleep(1);
+	foca = popen(cmd, "r");
+	/* we do not need the output of ping, we need to wait the ping to finish
+	 * and pclose does this =) */
+	pclose(foca);
+	
 	memset(cmd, 0x00, MEDIUMBUF);
 	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running.gw_ip_addr);
 	debug.log(ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
@@ -214,61 +268,6 @@ void UserConf::network_setup(void)
 			running.port_conf_set_n
 		);
 	}
-}
-
-UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
-	chroot_status(false)
-{
-	debug_setup(cmdline_opts);
-
-	debug.log(VERBOSE_LEVEL, "Process()");
-
-	char configfile[LARGEBUF];	
-	snprintf(configfile, LARGEBUF, "%s%s", cmdline_opts.chroot_dir, cmdline_opts.cfgfname);	
-	
-	memset(&running, 0x00, sizeof(sj_config));
-	
-	if(!load(configfile)) {
-		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
-
-		/* set up defaults */	   
-		running.MAGIC = MAGICVAL;
-		running.active = false;
-		running.chrooted = false;
-		running.max_ttl_probe = 30;
-		running.max_sex_track = 4096;
-
-		/* default is to set all TCP ports in "NORMAL" aggressivity level */
-		for(int i = 0; i < PORTNUMBER; i++)
-			running.portconf[i] = NORMAL;
-	}
-
-	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
-	 * we need only to check if the previous value was different from the default */
-	compare_check_copy(running.cfgfname, MEDIUMBUF, cmdline_opts.cfgfname, strlen(cmdline_opts.cfgfname), CONF_FILE);
-	compare_check_copy(running.enabler, MEDIUMBUF, cmdline_opts.enabler, strlen(cmdline_opts.enabler), PLUGINSENABLER);
-	compare_check_copy(running.user, MEDIUMBUF, cmdline_opts.user, strlen(cmdline_opts.user), DROP_USER);
-	compare_check_copy(running.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
-	compare_check_copy(running.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
-	compare_check_copy(running.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
-	compare_check_copy(running.logfname_packets, LARGEBUF, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets), LOGFILE_PACKETS);
-	compare_check_copy(running.logfname_sessions, LARGEBUF, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions), LOGFILE_SESSIONS);
-
-	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
-	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
-		running.debug_level = cmdline_opts.debug_level;
-
-	if(running.debug_level == 0)
-		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
-
-	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
-	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-}
-
-UserConf::~UserConf()
-{
-	debug_cleanup();
-	debug.log(VERBOSE_LEVEL, "~UserConf(): pid %d cleaning configuration object", getpid());
 }
 
 bool UserConf::load(const char* configfile)
@@ -494,53 +493,4 @@ char *UserConf::handle_cmd_loglevel(int newloglevel)
 	}
 
 	return &io_buf[0];
-}
-
-void UserConf::debug_setup(const sj_cmdline_opts &cmdline_opts)
-{
-	if (cmdline_opts.process_type == SJ_SERVER_PROC && !cmdline_opts.go_foreground) {
-		
-		/* Logfiles are used only by a Sniffjoke SERVER runnning in background */
-		
-		if ((debug.logstream = fopen(cmdline_opts.logfname, "a+")) == NULL) {
-			debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname, strerror(errno));
-			SJ_RUNTIME_EXCEPTION();
-		} else {
-			debug.log(DEBUG_LEVEL, "opened log file %s", cmdline_opts.logfname);
-		}	
-	
-		debug.debuglevel = cmdline_opts.debug_level;
-		if (debug.debuglevel >= PACKETS_DEBUG) {
-			if ((debug.packet_logstream = fopen(cmdline_opts.logfname_packets, "a+")) == NULL) {
-				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname_packets, strerror(errno));
-				SJ_RUNTIME_EXCEPTION();
-			} else {
-				debug.log(ALL_LEVEL, "opened for packets debug: %s successful", cmdline_opts.logfname_packets);
-			}
-		}
-
-		if (debug.debuglevel >= SESSION_DEBUG) {
-			if ((debug.session_logstream = fopen(cmdline_opts.logfname_sessions, "a+")) == NULL) {
-				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", cmdline_opts.logfname_sessions, strerror(errno));
-				SJ_RUNTIME_EXCEPTION();
-			} else {
-				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", cmdline_opts.logfname_sessions);
-			}
-		}
-	} else {
-		
-		/* Foreground SERVER or CLIENT */
-		
-		debug.logstream = stdout;
-		debug.log(ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
-	}	
-}
-
-void UserConf::debug_cleanup() {
-	if(debug.logstream != NULL && debug.logstream != stdout)
-		fclose(debug.logstream);
-	if(debug.packet_logstream != NULL && debug.packet_logstream != stdout)
-		fclose(debug.packet_logstream);
-	if(debug.session_logstream != NULL && debug.session_logstream != stdout)
-		fclose(debug.session_logstream);
 }

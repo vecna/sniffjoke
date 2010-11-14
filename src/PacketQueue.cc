@@ -28,15 +28,17 @@ PacketQueue::PacketQueue() :
 	cur_prio(0),
 	cur_pkt(NULL)
 {
-	debug.log(DEBUG_LEVEL, "PacketQueue()");
+	debug.log(DEBUG_LEVEL, __func__);
+
 	memset(front, NULL, sizeof(Packet*)*2);
-	memset(back, NULL, sizeof(Packet*)*2);
+	memset(back, NULL, sizeof(Packet*)*2);	
 }
 
 
 PacketQueue::~PacketQueue(void)
 {
-	debug.log(DEBUG_LEVEL, "~PacketQueue()");
+	debug.log(DEBUG_LEVEL, __func__);
+
 	Packet *tmp = get(false);
 	while (tmp != NULL) {
 		delete tmp;
@@ -198,7 +200,7 @@ Packet* PacketQueue::get(unsigned int packet_id)
 	Packet *tmp = get(false);
 	while (tmp != NULL) {
 		if (tmp->packet_id == packet_id)
-			return tmp;    
+			return tmp;   
 		tmp = get(true);
 	}
 	return NULL;

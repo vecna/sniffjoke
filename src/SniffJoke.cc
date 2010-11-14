@@ -5,44 +5,47 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-SniffJoke::SniffJoke(const struct sj_cmdline_opts &cmdline_options) :
-	cmdline_opts(cmdline_options),
-	userconf(cmdline_opts),
-	proc(userconf)
+SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
+	opts(opts),
+	userconf(opts),
+	proc(opts),
+	service_pid(0)
 {
+	debug_setup();
+	debug.log(VERBOSE_LEVEL, __func__);
 }
 
 void SniffJoke::run()
 {
-	switch (cmdline_opts.process_type) {
+	switch (opts.process_type) {
 		case SJ_SERVER_PROC:
 			server();
 			break;
 		case SJ_CLIENT_PROC:
 			client();
 			break;
-	}	
+	}
 }
 
 void SniffJoke::client() {
-	service_pid = proc.readPidfile();
-	if (!service_pid) {
-		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command %s ignored", cmdline_opts.cmd_buffer);
+	pid_t running_service_pid = proc.readPidfile();
+	if (!running_service_pid) {
+		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command %s ignored", opts.cmd_buffer);
 		return;
 	}
 
 	proc.jail();
 	proc.privilegesDowngrade();
-	send_command(cmdline_opts.cmd_buffer);
+	send_command(opts.cmd_buffer);
 
 	return;
 }
 
 void SniffJoke::server() {
 
-	service_pid = proc.readPidfile();
-	if (service_pid != 0) {
-		if (!cmdline_opts.force_restart) {
+	pid_t old_service_pid = proc.readPidfile();
+	if (old_service_pid != 0) {
+		if (!opts.force_restart) {
 			debug.log(ALL_LEVEL, "SniffJoke is already running, use --force or check --help");
 			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, service_pid);
 			return;
@@ -53,7 +56,7 @@ void SniffJoke::server() {
 			 * but relative to the service_pid read with readPidfile;
 			 * here we can not use the waitpid because the process to kill it's not a child of us;
 			 * we can use a sleep(5) instead. */
-			kill(service_pid, SIGTERM);
+			kill(old_service_pid, SIGTERM);
 			sleep(5);
 			proc.unlinkPidfile();
 			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going running in background");
@@ -63,17 +66,22 @@ void SniffJoke::server() {
 	/* running the network setup before the background, for keep the software output visible on the console */
 	userconf.network_setup();
 
-	if (!cmdline_opts.go_foreground) {
+	if (!opts.go_foreground) {
 		proc.background();
+
+		sleep(10);
+		/* Log Object must be reinitialized after background */
+		debug_setup();
+
 		proc.isolation();
 	}
 
 	proc.writePidfile();
-
+	
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = auto_ptr<NetIO> (new NetIO(userconf.running));
 
-	/* proc.detach(): fork() into two processes, 
+	/* proc.detach: fork() into two processes, 
 	   from now on the real configuration is the one mantained by the child */
 	service_pid = proc.detach();
 	
@@ -91,8 +99,6 @@ void SniffJoke::server() {
 		if (WIFSTOPPED(deadtrace))
 			debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
 
-		cleanPidfile();
-
 		debug.log(DEBUG_LEVEL, "child %d died, going to shutdown", service_pid);
 
 	} else {
@@ -100,8 +106,9 @@ void SniffJoke::server() {
 		/* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
 		hack_pool = auto_ptr<HackPool> (new HackPool(userconf.running.enabler));
 
-		/* proc.jail(): chroot + userconf.running.chrooted = true */
+		/* proc.jail: chroot + userconf.running.chrooted = true */
 		proc.jail();
+		userconf.chroot_status = true;
 
 		proc.privilegesDowngrade();
 
@@ -131,37 +138,38 @@ void SniffJoke::server() {
 
 SniffJoke::~SniffJoke()
 {
-	switch (cmdline_opts.process_type) {
+	debug.log(VERBOSE_LEVEL, __func__);
+
+	switch (opts.process_type) {
 		case SJ_SERVER_PROC:
 			if (getuid() || geteuid()) {
 				server_user_cleanup();
 			} else {
-				server_root_cleanup();
+				if(service_pid != 0) {
+					server_root_cleanup();
+				}
+					
 			}	
 			break;
 		case SJ_CLIENT_PROC:
 			client_cleanup();
 			break;
 	}
-
-	debug.log(ALL_LEVEL, "~Sniffjoke()");
+	
+	debug_cleanup();
 }
 
 void SniffJoke::server_root_cleanup()
 {
 	debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
 	kill(service_pid, SIGTERM);
-	waitpid(service_pid, NULL, 0);
+	waitpid(service_pid, NULL, WUNTRACED);
+	proc.unlinkPidfile();
 }
 
 void SniffJoke::server_user_cleanup()
 {
 	debug.log(VERBOSE_LEVEL, "client_user_cleanup()");
-}
-
-void SniffJoke::cleanPidfile() {
-	if(cmdline_opts.process_type == SJ_SERVER_PROC)
-		proc.unlinkPidfile();
 }
 
 void SniffJoke::client_cleanup() {
@@ -389,4 +397,56 @@ bool SniffJoke::parse_port_weight(char *weightstr, Strength *value)
 		}
 	}
 	return false;
+}
+
+
+void SniffJoke::debug_setup()
+{
+	debug.log(ALL_LEVEL, __func__);
+	debug.debuglevel = opts.debug_level;
+	
+	if (opts.process_type == SJ_SERVER_PROC && !opts.go_foreground) {
+		
+		/* Logfiles are used only by a Sniffjoke SERVER runnning in background */
+		
+		if ((debug.logstream = fopen(opts.logfname, "a+")) == NULL) {
+			debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", opts.logfname, strerror(errno));
+			SJ_RUNTIME_EXCEPTION();
+		} else {
+			debug.log(DEBUG_LEVEL, "opened log file %s", opts.logfname);
+		}	
+	
+		if (debug.debuglevel >= PACKETS_DEBUG) {
+			if ((debug.packet_logstream = fopen(opts.logfname_packets, "a+")) == NULL) {
+				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", opts.logfname_packets, strerror(errno));
+				SJ_RUNTIME_EXCEPTION();
+			} else {
+				debug.log(ALL_LEVEL, "opened for packets debug: %s successful", opts.logfname_packets);
+			}
+		}
+
+		if (debug.debuglevel >= SESSION_DEBUG) {
+			if ((debug.session_logstream = fopen(opts.logfname_sessions, "a+")) == NULL) {
+				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", opts.logfname_sessions, strerror(errno));
+				SJ_RUNTIME_EXCEPTION();
+			} else {
+				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", opts.logfname_sessions);
+			}
+		}
+	} else {
+		
+		/* Foreground SERVER or CLIENT */
+		
+		debug.logstream = stdout;
+		debug.log(ALL_LEVEL, "foreground running: logging set on standard output, block with ^c");
+	}	
+}
+
+void SniffJoke::debug_cleanup() {
+	if(debug.logstream != NULL && debug.logstream != stdout)
+		fclose(debug.logstream);
+	if(debug.packet_logstream != NULL && debug.packet_logstream != stdout)
+		fclose(debug.packet_logstream);
+	if(debug.session_logstream != NULL && debug.session_logstream != stdout)
+		fclose(debug.session_logstream);
 }

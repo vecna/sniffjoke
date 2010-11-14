@@ -95,7 +95,6 @@ private:
 		void autodetect_gw_ip_address(void);
 		void autodetect_gw_mac_address(void);
 		void autodetect_first_available_tunnel_interface(void);
-		void debug_setup(const struct sj_cmdline_opts &cmdline_opts);
 		void debug_cleanup();
 
 public:

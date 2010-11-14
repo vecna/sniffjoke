@@ -39,14 +39,22 @@ using namespace std;
 
 class SniffJoke {
 private:
-	sj_cmdline_opts cmdline_opts;
+	sj_cmdline_opts &opts;
 	UserConf userconf;
 	Process proc;
 	auto_ptr<NetIO> mitm;
 	auto_ptr<HackPool> hack_pool;
 	auto_ptr<TCPTrack> conntrack;
 
+	/* after detach:
+	 *     service_pid in the root process [the pid of the user process]
+	 *                 in the user process [0]
+	 * 
+	 * this is used as discriminator for the process controller of the pidfile
+	 * inside the distructor ~SniffJoke()
+	 */
 	pid_t service_pid;
+	
 	int listening_unix_socket;
 
 	void client();
@@ -59,13 +67,14 @@ private:
 	bool parse_port_weight(char *weightstr, Strength *Value);
 
 public:
-	SniffJoke(const struct sj_cmdline_opts &);
+	SniffJoke(struct sj_cmdline_opts &);
 	~SniffJoke();
 	void run();
 	void server_root_cleanup();
 	void server_user_cleanup();
 	void client_cleanup();
-	void cleanPidfile();
+	void debug_setup();
+	void debug_cleanup();
 };
 
 #endif /* SJ_SNIFFJOKE_H */

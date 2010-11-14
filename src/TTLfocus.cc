@@ -39,6 +39,7 @@ TTLFocus::TTLFocus(unsigned int destip) :
 	rand_key(random()),
 	status(TTL_BRUTALFORCE)
 {
+	debug.log(DEBUG_LEVEL, "%s: destination: %d", __func__, daddr);
 	clock_gettime(CLOCK_REALTIME, &next_probe_time);
 }
 

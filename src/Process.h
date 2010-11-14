@@ -35,20 +35,20 @@
 class Process {
 private:
 
-	UserConf &userconf;
+	const struct sj_cmdline_opts &opts;
 
         struct passwd userinfo;
 	void* userinfo_buf;
         struct group groupinfo;
 	void* groupinfo_buf;
-
+	
 	sigset_t sig_nset;
 	sigset_t sig_oset;
 	struct sigaction action;
 public:
 	pid_t tracked_child_pid;
 	
-	Process(UserConf &);
+	Process(const struct sj_cmdline_opts &);
 	~Process();
 
 	pid_t readPidfile();

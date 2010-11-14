@@ -103,7 +103,6 @@ void sigtrap(int signal)
 	if (signal)
 		debug.log(ALL_LEVEL, "received signal %d, pid %d cleaning SniffJoke objects...", signal, getpid());
 	
-	sniffjoke->cleanPidfile();
 	sniffjoke.reset();
 	
 	exit(0);
