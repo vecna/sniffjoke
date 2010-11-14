@@ -9,7 +9,8 @@ SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
 	opts(opts),
 	userconf(opts),
 	proc(opts),
-	service_pid(0)
+	service_pid(0),
+	alive(true)
 {
 	debug_setup(stdout);
 	debug.log(VERBOSE_LEVEL, __func__);
@@ -88,12 +89,12 @@ void SniffJoke::server() {
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = auto_ptr<NetIO> (new NetIO(userconf.running));
 
+        /* sigtrap handler mapped the same in both Sj processes */
+        proc.sigtrapSetup(sigtrap);
+
 	/* proc.detach: fork() into two processes, 
 	   from now on the real configuration is the one mantained by the child */
 	service_pid = proc.detach();
-
-	/* sigtrap handler mapped the same in both Sj processes */
-	proc.sigtrapSetup(sigtrap);
 
 	/* this is the root privileges thread, need to run for restore the network
 	 * environment in shutdown */
@@ -128,7 +129,6 @@ void SniffJoke::server() {
 		listening_unix_socket = bind_unixsocket();
 
 		/* main block */
-		bool alive = true;
 		while (alive) {
 
 			proc.sigtrapDisable();

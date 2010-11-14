@@ -26,6 +26,7 @@
 
 class Debug {
 private:
+	bool enabled;
 	unsigned int debuglevel;
 	FILE *logstream;
 	FILE *session_logstream;

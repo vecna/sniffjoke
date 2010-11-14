@@ -248,7 +248,7 @@ void Process::background()
 
 	int i;
 	if (fork())
-		_exit(0);
+		exit(0);
 	
 	for (i = getdtablesize(); i >= 0; --i)
 		close(i);

@@ -67,6 +67,8 @@ private:
 	bool parse_port_weight(char *weightstr, Strength *Value);
 
 public:
+	bool alive;
+
 	SniffJoke(struct sj_cmdline_opts &);
 	~SniffJoke();
 	void run();

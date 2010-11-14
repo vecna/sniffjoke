@@ -100,12 +100,8 @@ void* memset_random(void *s, size_t n)
 
 void sigtrap(int signal)
 {
-	if (signal)
-		debug.log(ALL_LEVEL, "received signal %d, pid %d cleaning SniffJoke objects...", signal, getpid());
+	sniffjoke->alive = false;
 	
-	sniffjoke.reset();
-	
-	exit(0);
 }
 
 int main(int argc, char **argv)
