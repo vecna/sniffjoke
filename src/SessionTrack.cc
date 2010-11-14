@@ -30,12 +30,12 @@ SessionTrack::SessionTrack(const Packet &pkt) :
 	packet_number(1),
 	shutdown(false)
 {
-	debug.log(DEBUG_LEVEL, "%s: daddr(%d) sport(%d) dport(%d) isn(%d)", __func__, daddr, sport, dport, isn);
+	debug.log(DEBUG_LEVEL, "%s: daddr(%s) sport(%d) dport(%d) isn(%x)", __func__, inet_ntoa(*((struct in_addr *)&(daddr))), sport, dport, isn);
 }
 
 SessionTrack::~SessionTrack()
 {
-	debug.log(DEBUG_LEVEL, "%s: daddr(%d) sport(%d) dport(%d) isn(%d)", __func__, daddr, sport, dport, isn);
+	debug.log(DEBUG_LEVEL, "%s: daddr(%s) sport(%d) dport(%d) isn(%x)", __func__, inet_ntoa(*((struct in_addr *)&(daddr))), sport, dport, isn);
 }
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const

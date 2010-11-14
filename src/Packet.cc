@@ -59,7 +59,6 @@ Packet::Packet(const Packet& pkt) :
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
         pbuf(pkt.pbuf),
-	pktlen(pkt.pktlen),
         ip(NULL),
         tcp(NULL),
         payload(NULL),
@@ -487,13 +486,11 @@ void Packet::selflog(const char *func, const char *loginfo)
 			break;
 	}
 
-	/*
 	debug.log(PACKETS_DEBUG, "%s :%x: E|%s status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
 		func, packet_id, evilstr, statustr, wtfstr, sourcestr,
 		saddr, daddr,
 		protoinfo, ip->ttl, loginfo
        	);
-       	*/
 
 	memset(debugbuf, 0x00, LARGEBUF);
 }
