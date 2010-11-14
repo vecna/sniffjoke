@@ -68,6 +68,44 @@ Packet::Packet(const Packet& pkt) :
 	memset(debugbuf, 0x00, LARGEBUF);
 }
 
+bool Packet::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
+{
+	struct iphdr *ip = (struct iphdr *)buff;
+ 
+	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) ) {
+		debug.log(PACKETS_DEBUG, "%s %s: nbyte %s < (struct iphdr) %d || (ip->tot_len) %d", 
+			__FILE__, __func__, nbyte, sizeof(struct iphdr), ntohs(ip->tot_len)
+		);
+		return false;
+	}
+
+	if (ip->protocol == IPPROTO_TCP) {
+		struct tcphdr *tcp;
+		int iphlen;
+		int tcphlen;
+
+		iphlen = ip->ihl * 4;
+
+		if (nbyte < iphlen + sizeof(struct tcphdr)) {
+			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP] nbyte %d < iphlen + (struct tcphdr) %d",
+				__FILE__, __func__, nbyte, iphlen + sizeof(struct tcphdr)
+			);
+			return false;
+		}
+
+		tcp = (struct tcphdr *)((unsigned char *)ip + iphlen);
+		tcphlen = tcp->doff * 4;
+		
+		if (ntohs(ip->tot_len) < iphlen + tcphlen) {
+			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP][bis] nbyte %d < iphlen + tcphlen %d",
+				__FILE__, __func__, nbyte, iphlen + tcphlen
+			);
+			return false;
+		}
+	}
+	return true;
+}
+
 unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 {
 	struct iphdr *ip = (struct iphdr *)buf;
@@ -493,43 +531,4 @@ void Packet::selflog(const char *func, const char *loginfo)
        	);
 
 	memset(debugbuf, 0x00, LARGEBUF);
-}
-
-
-bool Packet::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
-{
-	struct iphdr *ip = (struct iphdr *)buff;
- 
-	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) ) {
-		debug.log(PACKETS_DEBUG, "%s %s: nbyte %s < (struct iphdr) %d || (ip->tot_len) %d", 
-			__FILE__, __func__, nbyte, sizeof(struct iphdr), ntohs(ip->tot_len)
-		);
-		return false;
-	}
-
-	if (ip->protocol == IPPROTO_TCP) {
-		struct tcphdr *tcp;
-		int iphlen;
-		int tcphlen;
-
-		iphlen = ip->ihl * 4;
-
-		if (nbyte < iphlen + sizeof(struct tcphdr)) {
-			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP] nbyte %d < iphlen + (struct tcphdr) %d",
-				__FILE__, __func__, nbyte, iphlen + sizeof(struct tcphdr)
-			);
-			return false;
-		}
-
-		tcp = (struct tcphdr *)((unsigned char *)ip + iphlen);
-		tcphlen = tcp->doff * 4;
-		
-		if (ntohs(ip->tot_len) < iphlen + tcphlen) {
-			debug.log(PACKETS_DEBUG, "%s %s: [bad TCP][bis] nbyte %d < iphlen + tcphlen %d",
-				__FILE__, __func__, nbyte, iphlen + tcphlen
-			);
-			return false;
-		}
-	}
-	return true;
 }

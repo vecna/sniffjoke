@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_PACKET_H
 #define SJ_PACKET_H
 
@@ -65,6 +66,10 @@ private:
 	Packet *prev;
 	Packet *next;
 	friend class PacketQueue;
+
+	bool check_evil_packet(const unsigned char *buff, unsigned int nbyte);
+	unsigned int make_pkt_id(const unsigned char *) const;	
+
 public:
 	/* 
 	 * this packet_id are useful to avoid packet duplication
@@ -102,9 +107,6 @@ public:
 	Packet(const Packet &);
 	virtual ~Packet(void) {};
 
-
-	bool check_evil_packet(const unsigned char *buff, unsigned int nbyte);
-	unsigned int make_pkt_id(const unsigned char *) const;
 	void mark(source_t, status_t, evilbit_t);
 	void mark(source_t, status_t, judge_t, evilbit_t);
 	void updatePacketMetadata(void);

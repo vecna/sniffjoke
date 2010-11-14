@@ -19,8 +19,6 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "HDRoptions.h"
-#include "Packet.h"
 
 /*
  * Handling randomized ip/tcp options.. WHAT dirty job!
@@ -44,7 +42,10 @@
  * seem that some weird ipoptions will cause a packet to be discarged
  * on the route, without ever reach the server. we aim to create 
  * ipoptions accepted by the router, and discarded from the remote host
- */
+ */ 
+
+#include "HDRoptions.h"
+#include "Packet.h"
 
 void HDRoptions::m_IPOPT_SSRR(bool isgood) 
 {

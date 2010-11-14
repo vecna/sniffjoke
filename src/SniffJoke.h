@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_SNIFFJOKE_H
 #define SJ_SNIFFJOKE_H
 
@@ -57,8 +58,13 @@ private:
 	
 	int listening_unix_socket;
 
+	void debug_setup(FILE *) const;
+	void debug_cleanup() const;
 	void client();
+	void client_cleanup();
 	void server();
+	void server_root_cleanup();
+	void server_user_cleanup();
 	void kill_child();
 	int bind_unixsocket();
 	void handle_unixsocket(int srvsock, bool &alive);
@@ -72,11 +78,6 @@ public:
 	SniffJoke(struct sj_cmdline_opts &);
 	~SniffJoke();
 	void run();
-	void server_root_cleanup();
-	void server_user_cleanup();
-	void client_cleanup();
-	void debug_setup(FILE *);
-	void debug_cleanup();
 };
 
 #endif /* SJ_SNIFFJOKE_H */

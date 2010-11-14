@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "TTLfocus.h"
 
 #include <cerrno>
@@ -80,7 +81,7 @@ void TTLFocus::scheduleNextProbe()
         next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL;
 }
 
-bool TTLFocus::isProbeIntervalPassed(const struct timespec& now)
+bool TTLFocus::isProbeIntervalPassed(const struct timespec& now) const
 {
     if(now.tv_sec > next_probe_time.tv_sec)
         return true;

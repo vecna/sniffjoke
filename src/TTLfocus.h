@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_TTLFOCUS_H
 #define SJ_TTLFOCUS_H
 
@@ -65,8 +66,9 @@ public:
 	TTLFocus(const TTLFocus& cpy);
 	TTLFocus(const struct ttlfocus_cache_record& cpy);
 	void scheduleNextProbe();
-	bool isProbeIntervalPassed(const struct timespec&);
+	bool isProbeIntervalPassed(const struct timespec&) const;
 
+	/* utilities */
 	void selflog(const char *, const char *);
 	char debugbuf[LARGEBUF];
 };

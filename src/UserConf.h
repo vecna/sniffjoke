@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_CONF_H
 #define SJ_CONF_H
 
@@ -89,6 +90,8 @@ class UserConf {
 private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
+		bool load(const char *);
+		void dump(void);
 		void compare_check_copy(char *, unsigned int, const char *, unsigned int , const char *);
 		void autodetect_local_interface(void);
 		void autodetect_local_interface_ip_address(void);
@@ -104,9 +107,6 @@ public:
 		UserConf(const struct sj_cmdline_opts &);
 		~UserConf();
 
-		bool load(const char *);
-		void dump(void);
-		void setup_active_hacks(void);
 		void network_setup(void);
 		
 		char *handle_cmd_start(void);

@@ -178,7 +178,6 @@ Packet* PacketQueue::get(status_t status, source_t source, proto_t proto, bool m
 	if (tmp == NULL) return NULL;
 
 	do {
-
 		if (status != ANY_STATUS && tmp->status != status)
 			continue;
 

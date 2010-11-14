@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_NETIO_H
 #define SJ_NETIO_H
 
@@ -64,7 +65,6 @@ public:
 	void prepare_conntrack(TCPTrack *);
 	void network_io(void);
 	void queue_flush(void);
-	void set_running(bool);
 };
 
 #endif /* SJ_NETIO_H */

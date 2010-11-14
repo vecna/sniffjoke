@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "hardcoded-defines.h"
 
 #include "Utils.h"
@@ -142,11 +143,11 @@ int main(int argc, char **argv)
 
 	memset(useropt.cmd_buffer, 0x00, MEDIUMBUF);
 	/* check for direct commands */
-	if ((argc >= 2) && !memcmp(argv[1], "start", strlen("start"))) {
+	if ((argc == 2) && !memcmp(argv[1], "start", strlen("start"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "start");
-	} else if ((argc >= 2) && !memcmp(argv[1], "stop", strlen("stop"))) {
+	} else if ((argc == 2) && !memcmp(argv[1], "stop", strlen("stop"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stop");
-	} else if ((argc >= 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
+	} else if ((argc == 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stat");
 	} else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
@@ -164,12 +165,6 @@ int main(int argc, char **argv)
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
 	} else {
 		useropt.process_type = SJ_SERVER_PROC;
-	}
-
-	/* someone has made a "sniffjoke typo" */
-	if(useropt.process_type == SJ_SERVER_PROC && argc > 1 && argv[1][1] != '-') {
-		sj_help(argv[0], useropt.chroot_dir);
-		return -1;
 	}
 
 	if (useropt.process_type == SJ_SERVER_PROC) {
@@ -215,6 +210,13 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+	
+	/* someone has made a "sniffjoke typo" */
+	if(useropt.process_type == SJ_SERVER_PROC && argc > 1 && argv[1][0] != '-') {
+		sj_help(argv[0], useropt.chroot_dir);
+		return -1;
+	}
+
 
 	try {
 		sniffjoke = auto_ptr<SniffJoke> (new SniffJoke(useropt));

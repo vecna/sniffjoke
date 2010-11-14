@@ -19,6 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef SJ_SESSIONTRACK_H
 #define SJ_SESSIONTRACK_H
 
@@ -41,6 +42,8 @@ public:
 
 	SessionTrack(const Packet &pb);
 	~SessionTrack();
+	
+	/* utilities */
 	void selflog(const char *, const char *);
 	/* no personal buffer used in selflog, maybe in the future */
 };
