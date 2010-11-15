@@ -623,22 +623,26 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	}	
 
 	/* IP options, every packet subject if possible, and MALFORMED will be apply */
-#if 0
 	if(pkt.wtf == MALFORMED) {
 		
 		pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true);
 
 		// VERIFY - TCP doesn't cause a failure of the packet, the BAD TCPOPT will be used always
+#if 0
                 if (!pkt.checkUncommonTCPOPT())
                         pkt.Inject_BAD_TCPOPT();
+#endif
 	} else {
 		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options */ false);
 	
 		// the same
+#if 0
 		if (!pkt.checkUncommonTCPOPT())
 			pkt.Inject_GOOD_TCPOPT();
+#endif
 	}
 
+#if 0
 	// VERIFY effective impact of every TCP OPTION
 	if (!pkt.checkUncommonTCPOPT() && RANDOM20PERCENT) {
 		if RANDOM50PERCENT

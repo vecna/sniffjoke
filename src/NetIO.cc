@@ -274,21 +274,21 @@ void NetIO::queue_flush(void)
 	while ((pkt = conntrack->readpacket()) != NULL) {
 		if (pkt->source == NETWORK) {
 			if ((size = write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size())) == -1) {
-				debug.log(DEBUG_LEVEL, "queue_flush: write in tunnel error: %s", strerror(errno));
+//				debug.log(DEBUG_LEVEL, "queue_flush: write in tunnel error: %s", strerror(errno));
 				SJ_RUNTIME_EXCEPTION();
 			} else {
-				debug.log(DEBUG_LEVEL, "queue_flush: write in tunnel %d successfull [sniffjoke %s]", 
-					size, runcopy.active == true ? "active" : "stopped");
+//				debug.log(DEBUG_LEVEL, "queue_flush: write in tunnel %d successfull [sniffjoke %s]", 
+//					size, runcopy.active == true ? "active" : "stopped");
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
 				ntohs(pkt->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
-				debug.log(DEBUG_LEVEL, "queue_flush: write in network error: %s", strerror(errno));
+//				debug.log(DEBUG_LEVEL, "queue_flush: write in network error: %s", strerror(errno));
 				SJ_RUNTIME_EXCEPTION();
 			} else {
-				debug.log(DEBUG_LEVEL, "queue_flush: write in network %d successfull [sniffjoke %s]",
-					size, runcopy.active == true ? "active" : "stopped");
+//				debug.log(DEBUG_LEVEL, "queue_flush: write in network %d successfull [sniffjoke %s]",
+//					size, runcopy.active == true ? "active" : "stopped");
 			}
 		}
 		delete pkt;

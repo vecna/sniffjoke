@@ -237,7 +237,11 @@ errorinfo:
 
 void Packet::increasePbuf(unsigned int morespace)
 {
-	/* the pbuf can only be incremented safaly, not decremented */
+	/* safety first! */
+	if(morespace > MTU)
+		SJ_RUNTIME_EXCEPTION();
+
+	/* the pbuf can only be incremented safaly and never decremented */
 	pbuf.resize(pbuf.size() + morespace);
 	
 	updatePacketMetadata();
@@ -312,13 +316,18 @@ void Packet::IPHDR_shift(unsigned int sizetogive)
 	if(iphdrlen < sizetogive) {
 		increasePbuf(sizetogive - iphdrlen);
 		memmove(&pbuf[sizetogive], &pbuf[iphdrlen], pktlen - iphdrlen + sizetogive);
+		pktlen += (sizetogive - iphdrlen);
+		ip->tot_len = ntohs(pktlen);
 	}
 	else if(iphdrlen == sizetogive) {
 	}
 	else /* iphdrlen > sizetogive */ {
 		memmove(&ip[iphdrlen], &ip[sizetogive], pktlen - sizetogive + iphdrlen);
+		pktlen -= (iphdrlen + sizetogive);
+		ip->tot_len = ntohs(pktlen);
 	}
 	ip->ihl = (sizetogive / 4);
+	updatePacketMetadata();
 }
 
 void Packet::TCPHDR_shift(unsigned int sizetogive) 
@@ -340,32 +349,49 @@ void Packet::TCPHDR_shift(unsigned int sizetogive)
 	tcp->doff = (sizetogive / 4);
 }
 
-/* called by TCPTrack.cc */
+/* called by TCPTrack.cc, before the packets are checksum fixed and after the other hacks injection,
+ * packets good and evil need to be subject to ipopt manipoulation */
 void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 {
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, pktlen);
+	selflog(__func__, debugbuf);
+
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
+		unsigned int diff = iphdrlen - sizeof(struct iphdr);
 		memmove(&pbuf[sizeof(struct iphdr)], (unsigned char *)tcp, tcphdrlen + datalen);
+
 		iphdrlen = sizeof(struct iphdr);
 		ip->ihl = iphdrlen / 4;
+		pktlen -= diff;
+		ip->tot_len = ntohs(pktlen);
+		updatePacketMetadata();
 	}
 
-	/* VERIFY - TODO: randomize the dimension of the injection */
-	unsigned int target_iphdrlen = 40;
+
+	/* FIXME: some the maximum value of ihl is 7, over will be an error */
+	unsigned int target_iphdrlen = 44;
+
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, pktlen);
+	selflog(__func__, debugbuf);
 
 	IPHDR_shift(target_iphdrlen);
 
 	/* used to keep track of header growing */
-	unsigned int actual_iphdrlen = 0; 
+	unsigned int actual_iphdrlen = iphdrlen; 
 
 	HDRoptions IPInjector( (unsigned char *)ip + sizeof(struct iphdr), iphdrlen, target_iphdrlen);
-	int MAXITERATION = 10;
+	int MAXITERATION = 4;
 
 	do {
 		actual_iphdrlen = IPInjector.randomInjector(corrupt);
 
-	} while( target_iphdrlen != actual_iphdrlen && --MAXITERATION );
-}
+	} while( target_iphdrlen != actual_iphdrlen && MAXITERATION-- );
 
+	updatePacketMetadata();
+
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, pktlen);
+	selflog(__func__, debugbuf);
+}
 
 
 /* called by TCPTrack.cc */

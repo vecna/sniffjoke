@@ -46,6 +46,7 @@
 
 #include "HDRoptions.h"
 #include "Packet.h"
+#include "Debug.h"
 
 void HDRoptions::m_IPOPT_SSRR(bool isgood) 
 {
@@ -256,6 +257,7 @@ void HDRoptions::m_TCPOPT_SACK(unsigned int *, bool);{
 
 int HDRoptions::randomInjector(bool is_good) 
 {
+	int lprev = actual_length;
 	/* 
 	 * force next is used in BAD and GOOD condition, when an option may force 
 	 * the next one, for mayhem reason or for coherence
@@ -280,37 +282,47 @@ int HDRoptions::randomInjector(bool is_good)
 	{
 		case SSRR_SJIP_OPT:
 			m_IPOPT_SSRR(is_good);
+			debug.log(DEBUG_LEVEL, "SSRR size 8 previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case LSRR_SJIP_OPT:
 			m_IPOPT_LSRR(is_good);
+			debug.log(DEBUG_LEVEL, "LSRR size 8 previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case RA_SJIP_OPT:
 			m_IPOPT_RA(is_good);
+			debug.log(DEBUG_LEVEL, "RA size 4 previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case CIPSO_SJIP_OPT:
 			m_IPOPT_CIPSO(is_good);
+			debug.log(DEBUG_LEVEL, "CIPSO size 8 previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case SEC_SJIP_OPT:
 			m_IPOPT_SEC(is_good);
+			debug.log(DEBUG_LEVEL, "SEC size 11 !? previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case SID_SJIP_OPT:
 			m_IPOPT_SID(is_good);
+			debug.log(DEBUG_LEVEL, "SID size 4 previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		//case NOOP_SJIP_OPT: // VERIFY/THINK ABOUT: use NOOP, or not ?
 			//m_IPOPT_NOOP(is_good);
 			//return actual_length;
 		case TS_SJIP_OPT:
 			m_IPOPT_TIMESTAMP(is_good);
+			debug.log(DEBUG_LEVEL, "TIMESTAMP size 8 previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		/* those case will not be called by random check */
 		case TSONLY_SJIP_OPT:
 			m_IPOPT_TS_TSONLY(is_good);
+			debug.log(DEBUG_LEVEL, "TSONLY size 8 (BY TS) previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case 11:
 			m_IPOPT_TS_TSANDADDR(is_good);
+			debug.log(DEBUG_LEVEL, "TSANDADDR size ? previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 		case 12:
 			m_IPOPT_TS_PRESPEC(is_good);
+			debug.log(DEBUG_LEVEL, "TS_PREC size ? previous len %d actual %d", lprev, actual_length);
 			return actual_length;
 	}
 
