@@ -658,9 +658,6 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
 #endif
 
-	if (!pkt.checkUncommonIPOPT() && pkt.wtf != MALFORMED)
-		pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
-
 	/* fixing the mangled packet */
 	pkt.fixIpTcpSum();
 
