@@ -51,8 +51,8 @@ public:
 
 		Packet* pkt1 = new Packet(orig_packet);
 		Packet* pkt2 = new Packet(orig_packet);
-		pkt1->fillRandomPayload();
-		pkt2->fillRandomPayload();
+		pkt1->TCPPAYLOAD_fillrandom();
+		pkt2->TCPPAYLOAD_fillrandom();
 		
 		pkt1->position = ANTICIPATION;
 		pkt2->position = POSTICIPATION;

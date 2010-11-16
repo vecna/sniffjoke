@@ -50,7 +50,7 @@ public:
 		
 		if(diff > 200) {
 			diff = random() % 200;
-			pkt->resizePayload(diff);
+			pkt->TCPPAYLOAD_resize(diff);
 		}	
 		
 		int what = (random() % 3);
@@ -69,7 +69,7 @@ public:
 		pkt->tcp->window = htons((random() % 80) * 64);
 		pkt->tcp->ack = pkt->tcp->ack_seq = 0;
 
-		pkt->fillRandomPayload();
+		pkt->TCPPAYLOAD_fillrandom();
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = RANDOMDAMAGE;

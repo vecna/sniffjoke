@@ -44,8 +44,7 @@ public:
 
 		orig_packet.selflog(HACK_NAME, "Original packet");		
 
-		pkt->resizePayload(0);
-		pkt->fillRandomPayload();
+		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);

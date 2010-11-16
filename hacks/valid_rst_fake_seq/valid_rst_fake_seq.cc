@@ -48,7 +48,7 @@ public:
 
 		Packet* pkt = new Packet(orig_packet);
 
-		pkt->resizePayload(0);
+		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));

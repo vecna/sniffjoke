@@ -45,7 +45,7 @@ public:
 
 		Packet* pkt = new Packet(orig_packet);
 
-		pkt->resizePayload(0);
+		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->tcp->syn = pkt->tcp->fin = pkt->tcp->rst = 0;
 		pkt->tcp->psh = pkt->tcp->ack = 0;

@@ -129,35 +129,58 @@ void Packet::mark(source_t source, status_t status, judge_t wtf, evilbit_t moral
 	mark(source, status, morality);
 }
 
-void Packet::updatePacketMetadata(void)
-{
-	ip = (struct iphdr *)&(pbuf[0]);
-	iphdrlen = (ip->ihl * 4);
-	pktlen = ntohs(ip->tot_len);
-	
+void Packet::updatePacketMetadata()
+{	
+	/* START INITIAL METADATA RESET */
+	ip = NULL;
+	iphdrlen = 0; 
 	tcp = NULL;
 	tcphdrlen = 0;
 	payload = NULL;
 	datalen = 0;
 	icmp = NULL;
+	/* END INITIAL METADATA RESET */
 
-	if (ip->protocol == IPPROTO_TCP) {
-		proto = TCP;
+	/* START IPHDR UPDATE */
+	if(pbuf.size() < sizeof(struct iphdr))
+		throw exception();
 
-		tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
-		tcphdrlen = tcp->doff * 4;
+	ip = (struct iphdr *)&(pbuf[0]);	
+	iphdrlen = (ip->ihl * 4);
+	/* END IPHDR UPDATE */
+	
+	switch(ip->protocol) {
+		case IPPROTO_TCP:	
+			/* START TCPHDR UPDATE */
+			if(pbuf.size() < sizeof(struct iphdr) + sizeof(struct tcphdr))
+				throw exception();
 
-		datalen = ntohs(ip->tot_len) - iphdrlen - tcphdrlen;
-		if(datalen)
-			payload = (unsigned char *)tcp + tcphdrlen;
-		else
-			payload = NULL;
+			proto = TCP;
+			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
+			tcphdrlen = tcp->doff * 4;
+			/* END TCPHDR UPDATE */
 
-	} else if (ip->protocol == IPPROTO_ICMP) {
-		proto = ICMP;
-		icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
-	} else {
-		proto = OTHER_IP;
+			/* START PAYLOAD UPDATE */
+			datalen = pbuf.size() - iphdrlen - tcphdrlen;
+			if(datalen)
+				payload = (unsigned char *)tcp + tcphdrlen;
+			/* END PAYLOAD UPDATE */
+			
+			break;
+
+		case IPPROTO_ICMP: 
+			/* START ICMPHDR UPDATE */
+			if(pbuf.size() < sizeof(struct iphdr) + sizeof(struct icmphdr))
+				throw exception();
+
+			proto = ICMP;
+			icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
+			/* END ICMPHDR UPDATE */
+			
+			break;
+		default:
+			proto = OTHER_IP;
+			break;
 	}
 }
 
@@ -203,28 +226,28 @@ void Packet::fixIpTcpSum(void)
 	tcp->check = compute_sum(sum);
 }
 
-bool Packet::SelfIntegrityCheck(const char *pluginName)
+bool Packet::selfIntegrityCheck(const char *pluginName)
 {
 	if(source != SOURCEUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
+		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
 	}
 
 	if(status != STATUSUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s (status_t)status must not be set: ignored value", pluginName);
+		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (status_t)status must not be set: ignored value", pluginName);
 	}
 
 	if(wtf == JUDGEUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;
 	}
 
 	if(proto == PROTOUNASSIGNED) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
+		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
 		goto errorinfo;
 	}
 
 	if(position == POSITIONUNASSIGNED) {
-		debug.log(ALL_LEVEL, "SelfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
+		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
 		goto errorinfo;
 	}
 
@@ -235,39 +258,74 @@ errorinfo:
 	return false;
 }
 
-void Packet::increasePbuf(unsigned int morespace)
+void Packet::IPOPTS_resize(unsigned int size) 
 {
-	/* safety first! */
-	if(morespace > MTU)
+	if(size > 60)
 		SJ_RUNTIME_EXCEPTION();
 
-	/* the pbuf can only be incremented safaly and never decremented */
-	pbuf.resize(pbuf.size() + morespace);
+	if(iphdrlen == size) /* there is nothing to do in this case */
+		return;
+	
+	/* its important to update values into hdr before vector insert call because it can cause relocation */
+	ip->ihl = (size / 4);
+
+	vector<unsigned char>::iterator it = pbuf.begin();
+	const char zero = 0;
+
+	if(iphdrlen < size) {
+		ip->tot_len = ntohs(pbuf.size() + (size - iphdrlen));
+		pbuf.insert(it+iphdrlen, size - iphdrlen, zero);
+
+	} else { /* iphdrlen > size */
+		ip->tot_len = ntohs(pbuf.size() - (iphdrlen - size));
+		pbuf.erase(it + size, it + iphdrlen);
+	}
 	
 	updatePacketMetadata();
 }
 
-void Packet::resizePayload(unsigned int newlen) 
+void Packet::TCPOPTS_resize(unsigned int size)
 {
-	/* the payload can be incremented or decremented safely */
-	int oldlen = ntohs(ip->tot_len) - (iphdrlen + tcphdrlen);
-	unsigned int newpbuf_size = pbuf.size() - oldlen + newlen;
-	vector<unsigned char> newpbuf = vector<unsigned char>(newpbuf_size, 0);
-	
-	/* IP header copy , TCP header copy, Payload copy, if preserved */
-	int copysize = newpbuf_size > ntohs(ip->tot_len) ? ntohs(ip->tot_len) : newpbuf_size;
-	memcpy(&(newpbuf[0]), &(pbuf[0]), copysize );
-	pbuf = newpbuf;
+	if(size > 60)
+		SJ_RUNTIME_EXCEPTION();
 
-        ip = (struct iphdr *)&(pbuf[0]);
-        ip->tot_len = htons(newpbuf_size);
+	if(tcphdrlen == size) /* there is nothing to do in this case */
+		return;
+		
+	/* its important to update values into hdr before vector insert call because it can cause relocation */
+	tcp->doff = (size / 4);
+	
+	vector<unsigned char>::iterator it = pbuf.begin() + iphdrlen;
+	const char zero = 0;
+
+	if(tcphdrlen < size) {
+		ip->tot_len = ntohs(pbuf.size() + (size - tcphdrlen));
+		pbuf.insert(it + tcphdrlen, size - tcphdrlen, zero);
+	} else { /* tcphdrlen > sizetogive */
+		ip->tot_len = ntohs(pbuf.size() - (size - tcphdrlen));
+		pbuf.erase(it + size, it + iphdrlen);
+	}
 
 	updatePacketMetadata();
 }
 
-void Packet::fillRandomPayload()
+void Packet::TCPPAYLOAD_resize(unsigned int size)
 {
-	const unsigned diff = ntohs(ip->tot_len) - (iphdrlen + tcphdrlen);
+	/* safety first! */
+	if(pbuf.size() - datalen + size > MTU)
+		SJ_RUNTIME_EXCEPTION();
+
+	if(datalen == size) /* there is nothing to do in this case */
+		return;
+
+	pbuf.resize(pbuf.size() - datalen + size);
+	
+	updatePacketMetadata();
+}
+
+void Packet::TCPPAYLOAD_fillrandom()
+{
+	const unsigned diff = pbuf.size() - (iphdrlen + tcphdrlen);
 	memset_random(payload, diff);
 }
 
@@ -310,86 +368,40 @@ bool Packet::checkUncommonIPOPT() {
 	return false;
 }
 
-void Packet::IPHDR_shift(unsigned int sizetogive) 
-{
-	/* it happen when new ipoptions need to be addedd */
-	if(iphdrlen < sizetogive) {
-		increasePbuf(sizetogive - iphdrlen);
-		memmove(&pbuf[sizetogive], &pbuf[iphdrlen], pktlen - iphdrlen + sizetogive);
-		pktlen += (sizetogive - iphdrlen);
-		ip->tot_len = ntohs(pktlen);
-	}
-	else if(iphdrlen == sizetogive) {
-	}
-	else /* iphdrlen > sizetogive */ {
-		memmove(&ip[iphdrlen], &ip[sizetogive], pktlen - sizetogive + iphdrlen);
-		pktlen -= (iphdrlen + sizetogive);
-		ip->tot_len = ntohs(pktlen);
-	}
-	ip->ihl = (sizetogive / 4);
-	updatePacketMetadata();
-}
-
-void Packet::TCPHDR_shift(unsigned int sizetogive) 
-{
-	unsigned char *tcp_ptr = (unsigned char *)tcp;
-
-	if(tcphdrlen < sizetogive) 
-	{
-		increasePbuf(sizetogive - tcphdrlen);
-
-		if(datalen)
-			memmove(&tcp_ptr[sizetogive], &tcp_ptr[tcphdrlen], pktlen - tcphdrlen + sizetogive);
-	}
-	else if(tcphdrlen == sizetogive) {
-	}
-	else /* tcphdrlen > sizetogive */ {
-		memmove(&tcp_ptr[tcphdrlen], &tcp[sizetogive], pktlen - sizetogive + tcphdrlen);
-	}
-	tcp->doff = (sizetogive / 4);
-}
-
 /* called by TCPTrack.cc, before the packets are checksum fixed and after the other hacks injection,
- * packets good and evil need to be subject to ipopt manipoulation */
+ * packets good and evil need to be subject to ipopt manipolation */
 void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 {
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, pktlen);
+	/* used to keep track of header growing */
+	unsigned int actual_iphdrlen = iphdrlen;
+
+	/* FIXME: some the maximum value of ihl is 7, over will be an error */
+	unsigned int target_iphdrlen = 60;
+
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debugbuf);
 
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
-		unsigned int diff = iphdrlen - sizeof(struct iphdr);
-		memmove(&pbuf[sizeof(struct iphdr)], (unsigned char *)tcp, tcphdrlen + datalen);
-
-		iphdrlen = sizeof(struct iphdr);
-		ip->ihl = iphdrlen / 4;
-		pktlen -= diff;
-		ip->tot_len = ntohs(pktlen);
-		updatePacketMetadata();
+		actual_iphdrlen = 0;
+		IPOPTS_resize(sizeof(struct iphdr));
 	}
 
-
-	/* FIXME: some the maximum value of ihl is 7, over will be an error */
-	unsigned int target_iphdrlen = 44;
-
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, pktlen);
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debugbuf);
 
-	IPHDR_shift(target_iphdrlen);
+	IPOPTS_resize(target_iphdrlen);
 
-	/* used to keep track of header growing */
-	unsigned int actual_iphdrlen = iphdrlen; 
-
-	HDRoptions IPInjector( (unsigned char *)ip + sizeof(struct iphdr), iphdrlen, target_iphdrlen);
+	HDRoptions IPInjector((unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
 	int MAXITERATION = 4;
 
 	do {
-		actual_iphdrlen = IPInjector.randomInjector(corrupt);
+		IPInjector.randomInjector(corrupt);
 
 	} while( target_iphdrlen != actual_iphdrlen && MAXITERATION-- );
+	
+	IPOPTS_resize(actual_iphdrlen);
 
-	updatePacketMetadata();
-
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, pktlen);
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debugbuf);
 }
 
@@ -398,83 +410,24 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 #if 0
 void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 {
-	if(strip_previous && iphdrlen != sizeof(struct iphdr)) 
-	{
-		if(datalen)
-			memmove(&pbuf[iphdrlen + sizeof(struct tcphdr)], payload, datalen);
+	/* used to keep track of header growing */
+	unsigned int actual_tcphdrlen = tcphdrlen;
+	
+	/* VERIFY - TODO: randomize the dimension of the injection */
+	unsigned int target_tcphdrlen = 60;
 
-		tcphdrlen = sizeof(struct tcphdr);
-		tcp->doff = tcphdrlen / 4;
+	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
+		actual_tcphdrlen = 0;
+		IPOPTS_resize(sizeof(struct tcphdr));
 	}
 
-	/* VERIFY - TODO: randomize the dimension of the injection */
-	unsigned int actual_tcphdrlen, target_tcphdrlen = 40;
-
-	HDRoptions TCPInjector( (unsigned char *)tcp + sizeof(struct tcphdr), tcphdrlen, target_tcphdrlen);
+	HDRoptions TCPInjector( (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
 	int MAXITERATION = 6;
 
 	do {
-		actual_tcphdrlen += TCPInjector.randomInjector(corrupt);
+		TCPInjector.randomInjector(corrupt);
 
 	} while( target_tcphdrlen != actual_tcphdrlen && --MAXITERATION ); 
-}
-#endif
-
-#if 0 // OLD - use as reference and delete 
-/* tcpopt TCPOPT_TIMESTAMP inj with bad TCPOLEN_TIMESTAMP */
-void Packet::Inject_BAD_TCPOPT(void)
-{
-	const int faketcpopt = 4;
-	const int needed_space = faketcpopt;
-	const int free_space = pbuf.size() - ntohs(ip->tot_len);
-
-	selflog(__func__, "before TCPopt injection");
-
-	int iphlen = ip->ihl * 4;
-	int tcphlen = tcp->doff * 4;
-	const int l57len = ntohs(ip->tot_len) - (iphlen + tcphlen);
-
-	if(free_space < needed_space) {
-
-		/* safety ip size check */
-		if(tcphlen + needed_space > 60)
-			return;
-
-		increasePbuf(needed_space - free_space);
-	}
-
-	unsigned char *endtcp = (unsigned char*)&pbuf[0] + iphlen + tcphlen;
-
-	tcphlen += faketcpopt;
-	
-	/* 2: shift the payload after the reserved space to faketcpopt */
-	memmove(endtcp + faketcpopt, endtcp, l57len);
-
-	endtcp[0] = TCPOPT_NOP;
-	endtcp[1] = TCPOPT_NOP;
-	endtcp[2] = TCPOPT_TIMESTAMP;
-	endtcp[3] = random() % 11;
-
-	/*
-	 *  from: /usr/include/netinet/tcp.h:
-	 *  # define TCPOLEN_TIMESTAMP	  10
-	 *  reserved for: NOP (1),
-	                  NOP (1),
-	                  TCPOPT_TIMESTAMP (1),
-	                  TCPOPT_LEN (1),
-	                  Timestamp Value (TSval) (4),
-	                  Timestamp Echo Reply (TSecr) (4)
-	 * 
-	 *  so the hacks are two:
-	 *   - the size indicated could be different than 10
-	 *   - there is no space reserved for timestamps
-	 */ 
-
-	ip->tot_len = htons(iphlen + tcphlen + l57len);
-	tcp->doff = tcphlen / 4;
-	payload = (unsigned char *)(tcp) + tcphlen;
-
-	selflog(__func__, "after TCPopt injection");
 }
 #endif
 
@@ -528,14 +481,14 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case TCP:
 			snprintf(protoinfo, MEDIUMBUF, "[TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x]",
 				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
-				tcp->rst, pktlen, pktlen - iphdrlen - tcphdrlen, 
+				tcp->rst, (int)pbuf.size(), (int)(pbuf.size() - iphdrlen - tcphdrlen), 
 				ntohl(tcp->seq), ntohl(tcp->ack_seq)
 			);
 			break;
 		case ICMP:
 			snprintf(protoinfo, MEDIUMBUF, "ICMP type %d code %d len %d(%d)",
 				icmp->type, icmp->code,
-				pktlen, (int)(pktlen - iphdrlen - sizeof(struct icmphdr))
+				(int)pbuf.size(), (int)(pbuf.size() - iphdrlen - sizeof(struct icmphdr))
 			);
 			break;
 		case OTHER_IP:

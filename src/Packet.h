@@ -90,7 +90,6 @@ public:
 	position_t position;	
 
 	vector<unsigned char> pbuf;
-	unsigned int pktlen;
 
 	struct iphdr *ip;
 	unsigned int iphdrlen;
@@ -107,10 +106,12 @@ public:
 	Packet(const Packet &);
 	virtual ~Packet(void) {};
 
+	void updatePacketMetadata(void);
+
 	void mark(source_t, status_t, evilbit_t);
 	void mark(source_t, status_t, judge_t, evilbit_t);
-	void updatePacketMetadata(void);
 	
+	/* IP/TCP checksum functions */
 	unsigned int half_cksum(const void *, int);
 	unsigned short compute_sum(unsigned int);
 	void fixIpTcpSum(void);
@@ -118,16 +119,13 @@ public:
 	/* autochecking */
 	bool checkUncommonTCPOPT(void);
 	bool checkUncommonIPOPT(void);
-	bool SelfIntegrityCheck(const char *);
+	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
-	void increasePbuf(unsigned int);
-	void resizePayload(unsigned int);
-	void fillRandomPayload(void);
-
-	/* function used for header mangling in IP/TCP options hacks */
-	void IPHDR_shift(unsigned int);
-	void TCPHDR_shift(unsigned int);
+	void IPOPTS_resize(unsigned int);
+	void TCPOPTS_resize(unsigned int);
+	void TCPPAYLOAD_resize(unsigned int);
+	void TCPPAYLOAD_fillrandom(void);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */
 	void Inject_IPOPT(bool, bool);

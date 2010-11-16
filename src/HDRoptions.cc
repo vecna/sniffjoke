@@ -23,7 +23,7 @@
 /*
  * Handling randomized ip/tcp options.. WHAT dirty job!
  * 
- * good ipoption mean options that don't cause the discarging of packets,
+ * good ipoptions mean options that don't cause the discarging of packets,
  * they need to exist in order to avoid arbitrary discrimination. 
  *        *
  * the future focus of those routine is to integrate the choosing of be
@@ -31,32 +31,43 @@
  *           *
  * - rules for adding: check the link :
  *   http://www.iana.org/assignments/ip-parameters 
- *   test versus BSD/win/Linux, submit to our, we are happy every bit 
- *   of randomization available.
+ *   test versus Linux/BSD/win, submit to us, we are happy to add
+ *   every bit of randomization available.
  *
- * I'm based a lot of consideration on:
+ * I've based a lot of consideration on:
  * http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L250
  *
  * but checking:
  * http://www.faqs.org/rfcs/rfc1812.html
- * seem that some weird ipoptions will cause a packet to be discarged
- * on the route, without ever reach the server. we aim to create 
- * ipoptions accepted by the router, and discarded from the remote host
+ * seems that some weird ipoptions will cause a packet to be discarged
+ * on the route, without ever reach the server. We aim to create 
+ * ipoptions accepted by the router, and discarded from the remote host.
  */ 
 
 #include "HDRoptions.h"
 #include "Packet.h"
 #include "Debug.h"
 
-void HDRoptions::m_IPOPT_SSRR(bool isgood) 
+HDRoptions::HDRoptions(unsigned char *header_end, unsigned int &actual_header_length, unsigned int &target_header_length) :
+	optptr(header_end),
+	actual_length(actual_header_length),
+	target_length(target_header_length),
+	available_length(target_length - actual_length)
 {
-	int i, available_size = (target_length - actual_length);
+	force_next = -1;
+	lsrr_set = false;
+	ssrr_set = false;
+}
 
-	if( available_size < CONST_SSRR_SIZE)
-		return;
+HDRoptions::~HDRoptions() { }
 
-	if(isgood && (ssrr_set | lsrr_set) )
-		return;
+unsigned int HDRoptions::m_IPOPT_SSRR(bool isgood) 
+{
+	if(isgood && (ssrr_set | lsrr_set))
+		return 0;
+	
+	if( available_length < CONST_SSRR_SIZE)
+		return 0;
 
 	ssrr_set = true;
 
@@ -65,7 +76,7 @@ void HDRoptions::m_IPOPT_SSRR(bool isgood)
 	optptr[2] = 4;
 	optptr[3] = IPOPT_NOOP;
 
-	for(i = 4; i < CONST_SSRR_SIZE ; i += 4) {
+	for(int i = 4; i < CONST_SSRR_SIZE ; i += 4) {
 		unsigned int fake = random();
 		memcpy(&optptr[i], &fake, sizeof(unsigned int));
 	}
@@ -80,20 +91,17 @@ void HDRoptions::m_IPOPT_SSRR(bool isgood)
 		force_next = LSRR_SJIP_OPT;
 	}
 
-	actual_length += CONST_SSRR_SIZE;
-	optptr += CONST_SSRR_SIZE;
+	return CONST_SSRR_SIZE;
 }
 
-void HDRoptions::m_IPOPT_LSRR(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_LSRR(bool isgood) 
 {
-	int i, available_size = (target_length - actual_length);
-
-	if( available_size < CONST_LSRR_SIZE )
-		return;
-
-	if(isgood && (ssrr_set | lsrr_set) )
-		return;
-
+	if(isgood && (ssrr_set | lsrr_set))
+		return 0;
+		
+	if( available_length < CONST_LSRR_SIZE )
+		return 0;
+	
 	lsrr_set = true;
 
 	optptr[0] = IPOPT_LSRR;
@@ -101,7 +109,7 @@ void HDRoptions::m_IPOPT_LSRR(bool isgood)
 	optptr[2] = 4;
 	optptr[3] = IPOPT_NOOP;
 
-	for(i = 4; i < CONST_LSRR_SIZE; i += 4) {
+	for(int i = 4; i < CONST_LSRR_SIZE; i += 4) {
 		unsigned int fake = random();
 		memcpy(&optptr[i], &fake, sizeof(unsigned int));
 	}
@@ -112,23 +120,24 @@ void HDRoptions::m_IPOPT_LSRR(bool isgood)
 		force_next = SSRR_SJIP_OPT;
 	}
 
-	actual_length += CONST_LSRR_SIZE;
-	optptr += CONST_LSRR_SIZE;
+	return CONST_LSRR_SIZE;
 }
 
-void HDRoptions::m_IPOPT_RA(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_RA(bool isgood) 
 {
+	if(available_length < CONST_RA_SIZE)
+		return 0;
+
 	optptr[0] = IPOPT_RA;
 	optptr[1] = CONST_RA_SIZE;
 	/* VERIFY: http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L428 */
 	optptr[2] = 0;
 	optptr[3] = 0;
 
-	actual_length += CONST_RA_SIZE;
-	optptr += CONST_RA_SIZE;
+	return CONST_RA_SIZE;
 }
 
-void HDRoptions::m_IPOPT_SEC(bool isgood)
+unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
 {
 	/* in Linux kernel is like SID: not handler, return -EINVAL */
 
@@ -136,12 +145,15 @@ void HDRoptions::m_IPOPT_SEC(bool isgood)
 	 *        - in this case, should be used for "good" option
 	 */ 
 	if(isgood)
-		return;
+		return 0;
+
+	if( available_length < CONST_SEC_SIZE + CONST_NOOP_SIZE )
+		return 0;
 
 	/* TODO - cohorent data for security OPT */
 	/* http://www.faqs.org/rfcs/rfc791.html "Security" */
 	optptr[0] = IPOPT_SEC;
-	optptr[1] = CONST_SEC_SIZE; // 11
+	optptr[1] = CONST_SEC_SIZE;
 	optptr[2] = 0;
 	optptr[3] = 0;
 	optptr[4] = 0;
@@ -154,35 +166,42 @@ void HDRoptions::m_IPOPT_SEC(bool isgood)
 	optptr[11] = IPOPT_NOOP;
 
 	/* NOP not included in the option size */
-	actual_length += CONST_SEC_SIZE + CONST_NOOP_SIZE;
-	optptr += CONST_SEC_SIZE + CONST_NOOP_SIZE;
+	return CONST_SEC_SIZE + CONST_NOOP_SIZE;
 }
 
-void HDRoptions::m_IPOPT_SID(bool isgood ) {
+unsigned int HDRoptions::m_IPOPT_SID(bool isgood) {
 
 	/* http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L448 */
 	if(isgood)
-		return;
+		return 0;
+
+	if( available_length < CONST_SID_SIZE )
+		return 0;
 
 	/* http://www.faqs.org/rfcs/rfc791.html "Security" */
 	optptr[0] = IPOPT_SID;
-	optptr[1] = CONST_SID_SIZE; // 4
+	optptr[1] = CONST_SID_SIZE;
 	optptr[2] = 0;
 	optptr[3] = 0;
 
-	actual_length += CONST_SID_SIZE ;
-	optptr += CONST_SID_SIZE ;
+	return CONST_SID_SIZE ;
 }
 
-void HDRoptions::m_IPOPT_NOOP(bool isgood) {
+unsigned int HDRoptions::m_IPOPT_NOOP(bool isgood) {
+
+	if(available_length < CONST_NOOP_SIZE)
+		return 0;
+
 	optptr[0] = IPOPT_NOOP;
 
-	actual_length += CONST_NOOP_SIZE ;
-	optptr += CONST_NOOP_SIZE;
+	return CONST_NOOP_SIZE;
 }
 
-void HDRoptions::m_IPOPT_TIMESTAMP(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_TIMESTAMP(bool isgood) 
 {
+	if(available_length < 4)
+		return 0;
+
 	/* GOOD option! */
 	optptr[0] = IPOPT_TIMESTAMP;
 
@@ -190,37 +209,49 @@ void HDRoptions::m_IPOPT_TIMESTAMP(bool isgood)
 	{
 		optptr[1] = TMP_TIMESTAMP_SIZE; // 8
 		optptr[2] = 4; // TMP_TIMESTAMP_SIZE; // 8
-		actual_length += 4;
-		optptr += 4;
 		optptr[3] = (0xF | IPOPT_TS_TSONLY);
 
 		force_next = TSONLY_SJIP_OPT;
+
+		return 4;
 	}
 	else {
 		optptr[1] = 4;
-		actual_length += 4;
-		optptr += 4;
+		/* optptr[2] .. optptr[3] = uninitialized */
+
+		return 4;
 	}
 }
 
-void HDRoptions::m_IPOPT_TS_TSONLY(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_TS_TSONLY(bool isgood) 
 {
+	if(available_length < 4)
+		return 0;
+
 	/* pseudo emulated http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L362 */
 	optptr[0] = IPOPT_TS_TSONLY;
-	actual_length += 4;
-	optptr += 4;
+	
+	/* optptr[1] .. optptr[3] = uninitialized */
+
+	return 4;
 }
 
 /* not emulated ATM */
-void HDRoptions::m_IPOPT_TS_TSANDADDR( bool isgood) {
+unsigned int HDRoptions::m_IPOPT_TS_TSANDADDR( bool isgood) {
+	return 0;
 }
-void HDRoptions::m_IPOPT_TS_PRESPEC(bool isgood) {
+unsigned int HDRoptions::m_IPOPT_TS_PRESPEC(bool isgood) {
+	return 0;
 }
 
-void HDRoptions::m_IPOPT_CIPSO(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_CIPSO(bool isgood) 
 {
 	if(isgood)
-		return;
+		return 0;
+
+	if(available_length < CONST_CIPSO_SIZE)
+		return 0;
+
 	/* CIPSO need be enabled in the remote host, and coherent data
 	 * at the moment follow the same rule of _SEC_, default: bad option */
 
@@ -231,33 +262,34 @@ void HDRoptions::m_IPOPT_CIPSO(bool isgood)
 
 	/* optptr[2] .. optptr[7] = uninitialized */
 
-	actual_length += CONST_CIPSO_SIZE;
-	optptr += CONST_CIPSO_SIZE;
+	return CONST_CIPSO_SIZE;
 }
 
 /*
  * TCP OPTIONS 
  */
 #if 0
-void HDRoptions::m_TCPOPT_TIMESTAMP(bool); {
+unsigned int HDRoptions::m_TCPOPT_TIMESTAMP(bool); {
 }
-void HDRoptions::m_TCPOPT_EOL(bool); {
+unsigned int HDRoptions::m_TCPOPT_EOL(bool); {
 }
-void HDRoptions::m_TCPOPT_NOP(bool);{
+unsigned int HDRoptions::m_TCPOPT_NOP(bool);{
 }
-void HDRoptions::m_TCPOPT_MAXSEG(bool);{
+unsigned int HDRoptions::m_TCPOPT_MAXSEG(bool);{
 }
-void HDRoptions::m_TCPOPT_WINDOW(bool);{
+unsigned int HDRoptions::m_TCPOPT_WINDOW(bool);{
 }
-void HDRoptions::m_TCPOPT_SACK_PERMITTED( bool);{
+unsigned int HDRoptions::m_TCPOPT_SACK_PERMITTED( bool);{
 }
-void HDRoptions::m_TCPOPT_SACK(unsigned int *, bool);{
+unsigned int HDRoptions::m_TCPOPT_SACK(unsigned int *, bool);{
 }
 #endif
 
-int HDRoptions::randomInjector(bool is_good) 
+void HDRoptions::randomInjector(bool is_good) 
 {
-	int lprev = actual_length;
+	const char* optstr;
+	unsigned int injectetdopt_size = 0;
+	unsigned int lprev = actual_length;
 	/* 
 	 * force next is used in BAD and GOOD condition, when an option may force 
 	 * the next one, for mayhem reason or for coherence
@@ -281,52 +313,57 @@ int HDRoptions::randomInjector(bool is_good)
 	switch(switchval) 
 	{
 		case SSRR_SJIP_OPT:
-			m_IPOPT_SSRR(is_good);
-			debug.log(DEBUG_LEVEL, "SSRR size 8 previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "SSRR";
+			injectetdopt_size = m_IPOPT_SSRR(is_good);
 		case LSRR_SJIP_OPT:
-			m_IPOPT_LSRR(is_good);
-			debug.log(DEBUG_LEVEL, "LSRR size 8 previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "LSRR";
+			injectetdopt_size = m_IPOPT_LSRR(is_good);
+			break;
 		case RA_SJIP_OPT:
-			m_IPOPT_RA(is_good);
-			debug.log(DEBUG_LEVEL, "RA size 4 previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "RA";
+			injectetdopt_size = m_IPOPT_RA(is_good);
+			break;
 		case CIPSO_SJIP_OPT:
-			m_IPOPT_CIPSO(is_good);
-			debug.log(DEBUG_LEVEL, "CIPSO size 8 previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "CIPSO";
+			injectetdopt_size = m_IPOPT_CIPSO(is_good);
+			break;
 		case SEC_SJIP_OPT:
-			m_IPOPT_SEC(is_good);
-			debug.log(DEBUG_LEVEL, "SEC size 11 !? previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "SEC";
+			injectetdopt_size = m_IPOPT_SEC(is_good);
+			break;
 		case SID_SJIP_OPT:
-			m_IPOPT_SID(is_good);
-			debug.log(DEBUG_LEVEL, "SID size 4 previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "SID";
+			injectetdopt_size = m_IPOPT_SID(is_good);
+			break;
 		//case NOOP_SJIP_OPT: // VERIFY/THINK ABOUT: use NOOP, or not ?
-			//m_IPOPT_NOOP(is_good);
-			//return actual_length;
+			//optstr = "NOOP";
+			//injectetdopt_size = m_IPOPT_NOOP(is_good);
+			//break;
 		case TS_SJIP_OPT:
-			m_IPOPT_TIMESTAMP(is_good);
-			debug.log(DEBUG_LEVEL, "TIMESTAMP size 8 previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "TS";
+			injectetdopt_size = m_IPOPT_TIMESTAMP(is_good);
+			break;
 		/* those case will not be called by random check */
 		case TSONLY_SJIP_OPT:
-			m_IPOPT_TS_TSONLY(is_good);
-			debug.log(DEBUG_LEVEL, "TSONLY size 8 (BY TS) previous len %d actual %d", lprev, actual_length);
-			return actual_length;
-		case 11:
-			m_IPOPT_TS_TSANDADDR(is_good);
-			debug.log(DEBUG_LEVEL, "TSANDADDR size ? previous len %d actual %d", lprev, actual_length);
-			return actual_length;
-		case 12:
-			m_IPOPT_TS_PRESPEC(is_good);
-			debug.log(DEBUG_LEVEL, "TS_PREC size ? previous len %d actual %d", lprev, actual_length);
-			return actual_length;
+			optstr = "TSONLY";
+			injectetdopt_size = m_IPOPT_TS_TSONLY(is_good);
+			break;
+		case TS_TSANDADDR_SJIP_OPT:
+			optstr = "TS_TSANDADDR";
+			injectetdopt_size = m_IPOPT_TS_TSANDADDR(is_good);
+			break;
+		case TS_PRESPEC_SJIP_OPT:
+			optstr = "TS_PRESPEC";
+			injectetdopt_size = m_IPOPT_TS_PRESPEC(is_good);
+			break;
 	}
-
-	return actual_length;
+	
+	if(injectetdopt_size) {
+		optptr += injectetdopt_size;
+		actual_length += injectetdopt_size;
+		available_length = (target_length - actual_length);
+		debug.log(DEBUG_LEVEL, "Injected IPOPT %s size %u previous len %u actual %u", optstr, injectetdopt_size, lprev, actual_length);
+	}
 } 
 
 #if 0
@@ -350,38 +387,34 @@ else /* TCP */
 		switch(switchval) 
 		{
 			case 0:
-				m_TCPOPT_TIMESTAMP(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_TIMESTAMP(is_good);
+				break;
 			case 1:
-				m_TCPOPT_EOL(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_EOL(is_good);
+				break;
 			case 2:
-				m_TCPOPT_NOP(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_NOP(is_good);
+				break;
 			case 3:
-				m_TCPOPT_MAXSEG(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_MAXSEG(is_good);
+				break;
 			case 4:
-				m_TCPOPT_WINDOW(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_WINDOW(is_good);
+				break;
 			case 5:
-				m_TCPOPT_SACK_PERMITTED(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_SACK_PERMITTED(is_good);
+				break;
 			case 6:
-				m_TCPOPT_SACK(is_good);
-				return actual_length;
+				injectetdopt_size = m_TCPOPT_SACK(is_good);
+				break;
 		}
+	}
+
+	if(injectetdopt_size) {
+		optptr += injectetdopt_size;
+		actual_length += injectetdopt_size;
+		available_length = (target_length - actual_length);
+		debug.log(DEBUG_LEVEL, "Injected TCPOPT %s size %u previous len %u actual %u", optstr, injectetdopt_size, lprev, actual_length);
 	}
 }
 #endif
-
-HDRoptions::HDRoptions(unsigned char *header_end, unsigned int actual_size, unsigned int target_size) :
-	actual_length(actual_size),
-	target_length(target_size),
-	optptr(header_end)
-{
-	force_next = -1;
-	lsrr_set = ssrr_set = false;
-}
-
-HDRoptions::~HDRoptions() { }
