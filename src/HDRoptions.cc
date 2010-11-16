@@ -287,7 +287,7 @@ unsigned int HDRoptions::m_TCPOPT_SACK(unsigned int *, bool);{
 
 void HDRoptions::randomInjector(bool is_good) 
 {
-	const char* optstr;
+	const char* optstr = NULL;
 	unsigned int injectetdopt_size = 0;
 	unsigned int lprev = actual_length;
 	/* 
