@@ -577,14 +577,17 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	/* 2nd check: what kind of hacks will be apply ? */
 	if(pkt.wtf == RANDOMDAMAGE) 
 	{
-#define RANDVALUE	(random() % 100)
+		if(ISSET_CHECKSUM(runconfig.scrambletech))
+			pkt.wtf = GUILTY;
+		else if(ISSET_TTL(runconfig.scrambletech))
+			pkt.wtf = PRESCRIPTION;
+		else 
+			pkt.wtf = MALFORMED;
 
-		pkt.wtf = GUILTY;
-
-		if( RANDVALUE > 25)
+		if( ISSET_TTL(runconfig.scrambletech) && RANDOMPERCENT(45) )
 			pkt.wtf = PRESCRIPTION;
 
-		if( RANDVALUE > 80 ) 
+		if( ISSET_MALFORMED(runconfig.scrambletech) && RANDOMPERCENT(80) ) 
 			pkt.wtf = MALFORMED;
 	}
 
@@ -608,7 +611,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 		case RANDOMDAMAGE:
 		case JUDGEUNASSIGNED:
 		default:
-			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+			debug.log(ALL_LEVEL, "unacceptable condition, maybe misuse of --only %s:%d %s", __FILE__, __LINE__, __func__);
 			SJ_RUNTIME_EXCEPTION();
 	}
 

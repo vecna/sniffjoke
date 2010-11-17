@@ -126,10 +126,14 @@ void UserConf::onlyparm_parser(unsigned char &scrambletech, char onlyplugin[MEDI
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	scrambletech = 0;
 	scrambletech |= (sep[1] == 'Y') ? SCRAMBLE_TTL : 0;
 	scrambletech |= (sep[2] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
 	scrambletech |= (sep[3] == 'Y') ? SCRAMBLE_MALFORMED : 0;
+
+	if(!scrambletech) {
+		debug.log(ALL_LEVEL, "--only parsing: almost one scramble tech is required");
+		SJ_RUNTIME_EXCEPTION();
+	}
 
 	sep[0] = 0x00;
 	if(access(cmdlinput, R_OK)) {
