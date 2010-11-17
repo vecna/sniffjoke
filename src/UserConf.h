@@ -90,6 +90,7 @@ struct sj_config {
 		unsigned short max_ttl_probe;		/* default: idem */
 		unsigned int max_sex_track;		/* default: idem */
 		Strength portconf[PORTNUMBER];
+		bool listenport[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -135,6 +136,7 @@ public:
 		char *handle_cmd_showport(void);
 		char *handle_cmd_set(unsigned short, unsigned short, Strength);
 		char *handle_cmd_loglevel(int);
+		char *handle_cmd_listen(int);
 };
 
 #endif /* SJ_CONF_H */

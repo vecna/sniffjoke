@@ -526,6 +526,16 @@ char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strengt
 	return &io_buf[0];
 }
 
+char *UserConf::handle_cmd_listen(int bindport)
+{
+	running.listenport[bindport] = true;
+
+	memset(io_buf, 0x00, HUGEBUF);
+	snprintf(io_buf, HUGEBUF, "set port %d as listen service to protect\n", bindport);
+	debug.log(ALL_LEVEL, "%s", io_buf);
+	return &io_buf[0];
+}
+
 char *UserConf::handle_cmd_loglevel(int newloglevel)
 {
 	memset(io_buf, 0x00, HUGEBUF);

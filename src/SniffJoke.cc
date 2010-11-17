@@ -276,6 +276,27 @@ void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
 		output = userconf.handle_cmd_stat();
 	} else if (!memcmp(r_command, "info", strlen("info"))) {
 		output = userconf.handle_cmd_info();
+	} else if (!memcmp(r_command, "listen", strlen("listen"))) 
+	{
+		int port;
+		char *portstr = strchr(r_command, ' ');
+
+		if(portstr == NULL)
+			goto handle_listen_error;
+		
+		port = atoi(++portstr);
+		if(port < 0 || port > PORTNUMBER)
+			goto handle_listen_error;
+
+		output = userconf.handle_cmd_listen(port);
+
+handle_listen_error:
+		if(output == NULL) {
+			internal_buf = (char *)malloc(MEDIUMBUF);
+			snprintf(internal_buf, MEDIUMBUF, "invalid listen command: expected a valid port as argument\n");
+			debug.log(ALL_LEVEL, "%s", internal_buf);
+			output = internal_buf;
+		}
 	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
 		output = userconf.handle_cmd_showport();
 	} else if (!memcmp(r_command, "set", strlen("set"))) {

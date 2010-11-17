@@ -253,7 +253,7 @@ void TCPTrack::analyze_incoming_ttl(Packet &pkt)
 }
 
 
-Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
+void TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 {
 	const struct iphdr *badiph;
 	const struct tcphdr *badtcph;
@@ -283,13 +283,14 @@ Packet* TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 		}
 		p_queue.remove(timeexc);
 		delete &timeexc;
-		return NULL;
 	}
-	
-	return &timeexc;
 }
 
-Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
+/* this function was written when only the outgoing (client) connection was 
+ * treat by sniffjoke, now also the server connections are trapped. the comments
+ * and the variable referring to synack will not be exactly true in the 
+ * server view. is only matter of naming anyway */
+void TCPTrack::analyze_incoming_synack(Packet &synack)
 {
 	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
 	TTLFocus *ttlfocus;
@@ -299,7 +300,7 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 	 */
 
 	if (it != ttlfocus_map.end()) {
-		
+
 		ttlfocus = &(it->second);
 
 		snprintf(synack.debugbuf, LARGEBUF, "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
@@ -317,7 +318,8 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 				ttlfocus->synack_ttl = synack.ip->ttl;
 			}
 
-			snprintf(ttlfocus->debugbuf, LARGEBUF, "discerned TTL %d", discern_ttl);
+			snprintf(ttlfocus->debugbuf, LARGEBUF, "discerned TTL %d minworking %d expiring %d incoming value %d", 
+				discern_ttl, ttlfocus->min_working_ttl, ttlfocus->expiring_ttl, ttlfocus->synack_ttl);
 			ttlfocus->selflog(__func__, ttlfocus->debugbuf);
 
 			/* 
@@ -327,13 +329,11 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 			* the packet queue. Now that ttl has been detected, the real SYN could
 			* be send.
 			*/
-		
 			mark_real_syn_packets_SEND(synack.ip->saddr);
 			p_queue.remove(synack);
 			delete &synack;
-			return NULL;
 		}
-				
+
 		/* 
 		 * connect(3, {sa_family=AF_INET, sin_port=htons(80), 
 		 * sin_addr=inet_addr("89.186.95.190")}, 16) = 
@@ -345,26 +345,30 @@ Packet* TCPTrack::analyze_incoming_synack(Packet &synack)
 		 *
 		 * anyway, every SYN/ACK received is passed to the hosts, so
 		 * our kernel should RST/ACK the unrequested connect.
+		 *
+		 * this will appear as a problem by the remote server, because
+		 * a ttlbrutalforce related to a different port will be blocked 
+		 * by the NAT, so our ttl tracking will be less effective. is
+		 * possible too, make a passive os fingerprint of the client and
+		 * suppose the default usage TTL (64). this work/research will be
+		 * completed in the future.
 		 */
-
 	}
-	
-	return &synack;
 }
 
-Packet* TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
+void TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 {
 	SessionTrackKey key = {rstfin.ip->saddr, rstfin.tcp->dest, rstfin.tcp->source};
 	SessionTrackMap::iterator stm_it = sex_map.find(key);
 
+	/* VERIFY - shutdown is not checked: why evilaliv3, why :P ?
+	 * 	    we need some cleaning in session status and session anylsis ? */
 	if (stm_it != sex_map.end()) {
 		rstfin.selflog(__func__, "Session found");
 		clear_session(stm_it);
 	} else {
 		rstfin.selflog(__func__, "Session not found!");
 	}
-
-	return &rstfin;
 }
 
 void TCPTrack::manage_outgoing_packets(Packet &pkt)
@@ -689,6 +693,21 @@ Packet* TCPTrack::readpacket()
 	return pkt;
 }
 
+/* is_session_protected will check if a session is covered by sniffjoke 
+ * configuration. if is a "server connection" mean that sniffjoke is not
+ * analyzing a syn-ack, but a syn. in this function is made this check.
+ * -- VERIFY impact whenever a scanning is received */
+bool TCPTrack::is_session_protected(struct tcphdr *tcp, Strength portcfg[PORTNUMBER], bool listening[PORTNUMBER])
+{
+	if( tcp->syn && !tcp->ack && listening[ntohs(tcp->dest)] == true)
+		return true;
+
+	if( tcp->syn && tcp->ack && portcfg[ntohs(tcp->dest)] != NONE)
+		return true;
+
+	return false;
+}
+
 /* 
  * this is the "second time", the received packet are assigned in a tracked TCP session,
  * for understand which kind of mangling should be apply. maybe not all packets is sent 
@@ -717,16 +736,12 @@ void TCPTrack::analyze_packets_queue()
 
 	pkt = p_queue.get(YOUNG, NETWORK, ICMP, false);
 	while (pkt != NULL) {
-		
-		analyze_incoming_ttl(*pkt);
-		
 		/* 
 		 * a TIME_EXCEEDED packet should contains informations
 		 * for discern HOP distance from a remote host
 		 */
-		if (pkt->icmp->type == ICMP_TIME_EXCEEDED) {
-			pkt = analyze_incoming_icmp(*pkt);
-		}
+		if (pkt->icmp->type == ICMP_TIME_EXCEEDED) 
+			analyze_incoming_icmp(*pkt);
 
 		pkt = p_queue.get(YOUNG, NETWORK, ICMP, true);
 	}
@@ -736,16 +751,24 @@ void TCPTrack::analyze_packets_queue()
 	 * lists analyzing SYN+ACK and FIN|RST packet
 	 */
 	pkt = p_queue.get(YOUNG, NETWORK, TCP, false);
-	while (pkt != NULL) {
-		
+	while (pkt != NULL) 
+	{
+		/* analysis of the incoming TCP packet for check if TTL we are receiving is
+		 * changed or not. is not the correct solution for detect network topology
+		 * change, but we needit! */
 		analyze_incoming_ttl(*pkt);
 
-		if (pkt->tcp->syn && pkt->tcp->ack)
-			pkt = analyze_incoming_synack(*pkt);
+		/* tracking only session related to active port, client/server difference is checked here */
+		if ( pkt->tcp->syn && is_session_protected(pkt->tcp, runconfig.portconf, runconfig.listenport) ) {
+			analyze_incoming_synack(*pkt);
+			goto nextpkt;
+		}
 
-		if (pkt != NULL && pkt->status == YOUNG && (pkt->tcp->rst || pkt->tcp->fin))
-			pkt = analyze_incoming_rstfin(*pkt);   
+		/* analyze_incoming_rstfin remove or not a session from the active session list */
+		if ( (pkt->tcp->rst || pkt->tcp->fin) && is_session_protected(pkt->tcp, runconfig.portconf, runconfig.listenport) )
+			analyze_incoming_rstfin(*pkt);   
 
+nextpkt:
 		pkt = p_queue.get(YOUNG, NETWORK, TCP, true);
 	}
 

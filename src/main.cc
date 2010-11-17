@@ -66,6 +66,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" info\t\t\tget massive info about sniffjoke internet stats\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
 	" set start end value\tset per tcp ports the strongness of injection\n"\
+	" listen port\t\tserver mode: protect the incoming connections\n"\
 	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
@@ -152,20 +153,22 @@ int main(int argc, char **argv)
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stop");
 	} else if ((argc == 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stat");
-	} else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
-		snprintf(useropt.cmd_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
 	} else if ((argc == 2) && !memcmp(argv[1], "clear", strlen("clear"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "clear");
 	} else if ((argc == 2) && !memcmp(argv[1], "showport", strlen("showport"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "showport");
-	}  else if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
+	} else if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "quit");
 	} else if ((argc == 2) && !memcmp(argv[1], "info", strlen("info"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "info");
 	} else if ((argc == 2) && !memcmp(argv[1], "saveconfig", strlen("saveconfig"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "saveconfig");
+	} else if ((argc == 3) && !memcmp(argv[1], "listen", strlen("listen"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "listen %s", argv[2]);
 	} else if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
+	} else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
 	} else {
 		useropt.process_type = SJ_SERVER_PROC;
 	}
