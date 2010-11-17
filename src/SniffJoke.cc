@@ -100,7 +100,7 @@ void SniffJoke::server() {
 	if (!opts.go_foreground) {
 		proc.background();
 
-		/* Log Object must be reinitialized after background */
+		/* Log Object must be reinitialized after background and before the chroot! */
 		debug_setup(NULL);
 
 		proc.isolation();

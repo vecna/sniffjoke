@@ -491,6 +491,8 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 
 			/* source and status are ignored in selfIntegrityCheck, evilbit is set here to be EVIL */
 			injpkt->mark(LOCAL, SEND, EVIL);
+			/* evilbit_t MUST NOT be confused with http://www.faqs.org/rfcs/rfc3514.html
+			 * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too */
 
 			snprintf(injpkt->debugbuf, MEDIUMBUF, "Injected from %s", hppe->selfObj->hackName);
 			injpkt->selflog(__func__, injpkt->debugbuf);

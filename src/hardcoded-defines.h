@@ -31,7 +31,7 @@
 #include "config.h"
 
 #define SW_NAME                         "SniffJoke"
-#define SW_VERSION                      "0.4 alpha 3"
+#define SW_VERSION                      "0.4 beta 1"
 
 /* Sniffjoke defaults config values */
 #define DROP_USER                       "sniffjoke"
@@ -42,8 +42,8 @@
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     		//relative to chroot_dir
 #define LOGFILE                         "sniffjoke.log"			//relative to chroot_dir
-#define LOGFILE_PACKETS                 "sniffjoke_packets.log"		//relative to chroot_dir
-#define LOGFILE_SESSIONS                "sniffjoke_sessions.log"	//relative to chroot_dir
+#define SUFFIX_LF_PACKETS               ".packets"			//relative to chroot_dir
+#define SUFFIX_LF_SESSIONS              ".sessions"			//relative to chroot_dir
 #define DEFAULT_DEBUG_LEVEL             2
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
