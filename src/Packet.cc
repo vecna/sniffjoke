@@ -23,6 +23,9 @@
 #include "Packet.h"
 #include "HDRoptions.h"
 
+#define MAXIPHEADER 60
+#define MAXTCPHEADER 60
+
 Packet::Packet(const unsigned char* buff, int size) :
 	prev(NULL),
 	next(NULL),
@@ -258,23 +261,23 @@ errorinfo:
 	return false;
 }
 
-void Packet::IPOPTS_resize(unsigned int size) 
+void Packet::IPHDR_resize(unsigned int size) 
 {
-	if(size > 60)
+	/* safety first! */
+	if((pbuf.size() - iphdrlen + size > MTU) || (size < sizeof(struct iphdr)) || (size > MAXIPHEADER))
 		SJ_RUNTIME_EXCEPTION();
-
+		
 	if(iphdrlen == size) /* there is nothing to do in this case */
 		return;
-	
+
 	/* its important to update values into hdr before vector insert call because it can cause relocation */
 	ip->ihl = (size / 4);
 
 	vector<unsigned char>::iterator it = pbuf.begin();
-	const char zero = 0;
 
 	if(iphdrlen < size) {
 		ip->tot_len = ntohs(pbuf.size() + (size - iphdrlen));
-		pbuf.insert(it+iphdrlen, size - iphdrlen, zero);
+		pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
 
 	} else { /* iphdrlen > size */
 		ip->tot_len = ntohs(pbuf.size() - (iphdrlen - size));
@@ -284,9 +287,11 @@ void Packet::IPOPTS_resize(unsigned int size)
 	updatePacketMetadata();
 }
 
-void Packet::TCPOPTS_resize(unsigned int size)
+void Packet::TCPHDR_resize(unsigned int size)
 {
-	if(size > 60)
+	/* safety first! */
+	debug.log(ALL_LEVEL, "%u %u %u", size, sizeof(struct tcphdr), MAXTCPHEADER);
+	if((pbuf.size() - tcphdrlen + size > MTU) || (size < sizeof(struct tcphdr)) || (size > MAXTCPHEADER))
 		SJ_RUNTIME_EXCEPTION();
 
 	if(tcphdrlen == size) /* there is nothing to do in this case */
@@ -296,14 +301,13 @@ void Packet::TCPOPTS_resize(unsigned int size)
 	tcp->doff = (size / 4);
 	
 	vector<unsigned char>::iterator it = pbuf.begin() + iphdrlen;
-	const char zero = 0;
 
 	if(tcphdrlen < size) {
 		ip->tot_len = ntohs(pbuf.size() + (size - tcphdrlen));
-		pbuf.insert(it + tcphdrlen, size - tcphdrlen, zero);
-	} else { /* tcphdrlen > sizetogive */
-		ip->tot_len = ntohs(pbuf.size() - (size - tcphdrlen));
-		pbuf.erase(it + size, it + iphdrlen);
+		pbuf.insert(it + tcphdrlen, size - tcphdrlen, TCPOPT_NOP);
+	} else { /* tcphdrlen > size */
+		ip->tot_len = ntohs(pbuf.size() - (tcphdrlen - size));
+		pbuf.erase(it + size, it + tcphdrlen);
 	}
 
 	updatePacketMetadata();
@@ -317,8 +321,13 @@ void Packet::TCPPAYLOAD_resize(unsigned int size)
 
 	if(datalen == size) /* there is nothing to do in this case */
 		return;
+		
+	const unsigned int new_total_len = pbuf.size() - datalen + size;
 
-	pbuf.resize(pbuf.size() - datalen + size);
+	/* its important to update values into hdr before vector insert call because it can cause relocation */
+	ip->tot_len = ntohs(new_total_len);
+
+	pbuf.resize(new_total_len);
 	
 	updatePacketMetadata();
 }
@@ -326,6 +335,7 @@ void Packet::TCPPAYLOAD_resize(unsigned int size)
 void Packet::TCPPAYLOAD_fillrandom()
 {
 	const unsigned diff = pbuf.size() - (iphdrlen + tcphdrlen);
+	debug.log(ALL_LEVEL, "%u", diff);
 	memset_random(payload, diff);
 }
 
@@ -368,68 +378,75 @@ bool Packet::checkUncommonIPOPT() {
 	return false;
 }
 
-/* called by TCPTrack.cc, before the packets are checksum fixed and after the other hacks injection,
- * packets good and evil need to be subject to ipopt manipolation */
 void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 {
 	/* used to keep track of header growing */
 	unsigned int actual_iphdrlen = iphdrlen;
 
-	/* FIXME: some the maximum value of ihl is 7, over will be an error */
-	unsigned int target_iphdrlen = 60;
+	unsigned int target_iphdrlen = MAXIPHEADER;
 
 	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debugbuf);
 
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
-		actual_iphdrlen = 0;
-		IPOPTS_resize(sizeof(struct iphdr));
+		actual_iphdrlen = sizeof(struct iphdr);
+		target_iphdrlen = sizeof(struct iphdr) + (random() % (MAXIPHEADER - sizeof(struct iphdr)));
+	} else {
+		target_iphdrlen = iphdrlen + (random() % (MAXIPHEADER - iphdrlen));
 	}
 
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
-	selflog(__func__, debugbuf);
+	IPHDR_resize(target_iphdrlen);
 
-	IPOPTS_resize(target_iphdrlen);
-
-	HDRoptions IPInjector((unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
-	int MAXITERATION = 4;
+	HDRoptions IPInjector(IPOPTS_INJECTOR, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
+	int MAXITERATION = 6;
 
 	do {
 		IPInjector.randomInjector(corrupt);
 
 	} while( target_iphdrlen != actual_iphdrlen && MAXITERATION-- );
 	
-	IPOPTS_resize(actual_iphdrlen);
+	if(target_iphdrlen != actual_iphdrlen)
+		IPHDR_resize(actual_iphdrlen);
 
 	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debugbuf);
 }
 
 
-/* called by TCPTrack.cc */
-#if 0
 void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 {
 	/* used to keep track of header growing */
 	unsigned int actual_tcphdrlen = tcphdrlen;
 	
-	/* VERIFY - TODO: randomize the dimension of the injection */
-	unsigned int target_tcphdrlen = 60;
+	unsigned int target_tcphdrlen = 0;
 
-	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
-		actual_tcphdrlen = 0;
-		IPOPTS_resize(sizeof(struct tcphdr));
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	selflog(__func__, debugbuf);
+	
+	if(strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
+		actual_tcphdrlen = sizeof(struct tcphdr);
+		target_tcphdrlen = sizeof(struct tcphdr) + (random() % (MAXTCPHEADER - sizeof(struct tcphdr)));
+	} else {
+		target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
 	}
 
-	HDRoptions TCPInjector( (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
+	TCPHDR_resize(target_tcphdrlen);
+	
+	HDRoptions TCPInjector(TCPOPTS_INJECTOR, (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
 	int MAXITERATION = 6;
 
 	do {
 		TCPInjector.randomInjector(corrupt);
 
 	} while( target_tcphdrlen != actual_tcphdrlen && --MAXITERATION ); 
+
+
+	if(target_tcphdrlen != actual_tcphdrlen)
+		TCPHDR_resize(actual_tcphdrlen);
+
+	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	selflog(__func__, debugbuf);
 }
-#endif
 
 void Packet::selflog(const char *func, const char *loginfo) 
 {
