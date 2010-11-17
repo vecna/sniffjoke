@@ -47,8 +47,11 @@ public:
 };
 
 class HackPool : public vector<PluginTrack> {
+private:
+	void importPlugin(const char *, const char *);
+	void parseEnablerFile(const char *);
 public:
-	HackPool(char*);
+	HackPool(sj_config &);
 	~HackPool();
 };
 
