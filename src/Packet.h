@@ -122,8 +122,8 @@ public:
 	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
-	void IPOPTS_resize(unsigned int);
-	void TCPOPTS_resize(unsigned int);
+	void IPHDR_resize(unsigned int);
+	void TCPHDR_resize(unsigned int);
 	void TCPPAYLOAD_resize(unsigned int);
 	void TCPPAYLOAD_fillrandom(void);
 
