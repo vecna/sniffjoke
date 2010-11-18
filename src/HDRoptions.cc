@@ -35,7 +35,7 @@
  *   every bit of randomization available.
  *
  * I've based a lot of consideration on:
- * http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.34#L250
+ * http://lxr.oss.org.cn/source/net/ipv4/ip_options.c?v=2.6.36#L250
  *
  * but checking:
  * http://www.faqs.org/rfcs/rfc1812.html
@@ -75,6 +75,8 @@ unsigned int HDRoptions::m_IPOPT_SSRR(bool isgood)
 	 * datagram.  If it receives such a datagram, it SHOULD discard the
 	 * packet and reply with an ICMP Parameter Problem message whose pointer
 	 * points at the beginning of the second source route option.
+	 * 
+	 * This option it's based on analysis of the linux kernel. (2.6.36)
 	 * 
 	 * Extract from: net/ipv4/ip_options.c
 	 * 
@@ -154,6 +156,8 @@ unsigned int HDRoptions::m_IPOPT_LSRR(bool isgood)
 unsigned int HDRoptions::m_IPOPT_RR(bool isgood)
 {
 	/*
+	 * This option it's based on analysis of the linux kernel. (2.6.36)
+	 *
 	 * Extract from: net/ipv4/ip_options.c
 	 * 
 	 *   if (optptr[2] < 4) {
@@ -209,21 +213,42 @@ unsigned int HDRoptions::m_IPOPT_RA(bool isgood)
 
 unsigned int HDRoptions::m_IPOPT_CIPSO(bool isgood) 
 {
+	/*
+	 * http://www.faqs.org/rfcs/rfc2828.html
+	 * 
+	 * This option it's based on analysis of the linux kernel. (2.6.36)
+	 *
+	 * Extract from: net/ipv4/ip_options.c
+	 * 
+	 *   case IPOPT_CIPSO:
+	 *       if ((!skb && !capable(CAP_NET_RAW)) || opt->cipso) {
+	 *           pp_ptr = optptr;
+	 *           goto error;
+	 *       }
+	 *       opt->cipso = optptr - iph;
+	 *       if (cipso_v4_validate(skb, &optptr)) {
+	 *	    pp_ptr = optptr;
+	 *          goto error;
+	 *       }
+	 *       break;
+	 * 
+	 *   so here have two conditions We can disattend;
+	 *     - The CIPSO option can be not setted on the socket
+	 *     - also if CIPSO option is setted the random data would
+	 *       lead the packet to be discarded.
+	 */
+
 	if(isgood)
 		return 0;
 
 	if(available_length < CONST_CIPSO_SIZE)
 		return 0;
 
-	/* CIPSO need be enabled in the remote host, and coherent data
-	 * at the moment follow the same rule of _SEC_, default: bad option */
-
-	/* http://lxr.oss.org.cn/ident?v=2.6.34;i=cipso_v4_validate */
 	optptr[0] = IPOPT_CIPSO;
 	optptr[1] = CONST_CIPSO_SIZE;
-	/* http://www.faqs.org/rfcs/rfc2828.html */
 
-	/* optptr[2] .. optptr[7] = uninitialized */
+	memset_random(&optptr[2], 6);
+
 
 	return CONST_CIPSO_SIZE;
 }
@@ -231,7 +256,9 @@ unsigned int HDRoptions::m_IPOPT_CIPSO(bool isgood)
 
 unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
 {
-	/*
+	/* 
+	 * This option it's based on analysis of the linux kernel. (2.6.36)
+	 *
 	 * Extract from: net/ipv4/ip_options.c
 	 * 
 	 *   case IPOPT_SEC:
@@ -243,7 +270,7 @@ unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
 	 *       }
 	 * 
 	 * Sidenote:
-	 *   It's interesting also the default,
+	 *   It's interesting also the default switch case,
 	 *   but not used in hacks at the moment
 	 */
 
@@ -257,15 +284,9 @@ unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
 	/* http://www.faqs.org/rfcs/rfc791.html "Security" */
 	optptr[0] = IPOPT_SEC;
 	optptr[1] = CONST_SEC_SIZE;
-	optptr[2] = 0;
-	optptr[3] = 0;
-	optptr[4] = 0;
-	optptr[5] = 0;
-	optptr[6] = 0;
-	optptr[7] = 0;
-	optptr[8] = 0;
-	optptr[9] = 0;
-	optptr[10] = 0;
+	
+	memset_random(&optptr[2], 9);
+	
 	optptr[11] = IPOPT_NOOP;
 
 	/* NOP not included in the option size */
@@ -282,11 +303,10 @@ unsigned int HDRoptions::m_IPOPT_SID(bool isgood)
 	if( available_length < CONST_SID_SIZE )
 		return 0;
 
-	/* http://www.faqs.org/rfcs/rfc791.html "Security" */
 	optptr[0] = IPOPT_SID;
 	optptr[1] = CONST_SID_SIZE;
-	optptr[2] = 0;
-	optptr[3] = 0;
+	
+	memset_random(&optptr[2], 2);
 
 	return CONST_SID_SIZE;
 }
@@ -304,6 +324,8 @@ unsigned int HDRoptions::m_IPOPT_NOOP(bool isgood)
 unsigned int HDRoptions::m_IPOPT_TIMESTAMP(bool isgood) 
 {
 	/*
+	 * This option it's based on analysis of the linux kernel. (2.6.36)
+	 *
 	 * Extract from: net/ipv4/ip_options.c
 	 * 
 	 *   if (optptr[2] < 5) {

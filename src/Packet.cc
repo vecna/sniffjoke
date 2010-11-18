@@ -290,7 +290,6 @@ void Packet::IPHDR_resize(unsigned int size)
 void Packet::TCPHDR_resize(unsigned int size)
 {
 	/* safety first! */
-	debug.log(ALL_LEVEL, "%u %u %u", size, sizeof(struct tcphdr), MAXTCPHEADER);
 	if((pbuf.size() - tcphdrlen + size > MTU) || (size < sizeof(struct tcphdr)) || (size > MAXTCPHEADER))
 		SJ_RUNTIME_EXCEPTION();
 
@@ -335,7 +334,6 @@ void Packet::TCPPAYLOAD_resize(unsigned int size)
 void Packet::TCPPAYLOAD_fillrandom()
 {
 	const unsigned diff = pbuf.size() - (iphdrlen + tcphdrlen);
-	debug.log(ALL_LEVEL, "%u", diff);
 	memset_random(payload, diff);
 }
 
@@ -394,6 +392,8 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	} else {
 		target_iphdrlen = iphdrlen + (random() % (MAXIPHEADER - iphdrlen));
 	}
+	
+	target_iphdrlen += (4 - target_iphdrlen % 4); // we need always multiple of 4
 
 	IPHDR_resize(target_iphdrlen);
 
@@ -429,6 +429,8 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	} else {
 		target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
 	}
+	
+	target_tcphdrlen += (4 - target_tcphdrlen % 4);
 
 	TCPHDR_resize(target_tcphdrlen);
 	
