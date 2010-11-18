@@ -26,7 +26,8 @@
 
 #include <sys/stat.h>
 
-UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
+UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
+	alive(sj_alive),
 	chroot_status(false)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
@@ -34,50 +35,55 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 	char configfile[LARGEBUF];	
 	snprintf(configfile, LARGEBUF, "%s%s", cmdline_opts.chroot_dir, cmdline_opts.cfgfname);	
 	
-	memset(&running, 0x00, sizeof(sj_config));
+	memset(&runconfig, 0x00, sizeof(sj_config));
 	
 	if(!load(configfile)) {
 		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
 
 		/* set up defaults */	   
-		running.MAGIC = MAGICVAL;
-		running.active = false;
-		running.max_ttl_probe = 30;
-		running.max_sex_track = 4096;
+		runconfig.MAGIC = MAGICVAL;
+		runconfig.active = false;
+		runconfig.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
+		runconfig.max_sex_track = DEFAULT_MAX_SEXTRACK;
 
 		/* default is to set all TCP ports in "NORMAL" aggressivity level */
-		for(int i = 0; i < PORTNUMBER; i++)
-			running.portconf[i] = NORMAL;
+		for(unsigned int i = 0; i < PORTNUMBER; i++)
+			runconfig.portconf[i] = NORMAL;
 	}
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
-	compare_check_copy(running.cfgfname, MEDIUMBUF, cmdline_opts.cfgfname, strlen(cmdline_opts.cfgfname), CONF_FILE);
-	compare_check_copy(running.enabler, MEDIUMBUF, cmdline_opts.enabler, strlen(cmdline_opts.enabler), PLUGINSENABLER);
-	compare_check_copy(running.user, MEDIUMBUF, cmdline_opts.user, strlen(cmdline_opts.user), DROP_USER);
-	compare_check_copy(running.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
-	compare_check_copy(running.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
-	compare_check_copy(running.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
+	compare_check_copy(runconfig.cfgfname, MEDIUMBUF, cmdline_opts.cfgfname, strlen(cmdline_opts.cfgfname), CONF_FILE);
+	compare_check_copy(runconfig.enabler, MEDIUMBUF, cmdline_opts.enabler, strlen(cmdline_opts.enabler), PLUGINSENABLER);
+	compare_check_copy(runconfig.user, MEDIUMBUF, cmdline_opts.user, strlen(cmdline_opts.user), DROP_USER);
+	compare_check_copy(runconfig.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
+	compare_check_copy(runconfig.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
+	compare_check_copy(runconfig.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
 
 	/* those are derived from logfname, they can't be changed */
-	memcpy(running.logfname_packets, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets));
-	memcpy(running.logfname_sessions, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions));
-
-	/* if --only is specify, it override the enabler */
-	if(cmdline_opts.onlyparm[0] != 0x00) 
-	{
-		onlyparm_parser(running.scrambletech, running.onlyplugin, cmdline_opts.onlyparm);
-
-		debug.log(ALL_LEVEL, "plugins file %s ignored: %s used only. This is not saved in Sj conf", 
-			basename(running.enabler), basename(running.onlyplugin) );
-	}
+	memcpy(runconfig.logfname_packets, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets));
+	memcpy(runconfig.logfname_sessions, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions));
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
-		running.debug_level = cmdline_opts.debug_level;
+		runconfig.debug_level = cmdline_opts.debug_level;
 
-	if(running.debug_level == 0)
-		running.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
+	if(runconfig.debug_level == 0)
+		runconfig.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
+	
+	runconfig.prescription_disabled = cmdline_opts.prescription_disabled;
+	if(runconfig.prescription_disabled)
+		debug.log(ALL_LEVEL, "prescription trick disabled, using checksum trick instead");
+
+	runconfig.malformation_disabled = cmdline_opts.malformation_disabled;
+	if(runconfig.malformation_disabled)
+		debug.log(ALL_LEVEL, "malformation trick disabled, using checksum trick instead");
+
+	/* if --only is specify, it override the enabler */
+	if(cmdline_opts.onlyparam[0] != 0x00) 
+	{
+		onlyparam_parser(cmdline_opts.onlyparam);
+	}
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -87,7 +93,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 UserConf::~UserConf()
 {
 	debug.log(DEBUG_LEVEL, "%s [process %d chroot %s], referred config file %s",
-		 __func__, getpid(), chroot_status ? "YES" : "NO", running.cfgfname);
+		 __func__, getpid(), chroot_status ? "YES" : "NO", runconfig.cfgfname);
 }
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
@@ -95,12 +101,12 @@ void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *u
 {
 	int blen = ulen > strlen(sjdefault) ? strlen(sjdefault) : ulen;
 
-	/* zero choice: if running.data[0] == 0x00, is the first start: write the default in the empty buffer */
+	/* zero choice: if runconfig.data[0] == 0x00, is the first start: write the default in the empty buffer */
 	memcpy(target, sjdefault, strlen(sjdefault));
 
 	/* first choice: if the user had specify an option (!= default), is used immediatly */
 	if(memcmp(useropt, sjdefault, blen)) {
-		memcpy(target, useropt, ulen > tlen ? tlen : ulen );
+		memcpy(target, useropt, ulen > tlen ? tlen : ulen);
 		return;
 	}
 
@@ -109,9 +115,9 @@ void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *u
 }
 
 /* the option we want to parse is a: --only absolute_or_relative_plugin.so,Y|NY|NY|N */
-void UserConf::onlyparm_parser(unsigned char &scrambletech, char onlyplugin[MEDIUMBUF], const char cmdlinput[MEDIUMBUF])
+void UserConf::onlyparam_parser(const char *cmdlinput)
 {
-	char *sep = strchr(cmdlinput, ',');
+	const char *sep = strchr(cmdlinput, ',');
 	if(sep == NULL) {
 		debug.log(ALL_LEVEL, "\",\" not found: invalid usage of --only option: expected --only pluginpath,(Y|N)x3");
 		debug.log(ALL_LEVEL, "Y stay for enable, N for disable, the scambling technique");
@@ -126,27 +132,24 @@ void UserConf::onlyparm_parser(unsigned char &scrambletech, char onlyplugin[MEDI
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	scrambletech |= (sep[1] == 'Y') ? SCRAMBLE_TTL : 0;
-	scrambletech |= (sep[2] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
-	scrambletech |= (sep[3] == 'Y') ? SCRAMBLE_MALFORMED : 0;
+	runconfig.scrambletech |= (sep[1] == 'Y') ? SCRAMBLE_TTL : 0;
+	runconfig.scrambletech |= (sep[2] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
+	runconfig.scrambletech |= (sep[3] == 'Y') ? SCRAMBLE_MALFORMED : 0;
 
-	if(!scrambletech) {
-		debug.log(ALL_LEVEL, "--only parsing: almost one scramble tech is required");
+	if(!runconfig.scrambletech) {
+		debug.log(ALL_LEVEL, "--only parsing: almost one scramble technique is required");
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	sep[0] = 0x00;
-	if(access(cmdlinput, R_OK)) {
-		debug.log(ALL_LEVEL, "--only parsing: unable to access %s: %s", cmdlinput, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
-	}
-
-	snprintf(&onlyplugin[0], MEDIUMBUF, "%s", cmdlinput);
-	debug.log(ALL_LEVEL, "using %s plugin only: TTL %s | checksum %s | malformed %s", onlyplugin,
-		ISSET_TTL(scrambletech) ? "yes" : "no",
-		ISSET_CHECKSUM(scrambletech) ? "yes" : "no",
-		ISSET_MALFORMED(scrambletech) ? "yes" : "no"
+	memccpy(runconfig.onlyplugin, cmdlinput, ',', sizeof(runconfig.onlyplugin));
+	
+	debug.log(ALL_LEVEL, "using %s plugin only: TTL %s | checksum %s | malformed %s", runconfig.onlyplugin,
+		ISSET_TTL(runconfig.scrambletech) ? "yes" : "no",
+		ISSET_CHECKSUM(runconfig.scrambletech) ? "yes" : "no",
+		ISSET_MALFORMED(runconfig.scrambletech) ? "yes" : "no"
 	);
+	
+	debug.log(ALL_LEVEL, "plugin validation dalayed, delegated to HackPool constructor");
 }
 
 /* private function useful for resolution of code/name */
@@ -179,13 +182,13 @@ void UserConf::autodetect_local_interface()
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
-		running.interface[i] = imp_str[i];
+		runconfig.interface[i] = imp_str[i];
 
 	if (i < 3) {
 		debug.log(ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
 		SJ_RUNTIME_EXCEPTION();
 	} else {
-		debug.log(ALL_LEVEL, "  == detected external interface with default gateway: %s", running.interface);
+		debug.log(ALL_LEVEL, "  == detected external interface with default gateway: %s", runconfig.interface);
 	}
 }
 
@@ -197,19 +200,19 @@ void UserConf::autodetect_local_interface_ip_address()
 	char imp_str[SMALLBUF];
 	unsigned int i;
 	snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
-		running.interface
+		runconfig.interface
 	);
 
-	debug.log(ALL_LEVEL, "++ detecting interface %s ip address with [%s]", running.interface, cmd);
+	debug.log(ALL_LEVEL, "++ detecting interface %s ip address with [%s]", runconfig.interface, cmd);
 
 	foca = popen(cmd, "r");
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++)
-		running.local_ip_addr[i] = imp_str[i];
+		runconfig.local_ip_addr[i] = imp_str[i];
 
-	debug.log(ALL_LEVEL, "  == acquired local ip address: %s", running.local_ip_addr);
+	debug.log(ALL_LEVEL, "  == acquired local ip address: %s", runconfig.local_ip_addr);
 }
 
 
@@ -227,12 +230,12 @@ void UserConf::autodetect_gw_ip_address()
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++) 
-		running.gw_ip_addr[i] = imp_str[i];
-	if (strlen(running.gw_ip_addr) < 7) {
+		runconfig.gw_ip_addr[i] = imp_str[i];
+	if (strlen(runconfig.gw_ip_addr) < 7) {
 		debug.log(ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
 		SJ_RUNTIME_EXCEPTION();
 	} else  {
-		debug.log(ALL_LEVEL, "  == acquired gateway ip address: %s", running.gw_ip_addr);
+		debug.log(ALL_LEVEL, "  == acquired gateway ip address: %s", runconfig.gw_ip_addr);
 	}
 }
 
@@ -242,34 +245,33 @@ void UserConf::autodetect_gw_mac_address()
 	FILE *foca;
 	char imp_str[SMALLBUF];
 	unsigned int i;
-	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", running.gw_ip_addr);
+	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
 
-	debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", running.gw_ip_addr, cmd);
+	debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);
 	
 	foca = popen(cmd, "r");
 	/* we do not need the output of ping, we need to wait the ping to finish
 	 * and pclose does this =) */
 	pclose(foca);
 	
-	memset(cmd, 0x00, MEDIUMBUF);
-	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", running.gw_ip_addr);
+	memset(cmd, 0x00, sizeof(cmd));
+	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", runconfig.gw_ip_addr);
 	debug.log(ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
 	foca = popen(cmd, "r");
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
 	for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); i++)
-		running.gw_mac_str[i] = imp_str[i];
+		runconfig.gw_mac_str[i] = imp_str[i];
 	if (i != 17) {
 		debug.log(ALL_LEVEL, "  -- unable to autodetect gateway mac address");
 		SJ_RUNTIME_EXCEPTION();
 	} else {
-		debug.log(ALL_LEVEL, "  == automatically acquired mac address: %s", running.gw_mac_str);
+		debug.log(ALL_LEVEL, "  == automatically acquired mac address: %s", runconfig.gw_mac_str);
 		unsigned int mac[6];
-		sscanf(running.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+		sscanf(runconfig.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
 		for (i=0; i<6; i++)
-			running.gw_mac_addr[i] = mac[i];
-	
+			runconfig.gw_mac_addr[i] = mac[i];	
 	}
 }
 
@@ -282,15 +284,15 @@ void UserConf::autodetect_first_available_tunnel_interface()
 	debug.log(ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd);
 	
 	foca = popen(cmd, "r");
-	for (running.tun_number = 0; ; running.tun_number++)
+	for (runconfig.tun_number = 0; ; runconfig.tun_number++)
 	{
-		memset(imp_str, 0x00, SMALLBUF);
+		memset(imp_str, 0x00, sizeof(imp_str));
 		fgets(imp_str, SMALLBUF, foca);
 		if (imp_str[0] == 0x00)
 			break;
 	}
 	pclose(foca);
-	debug.log(ALL_LEVEL, "  == detected %d as first unused tunnel device", running.tun_number);
+	debug.log(ALL_LEVEL, "  == detected %d as first unused tunnel device", runconfig.tun_number);
 }
 
 /* this method is used only in the ProcessType = SERVICE CHILD */
@@ -306,40 +308,38 @@ void UserConf::network_setup(void)
 	autodetect_gw_mac_address();
 	autodetect_first_available_tunnel_interface();
 
-	debug.log(VERBOSE_LEVEL, "-- system local interface: %s, %s address", running.interface, running.local_ip_addr);
-	debug.log(VERBOSE_LEVEL, "-- default gateway mac address: %s", running.gw_mac_str);
-	debug.log(VERBOSE_LEVEL, "-- default gateway ip address: %s", running.gw_ip_addr);
-	debug.log(VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", running.tun_number);
+	debug.log(VERBOSE_LEVEL, "-- system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
+	debug.log(VERBOSE_LEVEL, "-- default gateway mac address: %s", runconfig.gw_mac_str);
+	debug.log(VERBOSE_LEVEL, "-- default gateway ip address: %s", runconfig.gw_ip_addr);
+	debug.log(VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", runconfig.tun_number);
 
 
 	/* FIXME, is this incomplete? who does set this ? */
-	if(running.port_conf_set_n) {
+	if(runconfig.port_conf_set_n) {
 		debug.log(VERBOSE_LEVEL,"-- loaded %d TCP port set, verify them with sniffjoke stat",
-			running.port_conf_set_n
+			runconfig.port_conf_set_n
 		);
 	}
 }
 
 bool UserConf::load(const char* configfile)
 {
-	FILE *loadfd;
-	
+	FILE *loadfd;	
 	debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
 
-	if ((loadfd = fopen(configfile, "r")) != NULL) 
-	{
-		memset(&running, 0x00, sizeof(struct sj_config));
+	if ((loadfd = fopen(configfile, "r")) != NULL) {
+		memset(&runconfig, 0x00, sizeof(struct sj_config));
 
-		if(fread((void *)&running, sizeof(struct sj_config), 1, loadfd) != 1) {
+		if(fread((void *)&runconfig, sizeof(struct sj_config), 1, loadfd) != 1) {
 			debug.log(ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
-				sizeof(running), configfile, strerror(errno)
+				sizeof(runconfig), configfile, strerror(errno)
 			);
 			SJ_RUNTIME_EXCEPTION();
 		}
 
 		debug.log(DEBUG_LEVEL, "reading of %s: %d byte readed", configfile, sizeof(struct sj_config));
 
-		if (running.MAGIC != MAGICVAL) {
+		if (runconfig.MAGIC != MAGICVAL) {
 			debug.log(ALL_LEVEL, "sniffjoke config: %s seems to be corrupted - delete or check the argument",
 				configfile
 			);
@@ -356,23 +356,31 @@ void UserConf::dump(void)
 {
 	char configfile[LARGEBUF];
 	FILE *dumpfd;
+	
+	struct sj_config configcopy;
+	memcpy(&configcopy, &runconfig, sizeof(runconfig));
 
-	running.MAGIC = MAGICVAL;
+	configcopy.MAGIC = MAGICVAL;
 
 	if(!chroot_status)
-		snprintf(configfile, LARGEBUF, "%s%s", running.chroot_dir, running.cfgfname);
+		snprintf(configfile, LARGEBUF, "%s%s", configcopy.chroot_dir, configcopy.cfgfname);
 	else
-		snprintf(configfile, LARGEBUF, "%s", running.cfgfname);
+		snprintf(configfile, LARGEBUF, "%s", configcopy.cfgfname);
 	
 	if((dumpfd = fopen(configfile, "w")) != NULL) {	
-		debug.log(VERBOSE_LEVEL, "dumping running configuration to %s",  configfile);
+		debug.log(VERBOSE_LEVEL, "dumping configcopy configuration to %s",  configfile);
+				
+		/* resetting variables we do not want to save */
+		configcopy.prescription_disabled = false;
+		configcopy.malformation_disabled = false;
+		memset(configcopy.onlyplugin, 0, sizeof(configcopy.onlyplugin));
+		configcopy.scrambletech = 0;
 
-		if((fwrite(&running, sizeof(struct sj_config), 1, dumpfd)) != 1) /* ret - 1 because fwrite return the number of written item */
-		{
-			debug.log(ALL_LEVEL, "unable to write configuration to %s: %s", 
-				configfile, strerror(errno)
-			);
+		if((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {
+			/* ret - 1 because fwrite return the number of written item */
+			debug.log(ALL_LEVEL, "unable to write configuration to %s: %s",	configfile, strerror(errno));
 		}
+
 		fclose(dumpfd);
 	} else {
 		debug.log(ALL_LEVEL, "unable to open configuration to %s: %s", configfile, strerror(errno));
@@ -380,61 +388,128 @@ void UserConf::dump(void)
 	
 }
 
-char *UserConf::handle_cmd_start(void)
+char *UserConf::handle_cmd(const char *cmd)
 {
-	memset(io_buf, 0x00, HUGEBUF);
-	if (running.active != true) {
-		snprintf(io_buf, HUGEBUF, "started sniffjoke as requested!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
-		running.active = true;
-	} else /* sniffjoke is already running */ {
-		snprintf(io_buf, HUGEBUF, "received start request, but sniffjoke is already running!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
+	memset(io_buf, 0x00, sizeof(io_buf));
+
+	if (!memcmp(cmd, "start", strlen("start"))) {
+		handle_cmd_start();
+	} else if (!memcmp(cmd, "stop", strlen("stop"))) {
+		handle_cmd_stop();
+	} else if (!memcmp(cmd, "quit", strlen("quit"))) {
+		handle_cmd_quit();
+	} else if (!memcmp(cmd, "saveconfig", strlen("saveconfig"))) {
+		handle_cmd_saveconfig();
+	} else if (!memcmp(cmd, "stat", strlen("stat"))) {
+		handle_cmd_stat();
+	} else if (!memcmp(cmd, "info", strlen("info"))) {
+		handle_cmd_info();
+	} else if (!memcmp(cmd, "listen", strlen("listen"))) {
+		int port;
+		const char *portstr = strchr(cmd, ' ');
+
+		if(portstr == NULL)
+			goto handle_listen_error;
+		
+		port = atoi(++portstr);
+		if(port < 0 || port > PORTNUMBER)
+			goto handle_listen_error;
+
+		handle_cmd_listen(port);
+	} else if (!memcmp(cmd, "showport", strlen("showport"))) {
+		handle_cmd_showport();
+	} else if (!memcmp(cmd, "set", strlen("set"))) {
+		int start_port, end_port;
+		Strength setValue;
+		char weight[MEDIUMBUF];
+
+		sscanf(cmd, "set %d %d %s", &start_port, &end_port, weight);
+
+		if (start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER)
+			goto handle_set_error;
+
+		if (!parse_port_weight(weight, &setValue))
+			goto handle_set_error;
+
+		if (start_port > end_port)
+			goto handle_set_error;
+
+		handle_cmd_set(start_port, end_port, setValue);
+	} else if (!memcmp(cmd, "clear", strlen("clear"))) {
+		Strength clearValue = NONE;
+		handle_cmd_set(0, PORTNUMBER, clearValue);
+	} else if (!memcmp(cmd, "loglevel", strlen("loglevel")))  {
+		int loglevel;
+
+		sscanf(cmd, "loglevel %d", &loglevel);
+		if (loglevel < 0 || loglevel > PACKETS_DEBUG) {
+			snprintf(io_buf, sizeof(io_buf), "invalid log value: %d, must be > 0 and < than %d", loglevel, PACKETS_DEBUG);
+			debug.log(ALL_LEVEL, "%s", io_buf);
+		} else {
+			handle_cmd_loglevel(loglevel);
+		}
+	} else {
+		debug.log(ALL_LEVEL, "wrong command %s", cmd);
 	}
-	return &io_buf[0];
-}
-
-char *UserConf::handle_cmd_stop(void)
-{
-	memset(io_buf, 0x00, HUGEBUF);
-	if (running.active != false) {
-		snprintf(io_buf, HUGEBUF, "stopped sniffjoke as requested!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
-		running.active = false;
-	} else /* sniffjoke is already stopped */ {
-		snprintf(io_buf, HUGEBUF, "received stop request, but sniffjoke is already stopped!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
-	}
-	return &io_buf[0];
-}
-
-char *UserConf::handle_cmd_quit(void)
-{
-	memset(io_buf, 0x00, HUGEBUF);
-	debug.log(VERBOSE_LEVEL, "quit command requested: dumping configuration");
-
-	snprintf(io_buf, HUGEBUF, "dumped configuration, starting shutdown\n");
-
-	return &io_buf[0];
-}
-
-char *UserConf::handle_cmd_saveconfig()
-{
-	memset(io_buf, 0x00, HUGEBUF);
 	
-	dump();
+	return &io_buf[0];
 
-	snprintf(io_buf, HUGEBUF, "configuration file dumped\n");
+handle_listen_error:
+	snprintf(io_buf, strlen(io_buf), "invalid listen command: expected a valid port as argument\n");
+	debug.log(ALL_LEVEL, "%s", io_buf);
+	return &io_buf[0];
 
+handle_set_error:
+	snprintf(io_buf, strlen(io_buf), "invalid set command: [startport] [endport] VALUE\n"\
+		"startport and endport need to be less than %d\n"\
+		"startport nedd to be less or equal endport\n"\
+		"value would be: none|light|normal|heavy\n", PORTNUMBER);
+	debug.log(ALL_LEVEL, "%s", io_buf);
 	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_stat(void) 
+void UserConf::handle_cmd_start()
 {
-	memset(io_buf, 0x00, HUGEBUF);
+	if (runconfig.active != true) {
+		snprintf(io_buf, sizeof(io_buf), "started sniffjoke as requested!\n");
+		debug.log(VERBOSE_LEVEL, "%s", io_buf);
+		runconfig.active = true;
+	} else /* sniffjoke is already runconfig */ {
+		snprintf(io_buf, sizeof(io_buf), "received start request, but sniffjoke is already runconfig!\n");
+		debug.log(VERBOSE_LEVEL, "%s", io_buf);
+	}
+}
+
+void UserConf::handle_cmd_stop()
+{
+	if (runconfig.active != false) {
+		snprintf(io_buf, sizeof(io_buf), "stopped sniffjoke as requested!\n");
+		debug.log(VERBOSE_LEVEL, "%s", io_buf);
+		runconfig.active = false;
+	} else /* sniffjoke is already stopped */ {
+		snprintf(io_buf, sizeof(io_buf), "received stop request, but sniffjoke is already stopped!\n");
+		debug.log(VERBOSE_LEVEL, "%s", io_buf);
+	}
+}
+
+void UserConf::handle_cmd_quit()
+{
+	alive = false;
+	debug.log(VERBOSE_LEVEL, "quit command requested: dumping configuration");
+	snprintf(io_buf, sizeof(io_buf), "dumped configuration, starting shutdown\n");
+}
+
+void UserConf::handle_cmd_saveconfig()
+{
+	dump();
+	snprintf(io_buf, sizeof(io_buf), "configuration file dumped\n");
+}
+
+void UserConf::handle_cmd_stat(void) 
+{
 	debug.log(VERBOSE_LEVEL, "stat command requested");
-	snprintf(io_buf, HUGEBUF, 
-		"\nsniffjoke running:\t\t%s\n" \
+	snprintf(io_buf, sizeof(io_buf), 
+		"\nsniffjoke runconfig:\t\t%s\n" \
 		"gateway mac address:\t\t%s\n" \
 		"gateway ip address:\t\t%s\n" \
 		"local interface:\t\t%s, %s address\n" \
@@ -442,105 +517,91 @@ char *UserConf::handle_cmd_stat(void)
 		"log level:\t\t\t%d at file %s\n" \
 		"plugins file:\t\t\t%s\n" \
 		"chroot directory:\t\t%s\n",
-		running.active == true ? "TRUE" : "FALSE",
-		running.gw_mac_str,
-		running.gw_ip_addr,
-		running.interface, running.local_ip_addr,
-		running.tun_number,
-		running.debug_level, running.logfname,
-		running.enabler, running.chroot_dir
+		runconfig.active == true ? "TRUE" : "FALSE",
+		runconfig.gw_mac_str,
+		runconfig.gw_ip_addr,
+		runconfig.interface, runconfig.local_ip_addr,
+		runconfig.tun_number,
+		runconfig.debug_level, runconfig.logfname,
+		runconfig.enabler, runconfig.chroot_dir
 	);
-	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_info(void)
+void UserConf::handle_cmd_info(void)
 {
-	memset(io_buf, 0x00, HUGEBUF);
-	snprintf(io_buf, HUGEBUF, "NOT IMPLEMENTED - analyze TTL and session\n");
-
-	return &io_buf[0];
+	snprintf(io_buf, sizeof(io_buf), "NOT IMPLEMENTED - analyze TTL and session\n");
 }
 
-char *UserConf::handle_cmd_showport(void) 
+void UserConf::handle_cmd_showport(void) 
 {
 	int i, acc_start = 0, kind, actual_io = 0;
 	char *index = &io_buf[1];
-	memset(io_buf, 0x00, HUGEBUF);
+
 	io_buf[0] = '\n';
 
 	/* the first port work as initialization */
-	kind = running.portconf[0];
+	kind = runconfig.portconf[0];
 
 	for (i = 1; i < PORTNUMBER; i++) 
 	{
 		/* the kind has changed, so we must print the previous port range */
-		if (running.portconf[i] != kind) 
+		if (runconfig.portconf[i] != kind) 
 		{
 			if (acc_start == (i - 1)) 
-				snprintf(index, HUGEBUF - actual_io, " %d\t%s\n", acc_start, resolve_weight_name(kind));
+				snprintf(index, sizeof(io_buf) - actual_io, " %d\t%s\n", acc_start, resolve_weight_name(kind));
 			else
-				snprintf(index, HUGEBUF - actual_io, " %d:%d\t%s\n", acc_start, i - 1, resolve_weight_name(kind));
+				snprintf(index, sizeof(io_buf) - actual_io, " %d:%d\t%s\n", acc_start, i - 1, resolve_weight_name(kind));
 
 			actual_io = strlen(io_buf);
 			index = &io_buf[actual_io];
 
-			kind = running.portconf[i];
+			kind = runconfig.portconf[i];
 			acc_start = i;
 		}
 	}
 
-	snprintf(index, HUGEBUF - actual_io, " %d:%d\t%s\n", acc_start, PORTNUMBER, resolve_weight_name(kind));
-
-	return &io_buf[0];
+	snprintf(index, sizeof(io_buf) - actual_io, " %d:%d\t%s\n", acc_start, PORTNUMBER, resolve_weight_name(kind));
 }
 
-char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength what)
+void UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength what)
 {
 	const char *what_weightness;
-	memset(io_buf, 0x00, HUGEBUF);
-
 	switch(what) {
 		case HEAVY: what_weightness = "heavy"; break;
 		case NORMAL: what_weightness = "normal"; break;
 		case LIGHT: what_weightness = "light"; break;
 		case NONE: what_weightness = "no hacking"; break;
 		default: 
-			snprintf(io_buf, HUGEBUF, "invalid strength code for TCP ports\n");
+			snprintf(io_buf, sizeof(io_buf), "invalid strength code for TCP ports\n");
 			debug.log(ALL_LEVEL, "BAD ERROR: %s", io_buf);
-			return &io_buf[0];
+			return;
 	}
 
-	snprintf(io_buf, HUGEBUF, "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
+	snprintf(io_buf, sizeof(io_buf), "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
 	debug.log(ALL_LEVEL, "%s", io_buf);
 
 	if(end == PORTNUMBER) {
-		running.portconf[PORTNUMBER -1] = what;
+		runconfig.portconf[PORTNUMBER -1] = what;
 		end--;
 	}
 
 	do {
-		running.portconf[start] = what;
+		runconfig.portconf[start] = what;
 		start++;
 	} while (start <= end );
-
-	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_listen(int bindport)
+void UserConf::handle_cmd_listen(int bindport)
 {
-	running.listenport[bindport] = true;
-
-	memset(io_buf, 0x00, HUGEBUF);
-	snprintf(io_buf, HUGEBUF, "set port %d as listen service to protect\n", bindport);
+	runconfig.listenport[bindport] = true;
+	snprintf(io_buf, sizeof(io_buf), "set port %d as listen service to protect\n", bindport);
 	debug.log(ALL_LEVEL, "%s", io_buf);
-	return &io_buf[0];
 }
 
-char *UserConf::handle_cmd_loglevel(int newloglevel)
+void UserConf::handle_cmd_loglevel(int newloglevel)
 {
-	memset(io_buf, 0x00, HUGEBUF);
 	if(newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
-		snprintf(io_buf, HUGEBUF, 
+		snprintf(io_buf, sizeof(io_buf), 
 			"error in the new loglevel requested: accepted >= %d and <= %d\n\n"\
 			"\t1\tsuppressed log\n"\
 			"\t2\tdefault, common log\n"\
@@ -551,9 +612,30 @@ char *UserConf::handle_cmd_loglevel(int newloglevel)
 			ALL_LEVEL, PACKETS_DEBUG
 		);
 	} else {
-		snprintf(io_buf, HUGEBUF, "changing log level since %d to %d\n", running.debug_level, newloglevel);
-		running.debug_level = newloglevel;
+		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newloglevel);
+		runconfig.debug_level = newloglevel;
 	}
+}
 
-	return &io_buf[0];
+bool UserConf::parse_port_weight(char *weightstr, Strength *value)
+{
+	struct parsedata {
+		const char *keyword;
+		const int keylen;
+		Strength equiv;
+	};
+#define keywordToParse	4
+	struct parsedata wParse[] = {
+		{ "none", 	strlen("none"), 	NONE },
+		{ "light", 	strlen("light"), 	LIGHT },
+		{ "normal", 	strlen("normal"), 	NORMAL },
+		{ "heavy", 	strlen("heavy"), 	HEAVY }
+	};
+	for(unsigned int i = 0; i < keywordToParse; i++) {
+		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
+			*value = wParse[i].equiv;
+			return true;
+		}
+	}
+	return false;
 }

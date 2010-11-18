@@ -39,6 +39,12 @@
 using namespace std;
 
 class SniffJoke {
+public:
+	bool alive;
+	SniffJoke(struct sj_cmdline_opts &);
+	~SniffJoke();
+	void run();
+
 private:
 	sj_cmdline_opts &opts;
 	UserConf userconf;
@@ -67,17 +73,10 @@ private:
 	void server_user_cleanup();
 	void kill_child();
 	int bind_unixsocket();
-	void handle_unixsocket(int srvsock, bool &alive);
+	void handle_unixsocket(int srvsock);
 	int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);	
 	void send_command(const char *cmdstring);
 	bool parse_port_weight(char *weightstr, Strength *Value);
-
-public:
-	bool alive;
-
-	SniffJoke(struct sj_cmdline_opts &);
-	~SniffJoke();
-	void run();
 };
 
 #endif /* SJ_SNIFFJOKE_H */

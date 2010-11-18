@@ -25,8 +25,9 @@
 PacketQueue::PacketQueue() :
 	front(new Packet*[2]),
 	back(new Packet*[2]),
-	cur_prio(0),
-	cur_pkt(NULL)
+	cur_prio(LOW),
+	cur_pkt(NULL),
+	next_pkt(NULL)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
@@ -39,11 +40,11 @@ PacketQueue::~PacketQueue(void)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	Packet *tmp = get(false);
-	while (tmp != NULL) {
-		delete tmp;
-		tmp = get(true);
+	get_reset();
+	while (get() && cur_pkt != NULL) {
+		delete cur_pkt;
 	}
+
 	delete[] front;
 	delete[] back;
 }
@@ -68,7 +69,7 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
 	delete_if_present(pkt.packet_id);
 
-	for (int i = 0; i < 2; i++) {
+	for (int i = HIGH; i <= LOW; i++) {
 		if (front[i] == &ref) {
 			pkt.prev = NULL;
 			pkt.next = &ref;
@@ -89,7 +90,7 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
 	delete_if_present(pkt.packet_id);
 
-	for (int i = 0; i < 2; i++) {
+	for (int i = HIGH; i <= LOW; i++) {
 		if (back[i] == &ref) {
 			pkt.prev = &ref;
 			pkt.next = NULL;
@@ -108,10 +109,11 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 
 void PacketQueue::remove(const Packet &pkt)
 {
-	for (int i = 0; i < 2; i++) {
+	for (int i = HIGH; i <= LOW; i++) {
 		if (front[i] == &pkt) {
 			if (back[i] == &pkt) {
-				front[i] = back[i] = NULL;
+				front[i] = NULL;
+				back[i] = NULL;
 			} else {
 				front[i] = front[i]->next;
 				front[i]->prev = NULL;
@@ -144,63 +146,61 @@ void PacketQueue::delete_if_present(unsigned int packet_id)
 	}	
 }
 
-Packet* PacketQueue::get(bool must_continue)
-{
-	Packet *ret;
-
-	if (!must_continue) {
-		cur_prio = 0;
-		cur_pkt = front[cur_prio];
-	}
-	
-	while (1) {
-		while (cur_pkt != NULL) {
-			ret = cur_pkt;
-			cur_pkt = cur_pkt->next;
-			return ret;
-		}
-		
-		while (cur_pkt == NULL) {
-			cur_prio++;
-			if (cur_prio < 2) {
-				cur_pkt = front[cur_prio];
-			} else {
-				return NULL;
-			}
-		}
-	}
+void PacketQueue::get_reset() {
+	cur_prio = HIGH;
+	cur_pkt = NULL;
+	next_pkt = front[HIGH];
 }
 
-Packet* PacketQueue::get(status_t status, source_t source, proto_t proto, bool must_continue) 
+Packet* PacketQueue::get()
 {
-	Packet *tmp = get(must_continue);
+	while (1) {
+		if (next_pkt != NULL) {
+			cur_pkt = next_pkt;
+			next_pkt = next_pkt->next;
+			break;
+		}
+		
+		if (cur_prio != LOW) {
+			cur_prio = LOW;
+			next_pkt = front[LOW];
+		} else {
+			cur_pkt = NULL;
+			break;
+		}
+	}
 	
-	if (tmp == NULL) return NULL;
+	/* return next_pkt or NULL at the end */
+	return cur_pkt;
+}
 
-	do {
-		if (status != ANY_STATUS && tmp->status != status)
+Packet* PacketQueue::get(status_t status, source_t source, proto_t proto) 
+{
+	while(get() && cur_pkt != NULL) {
+		if (status != ANY_STATUS && cur_pkt->status != status)
 			continue;
 
-		if (source != ANY_SOURCE && tmp->source != source)
+		if (source != ANY_SOURCE && cur_pkt->source != source)
 			continue;
 
-		if (proto != ANY_PROTO && tmp->proto != proto)
+		if (proto != ANY_PROTO && cur_pkt->proto != proto)
 			continue;
 
-		return tmp;
+		break;
+	}
 
-	} while ((tmp = get(true)) != NULL);
-
-	return NULL;
+	/* result if found or NULL if not found */
+	return cur_pkt;
 }
 
 Packet* PacketQueue::get(unsigned int packet_id)
 {
-	Packet *tmp = get(false);
-	while (tmp != NULL) {
-		if (tmp->packet_id == packet_id)
-			return tmp;   
-		tmp = get(true);
+	get_reset();
+	while (get() && cur_pkt != NULL) {
+		if (cur_pkt->packet_id == packet_id)
+			break;
 	}
-	return NULL;
+
+	/* result if found or NULL if not found */
+	return cur_pkt;	
 }

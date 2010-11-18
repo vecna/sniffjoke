@@ -36,7 +36,7 @@
 class Process {
 private:
 
-	const struct sj_cmdline_opts &opts;
+	struct sj_config &runconfig;
 
         struct passwd userinfo;
 	void* userinfo_buf;
@@ -49,7 +49,7 @@ private:
 public:
 	pid_t tracked_child_pid;
 	
-	Process(const struct sj_cmdline_opts &);
+	Process(struct sj_config &);
 	~Process();
 
 	pid_t readPidfile();

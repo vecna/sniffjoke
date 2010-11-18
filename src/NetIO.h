@@ -39,7 +39,7 @@ private:
 	 * tunnel/ethernet man in the middle
 	 */
 	struct sockaddr_ll send_ll;
-	struct sj_config &runcopy;
+	struct sj_config &runconfig;
 
 	/* tunfd/netfd: file descriptor for I/O purpose */
 	int tunfd;

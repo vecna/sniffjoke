@@ -117,8 +117,8 @@ public:
 	void fixIpTcpSum(void);
 
 	/* autochecking */
-	bool checkUncommonTCPOPT(void);
-	bool checkUncommonIPOPT(void);
+	bool checkTCPOPT(void);
+	bool checkIPOPT(void);
 	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
@@ -133,7 +133,7 @@ public:
 
 	/* utilities */
 	void selflog(const char *, const char *);
-	char debugbuf[LARGEBUF];
+	char debug_buf[LARGEBUF];
 };
 
 #endif /* SJ_PACKET_H */

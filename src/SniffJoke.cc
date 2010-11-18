@@ -28,11 +28,11 @@
 #include <sys/wait.h>
 
 SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
+	alive(true),
 	opts(opts),
-	userconf(opts),
-	proc(opts),
-	service_pid(0),
-	alive(true)
+	userconf(opts, alive),
+	proc(userconf.runconfig),
+	service_pid(0)
 {
 	debug_setup(stdout);
 	debug.log(VERBOSE_LEVEL, __func__);
@@ -51,9 +51,9 @@ void SniffJoke::run()
 }
 
 void SniffJoke::client() {
-	pid_t running_service_pid = proc.readPidfile();
-	if (!running_service_pid) {
-		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command %s ignored", opts.cmd_buffer);
+	pid_t runconfig_service_pid = proc.readPidfile();
+	if (!runconfig_service_pid) {
+		debug.log(ALL_LEVEL, "warning: SniffJoke is not runconfig, command %s ignored", opts.cmd_buffer);
 		return;
 	}
 
@@ -69,11 +69,11 @@ void SniffJoke::server() {
 	pid_t old_service_pid = proc.readPidfile();
 	if (old_service_pid != 0) {
 		if (!opts.force_restart) {
-			debug.log(ALL_LEVEL, "SniffJoke is already running, use --force or check --help");
-			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, old_service_pid);
+			debug.log(ALL_LEVEL, "SniffJoke is already runconfig, use --force or check --help");
+			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently runconfig pid: %d", SJ_PIDFILE, old_service_pid);
 			return;
 		} else {
-			debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", old_service_pid);
+			debug.log(VERBOSE_LEVEL, "forcing exit of previous runconfig service %d ...", old_service_pid);
 			
 			/* we have to do quite the same as in sniffjoke_server_cleanup,
 			 * but relative to the service_pid read with readPidfile;
@@ -82,17 +82,17 @@ void SniffJoke::server() {
 			kill(old_service_pid, SIGTERM);
 			sleep(2);
 			proc.unlinkPidfile();
-			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going running in background");
+			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going runconfig in background");
 		}
 	}
 
 	if(!old_service_pid && opts.force_restart)
-		debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously running SniffJoke");
+		debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously runconfig SniffJoke");
 
-	/* running the network setup before the background, for keep the software output visible on the console */
+	/* runconfig the network setup before the background, for keep the software output visible on the console */
 	userconf.network_setup();
 
-	if (!userconf.running.active)
+	if (!userconf.runconfig.active)
 		debug.log(ALL_LEVEL, "SniffJoke is INACTIVE: use \"sniffjoke start\" command to start it");
 	else
 		debug.log(VERBOSE_LEVEL, "SniffJoke resumed as ACTIVE");
@@ -109,7 +109,7 @@ void SniffJoke::server() {
 	proc.writePidfile();
 	
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
-	mitm = auto_ptr<NetIO> (new NetIO(userconf.running));
+	mitm = auto_ptr<NetIO> (new NetIO(userconf.runconfig));
 
         /* sigtrap handler mapped the same in both Sj processes */
         proc.sigtrapSetup(sigtrap);
@@ -137,15 +137,15 @@ void SniffJoke::server() {
 	} else {
 		
 		/* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
-		hack_pool = auto_ptr<HackPool> (new HackPool(userconf.running));
+		hack_pool = auto_ptr<HackPool> (new HackPool(userconf.runconfig));
 
-		/* proc.jail: chroot + userconf.running.chrooted = true */
+		/* proc.jail: chroot + userconf.runconfig.chrooted = true */
 		proc.jail();
 		userconf.chroot_status = true;
 
 		proc.privilegesDowngrade();
 
-		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.running, *hack_pool));
+		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.runconfig, *hack_pool));
 		mitm->prepare_conntrack(conntrack.get());
 
 		listening_unix_socket = bind_unixsocket();
@@ -158,7 +158,7 @@ void SniffJoke::server() {
 			mitm->network_io();
 			mitm->queue_flush();
 
-			handle_unixsocket(listening_unix_socket, alive);
+			handle_unixsocket(listening_unix_socket);
 
 			proc.sigtrapEnable();
 		}
@@ -249,9 +249,10 @@ int SniffJoke::bind_unixsocket()
 	return sock;
 }
 
-void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
+void SniffJoke::handle_unixsocket(int srvsock)
 {
-	char r_command[MEDIUMBUF], *output = NULL, *internal_buf = NULL;
+	char r_command[MEDIUMBUF];
+	char* output = NULL;
 	int rlen;
 	struct sockaddr_un fromaddr;
 
@@ -263,95 +264,11 @@ void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
 
 	debug.log(VERBOSE_LEVEL, "received command from the client: %s", r_command);
 
-	if (!memcmp(r_command, "start", strlen("start"))) {
-		output = userconf.handle_cmd_start();
-	} else if (!memcmp(r_command, "stop", strlen("stop"))) {
-		output = userconf.handle_cmd_stop();
-	} else if (!memcmp(r_command, "quit", strlen("quit"))) {
-		output = userconf.handle_cmd_quit();
-		alive = false;
-	} else if (!memcmp(r_command, "saveconfig", strlen("saveconfig"))) {
-		output = userconf.handle_cmd_saveconfig();
-	} else if (!memcmp(r_command, "stat", strlen("stat"))) {
-		output = userconf.handle_cmd_stat();
-	} else if (!memcmp(r_command, "info", strlen("info"))) {
-		output = userconf.handle_cmd_info();
-	} else if (!memcmp(r_command, "listen", strlen("listen"))) 
-	{
-		int port;
-		char *portstr = strchr(r_command, ' ');
-
-		if(portstr == NULL)
-			goto handle_listen_error;
-		
-		port = atoi(++portstr);
-		if(port < 0 || port > PORTNUMBER)
-			goto handle_listen_error;
-
-		output = userconf.handle_cmd_listen(port);
-
-handle_listen_error:
-		if(output == NULL) {
-			internal_buf = (char *)malloc(MEDIUMBUF);
-			snprintf(internal_buf, MEDIUMBUF, "invalid listen command: expected a valid port as argument\n");
-			debug.log(ALL_LEVEL, "%s", internal_buf);
-			output = internal_buf;
-		}
-	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
-		output = userconf.handle_cmd_showport();
-	} else if (!memcmp(r_command, "set", strlen("set"))) {
-		int start_port, end_port;
-		Strength setValue;
-		char weight[MEDIUMBUF];
-
-		sscanf(r_command, "set %d %d %s", &start_port, &end_port, weight);
-
-		if (start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER)
-			goto handle_set_error;
-
-		if (!parse_port_weight(weight, &setValue))
-			goto handle_set_error;
-
-		if (start_port > end_port)
-			goto handle_set_error;
-
-		output = userconf.handle_cmd_set(start_port, end_port, setValue);
-
-handle_set_error:
-		if(output == NULL) {
-			internal_buf = (char *)malloc(MEDIUMBUF);
-			snprintf(internal_buf, MEDIUMBUF, "invalid set command: [startport] [endport] VALUE\n"\
-				"startport and endport need to be less than %d\n"\
-				"startport nedd to be less or equal endport\n"\
-				"value would be: none|light|normal|heavy\n", PORTNUMBER);
-			debug.log(ALL_LEVEL, "%s", internal_buf);
-			output = internal_buf;
-		}
-	} else if (!memcmp(r_command, "clear", strlen("clear"))) {
-		Strength clearValue = NONE;
-		output = userconf.handle_cmd_set(0, PORTNUMBER, clearValue);
-	} else if (!memcmp(r_command, "loglevel", strlen("loglevel")))  {
-		int loglevel;
-
-		sscanf(r_command, "loglevel %d", &loglevel);
-		if (loglevel < 0 || loglevel > PACKETS_DEBUG) {
-			internal_buf = (char *)malloc(MEDIUMBUF);
-			snprintf(internal_buf, MEDIUMBUF, "invalid log value: %d, must be > 0 and < than %d", loglevel, PACKETS_DEBUG);
-			debug.log(ALL_LEVEL, "%s", internal_buf);
-			output = internal_buf;
-		} else {
-			output = userconf.handle_cmd_loglevel(loglevel);
-		}
-	} else {
-		debug.log(ALL_LEVEL, "wrong command %s", r_command);
-	}
+	output = userconf.handle_cmd(r_command);
 
 	/* send the answer message to the client */
 	if(output != NULL) 
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
-
-	if (internal_buf != NULL)
-		free(internal_buf);
 }
 
 void SniffJoke::send_command(const char *cmdstring)
@@ -424,32 +341,6 @@ int SniffJoke::recv_command(int sock, char *databuf, int bufsize, struct sockadd
 
 	return ret;
 }
-
-bool SniffJoke::parse_port_weight(char *weightstr, Strength *value)
-{
-	struct parsedata {
-		const char *keyword;
-		const int keylen;
-		Strength equiv;
-	};
-#define keywordToParse	4
-	struct parsedata wParse[] = {
-		{ "none", 	strlen("none"), 	NONE },
-		{ "light", 	strlen("light"), 	LIGHT },
-		{ "normal", 	strlen("normal"), 	NORMAL },
-		{ "heavy", 	strlen("heavy"), 	HEAVY }
-	};
-	int i;
-
-	for(i = 0; i < keywordToParse; i++) {
-		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
-			*value = wParse[i].equiv;
-			return true;
-		}
-	}
-	return false;
-}
-
 
 void SniffJoke::debug_setup(FILE *forcedoutput) const
 {

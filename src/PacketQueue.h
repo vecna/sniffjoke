@@ -35,6 +35,7 @@ private:
 	unsigned int queue_levels;
 	unsigned int cur_prio;
 	Packet *cur_pkt;
+	Packet *next_pkt;
 public:
 
 	PacketQueue();
@@ -44,8 +45,9 @@ public:
 	void insert_after(Packet &, Packet &);
 	void remove(const Packet &);
 	void delete_if_present(unsigned int);
-	Packet* get(bool);
-	Packet* get(status_t, source_t, proto_t, bool);
+	void get_reset();
+	Packet* get();
+	Packet* get(status_t, source_t, proto_t);
 	Packet* get(unsigned int);
 };
 

@@ -29,7 +29,7 @@
 #include <sys/ioctl.h>
 
 NetIO::NetIO(sj_config& runcfg) :
-	runcopy(runcfg)
+	runconfig(runcfg)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
@@ -44,13 +44,13 @@ NetIO::NetIO(sj_config& runcfg) :
 		SJ_RUNTIME_EXCEPTION();
 
 	/* pseudo sanity check of received data, sjconf had already make something */
-	if (strlen(runcopy.gw_ip_addr) < 7 || strlen(runcopy.gw_ip_addr) > 17) {
-		debug.log(ALL_LEVEL, "NetIO: invalid ip address [%s] is not an IPv4, check the config", runcopy.gw_ip_addr);
+	if (strlen(runconfig.gw_ip_addr) < 7 || strlen(runconfig.gw_ip_addr) > 17) {
+		debug.log(ALL_LEVEL, "NetIO: invalid ip address [%s] is not an IPv4, check the config", runconfig.gw_ip_addr);
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	if (strlen(runcopy.gw_mac_str) != 17) {
-		debug.log(ALL_LEVEL, "NetIO: invalid mac address [%s] is not a MAC addr, check the config", runcopy.gw_mac_str);
+	if (strlen(runconfig.gw_mac_str) != 17) {
+		debug.log(ALL_LEVEL, "NetIO: invalid mac address [%s] is not a MAC addr, check the config", runconfig.gw_mac_str);
 		SJ_RUNTIME_EXCEPTION();
 	}
 
@@ -103,27 +103,27 @@ NetIO::NetIO(sj_config& runcfg) :
 	debug.log(VERBOSE_LEVEL, "NetIO: deleting default gateway in routing table...");
 	system("/sbin/route del default");
 
-	snprintf(cmd, MEDIUMBUF, 
+	snprintf(cmd, sizeof(cmd), 
 		"/sbin/ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d", 
-		runcopy.tun_number,
-		runcopy.local_ip_addr,
+		runconfig.tun_number,
+		runconfig.local_ip_addr,
 		MTU_FAKE
 	);
 	debug.log(VERBOSE_LEVEL, "NetIO: setting up tun%d with the %s's IP (%s) command [%s]",
-		runcopy.tun_number, runcopy.interface, runcopy.local_ip_addr, cmd
+		runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd
 	);
 	pclose(popen(cmd, "r"));
 
 	debug.log(VERBOSE_LEVEL, "NetIO: setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
 	system("/sbin/route add default gw 1.198.10.5");
 
-	strcpy(orig_gw.ifr_name, (const char *)runcopy.interface);
+	strcpy(orig_gw.ifr_name, (const char *)runconfig.interface);
 	tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	
 	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
 	{
 		debug.log(ALL_LEVEL, "NetIO: fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand",
-			runcopy.interface);
+			runconfig.interface);
 		SJ_RUNTIME_EXCEPTION();
 	}
 
@@ -146,7 +146,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	send_ll.sll_halen = ETH_ALEN;
 
 	memset(send_ll.sll_addr, 0xFF, sizeof(send_ll.sll_addr));
-	memcpy(send_ll.sll_addr, runcopy.gw_mac_addr, ETH_ALEN);
+	memcpy(send_ll.sll_addr, runconfig.gw_mac_addr, ETH_ALEN);
 
 	if ((ret = bind(netfd, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) {
 		debug.log(ALL_LEVEL, "NetIO: unable to bind datalink layer interface: %s - fix your routing table by hand",
@@ -189,12 +189,12 @@ NetIO::~NetIO(void)
 	debug.log(VERBOSE_LEVEL, "~NetIO: deleting our default gw [route del default]");
 	system("route del default");
 
-	snprintf(cmd, MEDIUMBUF, "ifconfig tun%d down", runcopy.tun_number);
-	debug.log(VERBOSE_LEVEL, "~NetIO: shutting down tun%d interface [%s]", runcopy.tun_number, cmd);
+	snprintf(cmd, sizeof(cmd), "ifconfig tun%d down", runconfig.tun_number);
+	debug.log(VERBOSE_LEVEL, "~NetIO: shutting down tun%d interface [%s]", runconfig.tun_number, cmd);
 	pclose(popen(cmd, "r"));
 	close(tunfd);
 
-	snprintf(cmd, MEDIUMBUF, "route add default gw %s", runcopy.gw_ip_addr);
+	snprintf(cmd, sizeof(cmd), "route add default gw %s", runconfig.gw_ip_addr);
 	debug.log(VERBOSE_LEVEL, "~NetIO: restoring previous default gateway [%s]", cmd);
 	pclose(popen(cmd, "r"));
 }
@@ -254,7 +254,7 @@ void NetIO::network_io(void)
 		}
 	}
 
-	if(runcopy.active == true) {
+	if(runconfig.active == true) {
 		/* when sniffjoke is active the packet are analyzed and mangled */
 		conntrack->analyze_packets_queue();
 	} else { /* running->sj_run == false */
@@ -278,7 +278,7 @@ void NetIO::queue_flush(void)
 				SJ_RUNTIME_EXCEPTION();
 			} else {
 //				debug.log(DEBUG_LEVEL, "queue_flush: write in tunnel %d successfull [sniffjoke %s]", 
-//					size, runcopy.active == true ? "active" : "stopped");
+//					size, runconfig.active == true ? "active" : "stopped");
 			}
 		} else {
 			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
@@ -288,7 +288,7 @@ void NetIO::queue_flush(void)
 				SJ_RUNTIME_EXCEPTION();
 			} else {
 //				debug.log(DEBUG_LEVEL, "queue_flush: write in network %d successfull [sniffjoke %s]",
-//					size, runcopy.active == true ? "active" : "stopped");
+//					size, runconfig.active == true ? "active" : "stopped");
 			}
 		}
 		delete pkt;

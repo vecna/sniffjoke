@@ -45,6 +45,8 @@
 #define SUFFIX_LF_PACKETS               ".packets"			//relative to chroot_dir
 #define SUFFIX_LF_SESSIONS              ".sessions"			//relative to chroot_dir
 #define DEFAULT_DEBUG_LEVEL             2
+#define DEFAULT_MAX_TTLPROBE		30
+#define DEFAULT_MAX_SEXTRACK		4096
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
 

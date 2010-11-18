@@ -30,8 +30,8 @@
 #include <wait.h>
 
 /* startup of the process */
-Process::Process(const struct sj_cmdline_opts &opts) :
-	opts(opts),
+Process::Process(struct sj_config &runcfg) :
+	runconfig(runcfg),
 	userinfo_buf(NULL),
 	groupinfo_buf(NULL)
 {
@@ -56,11 +56,11 @@ Process::Process(const struct sj_cmdline_opts &opts) :
                 SJ_RUNTIME_EXCEPTION();
 	}
 
-        getpwnam_r(opts.user, &userinfo, (char*)userinfo_buf, userinfo_buf_len, &userinfo_result);
-	getgrnam_r(opts.group, &groupinfo, (char*)groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
+        getpwnam_r(runconfig.user, &userinfo, (char*)userinfo_buf, userinfo_buf_len, &userinfo_result);
+	getgrnam_r(runconfig.group, &groupinfo, (char*)groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
 
         if (userinfo_result == NULL || groupinfo_result == NULL) {
-                debug.log(ALL_LEVEL, "Process: invalid user or group specified: %s, %s", opts.user, opts.group);
+                debug.log(ALL_LEVEL, "Process: invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
 		SJ_RUNTIME_EXCEPTION();
         }
 }
@@ -123,25 +123,25 @@ int Process::detach()
 
 void Process::jail() 
 {
-	if(opts.chroot_dir == NULL) {
+	if(runconfig.chroot_dir == NULL) {
                 debug.log(ALL_LEVEL, "jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	mkdir(opts.chroot_dir, 0700);
+	mkdir(runconfig.chroot_dir, 0700);
 
-	if (chown(opts.chroot_dir, userinfo.pw_uid, groupinfo.gr_gid)) {
+	if (chown(runconfig.chroot_dir, userinfo.pw_uid, groupinfo.gr_gid)) {
                 debug.log(ALL_LEVEL, "jail: chown of %s to %s:%s failed: %s: unable to start sniffjoke",
-			opts.chroot_dir, opts.user, opts.group, strerror(errno));
+			runconfig.chroot_dir, runconfig.user, runconfig.group, strerror(errno));
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	if (chdir(opts.chroot_dir) || chroot(opts.chroot_dir)) {
-		debug.log(ALL_LEVEL, "jail: chroot into %s: %s: unable to start sniffjoke", opts.chroot_dir, strerror(errno));
+	if (chdir(runconfig.chroot_dir) || chroot(runconfig.chroot_dir)) {
+		debug.log(ALL_LEVEL, "jail: chroot into %s: %s: unable to start sniffjoke", runconfig.chroot_dir, strerror(errno));
 		SJ_RUNTIME_EXCEPTION();
 	}
 
-	debug.log(VERBOSE_LEVEL, "jail: chroot'ed process %d in %s", getpid(), opts.chroot_dir);
+	debug.log(VERBOSE_LEVEL, "jail: chroot'ed process %d in %s", getpid(), runconfig.chroot_dir);
 }
 
 void Process::privilegesDowngrade()

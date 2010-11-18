@@ -39,16 +39,16 @@ struct sj_cmdline_opts {
 		char logfname_packets[LARGEBUF];
 		char logfname_sessions[LARGEBUF];
 		unsigned int debug_level;
+		bool prescription_disabled;
+		bool malformation_disabled;
 		/* END OF COMMON PART WITH sj_config_opt */
 
-		sj_proc_t process_type;
-		char cmd_buffer[MEDIUMBUF];
-		char onlyparm[MEDIUMBUF];
+		char onlyparam[MEDIUMBUF];
 		bool go_foreground;
 		bool force_restart;
-		FILE *logstream;
-		FILE *packet_logstream;
-		FILE *session_logstream;
+		
+		sj_proc_t process_type;
+		char cmd_buffer[MEDIUMBUF];
 };
 
 /* those are the value used for track port strength of TCP coverage */
@@ -81,11 +81,13 @@ struct sj_config {
 		char logfname_packets[LARGEBUF];	/* default: idem */
 		char logfname_sessions[LARGEBUF];	/* default: idem */
 		unsigned int debug_level;		/* default: idem */
+		bool prescription_disabled;		/* default: false */
+		bool malformation_disabled;		/* default: false */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
-		unsigned char scrambletech;		/* default: idem */
+		unsigned int scrambletech;		/* default: idem */
 
 		unsigned short max_ttl_probe;		/* default: idem */
 		unsigned int max_sex_track;		/* default: idem */
@@ -116,27 +118,30 @@ private:
 		void autodetect_gw_mac_address(void);
 		void autodetect_first_available_tunnel_interface(void);
 		void debug_cleanup();
-		void onlyparm_parser(unsigned char &, char[MEDIUMBUF] , const char[MEDIUMBUF]);
+		void onlyparam_parser(const char*);
 
 public:
+		bool &alive;
 		bool chroot_status;
-		struct sj_config running;
+		struct sj_config runconfig;
 
-		UserConf(const struct sj_cmdline_opts &);
+		UserConf(const struct sj_cmdline_opts &, bool &alive);
 		~UserConf();
 
 		void network_setup(void);
 		
-		char *handle_cmd_start(void);
-		char *handle_cmd_stop(void);
-		char *handle_cmd_quit(void);
-		char *handle_cmd_saveconfig(void);
-		char *handle_cmd_stat(void);
-		char *handle_cmd_info(void);
-		char *handle_cmd_showport(void);
-		char *handle_cmd_set(unsigned short, unsigned short, Strength);
-		char *handle_cmd_loglevel(int);
-		char *handle_cmd_listen(int);
+		char* handle_cmd(const char *);
+		void handle_cmd_start(void);
+		void handle_cmd_stop(void);
+		void handle_cmd_quit(void);
+		void handle_cmd_saveconfig(void);
+		void handle_cmd_stat(void);
+		void handle_cmd_info(void);
+		void handle_cmd_showport(void);
+		void handle_cmd_set(unsigned short, unsigned short, Strength);
+		void handle_cmd_loglevel(int);
+		void handle_cmd_listen(int);
+		bool parse_port_weight(char *weightstr, Strength *value);
 };
 
 #endif /* SJ_CONF_H */

@@ -70,7 +70,7 @@ public:
 
 	/* utilities */
 	void selflog(const char *, const char *);
-	char debugbuf[LARGEBUF];
+	char debug_buf[LARGEBUF];
 };
 
 class TTLFocusMap : public std::map<const unsigned int, TTLFocus> {

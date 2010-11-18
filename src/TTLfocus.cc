@@ -108,7 +108,7 @@ void TTLFocus::selflog(const char *func, const char *umsg)
 		func, status_name, sent_probe, received_probe, expiring_ttl, umsg
 	);
 
-	memset(debugbuf, 0x00, LARGEBUF);
+	memset(debug_buf, 0x00, sizeof(debug_buf));
 }
 
 void TTLFocusMap::load()

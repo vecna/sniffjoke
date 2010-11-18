@@ -127,8 +127,8 @@ void HackPool::parseEnablerFile(const char *enabler)
 			SJ_RUNTIME_EXCEPTION();
 		}
 
-		memset(plugabspath, 0x00, MEDIUMBUF);
-		snprintf(plugabspath, SMALLBUF * 2, "%s%s", INSTALL_LIBDIR, plugrelpath);
+		memset(plugabspath, 0x00, sizeof(plugabspath));
+		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, plugrelpath);
 		importPlugin(plugabspath, plugrelpath);
 
 	} while(!feof(plugfile));
@@ -149,14 +149,18 @@ HackPool::HackPool(sj_config &runcfg)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
-	if(runcfg.onlyplugin[0]) 
-		importPlugin(const_cast<const char *>(runcfg.onlyplugin), const_cast<const char *>(basename(runcfg.onlyplugin)));
-	else
+	if(runcfg.scrambletech)  {
+		char plugabspath[MEDIUMBUF];
+		memset(plugabspath, 0x00, sizeof(plugabspath));
+		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, runcfg.onlyplugin);
+		importPlugin(plugabspath, runcfg.onlyplugin);
+	} else {
 		parseEnablerFile(const_cast<const char *>(runcfg.enabler));
+	}
 
 	if(!size()) {
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly 0 plugins: FAILURE while loading detected");
-		//SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION();
 	} else
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly %d plugins", size());
 }

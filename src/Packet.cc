@@ -48,7 +48,7 @@ Packet::Packet(const unsigned char* buff, int size) :
 	memcpy(&(pbuf[0]), buff, size);
 	updatePacketMetadata();
 	
-	memset(debugbuf, 0x00, LARGEBUF);
+	memset(debug_buf, 0x00, sizeof(debug_buf));
 }
 
 Packet::Packet(const Packet& pkt) :
@@ -68,7 +68,7 @@ Packet::Packet(const Packet& pkt) :
         icmp(NULL)
 {
 	updatePacketMetadata();
-	memset(debugbuf, 0x00, LARGEBUF);
+	memset(debug_buf, 0x00, sizeof(debug_buf));
 }
 
 bool Packet::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
@@ -266,6 +266,10 @@ void Packet::IPHDR_resize(unsigned int size)
 	/* safety first! */
 	if((pbuf.size() - iphdrlen + size > MTU) || (size < sizeof(struct iphdr)) || (size > MAXIPHEADER))
 		SJ_RUNTIME_EXCEPTION();
+	
+	/* resizing iphdr to a non multiple of 4 it's not safe due to: ip->ihl = size / 4 */
+	if(size % 4)
+		SJ_RUNTIME_EXCEPTION();
 		
 	if(iphdrlen == size) /* there is nothing to do in this case */
 		return;
@@ -291,6 +295,10 @@ void Packet::TCPHDR_resize(unsigned int size)
 {
 	/* safety first! */
 	if((pbuf.size() - tcphdrlen + size > MTU) || (size < sizeof(struct tcphdr)) || (size > MAXTCPHEADER))
+		SJ_RUNTIME_EXCEPTION();
+
+	/* resizing tcphdr to a non multiple of 4 it's not safe due to: tcp->doff = size / 4 */
+	if(size % 4)
 		SJ_RUNTIME_EXCEPTION();
 
 	if(tcphdrlen == size) /* there is nothing to do in this case */
@@ -337,43 +345,91 @@ void Packet::TCPPAYLOAD_fillrandom()
 	memset_random(payload, diff);
 }
 
+bool Packet::checkIPOPT() {
+	unsigned char option;
+	unsigned int option_len;
+	
+	for (unsigned int i = sizeof(struct iphdr); i < iphdrlen;) {
+		option = ((unsigned char *)ip)[i];
 
-bool Packet::checkUncommonTCPOPT()
-{
-	unsigned char check;
-	/* default: there are not uncommon TCPOPT, and the packets should be stripped off */
-	bool ret = false ;
-
-	for (unsigned int i = sizeof(struct tcphdr); i < tcphdrlen; i++)
-	{
-		check = ((unsigned char *)tcp)[i];
-
-		switch(check) {
-			case TCPOPT_TIMESTAMP:
-				i += (TCPOLEN_TIMESTAMP +1);
-				break;
-			case TCPOPT_EOL:
-			case TCPOPT_NOP:
-				break;
-			case TCPOPT_MAXSEG:
-		case TCPOPT_WINDOW:
-		case TCPOPT_SACK_PERMITTED:
-		case TCPOPT_SACK:
-		default:
-			ret = true; break;
-		/* every unknow TCPOPT is keep, only TIMESTAMP, EOL, NOP are stripped off ATM */
+		switch(option) {
+			case IPOPT_END: /* END is stripped off */
+				option =  IPOPT_NOOP;
+				i++;
+				continue;
+			case  IPOPT_NOOP:
+				i++;
+				continue;
+			case IPOPT_SSRR:
+			case IPOPT_LSRR:
+			case IPOPT_RR:
+			case IPOPT_RA:
+			case IPOPT_CIPSO:
+			case IPOPT_SEC:
+			case IPOPT_SID:
+				goto uncommon_or_invalid_ip_option_present;
+/* default_case_checkIPOPT: if you add new options to check use the goto
+			    to this label to check the option length */
+			default:
+				option_len = ((unsigned char *)ip)[i+1];
+				if(option_len > (iphdrlen - i)) {
+					/* the packet contains invalid options */
+					goto uncommon_or_invalid_ip_option_present;
+				}
+				i += option_len;
 		}
 	}
 
-	if(ret)
-		selflog(__func__, "ARE present!");
+	return false;
 
-	return ret;
+uncommon_or_invalid_ip_option_present:
+
+	selflog(__func__, "some uncommon or invalid ip option is present!");
+	return true;
 }
 
-/* ATM not implemented: false = there are not uncommon ip opt */
-bool Packet::checkUncommonIPOPT() {
+bool Packet::checkTCPOPT() {
+	unsigned char option;
+	unsigned int option_len;
+	
+	for (unsigned int i = sizeof(struct tcphdr); i < tcphdrlen;) {
+		option = ((unsigned char *)tcp)[i];
+
+		switch(option) {
+			case TCPOPT_TIMESTAMP:
+				goto default_case_checkTCPOPT;
+			case TCPOPT_EOL: // EOL is stripped off
+				option = TCPOPT_NOP;
+				i++;
+				continue;
+			case TCPOPT_NOP:
+				i++;
+				continue;
+			case TCPOPT_MAXSEG:
+			case TCPOPT_WINDOW:
+			case TCPOPT_SACK_PERMITTED:
+			case TCPOPT_SACK:
+				goto uncommon_or_invalid_tcp_option_present;
+default_case_checkTCPOPT: /* if you add new options to check use the goto
+			    to this label to check the option length */
+			default:
+				option_len = ((unsigned char *)tcp)[i+1];
+				if(option_len > (tcphdrlen - i)) {
+					/* the packet contains invalid options */
+					goto uncommon_or_invalid_tcp_option_present;
+				}
+				i += option_len;
+				break;
+		}
+	}
+
 	return false;
+
+uncommon_or_invalid_tcp_option_present:
+
+	selflog(__func__, "some uncommon or invalid tcp option is present!");
+	return true;
+
 }
 
 void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
@@ -383,8 +439,8 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 	unsigned int target_iphdrlen = MAXIPHEADER;
 
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
-	selflog(__func__, debugbuf);
+	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	selflog(__func__, debug_buf);
 
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
 		actual_iphdrlen = sizeof(struct iphdr);
@@ -392,9 +448,9 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	} else {
 		target_iphdrlen = iphdrlen + (random() % (MAXIPHEADER - iphdrlen));
 	}
-	
-	target_iphdrlen += (4 - target_iphdrlen % 4); // we need always multiple of 4
 
+	// iphdrlen must be a multiple of 4
+	target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
 	IPHDR_resize(target_iphdrlen);
 
 	HDRoptions IPInjector(IPOPTS_INJECTOR, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
@@ -405,11 +461,14 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 	} while( target_iphdrlen != actual_iphdrlen && MAXITERATION-- );
 	
-	if(target_iphdrlen != actual_iphdrlen)
+	if(target_iphdrlen != actual_iphdrlen) {
+		// iphdrlen must be a multiple of 4
+		actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
 		IPHDR_resize(actual_iphdrlen);
+	}
 
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
-	selflog(__func__, debugbuf);
+	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	selflog(__func__, debug_buf);
 }
 
 
@@ -420,8 +479,8 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	
 	unsigned int target_tcphdrlen = 0;
 
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
-	selflog(__func__, debugbuf);
+	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	selflog(__func__, debug_buf);
 	
 	if(strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
 		actual_tcphdrlen = sizeof(struct tcphdr);
@@ -430,8 +489,8 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 		target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
 	}
 	
-	target_tcphdrlen += (4 - target_tcphdrlen % 4);
-
+	// tcphdrlen must be a multiple of 4
+	target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
 	TCPHDR_resize(target_tcphdrlen);
 	
 	HDRoptions TCPInjector(TCPOPTS_INJECTOR, (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
@@ -443,11 +502,14 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	} while( target_tcphdrlen != actual_tcphdrlen && --MAXITERATION ); 
 
 
-	if(target_tcphdrlen != actual_tcphdrlen)
+	if(target_tcphdrlen != actual_tcphdrlen) {
+		// tcphdrlen must be a multiple of 4
+		actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
 		TCPHDR_resize(actual_tcphdrlen);
+	}
 
-	sprintf(debugbuf, "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
-	selflog(__func__, debugbuf);
+	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	selflog(__func__, debug_buf);
 }
 
 void Packet::selflog(const char *func, const char *loginfo) 
@@ -459,10 +521,10 @@ void Packet::selflog(const char *func, const char *loginfo)
 	char saddr[MEDIUMBUF], daddr[MEDIUMBUF];
 
 	p = inet_ntoa(*((struct in_addr *)&(ip->saddr)));
-	strncpy(saddr, p, MEDIUMBUF);
+	strncpy(saddr, p, sizeof(saddr));
 
 	p = inet_ntoa(*((struct in_addr *)&(ip->daddr)));
-	strncpy(daddr, p, MEDIUMBUF);
+	strncpy(daddr, p, sizeof(daddr));
 
 	switch(evilbit) {
 		case GOOD: evilstr = "good"; break;
@@ -480,10 +542,10 @@ void Packet::selflog(const char *func, const char *loginfo)
 
 	switch(wtf) {
 		case RANDOMDAMAGE: wtfstr ="everybad"; break;
-		case PRESCRIPTION: wtfstr ="prescript"; break;
+		case PRESCRIPTION: wtfstr ="prescripted"; break;
 		case INNOCENT: wtfstr ="innocent"; break;
-		case GUILTY: wtfstr ="badcksum"; break;
-		case MALFORMED: wtfstr ="malformetIP"; break;
+		case GUILTY: wtfstr ="badchecksum"; break;
+		case MALFORMED: wtfstr ="malformed"; break;
                 default: case JUDGEUNASSIGNED: wtfstr = "unassigned wtf"; break;
 	}
 
@@ -495,26 +557,26 @@ void Packet::selflog(const char *func, const char *loginfo)
 		default: case SOURCEUNASSIGNED: sourcestr = "unassigned source"; break;
 	}
 
-	memset(protoinfo, 0x0, MEDIUMBUF);
+	memset(protoinfo, 0x0, sizeof(protoinfo));
 	switch(proto) {
 		case TCP:
-			snprintf(protoinfo, MEDIUMBUF, "[TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x]",
+			snprintf(protoinfo, sizeof(protoinfo), "[TCP sp %d dp %d SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x]",
 				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
 				tcp->rst, (int)pbuf.size(), (int)(pbuf.size() - iphdrlen - tcphdrlen), 
 				ntohl(tcp->seq), ntohl(tcp->ack_seq)
 			);
 			break;
 		case ICMP:
-			snprintf(protoinfo, MEDIUMBUF, "ICMP type %d code %d len %d(%d)",
+			snprintf(protoinfo, sizeof(protoinfo), "ICMP type %d code %d len %d(%d)",
 				icmp->type, icmp->code,
 				(int)pbuf.size(), (int)(pbuf.size() - iphdrlen - sizeof(struct icmphdr))
 			);
 			break;
 		case OTHER_IP:
-			snprintf(protoinfo, MEDIUMBUF, "Other proto: %d", ip->protocol);
+			snprintf(protoinfo, sizeof(protoinfo), "Other proto: %d", ip->protocol);
 			break;
 		case PROTOUNASSIGNED:
-			snprintf(protoinfo, MEDIUMBUF, "protocol unassigned! value %d", ip->protocol);
+			snprintf(protoinfo, sizeof(protoinfo), "protocol unassigned! value %d", ip->protocol);
 			break;
 		default: case ANY_PROTO:
 			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
@@ -528,5 +590,5 @@ void Packet::selflog(const char *func, const char *loginfo)
 		protoinfo, ip->ttl, loginfo
        	);
 
-	memset(debugbuf, 0x00, LARGEBUF);
+	memset(debug_buf, 0x00, sizeof(debug_buf));
 }
