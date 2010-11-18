@@ -54,6 +54,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --foreground\t\trunning in foreground [default:background]\n"\
 	" --config [filename]\tconfig file [default: %s%s]\n"\
 	" --enabler [filename]\tplugins enabler file [default: %s]\n"\
+	" --only [plugin.so,YYY]\tspecify the hack and the malformation selected\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
@@ -65,6 +66,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" info\t\t\tget massive info about sniffjoke internet stats\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
 	" set start end value\tset per tcp ports the strongness of injection\n"\
+	" listen port\t\tserver mode: protect the incoming connections\n"\
 	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
@@ -108,14 +110,15 @@ void sigtrap(int signal)
 int main(int argc, char **argv)
 {
 	/* set the default values in the configuration struct */
+	memset(&useropt, 0x00, sizeof(useropt));
 	snprintf(useropt.cfgfname, MEDIUMBUF, CONF_FILE);
 	snprintf(useropt.enabler, MEDIUMBUF, PLUGINSENABLER);
 	snprintf(useropt.user, MEDIUMBUF, DROP_USER);
 	snprintf(useropt.group, MEDIUMBUF, DROP_GROUP);
 	snprintf(useropt.chroot_dir, MEDIUMBUF, CHROOT_DIR);
 	snprintf(useropt.logfname, LARGEBUF, "%s%s", CHROOT_DIR, LOGFILE);
-	snprintf(useropt.logfname_packets, LARGEBUF, "%s%s", CHROOT_DIR, LOGFILE_PACKETS);
-	snprintf(useropt.logfname_sessions, LARGEBUF, "%s%s", CHROOT_DIR, LOGFILE_SESSIONS);
+	snprintf(useropt.logfname_packets, LARGEBUF, "%s%s%s", CHROOT_DIR, LOGFILE, SUFFIX_LF_PACKETS);
+	snprintf(useropt.logfname_sessions, LARGEBUF, "%s%s%s", CHROOT_DIR, LOGFILE, SUFFIX_LF_SESSIONS);
 	useropt.debug_level = DEFAULT_DEBUG_LEVEL;
 	useropt.go_foreground = false;
 	useropt.force_restart = false;
@@ -132,6 +135,7 @@ int main(int argc, char **argv)
 		{ "debug", required_argument, NULL, 'd' },
 		{ "logfile", required_argument, NULL, 'l' },
 		{ "enabler", required_argument, NULL, 'e' },
+		{ "only", required_argument, NULL, 'o' },
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
 		{ "help", no_argument, NULL, 'h' },
@@ -149,33 +153,38 @@ int main(int argc, char **argv)
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stop");
 	} else if ((argc == 2) && !memcmp(argv[1], "stat", strlen("stat"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "stat");
-	} else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
-		snprintf(useropt.cmd_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
 	} else if ((argc == 2) && !memcmp(argv[1], "clear", strlen("clear"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "clear");
 	} else if ((argc == 2) && !memcmp(argv[1], "showport", strlen("showport"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "showport");
-	}  else if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
+	} else if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "quit");
 	} else if ((argc == 2) && !memcmp(argv[1], "info", strlen("info"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "info");
 	} else if ((argc == 2) && !memcmp(argv[1], "saveconfig", strlen("saveconfig"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "saveconfig");
+	} else if ((argc == 3) && !memcmp(argv[1], "listen", strlen("listen"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "listen %s", argv[2]);
 	} else if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel"))) {
 		snprintf(useropt.cmd_buffer, MEDIUMBUF, "loglevel %s", argv[2]);
+	} else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set"))) {
+		snprintf(useropt.cmd_buffer, MEDIUMBUF, "set %s %s %s", argv[2], argv[3], argv[4]);
 	} else {
 		useropt.process_type = SJ_SERVER_PROC;
 	}
 
 	if (useropt.process_type == SJ_SERVER_PROC) {
 		int charopt;
-		while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhv", sj_option, NULL)) != -1) {
+		while ((charopt = getopt_long(argc, argv, "f:e:o:u:g:c:d:l:xrhv", sj_option, NULL)) != -1) {
 			switch(charopt) {
 				case 'f':
 					snprintf(useropt.cfgfname, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'e':
 					snprintf(useropt.enabler, MEDIUMBUF, "%s", optarg);
+					break;
+				case 'o':
+					snprintf(useropt.onlyparm, MEDIUMBUF, "%s", optarg);
 					break;
 				case 'u':
 					snprintf(useropt.user, MEDIUMBUF, "%s", optarg);
@@ -188,6 +197,8 @@ int main(int argc, char **argv)
 					break;
 				case 'l':
 					snprintf(useropt.logfname, MEDIUMBUF, "%s", optarg);
+					snprintf(useropt.logfname_packets, LARGEBUF, "%s%s", optarg, SUFFIX_LF_PACKETS);
+					snprintf(useropt.logfname_sessions, LARGEBUF, "%s%s", optarg, SUFFIX_LF_SESSIONS);
 					break;
 				case 'd':
 					useropt.debug_level = atoi(optarg);
@@ -216,7 +227,6 @@ int main(int argc, char **argv)
 		sj_help(argv[0], useropt.chroot_dir);
 		return -1;
 	}
-
 
 	try {
 		sniffjoke = auto_ptr<SniffJoke> (new SniffJoke(useropt));

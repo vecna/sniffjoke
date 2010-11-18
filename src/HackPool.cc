@@ -75,21 +75,30 @@ PluginTrack::PluginTrack(const PluginTrack& cpy) {
 	selfObj = cpy.selfObj;
 	pluginPath = cpy.pluginPath;
 	enabled = cpy.enabled;
+
+	/* 
+	 * GCC/GXX -> warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
+	 *
+	 * THE IS NO WAY TO AVOID IT!
+	 * for this reason our makefile is without -Werror 
+	 */
 }
 
-/*
- * the constructor of HackPool is called once; in the TCPTrack constructor the class member
- * hack_pool is instanced. what we need here is to read the entire plugin list, open and fix the
- * list, keeping track in listOfHacks variable
- *
- *    hack_pool(sjconf->running)
- *
- * (class TCPTrack).hack_pool is the name of the unique HackPool element
- */
-HackPool::HackPool(char* enabler)
+void HackPool::importPlugin(const char *plugabspath, const char *plugrelpath)
 {
-	debug.log(VERBOSE_LEVEL, __func__);	
+	try {
+		PluginTrack plugin(plugabspath);
+		push_back(plugin);
+		debug.log(DEBUG_LEVEL, "HackPool: plugin %s implementation accepted", plugin.selfObj->hackName);
+	} catch (runtime_error &e) {
+		debug.log(ALL_LEVEL, "HackPool: unable to load plugin %s", plugrelpath);
+		SJ_RUNTIME_EXCEPTION();
+	}
 
+}
+
+void HackPool::parseEnablerFile(const char *enabler)
+{
 	char plugabspath[MEDIUMBUF];
 	FILE *plugfile;
 
@@ -118,33 +127,38 @@ HackPool::HackPool(char* enabler)
 			SJ_RUNTIME_EXCEPTION();
 		}
 
+		memset(plugabspath, 0x00, MEDIUMBUF);
 		snprintf(plugabspath, SMALLBUF * 2, "%s%s", INSTALL_LIBDIR, plugrelpath);
-
-		try {
-			PluginTrack plugin(plugabspath);
-			push_back(plugin);
-			debug.log(DEBUG_LEVEL, "HackPool: plugin %s implementation accepted", plugin.selfObj->hackName);
-		} catch (runtime_error &e) {
-			debug.log(ALL_LEVEL, "HackPool: unable to load plugin %s", plugrelpath);
-			SJ_RUNTIME_EXCEPTION();
-		}
+		importPlugin(plugabspath, plugrelpath);
 
 	} while(!feof(plugfile));
 
 	fclose(plugfile);
+}
+
+/*
+ * the constructor of HackPool is called once; in the TCPTrack constructor the class member
+ * hack_pool is instanced. what we need here is to read the entire plugin list, open and fix the
+ * list, keeping track in listOfHacks variable
+ *
+ *    hack_pool(sjconf->running)
+ *
+ * (class TCPTrack).hack_pool is the name of the unique HackPool element
+ */
+HackPool::HackPool(sj_config &runcfg)
+{
+	debug.log(VERBOSE_LEVEL, __func__);
+
+	if(runcfg.onlyplugin[0]) 
+		importPlugin(const_cast<const char *>(runcfg.onlyplugin), const_cast<const char *>(basename(runcfg.onlyplugin)));
+	else
+		parseEnablerFile(const_cast<const char *>(runcfg.enabler));
 
 	if(!size()) {
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly 0 plugins: FAILURE while loading detected");
 		//SJ_RUNTIME_EXCEPTION();
 	} else
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly %d plugins", size());
-
-	/* 
-	 * TCPTrack.cc:86: warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
-	 *
-	 * THE IS NO WAY TO AVOID IT!
-	 * need, for TCPTrack.cc to be compiled without -Werror 
-	 */
 }
 
 HackPool::~HackPool() 

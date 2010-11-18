@@ -393,7 +393,6 @@ unsigned int HDRoptions::m_TCPOPT_SACK(bool) {
 
 void HDRoptions::randomInjector(bool is_good) 
 {
-	const char* typestr = NULL;
 	const char* optstr = NULL;
 	unsigned int injectetdopt_size = 0;
 	unsigned int lprev = actual_length;
@@ -405,8 +404,6 @@ void HDRoptions::randomInjector(bool is_good)
 	int switchval;
 	
 	if(type == IPOPTS_INJECTOR) {
-		
-		typestr = "IP";
 
 		if(force_next != -1) {
 			switchval = force_next;
@@ -452,8 +449,6 @@ void HDRoptions::randomInjector(bool is_good)
 		
 	} else {
 		
-		typestr = "TCP";
-
 		if(force_next != -1) {
 			switchval = force_next;
 				force_next = -1;
@@ -492,6 +487,7 @@ void HDRoptions::randomInjector(bool is_good)
 		optptr += injectetdopt_size;
 		actual_length += injectetdopt_size;
 		available_length = (target_length - actual_length);
-		debug.log(DEBUG_LEVEL, "Injected %sOPT %s size %u previous len %u actual %u", typestr, optstr, injectetdopt_size, lprev, actual_length);
+		debug.log(DEBUG_LEVEL, "Injected %sOPT %s size %u previous len %u actual %u", 
+			type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_length);
 	}
 }

@@ -40,9 +40,10 @@ struct sj_cmdline_opts {
 		char logfname_sessions[LARGEBUF];
 		unsigned int debug_level;
 		/* END OF COMMON PART WITH sj_config_opt */
-		
+
 		sj_proc_t process_type;
 		char cmd_buffer[MEDIUMBUF];
+		char onlyparm[MEDIUMBUF];
 		bool go_foreground;
 		bool force_restart;
 		FILE *logstream;
@@ -53,6 +54,17 @@ struct sj_cmdline_opts {
 /* those are the value used for track port strength of TCP coverage */
 #define PORTNUMBER  65535
 enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
+
+/* --only parsing facilities */
+#define YNcheck(byte) (byte != 'Y' && byte != 'N')
+
+#define SCRAMBLE_TTL		1
+#define SCRAMBLE_CHECKSUM	2
+#define SCRAMBLE_MALFORMED	4
+
+#define ISSET_TTL(byte)		(byte & SCRAMBLE_TTL)
+#define ISSET_CHECKSUM(byte) 	(byte & SCRAMBLE_CHECKSUM)
+#define ISSET_MALFORMED(byte) 	(byte & SCRAMBLE_MALFORMED)
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
@@ -71,9 +83,14 @@ struct sj_config {
 		unsigned int debug_level;		/* default: idem */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
+		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
+		char onlyplugin[MEDIUMBUF];		/* default: empty */
+		unsigned char scrambletech;		/* default: idem */
+
 		unsigned short max_ttl_probe;		/* default: idem */
 		unsigned int max_sex_track;		/* default: idem */
 		Strength portconf[PORTNUMBER];
+		bool listenport[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -99,6 +116,7 @@ private:
 		void autodetect_gw_mac_address(void);
 		void autodetect_first_available_tunnel_interface(void);
 		void debug_cleanup();
+		void onlyparm_parser(unsigned char &, char[MEDIUMBUF] , const char[MEDIUMBUF]);
 
 public:
 		bool chroot_status;
@@ -118,6 +136,7 @@ public:
 		char *handle_cmd_showport(void);
 		char *handle_cmd_set(unsigned short, unsigned short, Strength);
 		char *handle_cmd_loglevel(int);
+		char *handle_cmd_listen(int);
 };
 
 #endif /* SJ_CONF_H */

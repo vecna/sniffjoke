@@ -51,9 +51,10 @@ private:
 	bool analyze_ttl_stats(TTLFocus&);
 
 	void analyze_incoming_ttl(Packet&);
-	Packet* analyze_incoming_icmp(Packet&);
-	Packet* analyze_incoming_synack(Packet&);
-	Packet* analyze_incoming_rstfin(Packet&);
+	void analyze_incoming_icmp(Packet&);
+	void analyze_incoming_synack(Packet&);
+	void analyze_incoming_rstfin(Packet&);
+	bool is_session_protected(struct tcphdr *, Strength[PORTNUMBER], bool[PORTNUMBER]);
 	
 	void manage_outgoing_packets(Packet&);
 	void mark_real_syn_packets_SEND(unsigned int);

@@ -100,7 +100,7 @@ void SniffJoke::server() {
 	if (!opts.go_foreground) {
 		proc.background();
 
-		/* Log Object must be reinitialized after background */
+		/* Log Object must be reinitialized after background and before the chroot! */
 		debug_setup(NULL);
 
 		proc.isolation();
@@ -137,7 +137,7 @@ void SniffJoke::server() {
 	} else {
 		
 		/* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
-		hack_pool = auto_ptr<HackPool> (new HackPool(userconf.running.enabler));
+		hack_pool = auto_ptr<HackPool> (new HackPool(userconf.running));
 
 		/* proc.jail: chroot + userconf.running.chrooted = true */
 		proc.jail();
@@ -276,6 +276,27 @@ void SniffJoke::handle_unixsocket(int srvsock, bool &alive)
 		output = userconf.handle_cmd_stat();
 	} else if (!memcmp(r_command, "info", strlen("info"))) {
 		output = userconf.handle_cmd_info();
+	} else if (!memcmp(r_command, "listen", strlen("listen"))) 
+	{
+		int port;
+		char *portstr = strchr(r_command, ' ');
+
+		if(portstr == NULL)
+			goto handle_listen_error;
+		
+		port = atoi(++portstr);
+		if(port < 0 || port > PORTNUMBER)
+			goto handle_listen_error;
+
+		output = userconf.handle_cmd_listen(port);
+
+handle_listen_error:
+		if(output == NULL) {
+			internal_buf = (char *)malloc(MEDIUMBUF);
+			snprintf(internal_buf, MEDIUMBUF, "invalid listen command: expected a valid port as argument\n");
+			debug.log(ALL_LEVEL, "%s", internal_buf);
+			output = internal_buf;
+		}
 	} else if (!memcmp(r_command, "showport", strlen("showport"))) {
 		output = userconf.handle_cmd_showport();
 	} else if (!memcmp(r_command, "set", strlen("set"))) {

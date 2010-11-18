@@ -58,8 +58,19 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 	compare_check_copy(running.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
 	compare_check_copy(running.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
 	compare_check_copy(running.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
-	compare_check_copy(running.logfname_packets, LARGEBUF, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets), LOGFILE_PACKETS);
-	compare_check_copy(running.logfname_sessions, LARGEBUF, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions), LOGFILE_SESSIONS);
+
+	/* those are derived from logfname, they can't be changed */
+	memcpy(running.logfname_packets, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets));
+	memcpy(running.logfname_sessions, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions));
+
+	/* if --only is specify, it override the enabler */
+	if(cmdline_opts.onlyparm[0] != 0x00) 
+	{
+		onlyparm_parser(running.scrambletech, running.onlyplugin, cmdline_opts.onlyparm);
+
+		debug.log(ALL_LEVEL, "plugins file %s ignored: %s used only. This is not saved in Sj conf", 
+			basename(running.enabler), basename(running.onlyplugin) );
+	}
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
@@ -95,6 +106,47 @@ void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *u
 
 	/* second choice: take the useropt/default remaining */
 	memcpy(target, useropt, ulen > tlen ? tlen : ulen);
+}
+
+/* the option we want to parse is a: --only absolute_or_relative_plugin.so,Y|NY|NY|N */
+void UserConf::onlyparm_parser(unsigned char &scrambletech, char onlyplugin[MEDIUMBUF], const char cmdlinput[MEDIUMBUF])
+{
+	char *sep = strchr(cmdlinput, ',');
+	if(sep == NULL) {
+		debug.log(ALL_LEVEL, "\",\" not found: invalid usage of --only option: expected --only pluginpath,(Y|N)x3");
+		debug.log(ALL_LEVEL, "Y stay for enable, N for disable, the scambling technique");
+		debug.log(ALL_LEVEL, "in order: TTL, checksum, malformation. i.e. YNY use TTL and malformation only");
+		SJ_RUNTIME_EXCEPTION();
+	}
+
+	if(strlen(sep) != 4 || YNcheck(sep[1]) || YNcheck(sep[2]) || YNcheck(sep[3]) ) {
+		debug.log(ALL_LEVEL, "wrong selection length: expected three Y or N after the comma");
+		debug.log(ALL_LEVEL, "Y stay for enable, N for disable, the scambling technique");
+		debug.log(ALL_LEVEL, "in order: TTL, checksum, malformation. i.e. YNY use TTL and malformation only");
+		SJ_RUNTIME_EXCEPTION();
+	}
+
+	scrambletech |= (sep[1] == 'Y') ? SCRAMBLE_TTL : 0;
+	scrambletech |= (sep[2] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
+	scrambletech |= (sep[3] == 'Y') ? SCRAMBLE_MALFORMED : 0;
+
+	if(!scrambletech) {
+		debug.log(ALL_LEVEL, "--only parsing: almost one scramble tech is required");
+		SJ_RUNTIME_EXCEPTION();
+	}
+
+	sep[0] = 0x00;
+	if(access(cmdlinput, R_OK)) {
+		debug.log(ALL_LEVEL, "--only parsing: unable to access %s: %s", cmdlinput, strerror(errno));
+		SJ_RUNTIME_EXCEPTION();
+	}
+
+	snprintf(&onlyplugin[0], MEDIUMBUF, "%s", cmdlinput);
+	debug.log(ALL_LEVEL, "using %s plugin only: TTL %s | checksum %s | malformed %s", onlyplugin,
+		ISSET_TTL(scrambletech) ? "yes" : "no",
+		ISSET_CHECKSUM(scrambletech) ? "yes" : "no",
+		ISSET_MALFORMED(scrambletech) ? "yes" : "no"
+	);
 }
 
 /* private function useful for resolution of code/name */
@@ -471,6 +523,16 @@ char *UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strengt
 		start++;
 	} while (start <= end );
 
+	return &io_buf[0];
+}
+
+char *UserConf::handle_cmd_listen(int bindport)
+{
+	running.listenport[bindport] = true;
+
+	memset(io_buf, 0x00, HUGEBUF);
+	snprintf(io_buf, HUGEBUF, "set port %d as listen service to protect\n", bindport);
+	debug.log(ALL_LEVEL, "%s", io_buf);
 	return &io_buf[0];
 }
 
