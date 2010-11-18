@@ -245,6 +245,7 @@ void UserConf::autodetect_gw_mac_address()
 	FILE *foca;
 	char imp_str[SMALLBUF];
 	unsigned int i;
+	
 	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
 
 	debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);
