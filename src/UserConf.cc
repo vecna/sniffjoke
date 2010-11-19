@@ -72,11 +72,11 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	
 	runconfig.prescription_disabled = cmdline_opts.prescription_disabled;
 	if(runconfig.prescription_disabled)
-		debug.log(ALL_LEVEL, "prescription trick disabled, using checksum trick instead");
+		debug.log(ALL_LEVEL, "prescription technique disabled, using checksum checksum technique instead");
 
 	runconfig.malformation_disabled = cmdline_opts.malformation_disabled;
 	if(runconfig.malformation_disabled)
-		debug.log(ALL_LEVEL, "malformation trick disabled, using checksum trick instead");
+		debug.log(ALL_LEVEL, "malformation technique disabled, using checksum technique instead");
 
 	/* if --only is specify, it override the enabler */
 	if(cmdline_opts.onlyparam[0] != 0x00) 
