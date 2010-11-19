@@ -199,8 +199,8 @@ pid_t Process::readPidfile(void)
 {
 	int ret = 0;
 
-        FILE *pidFile;
-        if((pidFile = fopen(SJ_PIDFILE, "r")) == NULL) {
+        FILE *pidFile = fopen(SJ_PIDFILE, "r");
+        if(pidFile == NULL) {
 		debug.log(DEBUG_LEVEL, "readPidfile: pidfile %s not present: %s", SJ_PIDFILE, strerror(errno));
 		return ret;
 	}
@@ -216,8 +216,8 @@ pid_t Process::readPidfile(void)
 
 void Process::writePidfile(void)
 {
-        FILE *pidFile;
-        if((pidFile = fopen(SJ_PIDFILE, "w+")) == NULL) {
+        FILE *pidFile = fopen(SJ_PIDFILE, "w+");
+        if(pidFile == NULL) {
                 debug.log(ALL_LEVEL, "writePidfile: unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
                 SJ_RUNTIME_EXCEPTION();
         }
@@ -247,10 +247,10 @@ void Process::background()
 {
 	debug.log(VERBOSE_LEVEL, "The starting process is going to close the output logging. Follow the logfile");
 
-	int i;
 	if (fork())
 		exit(0);
-	
+
+	int i;	
 	for (i = getdtablesize(); i >= 0; --i)
 		close(i);
 

@@ -36,6 +36,7 @@ private:
 	struct sj_config &runconfig;
 	bool youngpacketspresent;
 	struct timespec clock;
+
 	PacketQueue p_queue;
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;

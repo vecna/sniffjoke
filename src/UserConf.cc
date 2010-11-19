@@ -30,6 +30,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	alive(sj_alive),
 	chroot_status(false)
 {
+	
 	debug.log(VERBOSE_LEVEL, __func__);
 
 	char configfile[LARGEBUF];	
@@ -53,16 +54,14 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
-	compare_check_copy(runconfig.cfgfname, MEDIUMBUF, cmdline_opts.cfgfname, strlen(cmdline_opts.cfgfname), CONF_FILE);
-	compare_check_copy(runconfig.enabler, MEDIUMBUF, cmdline_opts.enabler, strlen(cmdline_opts.enabler), PLUGINSENABLER);
-	compare_check_copy(runconfig.user, MEDIUMBUF, cmdline_opts.user, strlen(cmdline_opts.user), DROP_USER);
-	compare_check_copy(runconfig.group, MEDIUMBUF, cmdline_opts.group, strlen(cmdline_opts.group), DROP_GROUP);
-	compare_check_copy(runconfig.chroot_dir, MEDIUMBUF, cmdline_opts.chroot_dir, strlen(cmdline_opts.chroot_dir), CHROOT_DIR);
-	compare_check_copy(runconfig.logfname, LARGEBUF, cmdline_opts.logfname, strlen(cmdline_opts.logfname), LOGFILE);
-
-	/* those are derived from logfname, they can't be changed */
-	memcpy(runconfig.logfname_packets, cmdline_opts.logfname_packets, strlen(cmdline_opts.logfname_packets));
-	memcpy(runconfig.logfname_sessions, cmdline_opts.logfname_sessions, strlen(cmdline_opts.logfname_sessions));
+	compare_check_copy(runconfig.cfgfname, sizeof(runconfig.cfgfname), CONF_FILE, cmdline_opts.cfgfname);
+	compare_check_copy(runconfig.enabler, sizeof(runconfig.enabler), PLUGINSENABLER, cmdline_opts.enabler);
+	compare_check_copy(runconfig.user, sizeof(runconfig.user), DROP_USER, cmdline_opts.user);
+	compare_check_copy(runconfig.group, sizeof(runconfig.group), DROP_GROUP, cmdline_opts.group);
+	compare_check_copy(runconfig.chroot_dir, sizeof(runconfig.chroot_dir), CHROOT_DIR, cmdline_opts.chroot_dir);
+	compare_check_copy(runconfig.logfname, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE, cmdline_opts.logfname);
+	compare_check_copy(runconfig.logfname_packets, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE""SUFFIX_LF_PACKETS, cmdline_opts.logfname);
+	compare_check_copy(runconfig.logfname_sessions, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE""SUFFIX_LF_SESSIONS, cmdline_opts.logfname);
 
 	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
@@ -97,21 +96,13 @@ UserConf::~UserConf()
 }
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
-void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *useropt, unsigned int ulen, const char *sjdefault)
+void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *sjdefault, const char *useropt)
 {
-	int blen = ulen > strlen(sjdefault) ? strlen(sjdefault) : ulen;
-
-	/* zero choice: if runconfig.data[0] == 0x00, is the first start: write the default in the empty buffer */
-	memcpy(target, sjdefault, strlen(sjdefault));
-
-	/* first choice: if the user had specify an option (!= default), is used immediatly */
-	if(memcmp(useropt, sjdefault, blen)) {
-		memcpy(target, useropt, ulen > tlen ? tlen : ulen);
-		return;
-	}
-
-	/* second choice: take the useropt/default remaining */
-	memcpy(target, useropt, ulen > tlen ? tlen : ulen);
+	if(useropt[0] != 0x00)
+		strncpy(target, useropt, tlen);
+	
+	if(target[0] == 0x00)
+		strncpy(target, sjdefault, tlen);
 }
 
 /* the option we want to parse is a: --only absolute_or_relative_plugin.so,Y|NY|NY|N */
@@ -245,7 +236,6 @@ void UserConf::autodetect_gw_mac_address()
 	FILE *foca;
 	char imp_str[SMALLBUF];
 	unsigned int i;
-	
 	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
 
 	debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);

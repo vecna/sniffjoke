@@ -111,7 +111,7 @@ private:
 		const char *resolve_weight_name(int);
 		bool load(const char *);
 		void dump(void);
-		void compare_check_copy(char *, unsigned int, const char *, unsigned int , const char *);
+		void compare_check_copy(char *target, unsigned int tlen, const char *sjdefault, const char *useropt);
 		void autodetect_local_interface(void);
 		void autodetect_local_interface_ip_address(void);
 		void autodetect_gw_ip_address(void);

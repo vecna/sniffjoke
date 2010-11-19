@@ -38,12 +38,12 @@
 #define DROP_GROUP                      "sniffjoke"
 #define MAGICVAL			0xADECADDE
 #define CHROOT_DIR			INSTALL_STATEDIR
-#define PLUGINSENABLER			INSTALL_SYSCONFDIR "plugins_enabled.txt"
+#define PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.txt"
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     		//relative to chroot_dir
-#define LOGFILE                         "sniffjoke.log"			//relative to chroot_dir
-#define SUFFIX_LF_PACKETS               ".packets"			//relative to chroot_dir
-#define SUFFIX_LF_SESSIONS              ".sessions"			//relative to chroot_dir
+#define LOGFILE                        	"sniffjoke.log"                 //relative to chroot_dir
+#define SUFFIX_LF_PACKETS               ".packets"
+#define SUFFIX_LF_SESSIONS              ".sessions"
 #define DEFAULT_DEBUG_LEVEL             2
 #define DEFAULT_MAX_TTLPROBE		30
 #define DEFAULT_MAX_SEXTRACK		4096
