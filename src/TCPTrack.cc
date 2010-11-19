@@ -567,7 +567,7 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 
 	if (pkt.proto != TCP || pkt.source == NETWORK) {
 		return;
-	} else if (pkt.source == TTLBFORCE || pkt.source == TUNNEL) {
+	} else if (pkt.source == TTLBFORCE) {
 		pkt.fixIpTcpSum();
 		return;
 	}
