@@ -47,8 +47,6 @@ private:
 	sigset_t sig_oset;
 	struct sigaction action;
 public:
-	pid_t tracked_child_pid;
-	
 	Process(struct sj_config &);
 	~Process();
 
