@@ -206,19 +206,26 @@ void NetIO::prepare_conntrack(TCPTrack *ct)
 
 void NetIO::network_io(void)
 {
-	int nfds;
-
-	/*
-	 * Having a burst size of 5 pkt and a poll timeout of 10 ms
-	 * we assure to call conntrack->analyze_packets_queue() with a
-	 *  max interval of 50 ms.
+	/* 
+	 * resetting the timeout value;
 	 */
-	int burst = 5; /* the real value is burst * 2, because in one cycle we can read a pkt from netfd and a pkt from tunfd */
-	int timeout_ms = 10;
+	timeout.tv_sec = 0;
+	timeout.tv_nsec = 100;	
 
-	while (burst--)
+	unsigned int burstsize = 5;
+	/* 
+	 * The real value of burstsize is burstsize * 2 = 10pkt
+	 * because in one cycle we can read a pkt from netfd and
+	 * a pkt from tunfd
+
+	 * Having a burst size of 10 pkts and a ppoll timeout of 50 ns
+	 * we assure to call conntrack->analyze_packets_queue() with a
+	 * max interval of ~500 ns.
+	 */
+
+	while (burstsize--)
 	{
-		nfds = poll(fds, 2, timeout_ms);
+		nfds = ppoll(fds, 2, &timeout, NULL);
 
 		if (nfds <= 0) {
 			if (nfds == -1) {
@@ -237,7 +244,17 @@ void NetIO::network_io(void)
 				}
 			} else {
 				/* add packet in connection tracking queue */
-				conntrack->writepacket(NETWORK, pktbuf, size);
+				if(runconfig.active == true) {
+					conntrack->writepacket(NETWORK, pktbuf, size);
+				}else {
+					if ((size = write(tunfd, pktbuf, size)) == -1) {
+//						debug.log(DEBUG_LEVEL, "contrack_bypass: write in tunnel error: %s", strerror(errno));
+						SJ_RUNTIME_EXCEPTION();
+					} else {
+//						debug.log(DEBUG_LEVEL, "contrack_bypass: write in tunnel %d successfull [sniffjoke %s]", 
+//							size, runconfig.active == true ? "active" : "stopped");
+					}
+				}
 			}
 		}
 
@@ -248,19 +265,24 @@ void NetIO::network_io(void)
 					break;
 				}
 			} else {
-				/* add packet in connection tracking queue */
-				conntrack->writepacket(TUNNEL, pktbuf, size);
+				if(runconfig.active == true) {
+					/* add packet in connection tracking queue */
+					conntrack->writepacket(TUNNEL, pktbuf, size);
+				} else {
+					if ((size = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) {
+//						debug.log(DEBUG_LEVEL, "queue_flush: write in network error: %s", strerror(errno));
+						SJ_RUNTIME_EXCEPTION();
+					} else {
+//						debug.log(DEBUG_LEVEL, "queue_flush: write in network %d successfull [sniffjoke %s]",
+//							size, runconfig.active == true ? "active" : "stopped");
+					}
+
+				}
 			}
 		}
 	}
 
-	if(runconfig.active == true) {
-		/* when sniffjoke is active the packet are analyzed and mangled */
-		conntrack->analyze_packets_queue();
-	} else { /* running->sj_run == false */
-		/* all packets must be marked as SEND */
-		conntrack->force_send();
-	}
+	conntrack->analyze_packets_queue();
 }
 
 /* this method send all the packets sets as "SEND" */

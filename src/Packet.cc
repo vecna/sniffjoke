@@ -32,7 +32,6 @@ Packet::Packet(const unsigned char* buff, int size) :
 	packet_id(make_pkt_id(buff)),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
-	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
@@ -57,7 +56,6 @@ Packet::Packet(const Packet& pkt) :
 	packet_id(0),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
-	status(STATUSUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
@@ -120,16 +118,15 @@ unsigned int Packet::make_pkt_id(const unsigned char* buf) const
 		return 0; /* packet_id == 0 mean no ID check */
 }
 
-void Packet::mark(source_t source, status_t status, evilbit_t morality)
+void Packet::mark(source_t source, evilbit_t morality)
 {
 	this->source = source;
-	this->status = status;
 	this->evilbit = morality;
 }
 
-void Packet::mark(source_t source, status_t status, judge_t wtf, evilbit_t morality) {
+void Packet::mark(source_t source, judge_t wtf, evilbit_t morality) {
 	this->wtf = wtf;
-	mark(source, status, morality);
+	mark(source, morality);
 }
 
 void Packet::updatePacketMetadata()
@@ -233,10 +230,6 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 {
 	if(source != SOURCEUNASSIGNED ) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
-	}
-
-	if(status != STATUSUNASSIGNED ) {
-		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (status_t)status must not be set: ignored value", pluginName);
 	}
 
 	if(wtf == JUDGEUNASSIGNED ) {
@@ -514,7 +507,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
 void Packet::selflog(const char *func, const char *loginfo) 
 {
-	const char *evilstr, *statustr, *wtfstr, *sourcestr;
+	const char *evilstr, *wtfstr, *sourcestr;
 	char *p, protoinfo[MEDIUMBUF]; 
 
 	/* inet_ntoa use a static buffer */
@@ -531,13 +524,6 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case EVIL: evilstr = "evil"; break;
                 default: case MORALITYUNASSIGNED: evilstr = "unassigned evilbit"; break;
 
-	}
-
-	switch(status) {
-		case YOUNG:  statustr = "young"; break;
-		case SEND: statustr = "send"; break;
-		case KEEP: statustr = "keep"; break;
-                default: case STATUSUNASSIGNED: statustr = "unassigned status"; break;
 	}
 
 	switch(wtf) {
@@ -584,8 +570,8 @@ void Packet::selflog(const char *func, const char *loginfo)
 			break;
 	}
 
-	debug.log(PACKETS_DEBUG, "%s :%x: E|%s status %s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-		func, packet_id, evilstr, statustr, wtfstr, sourcestr,
+	debug.log(PACKETS_DEBUG, "%s :%x: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+		func, packet_id, evilstr, wtfstr, sourcestr,
 		saddr, daddr,
 		protoinfo, ip->ttl, loginfo
        	);

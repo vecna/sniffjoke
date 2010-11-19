@@ -200,7 +200,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	
 	/* create a new packet; the copy is done to keep refsyn ORIGINAL */
 	Packet *injpkt = new Packet(delayed_syn_pkt);
-	injpkt->mark(TTLBFORCE, SEND, INNOCENT, GOOD);
+	injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
 
 	/* 
 	 * if TTL expire and is generated and ICMP TIME EXCEEDED,
@@ -212,7 +212,7 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 	injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
 
-	p_queue.insert(HIGH, *injpkt);
+	p_queue.insert(Q_PRIORITY_SEND, *injpkt);
 	
 	ttlfocus.scheduleNextProbe();
 
@@ -390,7 +390,8 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 		/* if sniffjoke had not yet the minimum working ttl, continue the starting probe */
 		if (ttlfocus->status == TTL_BRUTALFORCE) {
 			ttlfocus->selflog(__func__, "SYN retrasmission, keep pkt");
-			pkt.status = KEEP; 
+			p_queue.remove(pkt);
+			p_queue.insert(Q_KEEP, pkt);
 			return;
 		}
 	}
@@ -420,11 +421,12 @@ void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
 {
 	Packet *pkt = NULL;
 
-	p_queue.get_reset();
-	while ((pkt = p_queue.get(ANY_STATUS, ANY_SOURCE, TCP)) != NULL) {
+	p_queue.select(Q_KEEP);
+	while ((pkt = p_queue.get(ANY_SOURCE, TCP)) != NULL) {
 		if (pkt->tcp->syn && pkt->ip->daddr == daddr) {
 			pkt->selflog(__func__, "the orig SYN shift from keep to send");
-			pkt->status = SEND;
+			p_queue.remove(*pkt);
+			p_queue.insert(Q_SEND, *pkt);
 		}
 	}
 }
@@ -495,7 +497,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt, const SessionTrack *sessio
 			}
 
 			/* source and status are ignored in selfIntegrityCheck, evilbit is set here to be EVIL */
-			injpkt->mark(LOCAL, SEND, EVIL);
+			injpkt->mark(LOCAL, EVIL);
 			/* here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
 			 * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too */
 
@@ -563,12 +565,13 @@ void TCPTrack::last_pkt_fix(Packet &pkt)
 	const TTLFocus *ttlfocus;
 	TTLFocusMap::iterator ttlfocus_map_it;
 
-	if (pkt.proto != TCP) {
+	if (pkt.proto != TCP || pkt.source == NETWORK) {
 		return;
-	} else if (pkt.source != TUNNEL && pkt.source != LOCAL) {
+	} else if (pkt.source == TTLBFORCE || pkt.source == TUNNEL) {
 		pkt.fixIpTcpSum();
 		return;
 	}
+	
 	
 	/* 1st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */
 	ttlfocus_map_it = ttlfocus_map.find(pkt.ip->daddr);
@@ -670,11 +673,11 @@ forced_guilty:
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
-bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
+void TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
 {
 	try {
 		Packet *pkt = new Packet(buff, nbyte);
-		pkt->mark(source, YOUNG, INNOCENT, GOOD);
+		pkt->mark(source, INNOCENT, GOOD);
 	
 		/* 
 		* the packet from the tunnel are put with lower priority and the
@@ -682,15 +685,15 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 		* when the software loop for in p_queue.get(status, source, proto) the 
 		* forged packet are sent before the originals one.
 		*/
-		p_queue.insert(LOW, *pkt);
 		
+		p_queue.insert(Q_YOUNG, *pkt);
 		youngpacketspresent = true;
 	
-		return true;
+		return;
 		
 	} catch (exception &e) {
 		/* malformed packet, ignored */
-		return false;
+		return;
 	}
 }
 
@@ -698,8 +701,8 @@ Packet* TCPTrack::readpacket()
 {
 	Packet *pkt = NULL;
 
-	p_queue.get_reset();
-	if ((pkt = p_queue.get(SEND, ANY_SOURCE, ANY_PROTO)) != NULL) {
+	p_queue.select(Q_SEND);
+	if ((pkt = p_queue.get(ANY_SOURCE, ANY_PROTO)) != NULL) {
 		p_queue.remove(*pkt);
 		if (runconfig.active == true)
 			last_pkt_fix(*pkt);
@@ -745,11 +748,9 @@ void TCPTrack::analyze_packets_queue()
 
 	if(youngpacketspresent == false)
 		goto analyze_keep_packets;
-	else
-		youngpacketspresent = false;
 
-	p_queue.get_reset();
-	while ((pkt = p_queue.get(YOUNG, NETWORK, ICMP)) != NULL) {
+	p_queue.select(Q_YOUNG);
+	while ((pkt = p_queue.get(NETWORK, ICMP)) != NULL) {
 		/* 
 		 * a TIME_EXCEEDED packet should contains informations
 		 * for discern HOP distance from a remote host
@@ -762,8 +763,8 @@ void TCPTrack::analyze_packets_queue()
 	 * incoming TCP. sniffjoke algorithm open/close sessions and detect TTL
 	 * lists analyzing SYN+ACK and FIN|RST packet
 	 */
-	p_queue.get_reset();
-	while ((pkt = p_queue.get(YOUNG, NETWORK, TCP)) != NULL)
+	p_queue.select(Q_YOUNG);
+	while ((pkt = p_queue.get(NETWORK, TCP)) != NULL)
 	{
 		/* analysis of the incoming TCP packet for check if TTL we are receiving is
 		 * changed or not. is not the correct solution for detect network topology
@@ -783,12 +784,13 @@ void TCPTrack::analyze_packets_queue()
 	}
 
 	/* outgoing TCP packets ! */
-	p_queue.get_reset();
-	while ((pkt = p_queue.get(YOUNG, TUNNEL, TCP)) != NULL) {
+	p_queue.select(Q_YOUNG);
+	while ((pkt = p_queue.get(TUNNEL, TCP)) != NULL) {
 
 		/* no hacks required for this destination port */
 		if (runconfig.portconf[ntohs(pkt->tcp->dest)] == NONE) {
-			pkt->status = SEND; 
+			p_queue.remove(*pkt);
+			p_queue.insert(Q_SEND, *pkt);
 			continue;
 		}
 
@@ -803,15 +805,18 @@ void TCPTrack::analyze_packets_queue()
 	}
 
 	/* all YOUNG packets must be sent immediatly */
-	p_queue.get_reset();
-	while ((pkt = p_queue.get(YOUNG, ANY_SOURCE, ANY_PROTO)) != NULL) {
-		pkt->status = SEND;
+	p_queue.select(Q_YOUNG);
+	while ((pkt = p_queue.get(ANY_SOURCE, ANY_PROTO)) != NULL) {
+		p_queue.remove(*pkt);
+		p_queue.insert(Q_SEND, *pkt);
 	}
+	
+	youngpacketspresent = false;
 
 analyze_keep_packets:
 
-	p_queue.get_reset();	
-	while ((pkt = p_queue.get(KEEP, TUNNEL, TCP)) != NULL) {
+	p_queue.select(Q_KEEP);	
+	while ((pkt = p_queue.get(TUNNEL, TCP)) != NULL) {
 		ttlfocus_map_it = ttlfocus_map.find(pkt->ip->daddr);
 		if (ttlfocus_map_it == ttlfocus_map.end()) {
 			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
@@ -823,19 +828,5 @@ analyze_keep_packets:
 			pkt->selflog(__func__, "ttl status BForce, pkt KEEP");
 			enque_ttl_probe(*pkt, *ttlfocus);
 		}
-	}
-}
-
-/*
- * this function set SEND stats to all packets, is used when sniffjoke must not 
- * mangle the packets 
- */
-void TCPTrack::force_send(void)
-{
-	Packet *pkt = NULL;
-	
-	p_queue.get_reset();
-	while ((pkt = p_queue.get()) != NULL) {
-		pkt->status = SEND;
 	}
 }

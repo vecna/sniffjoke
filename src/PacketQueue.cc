@@ -23,16 +23,17 @@
 #include "PacketQueue.h"
 
 PacketQueue::PacketQueue() :
-	front(new Packet*[2]),
-	back(new Packet*[2]),
-	cur_prio(LOW),
+	front(new Packet*[LAST_QUEUE + 1]),
+	back(new Packet*[LAST_QUEUE + 1]),
+	iterate_through_all(true),
+	cur_queue(FIRST_QUEUE),
 	cur_pkt(NULL),
 	next_pkt(NULL)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	memset(front, NULL, sizeof(Packet*)*2);
-	memset(back, NULL, sizeof(Packet*)*2);	
+	memset(front, NULL, sizeof(Packet*)*LAST_QUEUE + 1);
+	memset(back, NULL, sizeof(Packet*)*LAST_QUEUE + 1);
 }
 
 
@@ -40,7 +41,7 @@ PacketQueue::~PacketQueue(void)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	get_reset();
+	select(Q_ANY);
 	while (get() && cur_pkt != NULL) {
 		delete cur_pkt;
 	}
@@ -49,19 +50,19 @@ PacketQueue::~PacketQueue(void)
 	delete[] back;
 }
 
-void PacketQueue::insert(priority_t prio, Packet &pkt)
+void PacketQueue::insert(queue_t queue, Packet &pkt)
 {
 	delete_if_present(pkt.packet_id);
 
-	if (front[prio] == NULL) {
+	if (front[queue] == NULL) {
 		pkt.prev = NULL;
 		pkt.next = NULL;
-		front[prio] = back[prio] = &pkt;
+		front[queue] = back[queue] = &pkt;
 	} else {
-		pkt.prev = back[prio];
+		pkt.prev = back[queue];
 		pkt.next = NULL;
-		back[prio]->next = &pkt;
-		back[prio] = &pkt;
+		back[queue]->next = &pkt;
+		back[queue] = &pkt;
 	}
 }
 
@@ -69,7 +70,7 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
 	delete_if_present(pkt.packet_id);
 
-	for (int i = HIGH; i <= LOW; i++) {
+	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (front[i] == &ref) {
 			pkt.prev = NULL;
 			pkt.next = &ref;
@@ -90,7 +91,7 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
 	delete_if_present(pkt.packet_id);
 
-	for (int i = HIGH; i <= LOW; i++) {
+	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (back[i] == &ref) {
 			pkt.prev = &ref;
 			pkt.next = NULL;
@@ -109,7 +110,7 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 
 void PacketQueue::remove(const Packet &pkt)
 {
-	for (int i = HIGH; i <= LOW; i++) {
+	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (front[i] == &pkt) {
 			if (back[i] == &pkt) {
 				front[i] = NULL;
@@ -146,10 +147,17 @@ void PacketQueue::delete_if_present(unsigned int packet_id)
 	}	
 }
 
-void PacketQueue::get_reset() {
-	cur_prio = HIGH;
+void PacketQueue::select(queue_t queue) {
+	if(queue == Q_ANY) {
+		cur_queue = FIRST_QUEUE;
+		iterate_through_all = true;
+	} else {
+		cur_queue = queue;
+		iterate_through_all = false;
+	}
+
 	cur_pkt = NULL;
-	next_pkt = front[HIGH];
+	next_pkt = front[cur_queue];
 }
 
 Packet* PacketQueue::get()
@@ -161,9 +169,9 @@ Packet* PacketQueue::get()
 			break;
 		}
 		
-		if (cur_prio != LOW) {
-			cur_prio = LOW;
-			next_pkt = front[LOW];
+		if (iterate_through_all && cur_queue != LAST_QUEUE) {
+			cur_queue++;
+			next_pkt = front[cur_queue];
 		} else {
 			cur_pkt = NULL;
 			break;
@@ -174,12 +182,9 @@ Packet* PacketQueue::get()
 	return cur_pkt;
 }
 
-Packet* PacketQueue::get(status_t status, source_t source, proto_t proto) 
+Packet* PacketQueue::get(source_t source, proto_t proto)
 {
 	while(get() && cur_pkt != NULL) {
-		if (status != ANY_STATUS && cur_pkt->status != status)
-			continue;
-
 		if (source != ANY_SOURCE && cur_pkt->source != source)
 			continue;
 
@@ -195,7 +200,7 @@ Packet* PacketQueue::get(status_t status, source_t source, proto_t proto)
 
 Packet* PacketQueue::get(unsigned int packet_id)
 {
-	get_reset();
+	select(Q_ANY);
 	while (get() && cur_pkt != NULL) {
 		if (cur_pkt->packet_id == packet_id)
 			break;
