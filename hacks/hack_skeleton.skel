@@ -39,7 +39,7 @@
  * uniformed to the others present in others hacks.
  * A simple example follow:
  * 
- * SOURCE: [ deduction? ], [ software analysis? ]
+ * SOURCE: [ deduction? ], [ software analysis? ], [empiric]
  * VERIFIED IN: [linux 2.6.36?]
  * KNOW BUGS: [does not work in some circumstances?]
  * WRITTEN IN VERSION: [version of sniffjoke at the time the hack was written and verified ]
@@ -53,37 +53,61 @@ class ##HACK_CLASS_NAME## : public Hack
 public:
 
 	/* mandatory createHack function, works as a constructor for the hack. */
+	/* every function you need to use is in Packet.h, inside Packet & class */
 	virtual void createHack(Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-
-		/* One or more hack packet can be created using new allocation*/
+		/* One or more hack packet can be created using new allocation, those are the
+		 * Packets * you will return to SniffJoke */
 		Packet* pkt1 = new Packet(orig_packet);
 		Packet* pkt2 = new Packet(orig_packet);
 
+		/* Hack can be manipolated using functions defined in Packet.h, fill the data with
+		 * random payload */
 
-		/* Hack can be manipolated using functions defined in Packet.h */
+		/* the first packet became a sequence valid reset */
+                pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
+		pkt1->TCPPAYLOAD_resize(0);
+		/* Change the TCP flag or other in the packets */
+		pkt1->tcp->ack = pkt1->tcp->fin = pkt1->tcp->syn = pkt1->tcp->push = 0;
+		pkt1->tcp->rst = pkt1->tcp->ack = 1;
 
-		pkt1->fillRandomPayload();
+		/* the second is set to contain a fake data */
+                pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 512);
+		pkt2->TCPPAYLOAD_resize(512);
+		pkt2->tcp->ack = pkt2->tcp->rst = pkt2->tcp->syn = pkt2->tcp->fin = 0;
+		pkt2->tcp->push = 1;
 		pkt2->fillRandomPayload();
-		
+
+		/* we want to fill with 'A' the TCPoption and strip the previously present */
+		pkt2->TCPHDR_resize(40);
+
+		int i;
+		for(i = sizeof(struct tcphdr); i < 40; i++)
+			(unsigned char *)&pkt2->tcp[i] = 'A';
 
 		/* Hacks options can be setted like hack position */
 
-		pkt1->position = ANTICIPATION;
-		pkt2->position = POSTICIPATION;
-		pkt1->wtf = RANDOMDAMAGE;
-		pkt2->wtf = RANDOMDAMAGE;
+		/* the fake data is set to be sent BEFORE the original data. we are not
+		 * sure of arrival order, because TCP could support reordering, anyway
+		 * a Packet set in ANTICIPATION is sent before those marked as POSTICIPATION */
+		pkt2->position = ANTICIPATION;
 
+		/* the reset is sent 
+		pkt1->position = POSTICIPATION;
+
+		/* the reset we want expire an hop before the service */
+		pkt1->wtf = PRESCRIPTION;
+
+		/* the fake data, with the invlide 'A' TCP options, is sent MALFORMED */
+		pkt2->wtf = MALFORMED; // or RANDOMDAMAGE, or GUILTY
 
 		/* A self log message could be outputted onto hack creation */
-
-		pkt1->selflog(HACK_NAME, "Hacked packet");
-		pkt2->selflog(HACK_NAME, "Hacked packet");
+		pkt1->selflog(HACK_NAME, "Hacked Packet1 the valid reset with stripped of payload, expired before reach remote host");
+		pkt2->selflog(HACK_NAME, "Hacked Packet2 the fake payload with invalid tcpopt and malformed ipopt");
 
 		/* The hacks constructed must be pushed inside pktVector */
-
 		pktVector.push_back(pkt1);
 		pktVector.push_back(pkt2);
 	}
@@ -97,6 +121,7 @@ public:
 	/* constructor, here hackName and HackFrequency must be defined */
 	##HACK_CLASS_NAME##() {
 		hackName = HACK_NAME;
+		/* the meaning of COMMON and of the other Frequency, is explained in http://www.delirandom.net/sniffjoke/plugin */
 		hackFrequency = COMMON;
 	}
 };
