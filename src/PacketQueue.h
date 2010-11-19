@@ -26,28 +26,30 @@
 #include "Utils.h"
 #include "Packet.h"
 
-enum priority_t { HIGH = 0, LOW = 1 };
+enum queue_t { Q_ANY = -1, Q_PRIORITY_SEND = 0, Q_SEND = 1, Q_YOUNG = 2, Q_KEEP = 3 };
+#define FIRST_QUEUE (Q_PRIORITY_SEND)
+#define LAST_QUEUE (Q_KEEP)
 
 class PacketQueue {
 private:
 	Packet **front;
 	Packet **back;
-	unsigned int queue_levels;
-	unsigned int cur_prio;
+	bool iterate_through_all;
+	unsigned int cur_queue;
 	Packet *cur_pkt;
 	Packet *next_pkt;
 public:
 
 	PacketQueue();
 	~PacketQueue(void);
-	void insert(priority_t, Packet &);
+	void insert(queue_t, Packet &);
 	void insert_before(Packet &, Packet &);
 	void insert_after(Packet &, Packet &);
 	void remove(const Packet &);
 	void delete_if_present(unsigned int);
-	void get_reset();
+	void select(queue_t);
 	Packet* get();
-	Packet* get(status_t, source_t, proto_t);
+	Packet* get(source_t, proto_t);
 	Packet* get(unsigned int);
 };
 

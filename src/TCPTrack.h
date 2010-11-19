@@ -38,6 +38,7 @@ private:
 	struct timespec clock;
 
 	PacketQueue p_queue;
+	
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
 	HackPool &hack_pool;
@@ -67,10 +68,9 @@ public:
 	TCPTrack(sj_config&, HackPool&);
 	~TCPTrack(void);
 
-	bool writepacket(const source_t, const unsigned char*, int);
+	void writepacket(const source_t, const unsigned char*, int);
 	Packet* readpacket(void);
 	void analyze_packets_queue(void);
-	void force_send(void);
 };
 
 #endif /* SJ_TCPTRACK_H */

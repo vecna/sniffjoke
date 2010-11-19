@@ -45,9 +45,11 @@ private:
 	int tunfd;
 	int netfd;
 
-        /* poll variables, two file descriptors */
+        /* ppoll variables, two file descriptors */
         struct pollfd fds[2];
-
+        int nfds;
+	struct timespec timeout;
+	
 	TCPTrack *conntrack;
 
 	unsigned char pktbuf[MTU];

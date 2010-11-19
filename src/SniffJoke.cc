@@ -146,6 +146,7 @@ void SniffJoke::server() {
 		proc.privilegesDowngrade();
 
 		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.runconfig, *hack_pool));
+
 		mitm->prepare_conntrack(conntrack.get());
 
 		listening_unix_socket = bind_unixsocket();
@@ -154,7 +155,6 @@ void SniffJoke::server() {
 		while (alive) {
 
 			proc.sigtrapDisable();
-
 			mitm->network_io();
 			mitm->queue_flush();
 

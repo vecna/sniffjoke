@@ -84,7 +84,6 @@ public:
 
 	evilbit_t evilbit;
 	source_t source;
-	status_t status;
 	judge_t wtf;
 	proto_t proto;
 	position_t position;	
@@ -108,8 +107,8 @@ public:
 
 	void updatePacketMetadata(void);
 
-	void mark(source_t, status_t, evilbit_t);
-	void mark(source_t, status_t, judge_t, evilbit_t);
+	void mark(source_t, evilbit_t);
+	void mark(source_t, judge_t, evilbit_t);
 	
 	/* IP/TCP checksum functions */
 	unsigned int half_cksum(const void *, int);
