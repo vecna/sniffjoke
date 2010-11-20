@@ -211,22 +211,19 @@ void NetIO::network_io(void)
 	 * 
 	 * The objective is to have an acquisition stage quite constant
 	 * with a max duration of 50ms; in fact we have to call the function
-	 * conntrack->analyze_packets_queue() with a max interval of 20 ms
+	 * conntrack->analyze_packets_queue() with a max interval of 50 ms
 	 * to permit the conntrack ttl schedule to go forward.
 	 * 
-	 * So We have to mantain constant the product timeout * cycle = 20
+	 * So We have to mantain constant the product timeout * cycle = 50
 	 * 
-	 * In this way, due to the poll value we can have a max burst = cycle * 2.
+	 * In this way, due to the poll value We can have a max burst = cycle * 2 = 100pkts
 	 * 
 	 */
-
-	timeout.tv_sec = 0;
-	timeout.tv_nsec = 2000000;
 
 	unsigned int cycle = 50;
 	while (cycle--)
 	{
-		nfds = ppoll(fds, 2, &timeout, NULL);
+		nfds = poll(fds, 2, 1); // POLL TIMEOUT = 1
 
 		if (nfds <= 0) {
 			if (nfds == -1) {

@@ -419,7 +419,7 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 	unsigned int target_iphdrlen = MAXIPHEADER;
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
@@ -447,7 +447,7 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 		IPHDR_resize(actual_iphdrlen);
 	}
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 }
 
@@ -459,7 +459,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	
 	unsigned int target_tcphdrlen = 0;
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 	
 	if(strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
@@ -488,7 +488,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 		TCPHDR_resize(actual_tcphdrlen);
 	}
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 }
 
