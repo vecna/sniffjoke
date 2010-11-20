@@ -748,19 +748,12 @@ Packet* TCPTrack::readpacket()
 
 
 /* 
- * this is the "second time", the received packet are assigned in a tracked TCP session,
- * for understand which kind of mangling should be apply. maybe not all packets is sent 
- * immediatly, this happens when sniffjoke require some time (and some packets) for
- * detect the hop distance between the remote peer.
  *
- * as defined in sniffjoke.h, the "status" variable could have these status:
- * YOUNG (packets received, here analyzed for the first time)
- * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
- * SEND (packets marked as sendable)
- *
+ * This is an important and critical function for sniffjoke operativity.
+ * 
  * analyze_packets_queue is called from the main.cc ppoll() block
  * 
- * Functions called inside a p_queue.get() cycle:
+* All the functions that are called here  inside a p_queue.get() cycle:
  *
  *     COULD  1) extract and delete the argument packet only,
  *            2) insert the argument packet or a new packet into any of the
@@ -768,6 +761,10 @@ Packet* TCPTrack::readpacket()
  * 
  *     MUST:  1) not call functions containing a p_queue.get() as well.
  *
+ * as defined in sniffjoke.h, the "status" variable could have these status:
+ * YOUNG (packets received, here analyzed for the first time)
+ * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
+ * SEND (packets marked as sendable)
  * 
  */
 void TCPTrack::analyze_packets_queue()
