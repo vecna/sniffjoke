@@ -52,8 +52,6 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(queue_t queue, Packet &pkt)
 {
-	delete_if_present(pkt.packet_id);
-
 	if (front[queue] == NULL) {
 		pkt.prev = NULL;
 		pkt.next = NULL;
@@ -68,8 +66,6 @@ void PacketQueue::insert(queue_t queue, Packet &pkt)
 
 void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
-	delete_if_present(pkt.packet_id);
-
 	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (front[i] == &ref) {
 			pkt.prev = NULL;
@@ -89,8 +85,6 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 
 void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
-	delete_if_present(pkt.packet_id);
-
 	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (back[i] == &ref) {
 			pkt.prev = &ref;
@@ -136,17 +130,6 @@ void PacketQueue::remove(const Packet &pkt)
 	return;
 }
 
-void PacketQueue::delete_if_present(unsigned int packet_id)
-{
-	if (packet_id) { /* HackPackets packets bypass this */
-		Packet* tmp = get(packet_id);
-		if (tmp != NULL) {
-			remove(*tmp);
-			delete tmp;
-		}
-	}	
-}
-
 void PacketQueue::select(queue_t queue) {
 	if(queue == Q_ANY) {
 		cur_queue = FIRST_QUEUE;
@@ -166,46 +149,14 @@ Packet* PacketQueue::get()
 		if (next_pkt != NULL) {
 			cur_pkt = next_pkt;
 			next_pkt = next_pkt->next;
-			break;
+			return cur_pkt; /* FOUND */
 		}
 		
 		if (iterate_through_all && cur_queue != LAST_QUEUE) {
 			cur_queue++;
 			next_pkt = front[cur_queue];
 		} else {
-			cur_pkt = NULL;
-			break;
+			return NULL; /* NOT FOUND */
 		}
 	}
-	
-	/* return next_pkt or NULL at the end */
-	return cur_pkt;
-}
-
-Packet* PacketQueue::get(source_t source, proto_t proto)
-{
-	while(get() && cur_pkt != NULL) {
-		if (source != ANY_SOURCE && cur_pkt->source != source)
-			continue;
-
-		if (proto != ANY_PROTO && cur_pkt->proto != proto)
-			continue;
-
-		break;
-	}
-
-	/* result if found or NULL if not found */
-	return cur_pkt;
-}
-
-Packet* PacketQueue::get(unsigned int packet_id)
-{
-	select(Q_ANY);
-	while (get() && cur_pkt != NULL) {
-		if (cur_pkt->packet_id == packet_id)
-			break;
-	}
-
-	/* result if found or NULL if not found */
-	return cur_pkt;	
 }

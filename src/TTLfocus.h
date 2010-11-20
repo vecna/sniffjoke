@@ -25,14 +25,16 @@
 
 #include "Utils.h"
 #include "UserConf.h"
+#include "Packet.h"
 
 #include <map>
+#include <vector>
 
 #include "time.h"
 
 using namespace std;
 
-#define TTLPROBEINTERVAL 50000 // ns
+#define TTLPROBEINTERVAL 50000000 // 50ms
 
 enum ttlsearch_t { TTL_KNOWN = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOWN = 9 };
 
@@ -51,6 +53,7 @@ struct ttlfocus_cache_record {
 
 class TTLFocus {
 public:
+	ttlsearch_t status;
 	unsigned int daddr;
 	unsigned short expiring_ttl;
 	unsigned short min_working_ttl;
@@ -59,10 +62,18 @@ public:
 	unsigned short received_probe;
 	unsigned short puppet_port;
 	unsigned int rand_key;
-	ttlsearch_t status;
+	
+	/*
+	 * copy of the reference syn packet.
+	 * it's used only during ttl broutefoce,
+	 * and it' not saved into the cache.
+	 * (We mantain cache only for status TTL_[UN]KNOWN)
+	 */ 
+	vector<unsigned char> synpbuf_copy;
+	
 	struct timespec next_probe_time;
 
-	TTLFocus(unsigned int);
+	TTLFocus(const Packet &syn);
 	TTLFocus(const TTLFocus& cpy);
 	TTLFocus(const struct ttlfocus_cache_record& cpy);
 	void scheduleNextProbe();
