@@ -1,0 +1,82 @@
+#!/bin/sh -x
+
+echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
+
+USERID=`id -u`
+if [ $USERID != "0" ]; then
+	echo "- Error, only root should run $0"
+	exit;
+fi
+
+if [ -x $1 ]; then
+	SNIFFJOKEBIN=$1
+else
+	SNIFFJOKEBIN="/usr/local/bin/sniffjoke"
+
+if [ -x $SNIFFJOKEBIN ]; then
+	echo "$SNIFFJOKEBIN is not a valid executable, pass sniffjoke path as (only) argument or install it"
+	exit;
+fi
+
+echo "+ Starting SniffJoke hacks test"
+echo "* Stopping running sniffjoke ($SNIFFJOKE quit)"
+$SNIFFJOKEBIN quit
+
+plugins[0]="/usr/local/lib/sniffjoke/fake_close_fin.so"
+plugins[1]="/usr/local/lib/sniffjoke/fake_close_rst.so"
+plugins[2]="/usr/local/lib/sniffjoke/fake_data.so"
+plugins[3]="/usr/local/lib/sniffjoke/fake_seq.so"
+plugins[4]="/usr/local/lib/sniffjoke/fake_syn.so"
+plugins[5]="/usr/local/lib/sniffjoke/fake_zero_window.so"
+plugins[6]="/usr/local/lib/sniffjoke/shift_ack.so"
+plugins[7]="/usr/local/lib/sniffjoke/valid_rst_fake_seq.so"
+
+scrambling[0]="YNN"
+scrambling[1]="NYN"
+scrambling[2]="NNY"
+
+FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
+echo "retrivering multi-OS testing server list ($FILEURL)"
+SERVERFILE="/tmp/testsuite.info"
+rm -f $SERVERFILE
+wget -O $SERVERFILE $FILEURL
+
+if [ ! -e $SERVERFILE ]; then
+	echo "- unable to retriver $SERVERFILE by wget $FILEURL"
+	exit;
+fi
+
+plug_i=`seq 0 7`
+scramb_i=`seq 0 2`
+
+for x in $plug_i; do
+	for y in $scamb_i; do
+		WINSERVER=´grep "WINDOWS=" $SERVERFILE | cut -b 8-´
+		LINSERVER=´grep "LINUX=" $SERVERFILE | cut -b 6-´
+		OTHSERVER=´grep "OTHER=" $SERVERFILE | cut -b 6-´
+	done
+done
+
+TODO - make this a function
+	rm -rf tmpdir.$x
+	mkdir tmpdir.$x
+	cd tmpdir.$x
+	for y in `seq 1 5`; do echo -n "$x $y " >> generated-1.$x; done
+	for y in `seq 1 5`; do echo -n "$x $y " >> generated-2.$x; done
+	md5sum generated-1.$x > generated-1.$x.md5sum
+	md5sum generated-2.$x > generated-2.$x.md5sum
+	generate_hacking_option
+	echo "+ Starting sniffjoke in the $x instance"
+	sniffjoke --force --debug 6 --hacking $HACKOPT
+	sleep 1
+	if [ ! -e "/tmp/sniffjoke/sniffjoke_service" ]; then 
+		echo "- Bad, on instance $x sniffjoke IS NOT running!"; exit;
+	fi
+	sniffjoke clear
+	sniffjoke set 80 80 heavy 
+	sniffjoke start
+	curl -d "sparedata=`cat generated-1.$x`" http://www.delirandom.net/sniffjoke_test/post_echo.php > received-1.$x
+	curl -d "sparedata=`cat generated-2.$x`" http://www.delirandom.net/sniffjoke_test/post_echo.php > received-2.$x
+	sniffjoke quit
+	cd ..
+done
