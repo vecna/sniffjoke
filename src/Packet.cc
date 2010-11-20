@@ -29,7 +29,6 @@
 Packet::Packet(const unsigned char* buff, int size) :
 	prev(NULL),
 	next(NULL),
-	packet_id(make_pkt_id(buff)),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
@@ -53,7 +52,6 @@ Packet::Packet(const unsigned char* buff, int size) :
 Packet::Packet(const Packet& pkt) :
 	prev(NULL),
 	next(NULL),
-	packet_id(0),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
 	wtf(JUDGEUNASSIGNED),
@@ -107,17 +105,6 @@ bool Packet::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 	return true;
 }
 
-unsigned int Packet::make_pkt_id(const unsigned char* buf) const
-{
-	struct iphdr *ip = (struct iphdr *)buf;
-	struct tcphdr *tcp;
-	if (ip->protocol == IPPROTO_TCP) {
-		tcp = (struct tcphdr *)((unsigned char *)(ip) + (ip->ihl * 4));
-		return tcp->seq;
-	} else
-		return 0; /* packet_id == 0 mean no ID check */
-}
-
 void Packet::mark(source_t source, evilbit_t morality)
 {
 	this->source = source;
@@ -153,7 +140,7 @@ void Packet::updatePacketMetadata()
 		case IPPROTO_TCP:	
 			/* START TCPHDR UPDATE */
 			if(pbuf.size() < sizeof(struct iphdr) + sizeof(struct tcphdr))
-				throw exception();
+				exit(666);//throw exception();
 
 			proto = TCP;
 			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
@@ -288,7 +275,7 @@ void Packet::TCPHDR_resize(unsigned int size)
 {
 	/* safety first! */
 	if((pbuf.size() - tcphdrlen + size > MTU) || (size < sizeof(struct tcphdr)) || (size > MAXTCPHEADER))
-		SJ_RUNTIME_EXCEPTION();
+	 SJ_RUNTIME_EXCEPTION();
 
 	/* resizing tcphdr to a non multiple of 4 it's not safe due to: tcp->doff = size / 4 */
 	if(size % 4)
@@ -432,7 +419,7 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 	unsigned int target_iphdrlen = MAXIPHEADER;
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
@@ -460,7 +447,7 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 		IPHDR_resize(actual_iphdrlen);
 	}
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 }
 
@@ -472,7 +459,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	
 	unsigned int target_tcphdrlen = 0;
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 	
 	if(strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
@@ -501,7 +488,7 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 		TCPHDR_resize(actual_tcphdrlen);
 	}
 
-	snprintf(debug_buf, sizeof(debug_buf), "__%d__ strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
+	snprintf(debug_buf, sizeof(debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", __LINE__, strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 }
 
@@ -564,14 +551,14 @@ void Packet::selflog(const char *func, const char *loginfo)
 		case PROTOUNASSIGNED:
 			snprintf(protoinfo, sizeof(protoinfo), "protocol unassigned! value %d", ip->protocol);
 			break;
-		default: case ANY_PROTO:
+		default:
 			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
 			SJ_RUNTIME_EXCEPTION();
 			break;
 	}
 
-	debug.log(PACKETS_DEBUG, "%s :%x: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-		func, packet_id, evilstr, wtfstr, sourcestr,
+	debug.log(PACKETS_DEBUG, "%s : E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+		func, evilstr, wtfstr, sourcestr,
 		saddr, daddr,
 		protoinfo, ip->ttl, loginfo
        	);

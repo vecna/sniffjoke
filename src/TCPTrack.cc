@@ -41,6 +41,8 @@ TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	/* random pool initialization */
 	for (int i = 0; i < ((random() % 40) + 3); i++) 
 		srandom((unsigned int)time(NULL) ^ random());
+		
+	ttlfocus_map.load();
 }
 
 TCPTrack::~TCPTrack(void) 
@@ -169,27 +171,24 @@ void TCPTrack::clear_session(SessionTrackMap::iterator stm_it)
 	}
 }
 
-TTLFocus* TCPTrack::init_ttlfocus(unsigned int daddr) 
+TTLFocus* TCPTrack::init_ttlfocus(const Packet &pkt) 
 {
-	TTLFocusMap::iterator it = ttlfocus_map.find(daddr);
+	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
 	if (it != ttlfocus_map.end())
 		return &(it->second);	
 	else
-		return &(ttlfocus_map.insert(pair<const unsigned int, TTLFocus>(daddr, daddr)).first->second);
+		return &(ttlfocus_map.insert(pair<const unsigned int, TTLFocus>(pkt.ip->daddr, pkt)).first->second);
 }
 
-/* 
- * enque_ttl_probe has not the intelligence to understand if TTL bruteforcing 
- * is required or not more. Is called in different section of code
- */
-void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus)
+void TCPTrack::enque_ttl_probe(TTLFocus &ttlfocus)
 {
 	/* 
 	 * the first packet (the SYN) is used as starting point
 	 * in the enque_ttl_burst to generate the series of 
 	 * packets able to detect the number of hop distance 
 	 * between our peer and the remote peer. the packet
-	 * is lighty modify (ip->id change) and checksum fixed
+	 * is lighty modified (ip->id change) and checksum is fixed
+	 * in last_pkt_fix()
 	 */
 
 	if(!ttlfocus.isProbeIntervalPassed(clock))
@@ -198,8 +197,8 @@ void TCPTrack::enque_ttl_probe(const Packet &delayed_syn_pkt, TTLFocus& ttlfocus
 	if (analyze_ttl_stats(ttlfocus))
 		return;
 	
-	/* create a new packet; the copy is done to keep refsyn ORIGINAL */
-	Packet *injpkt = new Packet(delayed_syn_pkt);
+	/* create a new packet; */
+	Packet *injpkt = new Packet(&ttlfocus.synpbuf_copy[0], ttlfocus.synpbuf_copy.size());
 	injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
 
 	/* 
@@ -231,35 +230,21 @@ bool TCPTrack::analyze_ttl_stats(TTLFocus &ttlfocus)
 	return false;
 }
 
-void TCPTrack::analyze_incoming_ttl(Packet &pkt)
+bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 {
-	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
-	TTLFocus *ttlfocus;
+	/* 
+	 * At the moment, the unique icmp packet analyzed is the  ICMP_TIME_EXCEEDED.
+	 * A TIME_EXCEEDED packet should contains informations to discern HOP distance
+	 * from a remote host.
+	*/
+	if (pkt.icmp->type == ICMP_TIME_EXCEEDED)
+		return true;
 
-	if (it != ttlfocus_map.end()) 
-	{
-		ttlfocus = &(it->second);
-		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) 
-		{
-			/* probably a topology change has happened - we need a solution wtf!!  */
-			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), 
-				"net topology change! #probe %d [exp %d min work %d synack ttl %d]",
-				ttlfocus->sent_probe, ttlfocus->expiring_ttl, 
-				ttlfocus->min_working_ttl, ttlfocus->synack_ttl
-			);
-			pkt.selflog(__func__, pkt.debug_buf);
-		}
-	}
-}
-
-
-void TCPTrack::analyze_incoming_icmp(Packet &timeexc)
-{
 	const struct iphdr *badiph;
 	const struct tcphdr *badtcph;
 	TTLFocusMap::iterator ttlfocus_map_it;
 
-	badiph = (struct iphdr *)((unsigned char *)timeexc.icmp + sizeof(struct icmphdr));
+	badiph = (struct iphdr *)((unsigned char *)pkt.icmp + sizeof(struct icmphdr));
 	badtcph = (struct tcphdr *)((unsigned char *)badiph + (badiph->ihl * 4));
 
 	ttlfocus_map_it = ttlfocus_map.find(badiph->daddr);
@@ -281,8 +266,32 @@ void TCPTrack::analyze_incoming_icmp(Packet &timeexc)
 				ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 			}
 		}
-		p_queue.remove(timeexc);
-		delete &timeexc;
+		p_queue.remove(pkt);
+		delete &pkt;
+		return false;
+	}
+	
+	return true;
+}
+
+void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
+{
+	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
+	TTLFocus *ttlfocus;
+
+	if (it != ttlfocus_map.end()) 
+	{
+		ttlfocus = &(it->second);
+		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) 
+		{
+			/* probably a topology change has happened - we need a solution wtf!!  */
+			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), 
+				"net topology change! #probe %d [exp %d min work %d synack ttl %d]",
+				ttlfocus->sent_probe, ttlfocus->expiring_ttl, 
+				ttlfocus->min_working_ttl, ttlfocus->synack_ttl
+			);
+			pkt.selflog(__func__, pkt.debug_buf);
+		}
 	}
 }
 
@@ -290,7 +299,7 @@ void TCPTrack::analyze_incoming_icmp(Packet &timeexc)
  * treat by sniffjoke, now also the server connections are trapped. the comments
  * and the variable referring to synack will not be exactly true in the 
  * server view. is only matter of naming anyway */
-void TCPTrack::analyze_incoming_synack(Packet &synack)
+bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
 {
 	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
 	TTLFocus *ttlfocus;
@@ -322,16 +331,9 @@ void TCPTrack::analyze_incoming_synack(Packet &synack)
 				discern_ttl, ttlfocus->min_working_ttl, ttlfocus->expiring_ttl, ttlfocus->synack_ttl);
 			ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 
-			/* 
-			* this code flow happens only when the SYN ACK is received, due to
-			* a SYN send from the "puppet port". this kind of SYN is used only
-			* for discern TTL, and this mean a REFerence-SYN packet is present in
-			* the packet queue. Now that ttl has been detected, the real SYN could
-			* be send.
-			*/
-			mark_real_syn_packets_SEND(synack.ip->saddr);
 			p_queue.remove(synack);
-			delete &synack;
+			delete &synack;			
+			return false;
 		}
 
 		/* 
@@ -354,9 +356,11 @@ void TCPTrack::analyze_incoming_synack(Packet &synack)
 		 * completed in the future.
 		 */
 	}
+	
+	return true;
 }
 
-void TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
+bool TCPTrack::analyze_incoming_tcp_rstfin(Packet &rstfin)
 {
 	SessionTrackKey key = {rstfin.ip->saddr, rstfin.tcp->dest, rstfin.tcp->source};
 	SessionTrackMap::iterator stm_it = sex_map.find(key);
@@ -369,9 +373,11 @@ void TCPTrack::analyze_incoming_rstfin(Packet &rstfin)
 	} else {
 		rstfin.selflog(__func__, "Session not found!");
 	}
+	
+	return true;
 }
 
-void TCPTrack::manage_outgoing_packets(Packet &pkt)
+bool TCPTrack::analyze_outgoing(Packet &pkt)
 {
 	TTLFocus *ttlfocus;
 	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
@@ -383,7 +389,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 	 */
 	if (pkt.tcp->syn) {
 		init_sessiontrack(pkt);
-		ttlfocus = init_ttlfocus(pkt.ip->daddr);
+		ttlfocus = init_ttlfocus(pkt);
 
 		pkt.selflog(__func__, "incoming SYN");
 
@@ -392,7 +398,7 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 			ttlfocus->selflog(__func__, "SYN retrasmission, keep pkt");
 			p_queue.remove(pkt);
 			p_queue.insert(Q_KEEP, pkt);
-			return;
+			return false;
 		}
 	}
 
@@ -415,20 +421,26 @@ void TCPTrack::manage_outgoing_packets(Packet &pkt)
 			inject_hack_in_queue(pkt, session);		
 		}
 	}
+	
+	return true;
 }
 
-void TCPTrack::mark_real_syn_packets_SEND(unsigned int daddr)
-{
-	Packet *pkt = NULL;
-
-	p_queue.select(Q_KEEP);
-	while ((pkt = p_queue.get(ANY_SOURCE, TCP)) != NULL) {
-		if (pkt->tcp->syn && pkt->ip->daddr == daddr) {
-			pkt->selflog(__func__, "the orig SYN shift from keep to send");
-			p_queue.remove(*pkt);
-			p_queue.insert(Q_SEND, *pkt);
+bool TCPTrack::analyze_keep(Packet &pkt) {
+	TTLFocusMap::iterator ttlfocus_map_it;
+	TTLFocus *ttlfocus;
+	if(pkt.source == TUNNEL && pkt.proto == TCP) {
+		ttlfocus_map_it = ttlfocus_map.find(pkt.ip->daddr);
+		if (ttlfocus_map_it == ttlfocus_map.end()) {
+			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+			SJ_RUNTIME_EXCEPTION();
 		}
+		
+		ttlfocus = &(ttlfocus_map_it->second);
+		if (ttlfocus->status == TTL_BRUTALFORCE)
+			return false;
 	}
+	
+	return true;
 }
 
 /* 
@@ -672,6 +684,21 @@ forced_guilty:
 	pkt.selflog(__func__, "Packet ready to be send");
 }
 
+/* is_session_protected will check if a session is covered by sniffjoke 
+ * configuration. if is a "server connection" mean that sniffjoke is not
+ * analyzing a syn-ack, but a syn. in this function is made this check.
+ * -- VERIFY impact whenever a scanning is received */
+bool TCPTrack::is_session_protected(struct tcphdr *tcp, Strength portcfg[PORTNUMBER], bool listening[PORTNUMBER])
+{
+	if( tcp->syn && !tcp->ack && listening[ntohs(tcp->dest)] == true)
+		return true;
+
+	if( tcp->syn && tcp->ack && portcfg[ntohs(tcp->dest)] != NONE)
+		return true;
+
+	return false;
+}
+
 /* the packet is add in the packet queue for be analyzed in a second time */
 void TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
 {
@@ -701,29 +728,24 @@ Packet* TCPTrack::readpacket()
 {
 	Packet *pkt = NULL;
 
-	p_queue.select(Q_SEND);
-	if ((pkt = p_queue.get(ANY_SOURCE, ANY_PROTO)) != NULL) {
+	p_queue.select(Q_PRIORITY_SEND);
+	if ((pkt = p_queue.get()) != NULL) {
 		p_queue.remove(*pkt);
-		if (runconfig.active == true)
-			last_pkt_fix(*pkt);
+		last_pkt_fix(*pkt);
+		return pkt;
 	}
-	return pkt;
+
+	p_queue.select(Q_SEND);
+	if ((pkt = p_queue.get()) != NULL) {
+		p_queue.remove(*pkt);
+		last_pkt_fix(*pkt);
+		return pkt;
+	}
+
+	return NULL;
 }
 
-/* is_session_protected will check if a session is covered by sniffjoke 
- * configuration. if is a "server connection" mean that sniffjoke is not
- * analyzing a syn-ack, but a syn. in this function is made this check.
- * -- VERIFY impact whenever a scanning is received */
-bool TCPTrack::is_session_protected(struct tcphdr *tcp, Strength portcfg[PORTNUMBER], bool listening[PORTNUMBER])
-{
-	if( tcp->syn && !tcp->ack && listening[ntohs(tcp->dest)] == true)
-		return true;
 
-	if( tcp->syn && tcp->ack && portcfg[ntohs(tcp->dest)] != NONE)
-		return true;
-
-	return false;
-}
 
 /* 
  * this is the "second time", the received packet are assigned in a tracked TCP session,
@@ -732,101 +754,97 @@ bool TCPTrack::is_session_protected(struct tcphdr *tcp, Strength portcfg[PORTNUM
  * detect the hop distance between the remote peer.
  *
  * as defined in sniffjoke.h, the "status" variable could have these status:
- * SEND (packet marked as sendable)
- * KEEP (packet to keep and wait)
- * YOUNG (packet received, here analyzed for the first time)
+ * YOUNG (packets received, here analyzed for the first time)
+ * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
+ * SEND (packets marked as sendable)
  *
- * analyze_packets_queue is called from the main.cc poll() block
+ * analyze_packets_queue is called from the main.cc ppoll() block
+ * 
+ * Functions called inside a p_queue.get() cycle:
+ *
+ *     COULD  1) extract and delete the argument packet only,
+ *            2) insert the argument packet or a new packet into any of the
+ *               p_queue list. (because head insertion does not modify iterators)
+ * 
+ *     MUST:  1) not call functions containing a p_queue.get() as well.
+ *
+ * 
  */
 void TCPTrack::analyze_packets_queue()
 {
 	Packet *pkt;
-	TTLFocusMap::iterator ttlfocus_map_it;
-	TTLFocus *ttlfocus;
+	bool send;
 	
 	clock_gettime(CLOCK_REALTIME, &clock);
-
+	
 	if(youngpacketspresent == false)
 		goto analyze_keep_packets;
-
-	p_queue.select(Q_YOUNG);
-	while ((pkt = p_queue.get(NETWORK, ICMP)) != NULL) {
-		/* 
-		 * a TIME_EXCEEDED packet should contains informations
-		 * for discern HOP distance from a remote host
-		 */
-		if (pkt->icmp->type == ICMP_TIME_EXCEEDED) 
-			analyze_incoming_icmp(*pkt);
-	}
 
 	/* 
 	 * incoming TCP. sniffjoke algorithm open/close sessions and detect TTL
 	 * lists analyzing SYN+ACK and FIN|RST packet
 	 */
 	p_queue.select(Q_YOUNG);
-	while ((pkt = p_queue.get(NETWORK, TCP)) != NULL)
-	{
-		/* analysis of the incoming TCP packet for check if TTL we are receiving is
-		 * changed or not. is not the correct solution for detect network topology
-		 * change, but we needit! */
-		analyze_incoming_ttl(*pkt);
+	while ((pkt = p_queue.get()) != NULL) {
+		send = true;
+		if(pkt->source == NETWORK) {
+			if(pkt->proto == ICMP) {
+				send = analyze_incoming_icmp(*pkt);
+			} else  if(pkt->proto == TCP) {
+				/* analysis of the incoming TCP packet for check if TTL we are receiving is
+				* changed or not. is not the correct solution for detect network topology
+				* change, but we need it! */
+				analyze_incoming_tcp_ttl(*pkt);
 
-		/* tracking only session related to active port, client/server difference is checked here */
-		if ( pkt->tcp->syn && is_session_protected(pkt->tcp, runconfig.portconf, runconfig.listenport) ) {
-			analyze_incoming_synack(*pkt);
-			continue;
+				/* tracking only session related to active port, client/server difference is checked here */
+				if (pkt->tcp->syn && pkt->tcp->ack) {
+					if (is_session_protected(pkt->tcp, runconfig.portconf, runconfig.listenport))
+						send = analyze_incoming_tcp_synack(*pkt);
+				} else if (pkt->tcp->rst || pkt->tcp->fin) {
+					if (is_session_protected(pkt->tcp, runconfig.portconf, runconfig.listenport)) {
+						/* analyze_incoming_rstfin can remove session from the active session list */
+						send = analyze_incoming_tcp_rstfin(*pkt);
+					}
+				}
+			}
+		} else if(pkt->source == TUNNEL) {
+			if(pkt->proto == TCP) {
+				/* check if hacks must be bypassed for this destination port */
+				if (runconfig.portconf[ntohs(pkt->tcp->dest)] != NONE) {
+					/* 
+					* create/close session, check ttlfocus and start new discovery, 
+					* this function contains the core functions of sniffjoke: 
+					* enque_ttl_probe and inject_hack_in_queue 
+					*
+					* those packets had ttlfocus set inside
+					*/
+					send = analyze_outgoing(*pkt);
+				}
+			}
 		}
-
-		/* analyze_incoming_rstfin remove or not a session from the active session list */
-		if ( (pkt->tcp->rst || pkt->tcp->fin) && is_session_protected(pkt->tcp, runconfig.portconf, runconfig.listenport) )
-			analyze_incoming_rstfin(*pkt);   
-
-	}
-
-	/* outgoing TCP packets ! */
-	p_queue.select(Q_YOUNG);
-	while ((pkt = p_queue.get(TUNNEL, TCP)) != NULL) {
-
-		/* no hacks required for this destination port */
-		if (runconfig.portconf[ntohs(pkt->tcp->dest)] == NONE) {
+			
+		if(send == true) {
 			p_queue.remove(*pkt);
 			p_queue.insert(Q_SEND, *pkt);
-			continue;
 		}
-
-		/* 
-		 * create/close session, check ttlfocus and start new discovery, 
-		 * this function contains the core functions of sniffjoke: 
-		 * enque_ttl_probe and inject_hack_in_queue 
-		 *
-		 * those packets had ttlfocus set inside
-		 */
-		manage_outgoing_packets(*pkt);
 	}
 
-	/* all YOUNG packets must be sent immediatly */
-	p_queue.select(Q_YOUNG);
-	while ((pkt = p_queue.get(ANY_SOURCE, ANY_PROTO)) != NULL) {
-		p_queue.remove(*pkt);
-		p_queue.insert(Q_SEND, *pkt);
-	}
-	
 	youngpacketspresent = false;
 
 analyze_keep_packets:
 
 	p_queue.select(Q_KEEP);	
-	while ((pkt = p_queue.get(TUNNEL, TCP)) != NULL) {
-		ttlfocus_map_it = ttlfocus_map.find(pkt->ip->daddr);
-		if (ttlfocus_map_it == ttlfocus_map.end()) {
-			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-			SJ_RUNTIME_EXCEPTION();
-		}
+	while ((pkt = p_queue.get()) != NULL) {
+		send = analyze_keep(*pkt);
 		
-		ttlfocus = &(ttlfocus_map_it->second);
-		if (ttlfocus->status == TTL_BRUTALFORCE)  {
-			pkt->selflog(__func__, "ttl status BForce, pkt KEEP");
-			enque_ttl_probe(*pkt, *ttlfocus);
+		if(send == true) {
+			p_queue.remove(*pkt);
+			p_queue.insert(Q_SEND, *pkt);
 		}
+	}
+
+	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); it++ ) {
+		if((*it).second.status == TTL_BRUTALFORCE)
+			enque_ttl_probe((*it).second);
 	}
 }

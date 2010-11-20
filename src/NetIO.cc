@@ -207,34 +207,32 @@ void NetIO::prepare_conntrack(TCPTrack *ct)
 void NetIO::network_io(void)
 {
 	/* 
-	 * resetting the timeout value;
-	 */
-	timeout.tv_sec = 0;
-	timeout.tv_nsec = 100;	
-
-	unsigned int burstsize = 5;
-	/* 
-	 * The real value of burstsize is burstsize * 2 = 10pkt
-	 * because in one cycle we can read a pkt from netfd and
-	 * a pkt from tunfd
-
-	 * Having a burst size of 10 pkts and a ppoll timeout of 50 ns
-	 * we assure to call conntrack->analyze_packets_queue() with a
-	 * max interval of ~500 ns.
+	 * This is a critical function for sniffjoke operativity.
+	 * 
+	 * The objective is to have an acquisition stage quite constant
+	 * with a max duration of 50ms; in fact we have to call the function
+	 * conntrack->analyze_packets_queue() with a max interval of 50 ms
+	 * to permit the conntrack ttl schedule to go forward.
+	 * 
+	 * So We have to mantain constant the product timeout * cycle = 50
+	 * 
+	 * In this way, due to the poll value We can have a max burst = cycle * 2 = 100pkts
+	 * 
 	 */
 
-	while (burstsize--)
+	unsigned int cycle = 50;
+	while (cycle--)
 	{
-		nfds = ppoll(fds, 2, &timeout, NULL);
+		nfds = poll(fds, 2, 1); // POLL TIMEOUT = 1
 
 		if (nfds <= 0) {
 			if (nfds == -1) {
 	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in poll: %s", strerror(errno));
 				SJ_RUNTIME_EXCEPTION();
 			}
-			break;
+			continue;
 		}
-
+		
 		if (fds[0].revents) { /* POLLIN is the unique event managed */
 			if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
 				if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
@@ -248,10 +246,10 @@ void NetIO::network_io(void)
 					conntrack->writepacket(NETWORK, pktbuf, size);
 				}else {
 					if ((size = write(tunfd, pktbuf, size)) == -1) {
-//						debug.log(DEBUG_LEVEL, "contrack_bypass: write in tunnel error: %s", strerror(errno));
+//						debug.log(DEBUG_LEVEL, "conntrack_bypass: write in tunnel error: %s", strerror(errno));
 						SJ_RUNTIME_EXCEPTION();
 					} else {
-//						debug.log(DEBUG_LEVEL, "contrack_bypass: write in tunnel %d successfull [sniffjoke %s]", 
+//						debug.log(DEBUG_LEVEL, "conntrack_bypass: write in tunnel %d successfull [sniffjoke %s]", 
 //							size, runconfig.active == true ? "active" : "stopped");
 					}
 				}
@@ -270,18 +268,20 @@ void NetIO::network_io(void)
 					conntrack->writepacket(TUNNEL, pktbuf, size);
 				} else {
 					if ((size = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) {
-//						debug.log(DEBUG_LEVEL, "queue_flush: write in network error: %s", strerror(errno));
+//						debug.log(DEBUG_LEVEL, "conntrack_bypass: write in network error: %s", strerror(errno));
 						SJ_RUNTIME_EXCEPTION();
 					} else {
-//						debug.log(DEBUG_LEVEL, "queue_flush: write in network %d successfull [sniffjoke %s]",
+//						debug.log(DEBUG_LEVEL, "conntrack_bypass: write in network %d successfull [sniffjoke %s]",
 //							size, runconfig.active == true ? "active" : "stopped");
 					}
 
 				}
 			}
 		}
+		
+		break;
 	}
-
+	
 	conntrack->analyze_packets_queue();
 }
 
@@ -303,8 +303,7 @@ void NetIO::queue_flush(void)
 //					size, runconfig.active == true ? "active" : "stopped");
 			}
 		} else {
-			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), 
-				ntohs(pkt->ip->tot_len), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
+			if ((size = sendto(netfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) 
 			{
 //				debug.log(DEBUG_LEVEL, "queue_flush: write in network error: %s", strerror(errno));
 				SJ_RUNTIME_EXCEPTION();

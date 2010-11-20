@@ -42,7 +42,7 @@ using namespace std;
 enum evilbit_t { MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2 };
 
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
-enum source_t { SOURCEUNASSIGNED = 0, ANY_SOURCE = 1, TUNNEL = 2, LOCAL = 3, NETWORK = 4, TTLBFORCE = 5 };
+enum source_t { SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 3, TTLBFORCE = 4 };
 
 /* status mean what sniffjoke has to do with the packet. KEEP is used when a packet is 
  * delayed, YOUNG when a packet was created by sniffjoke, SEND has to be send */
@@ -56,7 +56,7 @@ enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG 
 enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, MALFORMED = 4, RANDOMDAMAGE = 5 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
-enum proto_t { PROTOUNASSIGNED = 0, ANY_PROTO = 1, TCP = 2, ICMP = 3, OTHER_IP = 4 };
+enum proto_t { PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 3 };
 
 /* a sniffjoke packet should be send before the oroginal packet or after the original packet */
 enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 3 };
@@ -68,20 +68,8 @@ private:
 	friend class PacketQueue;
 
 	bool check_evil_packet(const unsigned char *buff, unsigned int nbyte);
-	unsigned int make_pkt_id(const unsigned char *) const;	
 
 public:
-	/* 
-	 * this packet_id are useful to avoid packet duplication
-	 * due to sniffjoke queue, I don't want avoid packet 
-	 * retrasmission, one of TCP best features :) 
-	 * 
-	 * example of this are duplicated SYN that can happens
-	 * when the first SYN is blocked for TTL bruteforce routine. 
-	 * 
-	 */
-	unsigned int packet_id;
-
 	evilbit_t evilbit;
 	source_t source;
 	judge_t wtf;

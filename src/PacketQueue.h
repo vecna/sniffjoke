@@ -46,7 +46,6 @@ public:
 	void insert_before(Packet &, Packet &);
 	void insert_after(Packet &, Packet &);
 	void remove(const Packet &);
-	void delete_if_present(unsigned int);
 	void select(queue_t);
 	Packet* get();
 	Packet* get(source_t, proto_t);

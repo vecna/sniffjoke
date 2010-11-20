@@ -45,24 +45,27 @@ private:
 
 	bool percentage(unsigned int, Frequency, Strength);
 
-	SessionTrack* init_sessiontrack(const Packet&);
+	SessionTrack * init_sessiontrack(const Packet &);
 	void clear_session(SessionTrackMap::iterator stm_it);
 
-	TTLFocus* init_ttlfocus(unsigned int);
-	void enque_ttl_probe(const Packet&, TTLFocus&);
+	TTLFocus* init_ttlfocus(const Packet &);
+	void enque_ttl_probe(TTLFocus &);
+	
 	bool analyze_ttl_stats(TTLFocus&);
 
-	void analyze_incoming_ttl(Packet&);
-	void analyze_incoming_icmp(Packet&);
-	void analyze_incoming_synack(Packet&);
-	void analyze_incoming_rstfin(Packet&);
+	/* this functions are called inside analyze_packets_queue;
+	 * boolean functions return true if the packet must be sended */ 
+	bool analyze_incoming_icmp(Packet &);
+	void analyze_incoming_tcp_ttl(Packet &);
+	bool analyze_incoming_tcp_synack(Packet &);
+	bool analyze_incoming_tcp_rstfin(Packet &);
+	bool analyze_outgoing(Packet &);
+	bool analyze_keep(Packet &);
+
 	bool is_session_protected(struct tcphdr *, Strength[PORTNUMBER], bool[PORTNUMBER]);
 	
-	void manage_outgoing_packets(Packet&);
-	void mark_real_syn_packets_SEND(unsigned int);
-	
-	void inject_hack_in_queue(Packet&, const SessionTrack*);
-	void last_pkt_fix(Packet&);
+	void inject_hack_in_queue(Packet &, const SessionTrack *);
+	void last_pkt_fix(Packet &);
 
 public:
 	TCPTrack(sj_config&, HackPool&);
