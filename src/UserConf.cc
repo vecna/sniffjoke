@@ -30,12 +30,17 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	alive(sj_alive),
 	chroot_status(false)
 {
-	
 	debug.log(VERBOSE_LEVEL, __func__);
 
-	char configfile[LARGEBUF];	
-	snprintf(configfile, LARGEBUF, "%s%s", cmdline_opts.chroot_dir, cmdline_opts.cfgfname);	
-	
+	char configfile[LARGEBUF];
+	const char *realdir, *realfil;
+
+	if(cmdline_opts.chroot_dir[0]) 	realdir = cmdline_opts.chroot_dir;
+	else 				realdir = CHROOT_DIR;
+	if(cmdline_opts.cfgfname[0])	realfil = cmdline_opts.cfgfname;
+	else				realfil = CONF_FILE;
+
+	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil); 
 	memset(&runconfig, 0x00, sizeof(sj_config));
 	
 	if(!load(configfile)) {
@@ -79,10 +84,8 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		debug.log(ALL_LEVEL, "malformation technique disabled, using checksum technique instead");
 
 	/* if --only is specify, it override the enabler */
-	if(cmdline_opts.onlyparam[0] != 0x00) 
-	{
+	if(cmdline_opts.onlyparam[0]) 
 		onlyparam_parser(cmdline_opts.onlyparam);
-	}
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -389,8 +392,8 @@ char *UserConf::handle_cmd(const char *cmd)
 		handle_cmd_stop();
 	} else if (!memcmp(cmd, "quit", strlen("quit"))) {
 		handle_cmd_quit();
-	} else if (!memcmp(cmd, "saveconfig", strlen("saveconfig"))) {
-		handle_cmd_saveconfig();
+	} else if (!memcmp(cmd, "saveconf", strlen("saveconf"))) {
+		handle_cmd_saveconf();
 	} else if (!memcmp(cmd, "stat", strlen("stat"))) {
 		handle_cmd_stat();
 	} else if (!memcmp(cmd, "info", strlen("info"))) {
@@ -490,7 +493,7 @@ void UserConf::handle_cmd_quit()
 	snprintf(io_buf, sizeof(io_buf), "dumped configuration, starting shutdown\n");
 }
 
-void UserConf::handle_cmd_saveconfig()
+void UserConf::handle_cmd_saveconf()
 {
 	dump();
 	snprintf(io_buf, sizeof(io_buf), "configuration file dumped\n");

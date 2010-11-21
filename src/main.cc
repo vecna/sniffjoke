@@ -66,7 +66,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
-	" saveconfig\t\tdump config file\n"\
+	" saveconf\t\tdump config file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget massive info about sniffjoke internet stats\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
@@ -78,8 +78,10 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" loglevel\t\t[1-6] change the loglevel\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
-static void sj_help(const char *pname, const char *basedir)
+static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
 {
+	const char *basedir = optchroot[0] ? &optchroot[0] : defaultbd;
+
 	printf(SNIFFJOKE_HELP_FORMAT, 
 		pname, pname,
 		basedir, CONF_FILE,
@@ -117,6 +119,34 @@ void sigtrap(int signal)
 	
 }
 
+static bool client_command_found(char **av, const int ac, struct command *sjcmdlist, char *retcmd) 
+{
+	int i;
+
+	for(i = 0; i < ac; i++) 
+	{
+		struct command *ptr;
+		for(ptr = &sjcmdlist[0]; ptr->cmd != NULL; ptr++) 
+		{
+			if(!strcmp(ptr->cmd, av[i])) 
+			{
+				size_t usedlen = 0;
+				snprintf(retcmd, MEDIUMBUF, "%s", ptr->cmd);
+				if(ptr->related_args + i > ac) {
+					sj_help(av[0], CHROOT_DIR, CHROOT_DIR);
+					exit(-1);
+				}
+				while(--(ptr->related_args) ) {
+					usedlen = strlen(retcmd);
+					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[++i]);
+				}
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 int main(int argc, char **argv)
 {
 	/* 
@@ -144,105 +174,87 @@ int main(int argc, char **argv)
 		{ NULL, 0, NULL, 0 }
 	};
 
+	struct command sj_command[] =
+	{
+		{ "start",    1 },
+		{ "stop",     1 },
+		{ "stat",     1 },
+		{ "clear",    1 },
+		{ "showport", 1 },
+		{ "quit",     1 },
+		{ "info",     1 },
+		{ "saveconf", 1 },
+		{ "listen",   2 }, 	/* the listen port */
+		{ "loglevel", 2 }, 	/* the loglevel */
+		{ "set",      4 }, 	/* set start_port end_port value */
+		{ NULL,       0	}
+	};
+
 	useropt.process_type = SJ_CLIENT_PROC;
 
-	memset(useropt.cmd_buffer, 0x00, sizeof(useropt.cmd_buffer));
-	
-	/* check for direct commands */
-	if ((argc == 2) && !memcmp(argv[1], "start", strlen("start")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "start");
-
-	else if ((argc == 2) && !memcmp(argv[1], "stop", strlen("stop")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "stop");
-
-	else if ((argc == 2) && !memcmp(argv[1], "stat", strlen("stat")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "stat");
-
-	else if ((argc == 2) && !memcmp(argv[1], "clear", strlen("clear")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "clear");
-
-	else if ((argc == 2) && !memcmp(argv[1], "showport", strlen("showport")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "showport");
-
-	else if ((argc == 2) && !memcmp(argv[1], "quit", strlen("quit")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "quit");
-
-	else if ((argc == 2) && !memcmp(argv[1], "info", strlen("info")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "info");
-
-	else if ((argc == 2) && !memcmp(argv[1], "saveconfig", strlen("saveconfig")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "saveconfig");
-
-	else if ((argc == 3) && !memcmp(argv[1], "listen", strlen("listen")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "listen %s", argv[2]);
-
-	else if ((argc == 3) && !memcmp(argv[1], "loglevel", strlen("loglevel")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "loglevel %s", argv[2]);
-
-	else if ((argc == 5) && !memcmp(argv[1], "set", strlen("set")))
-		snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "set %s %s %s", argv[2], argv[3], argv[4]);
-
-	else
+	/* check for client commands */
+	if(!client_command_found(argv, argc, sj_command, useropt.cmd_buffer))
 		useropt.process_type = SJ_SERVER_PROC;
 
-	if (useropt.process_type == SJ_SERVER_PROC) {
-		int charopt;
-		while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhvpmo:", sj_option, NULL)) != -1) {
-			switch(charopt) {
-				case 'f':
-					snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
-					break;
-				case 'e':
-					snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);
-					break;
-				case 'u':
-					snprintf(useropt.user, sizeof(useropt.user), "%s", optarg);
-					break;
-				case 'g':
-					snprintf(useropt.group, sizeof(useropt.group), "%s", optarg);
-					break;
-				case 'c':
-					snprintf(useropt.chroot_dir, sizeof(useropt.chroot_dir), "%s", optarg);
-					break;
-				case 'd':
-					useropt.debug_level = atoi(optarg);
-					break;
-				case 'l':
-					snprintf(useropt.logfname, sizeof(useropt.logfname), "%s", optarg);
-					snprintf(useropt.logfname_packets, sizeof(useropt.logfname_packets), "%s%s", optarg, SUFFIX_LF_PACKETS);
-					snprintf(useropt.logfname_sessions, sizeof(useropt.logfname_sessions), "%s%s", optarg, SUFFIX_LF_SESSIONS);
-					break;
-				case 'x':
-					useropt.go_foreground = true;
-					break;
-				case 'r':
-					useropt.force_restart = true;
-					break;
-				case 'v':
-					sj_version(argv[0]);
-					return 0;
-				case 'p':
-					useropt.prescription_disabled = true;
-					break;
-				case 'm':
-					useropt.malformation_disabled = true;
-					break;
-				case 'o':
-					snprintf(useropt.onlyparam, sizeof(useropt.onlyparam), "%s", optarg);
-					break;
-				default:
-					sj_help(argv[0], useropt.chroot_dir);
-					return -1;
+	int charopt;
+	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhvpmo:", sj_option, NULL)) != -1) {
+		switch(charopt) {
+			case 'f':
+				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
+				break;
+			case 'e':
+				snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);
+				break;
+			case 'u':
+				snprintf(useropt.user, sizeof(useropt.user), "%s", optarg);
+				break;
+			case 'g':
+				snprintf(useropt.group, sizeof(useropt.group), "%s", optarg);
+				break;
+			case 'c':
+				snprintf(useropt.chroot_dir, sizeof(useropt.chroot_dir) -1, "%s", optarg);
+				/* this fix usefull when --chroot-dir /tmp is passed and /tmp/ is required */
+				if(useropt.chroot_dir[strlen(useropt.chroot_dir) -1] != '/')
+					useropt.chroot_dir[strlen(useropt.chroot_dir)] = '/';
+				break;
+			case 'd':
+				useropt.debug_level = atoi(optarg);
+				break;
+			case 'l':
+				snprintf(useropt.logfname, sizeof(useropt.logfname), "%s", optarg);
+				snprintf(useropt.logfname_packets, sizeof(useropt.logfname_packets), "%s%s", optarg, SUFFIX_LF_PACKETS);
+				snprintf(useropt.logfname_sessions, sizeof(useropt.logfname_sessions), "%s%s", optarg, SUFFIX_LF_SESSIONS);
+				break;
+			case 'x':
+				useropt.go_foreground = true;
+				break;
+			case 'r':
+				useropt.force_restart = true;
+				break;
+			case 'v':
+				sj_version(argv[0]);
+				return 0;
+			case 'p':
+				useropt.prescription_disabled = true;
+				break;
+			case 'm':
+				useropt.malformation_disabled = true;
+				break;
+			case 'o':
+				snprintf(useropt.onlyparam, sizeof(useropt.onlyparam), "%s", optarg);
+				break;
+			default:
+				sj_help(argv[0], useropt.chroot_dir, CHROOT_DIR);
+				return -1;
 
-				argc -= optind;
-				argv += optind;
-			}
+			argc -= optind;
+			argv += optind;
 		}
 	}
 	
 	/* someone has made a "sniffjoke typo" */
 	if(useropt.process_type == SJ_SERVER_PROC && argc > 1 && argv[1][0] != '-') {
-		sj_help(argv[0], useropt.chroot_dir);
+		sj_help(argv[0], useropt.chroot_dir, CHROOT_DIR);
 		return -1;
 	}
 

@@ -53,7 +53,7 @@ void SniffJoke::run()
 void SniffJoke::client() {
 	pid_t runconfig_service_pid = proc.readPidfile();
 	if (!runconfig_service_pid) {
-		debug.log(ALL_LEVEL, "warning: SniffJoke is not runconfig, command %s ignored", opts.cmd_buffer);
+		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command [%s] ignored", opts.cmd_buffer);
 		return;
 	}
 
@@ -389,12 +389,15 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 	}
 }
 
-void SniffJoke::debug_cleanup() const
+/* this function must not close the FILE *desc, because in the destructor of the
+ * auto_ptr some debug call will be present. It simple need to flush the FILE,
+ * and the descriptor are closed with the process, after. */
+void SniffJoke::debug_cleanup()
 {
 	if(debug.logstream != NULL && debug.logstream != stdout)
-		fclose(debug.logstream);
+		fflush(debug.logstream);
 	if(debug.packet_logstream != NULL && debug.packet_logstream != stdout)
-		fclose(debug.packet_logstream);
+		fflush(debug.packet_logstream);
 	if(debug.session_logstream != NULL && debug.session_logstream != stdout)
-		fclose(debug.session_logstream);
+		fflush(debug.session_logstream);
 }

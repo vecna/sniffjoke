@@ -41,6 +41,12 @@
 #include "hardcoded-defines.h"
 #include "Debug.h"
 
+/* the struct used for index the sniffjoke-client-commands */
+struct command {
+	const char *cmd;
+	int related_args;
+};
+
 enum size_buf_t {
 		SMALLBUF = 64,
 		MEDIUMBUF = 256,

@@ -65,7 +65,7 @@ private:
 	int listening_unix_socket;
 
 	void debug_setup(FILE *) const;
-	void debug_cleanup() const;
+	void debug_cleanup();
 	void client();
 	void client_cleanup();
 	void server();

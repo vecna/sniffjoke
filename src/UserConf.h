@@ -134,7 +134,7 @@ public:
 		void handle_cmd_start(void);
 		void handle_cmd_stop(void);
 		void handle_cmd_quit(void);
-		void handle_cmd_saveconfig(void);
+		void handle_cmd_saveconf(void);
 		void handle_cmd_stat(void);
 		void handle_cmd_info(void);
 		void handle_cmd_showport(void);
