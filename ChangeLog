@@ -1,3 +1,11 @@
+20 Nov 2010:	In thos months, when I and evilalv3 forget the ChangeLog...
+		- the hacks are supported in external plugin(s)
+		- the scrambling tech is became three
+		- the TTL will be refreshed and cached
+		- the entire Sniffjoke logic has been optimized
+		- the entire Sniffjoke OOP has been reenginereed
+		- the hack/scrambling tech are more configurable by options
+
 1 Sep 2010:	In those months, when I and evilaliv3 forgotten to update 
 		the changelog, a lot of bugs have been solved.
 		- best class splitting in sniffjoke, more c++ compliant
@@ -30,15 +38,3 @@
 			standard hacks (ttl, bad checksum, innocent)
 			TCP port not available
 			autodetect in Linux system
-			
-
-Great thanks to:
-		kpanic,
-		baku,
-		boos,
-		packz,
-		enchiphered wererabbit,
-		father giannibi,
-		omnibus jedi master marcoc,
-		Flavio (hey, un nome normale?),
-		Ridah
