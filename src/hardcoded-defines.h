@@ -45,8 +45,11 @@
 #define SUFFIX_LF_PACKETS               ".packets"
 #define SUFFIX_LF_SESSIONS              ".sessions"
 #define DEFAULT_DEBUG_LEVEL             2
-#define DEFAULT_MAX_TTLPROBE		30
+#define DEFAULT_MAX_TTLPROBE		35
 #define DEFAULT_MAX_SEXTRACK		4096
+#define DEFAULT_MAX_TTLFOCUS		4096
+#define TTLFOCUS_EXPIRETIME		604800	/* access expire time in seconds (1 WEEK) */
+#define SESSIONTRACK_EXPIRETIME		1200	/* access expire time in seconds (5 MINUTES) */
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
 

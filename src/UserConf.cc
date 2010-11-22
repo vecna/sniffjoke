@@ -50,7 +50,8 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		runconfig.MAGIC = MAGICVAL;
 		runconfig.active = false;
 		runconfig.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
-		runconfig.max_sex_track = DEFAULT_MAX_SEXTRACK;
+		runconfig.max_sextrack = DEFAULT_MAX_SEXTRACK;
+		runconfig.max_ttlfocus = DEFAULT_MAX_TTLFOCUS;
 
 		/* default is to set all TCP ports in "NORMAL" aggressivity level */
 		for(unsigned int i = 0; i < PORTNUMBER; i++)
@@ -68,24 +69,26 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	compare_check_copy(runconfig.logfname_packets, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE""SUFFIX_LF_PACKETS, cmdline_opts.logfname);
 	compare_check_copy(runconfig.logfname_sessions, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE""SUFFIX_LF_SESSIONS, cmdline_opts.logfname);
 
-	/* because write a sepecific "unsigned int" version of compare_check_copy was dirty ... */
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
 		runconfig.debug_level = cmdline_opts.debug_level;
 
 	if(runconfig.debug_level == 0)
 		runconfig.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 	
-	runconfig.prescription_disabled = cmdline_opts.prescription_disabled;
-	if(runconfig.prescription_disabled)
-		debug.log(ALL_LEVEL, "prescription technique disabled, using checksum checksum technique instead");
+	if(cmdline_opts.onlyplugin[0])
+		snprintf(runconfig.onlyplugin, LARGEBUF, "%s", cmdline_opts.onlyplugin);
 
-	runconfig.malformation_disabled = cmdline_opts.malformation_disabled;
-	if(runconfig.malformation_disabled)
-		debug.log(ALL_LEVEL, "malformation technique disabled, using checksum technique instead");
-
-	/* if --only is specify, it override the enabler */
-	if(cmdline_opts.onlyparam[0]) 
-		onlyparam_parser(cmdline_opts.onlyparam);
+	if(cmdline_opts.scramble[0]) {
+		runconfig.scrambletech |= (cmdline_opts.scramble[0] == 'Y') ? SCRAMBLE_TTL : 0;
+		runconfig.scrambletech |= (cmdline_opts.scramble[1] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
+		runconfig.scrambletech |= (cmdline_opts.scramble[2] == 'Y') ? SCRAMBLE_MALFORMED : 0;
+		if(!runconfig.scrambletech) {
+			debug.log(ALL_LEVEL, "--scramble: at least one scramble technique is required");
+			SJ_RUNTIME_EXCEPTION();
+		}
+	} else {
+		runconfig.scrambletech = (SCRAMBLE_TTL | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED);
+	}
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -101,49 +104,9 @@ UserConf::~UserConf()
 /* Read command line values if present, preserve the previous options, and otherwise import default */
 void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *sjdefault, const char *useropt)
 {
-	if(useropt[0] != 0x00)
-		strncpy(target, useropt, tlen);
+	if(useropt[0]) strncpy(target, useropt, tlen);
 	
-	if(target[0] == 0x00)
-		strncpy(target, sjdefault, tlen);
-}
-
-/* the option we want to parse is a: --only absolute_or_relative_plugin.so,Y|NY|NY|N */
-void UserConf::onlyparam_parser(const char *cmdlinput)
-{
-	const char *sep = strchr(cmdlinput, ',');
-	if(sep == NULL) {
-		debug.log(ALL_LEVEL, "\",\" not found: invalid usage of --only option: expected --only pluginpath,(Y|N)x3");
-		debug.log(ALL_LEVEL, "Y stay for enable, N for disable, the scambling technique");
-		debug.log(ALL_LEVEL, "in order: TTL, checksum, malformation. i.e. YNY use TTL and malformation only");
-		SJ_RUNTIME_EXCEPTION();
-	}
-
-	if(strlen(sep) != 4 || YNcheck(sep[1]) || YNcheck(sep[2]) || YNcheck(sep[3]) ) {
-		debug.log(ALL_LEVEL, "wrong selection length: expected three Y or N after the comma");
-		debug.log(ALL_LEVEL, "Y stay for enable, N for disable, the scambling technique");
-		debug.log(ALL_LEVEL, "in order: TTL, checksum, malformation. i.e. YNY use TTL and malformation only");
-		SJ_RUNTIME_EXCEPTION();
-	}
-
-	runconfig.scrambletech |= (sep[1] == 'Y') ? SCRAMBLE_TTL : 0;
-	runconfig.scrambletech |= (sep[2] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
-	runconfig.scrambletech |= (sep[3] == 'Y') ? SCRAMBLE_MALFORMED : 0;
-
-	if(!runconfig.scrambletech) {
-		debug.log(ALL_LEVEL, "--only parsing: almost one scramble technique is required");
-		SJ_RUNTIME_EXCEPTION();
-	}
-
-	memccpy(runconfig.onlyplugin, cmdlinput, ',', sizeof(runconfig.onlyplugin));
-	
-	debug.log(ALL_LEVEL, "using %s plugin only: TTL %s | checksum %s | malformed %s", runconfig.onlyplugin,
-		ISSET_TTL(runconfig.scrambletech) ? "yes" : "no",
-		ISSET_CHECKSUM(runconfig.scrambletech) ? "yes" : "no",
-		ISSET_MALFORMED(runconfig.scrambletech) ? "yes" : "no"
-	);
-	
-	debug.log(ALL_LEVEL, "plugin validation dalayed, delegated to HackPool constructor");
+	if(target[0]) strncpy(target, sjdefault, tlen);
 }
 
 /* private function useful for resolution of code/name */
@@ -365,8 +328,6 @@ void UserConf::dump(void)
 		debug.log(VERBOSE_LEVEL, "dumping configcopy configuration to %s",  configfile);
 				
 		/* resetting variables we do not want to save */
-		configcopy.prescription_disabled = false;
-		configcopy.malformation_disabled = false;
 		memset(configcopy.onlyplugin, 0, sizeof(configcopy.onlyplugin));
 		configcopy.scrambletech = 0;
 

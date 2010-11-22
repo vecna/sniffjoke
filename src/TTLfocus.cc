@@ -30,6 +30,7 @@
 #include <arpa/inet.h>
 
 TTLFocus::TTLFocus(const Packet &syn) :
+	access_timestamp(time(NULL)),
 	status(TTL_BRUTALFORCE),
 	daddr(syn.ip->daddr),
 	expiring_ttl(0),
@@ -39,25 +40,10 @@ TTLFocus::TTLFocus(const Packet &syn) :
 	received_probe(0),
 	puppet_port(htons((random() % 15000) + 1100)),
 	rand_key(random()),
-	synpbuf_copy(syn.pbuf)
+	syncopy(syn.pbuf)
 {
 	debug.log(DEBUG_LEVEL, "%s: destination: %s", __func__, inet_ntoa(*((struct in_addr *)&(daddr))));
 	clock_gettime(CLOCK_REALTIME, &next_probe_time);
-}
-
-TTLFocus::TTLFocus(const TTLFocus& cpy) :
-	status(cpy.status),
-	daddr(cpy.daddr),
-	expiring_ttl(cpy.expiring_ttl),
-	min_working_ttl(cpy.min_working_ttl),
-	synack_ttl(cpy.synack_ttl),
-	sent_probe(cpy.sent_probe),
-	received_probe(cpy.received_probe),
-	puppet_port(cpy.puppet_port),
-	rand_key(cpy.rand_key),
-	synpbuf_copy(cpy.synpbuf_copy)
-{
-	memcpy(&next_probe_time, &(cpy.next_probe_time), sizeof(struct timespec));
 }
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
@@ -69,18 +55,26 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	sent_probe(cpy.sent_probe),
 	received_probe(cpy.received_probe),
 	puppet_port(cpy.puppet_port),
-	rand_key(cpy.rand_key)
+	rand_key(cpy.rand_key),
+	syncopy(cpy.syncopy_len)
 {
+	memcpy(&(syncopy[0]), cpy.syncopy, cpy.syncopy_len);
 	clock_gettime(CLOCK_REALTIME, &next_probe_time);
 }
 
-void TTLFocus::scheduleNextProbe()
+void TTLFocus::scheduleNextProbe50ms()
 {
-    if(TTLPROBEINTERVAL > 1000000000 - next_probe_time.tv_nsec) {
-        next_probe_time.tv_sec++;
-        next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL - 1000000000;
-    } else
-        next_probe_time.tv_nsec = next_probe_time.tv_nsec + TTLPROBEINTERVAL;
+	if(50000000 > 1000000000 - next_probe_time.tv_nsec) {
+		next_probe_time.tv_sec++;
+		next_probe_time.tv_nsec = next_probe_time.tv_nsec + 50000000 - 1000000000;
+	} else {
+		next_probe_time.tv_nsec = next_probe_time.tv_nsec + 50000000;
+	}
+}
+
+void TTLFocus::scheduleNextProbe2mins()
+{
+	next_probe_time.tv_sec += 120;
 }
 
 bool TTLFocus::isProbeIntervalPassed(const struct timespec& now) const
@@ -116,8 +110,8 @@ void TTLFocus::selflog(const char *func, const char *umsg)
 void TTLFocusMap::load()
 {
 	unsigned int records_num = 0;
-	int ret;
 	struct ttlfocus_cache_record tmp;
+	int ret;
 
 	debug.log(VERBOSE_LEVEL, "loading ttlfocusmap from %s",  TTLFOCUSMAP_FILE);
 	
@@ -142,16 +136,16 @@ void TTLFocusMap::load()
 		);
 		SJ_RUNTIME_EXCEPTION();
 	}
-	debug.log(VERBOSE_LEVEL, "ttlfocusmap load completed: %d records loaded", records_num);
+	debug.log(VERBOSE_LEVEL, "ttlfocusmap load completed: %u records loaded", records_num);
 }
 
 
 void TTLFocusMap::dump()
 {
-	unsigned int records_num;
-	int ret;
-	TTLFocus* tmp;
+	unsigned int records_num = 0;
+	TTLFocus* tmp = NULL;
 	struct ttlfocus_cache_record cache_record;
+	int ret;
 
 	debug.log(VERBOSE_LEVEL, "dumping ttlfocusmap to %s",  TTLFOCUSMAP_FILE);
 
@@ -161,12 +155,14 @@ void TTLFocusMap::dump()
                 return;
         }
 
-	for ( TTLFocusMap::iterator it = this->begin(); it != this->end(); it++ ) {
-		if(tmp->status == TTL_BRUTALFORCE)
+	for ( TTLFocusMap::iterator it = begin(); it != end(); it++ ) {
+
+		tmp = &(it->second);
+
+		/* We saves only with TTL_KNOWN status */
+		if(tmp->status != TTL_KNOWN)
 			continue;
 
-		records_num++;
-		tmp = &(it->second);
 		cache_record.daddr = tmp->daddr;
 		cache_record.expiring_ttl = tmp->expiring_ttl;
 		cache_record.min_working_ttl = tmp->min_working_ttl;
@@ -176,6 +172,10 @@ void TTLFocusMap::dump()
 		cache_record.puppet_port = tmp->puppet_port;
 		cache_record.rand_key = tmp->rand_key;
 		cache_record.status = tmp->status;
+		
+		memset(cache_record.syncopy, 0, MTU);
+		memcpy(cache_record.syncopy, &(tmp->syncopy[0]), tmp->syncopy.size());
+		cache_record.syncopy_len = tmp->syncopy.size();
 
 		ret = fwrite(&cache_record, sizeof(struct ttlfocus_cache_record), 1, dumpfd);
 		if(ret != 1)
@@ -187,8 +187,37 @@ void TTLFocusMap::dump()
 			);
 			return;
 		}
+		
+		records_num++;
 	}
 	fclose(dumpfd);
 
-	debug.log(VERBOSE_LEVEL, "ttlfocusmap dump completed: %d records dumped", records_num);
+	debug.log(VERBOSE_LEVEL, "ttlfocusmap dump completed: %u records dumped", records_num);
+}
+
+TTLFocus* TTLFocusMap::add_ttlfocus(const Packet &pkt) 
+{
+	return &(insert(pair<const unsigned int, TTLFocus>(pkt.ip->daddr, pkt)).first->second);
+}
+
+TTLFocus* TTLFocusMap::get_ttlfocus(unsigned int daddr)
+{
+	TTLFocusMap::iterator it = find(daddr);
+	if(it != end()) {
+		(it->second).access_timestamp = time(NULL);
+		return &(it->second);
+	} else {
+		return NULL;
+	}
+}
+
+void TTLFocusMap::manage_expired()
+{
+	time_t now = time(NULL);
+	for(TTLFocusMap::iterator it = begin(); it != end();) {
+		if((*it).second.access_timestamp + TTLFOCUS_EXPIRETIME < now)
+			erase(it++);
+		else
+			it++;
+	}
 }

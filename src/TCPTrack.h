@@ -35,23 +35,26 @@ class TCPTrack {
 private:
 	struct sj_config &runconfig;
 	bool youngpacketspresent;
-	struct timespec clock;
+	
+	struct timespec clock;		/* clock time updated by analyze_packet_queue */
+	unsigned int apq_round_time;	/* round time updated by analyze_packet_queue */
+	
+#define APQ_ROUND_LIMIT		10000	/* upper count limit of apq_round_time */
 
 	PacketQueue p_queue;
-	
 	SessionTrackMap sex_map;
 	TTLFocusMap ttlfocus_map;
 	HackPool &hack_pool;
 
 	bool percentage(unsigned int, Frequency, Strength);
 
-	SessionTrack * init_sessiontrack(const Packet &);
-	void clear_session(SessionTrackMap::iterator stm_it);
-
-	TTLFocus* init_ttlfocus(const Packet &);
+	
 	void enque_ttl_probe(TTLFocus &);
 	
 	bool analyze_ttl_stats(TTLFocus&);
+
+	void manage_sessions_map();
+	void manage_ttlfocus_map();
 
 	/* this functions are called inside analyze_packets_queue;
 	 * boolean functions return true if the packet must be sended */ 

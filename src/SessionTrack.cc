@@ -23,20 +23,14 @@
 #include "SessionTrack.h"
 
 SessionTrack::SessionTrack(const Packet &pkt) :
+	access_timestamp(time(NULL)),
 	daddr(pkt.ip->daddr),
 	sport(pkt.tcp->source),
 	dport(pkt.tcp->dest),
 	isn(pkt.tcp->seq),
 	packet_number(1),
 	shutdown(false)
-{
-	debug.log(DEBUG_LEVEL, "%s: daddr(%s) sport(%d) dport(%d) isn(%x)", __func__, inet_ntoa(*((struct in_addr *)&(daddr))), sport, dport, isn);
-}
-
-SessionTrack::~SessionTrack()
-{
-	debug.log(DEBUG_LEVEL, "%s: daddr(%s) sport(%d) dport(%d) isn(%x)", __func__, inet_ntoa(*((struct in_addr *)&(daddr))), sport, dport, isn);
-}
+{}
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {
@@ -68,4 +62,68 @@ void SessionTrack::selflog(const char *func, const char *lmsg)
 		shutdown ? "TRUE" : "FALSE",
 		packet_number, lmsg
 	);
+}
+
+SessionTrack* SessionTrackMap::add_sessiontrack(const Packet &pkt)
+{
+	SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
+	SessionTrack *sessiontrack = &(insert(pair<SessionTrackKey, SessionTrack>(key, pkt)).first->second);
+	sessiontrack->access_timestamp = time(NULL);
+	return sessiontrack;
+}
+
+SessionTrack* SessionTrackMap::get_sessiontrack(const Packet &pkt, bool direct)
+{
+	SessionTrackKey key;
+	if(direct) {
+		key.daddr = pkt.ip->daddr;
+		key.sport = pkt.tcp->source;
+		key.dport = pkt.tcp->dest;
+	} else {
+		key.daddr = pkt.ip->saddr;
+		key.sport = pkt.tcp->dest;
+		key.dport = pkt.tcp->source;
+	}
+
+	SessionTrackMap::iterator it = find(key);		
+	if(it != end()) {
+		(it->second).access_timestamp = time(NULL);
+		return &(it->second);
+	} else {
+		return NULL;
+	}
+}
+
+
+void SessionTrackMap::clear_sessiontrack(const Packet &pkt)
+{
+	/* 
+	 * clear_session don't remove conntrack immediatly, at the first call
+	 * set the "shutdown" bool variable, at the second clear it, this
+	 * because of double FIN-ACK and RST-ACK happening between both hosts.
+	 */
+	SessionTrackKey key = {pkt.ip->saddr, pkt.tcp->dest, pkt.tcp->source};
+	SessionTrackMap::iterator it = find(key);
+
+	if (it != end()) {
+		SessionTrack &st = it->second;
+		if (st.shutdown == false) {
+			st.selflog(__func__, "shutdown false set to be true");
+			st.shutdown = true;
+		} else {
+			st.selflog(__func__, "shutdown true, deleting session");
+			erase(it);
+		}
+	}
+}
+
+void SessionTrackMap::manage_expired()
+{
+	time_t now = time(NULL);
+	for(SessionTrackMap::iterator it = begin(); it != end();) {
+		if((*it).second.access_timestamp + SESSIONTRACK_EXPIRETIME < now)
+			erase(it++);
+		else
+			it++;
+	}
 }

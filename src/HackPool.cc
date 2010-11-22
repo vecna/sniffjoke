@@ -149,7 +149,7 @@ HackPool::HackPool(sj_config &runcfg)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
-	if(runcfg.scrambletech)  {
+	if(runcfg.onlyplugin[0])  {
 		char plugabspath[MEDIUMBUF];
 		memset(plugabspath, 0x00, sizeof(plugabspath));
 		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, runcfg.onlyplugin);

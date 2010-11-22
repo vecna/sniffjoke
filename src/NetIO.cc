@@ -282,7 +282,8 @@ void NetIO::network_io(void)
 		break;
 	}
 	
-	conntrack->analyze_packets_queue();
+	if(runconfig.active == true)
+		conntrack->analyze_packets_queue();
 }
 
 /* this method send all the packets sets as "SEND" */

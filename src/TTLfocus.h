@@ -34,9 +34,9 @@
 
 using namespace std;
 
-#define TTLPROBEINTERVAL 50000000 // 50ms
+/* IT'S FUNDAMENTAL TO HAVE ALL THIS ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
-enum ttlsearch_t { TTL_KNOWN = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOWN = 9 };
+enum ttlsearch_t { TTL_KNOWN = 0, TTL_BRUTALFORCE = 1, TTL_UNKNOWN = 2 };
 
 struct ttlfocus_cache_record {
 	unsigned int daddr;
@@ -48,11 +48,16 @@ struct ttlfocus_cache_record {
 	unsigned short puppet_port;
 	unsigned int rand_key;
 	ttlsearch_t status;
+	
+	char syncopy[1500]; 	/* we need a constant size record */
+	unsigned int syncopy_len;
 };
 
 
 class TTLFocus {
 public:
+	time_t access_timestamp; /* access timestamp used to decretee expiry */
+
 	ttlsearch_t status;
 	unsigned int daddr;
 	unsigned short expiring_ttl;
@@ -63,31 +68,29 @@ public:
 	unsigned short puppet_port;
 	unsigned int rand_key;
 	
-	/*
-	 * copy of the reference syn packet.
-	 * it's used only during ttl broutefoce,
-	 * and it' not saved into the cache.
-	 * (We mantain cache only for status TTL_[UN]KNOWN)
-	 */ 
-	vector<unsigned char> synpbuf_copy;
+	vector<unsigned char> syncopy;
 	
 	struct timespec next_probe_time;
 
-	TTLFocus(const Packet &syn);
-	TTLFocus(const TTLFocus& cpy);
-	TTLFocus(const struct ttlfocus_cache_record& cpy);
-	void scheduleNextProbe();
-	bool isProbeIntervalPassed(const struct timespec&) const;
+	TTLFocus(const Packet &);
+	TTLFocus(const struct ttlfocus_cache_record &);
+	void scheduleNextProbe50ms();
+	void scheduleNextProbe2mins();
+	bool isProbeIntervalPassed(const struct timespec &) const;
 
 	/* utilities */
 	void selflog(const char *, const char *);
 	char debug_buf[LARGEBUF];
 };
 
-class TTLFocusMap : public std::map<const unsigned int, TTLFocus> {
+class TTLFocusMap : public map<const unsigned int, TTLFocus> {
 public:
         void dump();
         void load();
+        
+        TTLFocus* add_ttlfocus(const Packet &pkt);
+        TTLFocus* get_ttlfocus(unsigned int);
+        void manage_expired();
 };
 
 
