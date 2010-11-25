@@ -23,6 +23,7 @@
 #include "PacketQueue.h"
 
 PacketQueue::PacketQueue() :
+	pkt_count(0),
 	front(new Packet*[LAST_QUEUE + 1]),
 	back(new Packet*[LAST_QUEUE + 1]),
 	iterate_through_all(true),
@@ -52,6 +53,7 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(queue_t queue, Packet &pkt)
 {
+	pkt_count++;
 	if (front[queue] == NULL) {
 		pkt.prev = NULL;
 		pkt.next = NULL;
@@ -66,6 +68,7 @@ void PacketQueue::insert(queue_t queue, Packet &pkt)
 
 void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
+	pkt_count++;
 	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (front[i] == &ref) {
 			pkt.prev = NULL;
@@ -85,6 +88,7 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 
 void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
+	pkt_count++;
 	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (back[i] == &ref) {
 			pkt.prev = &ref;
@@ -104,6 +108,7 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 
 void PacketQueue::remove(const Packet &pkt)
 {
+	pkt_count--;
 	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		if (front[i] == &pkt) {
 			if (back[i] == &pkt) {

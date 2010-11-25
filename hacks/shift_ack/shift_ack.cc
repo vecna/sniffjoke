@@ -43,7 +43,7 @@ class shift_ack : public Hack
 {
 #define HACK_NAME	"unexpected ACK shift"
 public:
-	virtual void createHack(Packet &orig_packet)
+	virtual void createHack(const Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 

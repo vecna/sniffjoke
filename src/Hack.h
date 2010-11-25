@@ -33,15 +33,14 @@ using namespace std;
  * HackPacket - pure virtual methods 
  *
  * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
- * we understand how to do. HackPacket classes is implemented by the external
- * module and the programmer shoulds implement Condition and createHack, constructor
- * and distructor methods.
+ * We understood how to do a plugin and load it.
+ * HackPacket classes are implemented as external modules and the programmer
+ * shoulds implement Condition and createHack, constructor and distructor methods.
  *
- * at the end of every plugin code, is required the two extern "C", pointing
- * to the constructor and the destructor method. the constructon instace
- * your/the plugin with your/the Condition and createHack code.
+ * At the end of every plugin code, it's is required to export two "C" symbols,
+ * pointing to the constructor and the destructor method.
  *
-****/
+ */
 
 /* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
 enum Frequency { FREQUENCYUNASSIGNED = 0, RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
@@ -49,15 +48,16 @@ enum Frequency { FREQUENCYUNASSIGNED = 0, RARE = 1, COMMON = 2, PACKETS10PEEK = 
 
 class Hack {
 public:
-	const char *hackName;
-	Frequency hackFrequency;
-	bool removeOrigPkt;
+	const char *hackName;		/* hack name as const string */
+	Frequency hackFrequency;	/* hack frequency */
+	bool removeOrigPkt;		/* boolean to be set true if the hack
+					   needs to remove the original packet */
 
-	vector<Packet*> pktVector;
+	vector<Packet*> pktVector;	/* std vector of Packet* used for created hack packets */
 
 	Hack() : hackName(NULL), hackFrequency(FREQUENCYUNASSIGNED), removeOrigPkt(false) {};
 	virtual bool Condition(const Packet &) { return true; };
-	virtual void createHack(Packet &) = 0;
+	virtual void createHack(const Packet &) = 0;
 };
 
 #endif /* SJ_HACK_H */

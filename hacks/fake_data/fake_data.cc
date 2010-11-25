@@ -45,7 +45,7 @@ class fake_data : public Hack
 {
 #define HACK_NAME "Fake data"
 public:
-	virtual void createHack(Packet &orig_packet)
+	virtual void createHack(const Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 

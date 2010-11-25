@@ -71,7 +71,7 @@ bool Packet::check_evil_packet(const unsigned char *buff, unsigned int nbyte)
 {
 	struct iphdr *ip = (struct iphdr *)buff;
  
-	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len) ) {
+	if (nbyte < sizeof(struct iphdr) || nbyte < ntohs(ip->tot_len)) {
 		debug.log(PACKETS_DEBUG, "%s %s: nbyte %s < (struct iphdr) %d || (ip->tot_len) %d", 
 			__FILE__, __func__, nbyte, sizeof(struct iphdr), ntohs(ip->tot_len)
 		);
@@ -215,11 +215,11 @@ void Packet::fixIpTcpSum(void)
 
 bool Packet::selfIntegrityCheck(const char *pluginName)
 {
-	if(source != SOURCEUNASSIGNED ) {
+	if(source != SOURCEUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
 	}
 
-	if(wtf == JUDGEUNASSIGNED ) {
+	if(wtf == JUDGEUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;
 	}
@@ -243,13 +243,14 @@ errorinfo:
 
 void Packet::IPHDR_resize(unsigned int size) 
 {
-	/* safety first! */
+	/* begin safety checks */
 	if((pbuf.size() - iphdrlen + size > MTU) || (size < sizeof(struct iphdr)) || (size > MAXIPHEADER))
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
+	/* end safety checks */
 	
 	/* resizing iphdr to a non multiple of 4 it's not safe due to: ip->ihl = size / 4 */
 	if(size % 4)
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 		
 	if(iphdrlen == size) /* there is nothing to do in this case */
 		return;
@@ -273,13 +274,14 @@ void Packet::IPHDR_resize(unsigned int size)
 
 void Packet::TCPHDR_resize(unsigned int size)
 {
-	/* safety first! */
+	/* begin safety checks! */
 	if((pbuf.size() - tcphdrlen + size > MTU) || (size < sizeof(struct tcphdr)) || (size > MAXTCPHEADER))
-	 SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 
 	/* resizing tcphdr to a non multiple of 4 it's not safe due to: tcp->doff = size / 4 */
 	if(size % 4)
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
+	/* end safety checks */
 
 	if(tcphdrlen == size) /* there is nothing to do in this case */
 		return;
@@ -302,9 +304,10 @@ void Packet::TCPHDR_resize(unsigned int size)
 
 void Packet::TCPPAYLOAD_resize(unsigned int size)
 {
-	/* safety first! */
+	/* begin safety checks */
 	if(pbuf.size() - datalen + size > MTU)
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
+	/* end safety checks */
 
 	if(datalen == size) /* there is nothing to do in this case */
 		return;
@@ -325,96 +328,10 @@ void Packet::TCPPAYLOAD_fillrandom()
 	memset_random(payload, diff);
 }
 
-bool Packet::checkIPOPT() {
-	unsigned char option;
-	unsigned int option_len;
-	
-	for (unsigned int i = sizeof(struct iphdr); i < iphdrlen;) {
-		option = ((unsigned char *)ip)[i];
-
-		switch(option) {
-			case IPOPT_END: /* END is stripped off */
-				option =  IPOPT_NOOP;
-				i++;
-				continue;
-			case  IPOPT_NOOP:
-				i++;
-				continue;
-			case IPOPT_SSRR:
-			case IPOPT_LSRR:
-			case IPOPT_RR:
-			case IPOPT_RA:
-			case IPOPT_CIPSO:
-			case IPOPT_SEC:
-			case IPOPT_SID:
-				goto uncommon_or_invalid_ip_option_present;
-/* default_case_checkIPOPT: if you add new options to check use the goto
-			    to this label to check the option length */
-			default:
-				option_len = ((unsigned char *)ip)[i+1];
-				if(option_len > (iphdrlen - i)) {
-					/* the packet contains invalid options */
-					goto uncommon_or_invalid_ip_option_present;
-				}
-				i += option_len;
-		}
-	}
-
-	return false;
-
-uncommon_or_invalid_ip_option_present:
-
-	selflog(__func__, "some uncommon or invalid ip option is present!");
-	return true;
-}
-
-bool Packet::checkTCPOPT() {
-	unsigned char option;
-	unsigned int option_len;
-	
-	for (unsigned int i = sizeof(struct tcphdr); i < tcphdrlen;) {
-		option = ((unsigned char *)tcp)[i];
-
-		switch(option) {
-			case TCPOPT_TIMESTAMP:
-				goto default_case_checkTCPOPT;
-			case TCPOPT_EOL: // EOL is stripped off
-				option = TCPOPT_NOP;
-				i++;
-				continue;
-			case TCPOPT_NOP:
-				i++;
-				continue;
-			case TCPOPT_MAXSEG:
-			case TCPOPT_WINDOW:
-			case TCPOPT_SACK_PERMITTED:
-			case TCPOPT_SACK:
-				goto uncommon_or_invalid_tcp_option_present;
-default_case_checkTCPOPT: /* if you add new options to check use the goto
-			    to this label to check the option length */
-			default:
-				option_len = ((unsigned char *)tcp)[i+1];
-				if(option_len > (tcphdrlen - i)) {
-					/* the packet contains invalid options */
-					goto uncommon_or_invalid_tcp_option_present;
-				}
-				i += option_len;
-				break;
-		}
-	}
-
-	return false;
-
-uncommon_or_invalid_tcp_option_present:
-
-	selflog(__func__, "some uncommon or invalid tcp option is present!");
-	return true;
-
-}
-
-void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
+bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 {
-	/* used to keep track of header growing */
+	bool injected = false;
+
 	unsigned int actual_iphdrlen = iphdrlen;
 
 	unsigned int target_iphdrlen = MAXIPHEADER;
@@ -433,14 +350,18 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
 	IPHDR_resize(target_iphdrlen);
 
-	HDRoptions IPInjector(IPOPTS_INJECTOR, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
-	int MAXITERATION = 6;
+	try {
+		HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
+		int MAXITERATION = 5;
 
-	do {
-		IPInjector.randomInjector(corrupt);
+		do {
+			injected |= IPInjector.randomInjector();
 
-	} while( target_iphdrlen != actual_iphdrlen && MAXITERATION-- );
-	
+		} while(target_iphdrlen != actual_iphdrlen && MAXITERATION--);
+	} catch(exception &e) {
+		selflog(__func__, "ip injection is not possibile");
+	}
+
 	if(target_iphdrlen != actual_iphdrlen) {
 		// iphdrlen must be a multiple of 4
 		actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
@@ -449,12 +370,15 @@ void Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 	snprintf(debug_buf, sizeof(debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
+	
+	return injected;
 }
 
 
-void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
+bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 {
-	/* used to keep track of header growing */
+	bool injected = false;
+	
 	unsigned int actual_tcphdrlen = tcphdrlen;
 	
 	unsigned int target_tcphdrlen = 0;
@@ -472,15 +396,19 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	// tcphdrlen must be a multiple of 4
 	target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
 	TCPHDR_resize(target_tcphdrlen);
-	
-	HDRoptions TCPInjector(TCPOPTS_INJECTOR, (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
-	int MAXITERATION = 6;
 
-	do {
-		TCPInjector.randomInjector(corrupt);
+	try {
+		HDRoptions TCPInjector(TCPOPTS_INJECTOR, corrupt, (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
+		int MAXITERATION = 5;
 
-	} while( target_tcphdrlen != actual_tcphdrlen && --MAXITERATION ); 
+		do {
+			injected |= TCPInjector.randomInjector();
 
+		} while(target_tcphdrlen != actual_tcphdrlen && --MAXITERATION); 
+
+	} catch(exception &e) {
+		selflog(__func__, "tcp injection is not possibile");		
+	}
 
 	if(target_tcphdrlen != actual_tcphdrlen) {
 		// tcphdrlen must be a multiple of 4
@@ -490,9 +418,11 @@ void Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
 	snprintf(debug_buf, sizeof(debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
+	
+	return injected;
 }
 
-void Packet::selflog(const char *func, const char *loginfo) 
+void Packet::selflog(const char *func, const char *loginfo) const
 {
 	const char *evilstr, *wtfstr, *sourcestr;
 	char *p, protoinfo[MEDIUMBUF]; 
@@ -553,7 +483,7 @@ void Packet::selflog(const char *func, const char *loginfo)
 			break;
 		default:
 			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 			break;
 	}
 
@@ -563,5 +493,5 @@ void Packet::selflog(const char *func, const char *loginfo)
 		protoinfo, ip->ttl, loginfo
        	);
 
-	memset(debug_buf, 0x00, sizeof(debug_buf));
+	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
 }

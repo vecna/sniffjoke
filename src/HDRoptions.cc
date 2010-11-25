@@ -48,20 +48,7 @@
 #include "Packet.h"
 #include "Debug.h"
 
-HDRoptions::HDRoptions(injector_t t, unsigned char *header_end, unsigned int &actual_header_length, unsigned int &target_header_length) :
-	type(t),
-	optptr(header_end),
-	actual_length(actual_header_length),
-	target_length(target_header_length),
-	available_length(target_length - actual_length),
-	force_next(-1),
-	lsrr_set(false),
-	ssrr_set(false)
-{}
-
-HDRoptions::~HDRoptions() { }
-
-unsigned int HDRoptions::m_IPOPT_SSRR(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_LSRR(void) 
 {
 	/* http://tools.ietf.org/html/rfc1812
 	 * 
@@ -85,75 +72,73 @@ unsigned int HDRoptions::m_IPOPT_SSRR(bool isgood)
 	 * 
 	 *        [...]
 	 * 
-	 *        if (opt->srr) {
-	 *            pp_ptr = optptr;
-	 *            goto error;
-         *    }
+	 *        if (optlen < 3) {
+	 *                pp_ptr = optptr + 1;
+	 *                goto error;
+	 *         }
+	 *         if (optptr[2] < 4) {
+	 *                pp_ptr = optptr + 2;
+	 *                goto error;
+	 *         }
+	 *         / * NB: cf RFC-1812 5.2.4.1 * /
+	 *         if (opt->srr) {
+	 *                pp_ptr = optptr;
+	 *                goto error;
+	 *         }
+	 *         if (!skb) {
+	 *                if (optptr[2] != 4 || optlen < 7 || ((optlen-3) & 3)) {
+	 *                        pp_ptr = optptr + 1;
+	 *                        goto error;
+	 *                }
+	 *                memcpy(&opt->faddr, &optptr[3], 4);
+	 *                if (optlen > 7)
+	 *                        memmove(&optptr[3], &optptr[7], optlen-7);
+	 *         }
+	 *         opt->is_strictroute = (optptr[0] == IPOPT_SSRR);
+	 *         opt->srr = optptr - iph;
+	 *         break;
+	 * 
+	 *  We want to send LSRR option 2 times.
+	 *  so we have to respect all checks that lead to an error. 
+	 *  using SSRR is also possibile but the packet will be trashed by the
+	 *  first router.
 	 */
-	
-	if(isgood && (ssrr_set | lsrr_set))
-		return 0;
-	
-	if( available_length < CONST_SSRR_SIZE)
+
+	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	ssrr_set = true;
+	unsigned int routes_1 = 3 + random() % 3; /* 3 - 5 */
+	unsigned int routes_2 = 3 + random() % 3; /* 3 - 5 */
+	unsigned int size_lsrr_1 = 3 + 4 * routes_1;
+	unsigned int size_lsrr_2 = 3 + 4 * routes_2;
+	unsigned int req_size = size_lsrr_1 + size_lsrr_2 + 2;
 
-	optptr[0] = IPOPT_SSRR;
-	optptr[1] = CONST_SSRR_SIZE;
-	optptr[2] = 4;
-	optptr[3] = IPOPT_NOOP;
-
-	for(unsigned int i = 4; i < CONST_SSRR_SIZE ; i += 4) {
-		unsigned int fake = random();
-		memcpy(&optptr[i], &fake, sizeof(unsigned int));
-	}
-
-	/* corrupt or set the next able to generate error */
-	if(isgood == false && lsrr_set == false) {
-		/* 
-		 * VERIFY two kind of elements:
-		 * 1) if the option arrive in fact to the remote host
-		 * 2) if a corruption of the option is not a better way
-		 */
-		force_next = SJIP_OPT_LSRR;
-	}
-
-	return CONST_SSRR_SIZE;
-}
-
-unsigned int HDRoptions::m_IPOPT_LSRR(bool isgood) 
-{
-	/* for verbose description see the m_IPOPT_SSRR comment */
-	
-	if(isgood && (ssrr_set | lsrr_set))
+	if(available_opts_len < req_size)
 		return 0;
-		
-	if( available_length < CONST_LSRR_SIZE )
-		return 0;
-	
-	lsrr_set = true;
 
 	optptr[0] = IPOPT_LSRR;
-	optptr[1] = CONST_LSRR_SIZE;
-	optptr[2] = 4;
-	optptr[3] = IPOPT_NOOP;
+	optptr[1] = size_lsrr_2;
+	optptr[2] = 4 + 4 * (random() % routes_1);
+	memset_random(&optptr[3], size_lsrr_1 - 3);
+	
+	optptr += size_lsrr_1;
+	
+	optptr[0] = IPOPT_LSRR;
+	optptr[1] = size_lsrr_2;
+	optptr[2] = 4 + 4 * (random() % routes_2);
+	memset_random(&optptr[3], size_lsrr_2 - 3);
+	
+	optptr += size_lsrr_2;
+	
+	optptr[0] = IPOPT_NOOP;
+	optptr[1] = IPOPT_NOOP;
+	
+	opt_ip_rr = true;
 
-	for(unsigned int i = 4; i < CONST_LSRR_SIZE; i += 4) {
-		unsigned int fake = random();
-		memcpy(&optptr[i], &fake, sizeof(unsigned int));
-	}
-
-	/* corrupt or set the next able to generate error */
-	if(isgood == false && ssrr_set == false) {
-		/* SAME VERIFY as SSRR method before */
-		force_next = SJIP_OPT_SSRR;
-	}
-
-	return CONST_LSRR_SIZE;
+	return req_size;
 }
 
-unsigned int HDRoptions::m_IPOPT_RR(bool isgood)
+unsigned int HDRoptions::m_IPOPT_RR(void)
 {
 	/*
 	 * This option it's based on analysis of the linux kernel. (2.6.36)
@@ -175,43 +160,66 @@ unsigned int HDRoptions::m_IPOPT_RR(bool isgood)
 	 * 
 	 *   so here have two conditions We can disattend;
 	 *   It's possible to create a unique hack that
-	 *   due tu random() exploit one or the other.
+	 *   due to random() exploits the first or the latter.
 	 */
 
-	if(isgood)
+	unsigned int routes = 1 + random() % 5; /* 1 - 5 */
+	unsigned int size_rr = 3 + routes * 4;
+
+	if(!corrupt && opt_ip_rr) /* this option corrupts the packet if repeated */
 		return 0;
 
-	if(available_length < CONST_RR_SIZE)
+	if(available_opts_len < size_rr)
+		return 0;
+		
+	if(!corrupt)
 		return 0;
 
 	optptr[0] = IPOPT_RR;
-	optptr[1] = 3; /* MIN SIZE */
+	optptr[1] = size_rr;
 
-	if( RANDOMPERCENT(50) )
-		optptr[2] = random() % 4;
-	else
-		optptr[2] = 4 + random() % 4;
+	if(!corrupt) { /* good option */
+		optptr[2] = routes * 4;
+
+	} else { /* bad option */
+
+		if(RANDOMPERCENT(50)) {
+			/* reference code : if (optptr[2] < 5) { */
+			optptr[2] = random() % 4;
+		} else {
+			/* reference code : if (optptr[2] <= optlen) {
+			              and : if (optptr[2]+3 > optptr[1]) { */
+			optptr[2] = optptr[1] - (1 + random() % 2);
+		}
+			
+	}
 	
-	optptr[3] = IPOPT_NOOP;
+	memset_random(&optptr[3], 4 * routes);
 	
-	return CONST_RR_SIZE;
+	optptr[size_rr] = IPOPT_NOOP;
+
+	return size_rr + 1;
 }
 
 
-unsigned int HDRoptions::m_IPOPT_RA(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_RA(void)
 {
-	if(available_length < CONST_RA_SIZE)
+#define CONST_RA_SIZE 4
+
+	if(corrupt) /* this option never corrupts the packet */
+		return 0;
+
+	if(available_opts_len < CONST_RA_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_RA;
 	optptr[1] = CONST_RA_SIZE;
-	optptr[2] = 0;
-	optptr[3] = 0;
+	memset_random(&optptr[2], 2);
 
 	return CONST_RA_SIZE;
 }
 
-unsigned int HDRoptions::m_IPOPT_CIPSO(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_CIPSO(void) 
 {
 	/*
 	 * http://www.faqs.org/rfcs/rfc2828.html
@@ -238,10 +246,13 @@ unsigned int HDRoptions::m_IPOPT_CIPSO(bool isgood)
 	 *       lead the packet to be discarded.
 	 */
 
-	if(isgood)
+#define IPOPT_CIPSO	(6 |IPOPT_CONTROL|IPOPT_COPY)
+#define CONST_CIPSO_SIZE 8
+
+	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	if(available_length < CONST_CIPSO_SIZE)
+	if(available_opts_len < CONST_CIPSO_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_CIPSO;
@@ -249,12 +260,11 @@ unsigned int HDRoptions::m_IPOPT_CIPSO(bool isgood)
 
 	memset_random(&optptr[2], 6);
 
-
 	return CONST_CIPSO_SIZE;
 }
 
 
-unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
+unsigned int HDRoptions::m_IPOPT_SEC(void)
 {
 	/* 
 	 * This option it's based on analysis of the linux kernel. (2.6.36)
@@ -274,10 +284,12 @@ unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
 	 *   but not used in hacks at the moment
 	 */
 
-	if(isgood)
+#define CONST_SEC_SIZE 11
+
+	if(!corrupt) /* this options always corrupts the packet */
 		return 0;
 
-	if( available_length < CONST_SEC_SIZE + CONST_NOOP_SIZE )
+	if(available_opts_len < CONST_SEC_SIZE + 1)
 		return 0;
 
 	/* TODO - cohorent data for security OPT */
@@ -287,20 +299,22 @@ unsigned int HDRoptions::m_IPOPT_SEC(bool isgood)
 	
 	memset_random(&optptr[2], 9);
 	
-	optptr[11] = IPOPT_NOOP;
+	optptr[10] = IPOPT_NOOP;
 
 	/* NOP not included in the option size */
-	return CONST_SEC_SIZE + CONST_NOOP_SIZE;
+	return CONST_SEC_SIZE + 1;
 }
 
-unsigned int HDRoptions::m_IPOPT_SID(bool isgood)
+unsigned int HDRoptions::m_IPOPT_SID(void)
 {
 	/* for verbose description see the m_IPOPT_SEC comment */
 
-	if(isgood)
+#define CONST_SID_SIZE 4
+
+	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	if( available_length < CONST_SID_SIZE )
+	if(available_opts_len < CONST_SID_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_SID;
@@ -311,17 +325,7 @@ unsigned int HDRoptions::m_IPOPT_SID(bool isgood)
 	return CONST_SID_SIZE;
 }
 
-unsigned int HDRoptions::m_IPOPT_NOOP(bool isgood)
-{
-	if(available_length < CONST_NOOP_SIZE)
-		return 0;
-
-	optptr[0] = IPOPT_NOOP;
-
-	return CONST_NOOP_SIZE;
-}
-
-unsigned int HDRoptions::m_IPOPT_TIMESTAMP(bool isgood) 
+unsigned int HDRoptions::m_IPOPT_TIMESTAMP(void) 
 {
 	/*
 	 * This option it's based on analysis of the linux kernel. (2.6.36)
@@ -347,55 +351,215 @@ unsigned int HDRoptions::m_IPOPT_TIMESTAMP(bool isgood)
 	 *   due tu random() exploit one or the other.
 	 */
 
-	if(isgood)
+	unsigned int timestamps = 1 + random() % 5; /* 1 - 5 */
+	unsigned int size_timestamp = 4 + timestamps * 8;
+
+	if(!corrupt && opt_ip_timestamp) /* this option corrupts the packet if repeated */
 		return 0;
 
-	if(available_length < CONST_TIMESTAMP_SIZE)
+	if(available_opts_len < size_timestamp)
 		return 0;
-
-	optptr[0] = IPOPT_TIMESTAMP;
-	optptr[1] = 4; /* MIN SIZE */
-
-	if( RANDOMPERCENT(50) )
-		optptr[2] = random() % 5;
-	else
-		optptr[2] = 5 + random() % 5;
 	
-	optptr[3] = random();
+	if(!corrupt)
+		return 0;
+		
+	if(!corrupt) {	/* good */
+		
+		/* 
+		 * We set the same IPOPT_TS_TSANDADDR suboption We will
+		 * set for the corrupted injection.
+		 * This suboption tells router to register their ip and
+		 * to put a timestamp.
+		 * We set the pointer (optr[2]) as full because of course
+		 * we does not help the sniffer offering him so precious informations =)
+		 */ 
+
+		optptr[0] = IPOPT_TIMESTAMP;
+		optptr[1] = size_timestamp;
+		optptr[2] = size_timestamp;
+		optptr[3] = IPOPT_TS_TSANDADDR;
+		
+	} else {	/* corrupted */
+		
+		optptr[0] = IPOPT_TIMESTAMP;
+		optptr[1] = size_timestamp;
+
+		if(RANDOMPERCENT(50)) {
+			/* reference code : if (optptr[2] < 5) { */
+			optptr[2] = random() % 5;
+		} else {
+			/* reference code : if (optptr[2] <= optlen) {
+			              and : if (optptr[2]+3 > optptr[1]) { */
+			optptr[2] = optptr[1] - (1 + random() % 2);
+		}
 	
-	return CONST_TIMESTAMP_SIZE;
+		optptr[3] = random();
+
+	}
+
+	memset_random(&optptr[4], timestamps * 4);
+	
+	opt_ip_timestamp = true;
+	
+	return size_timestamp;
 }
 
 /*
  * TCP OPTIONS 
  */
-unsigned int HDRoptions::m_TCPOPT_TIMESTAMP(bool) {
+unsigned int HDRoptions::m_TCPOPT_TIMESTAMP(void) {
 	return 0;
 }
-unsigned int HDRoptions::m_TCPOPT_EOL(bool) {
+unsigned int HDRoptions::m_TCPOPT_EOL(void) {
 	return 0;
 }
-unsigned int HDRoptions::m_TCPOPT_NOP(bool) {
+unsigned int HDRoptions::m_TCPOPT_NOP(void) {
 	return 0;
 }
-unsigned int HDRoptions::m_TCPOPT_MAXSEG(bool) {
+unsigned int HDRoptions::m_TCPOPT_MAXSEG(void) {
 	return 0;
 }
-unsigned int HDRoptions::m_TCPOPT_WINDOW(bool) {
+unsigned int HDRoptions::m_TCPOPT_WINDOW(void) {
 	return 0;
 }
-unsigned int HDRoptions::m_TCPOPT_SACK_PERMITTED(bool) {
+unsigned int HDRoptions::m_TCPOPT_SACK_PERMITTED(void) {
 	return 0;
 }
-unsigned int HDRoptions::m_TCPOPT_SACK(bool) {
+unsigned int HDRoptions::m_TCPOPT_SACK(void) {
 	return 0;
 }
 
-void HDRoptions::randomInjector(bool is_good) 
+/*
+ *	returns true if injection is possible, false instead;
+ *      in addition it registers the presence of some options.
+ */
+bool HDRoptions::checkIPOPTINJPossibility(void) {
+	unsigned char option;
+	unsigned int option_len;
+	
+	for (unsigned int i = sizeof(struct iphdr); i < actual_opts_len;) {
+		option = ((unsigned char *)optptr)[i];
+
+		switch(option) {
+			case IPOPT_END:
+				if(corrupt) /* on corrupt : end can be stripped off */
+					option =  IPOPT_NOOP;
+				i++;
+				continue;
+			case  IPOPT_NOOP:
+				i++;
+				continue;
+			case IPOPT_TIMESTAMP:
+				opt_ip_timestamp = true; /* on !corrupt : we can't inject timestamp if just present */
+				goto ip_opts_len_check;
+			case IPOPT_RR:
+				opt_ip_rr = true;	/* on !corrupt : we can't inject record route if just present */
+				goto ip_opts_len_check;
+			case IPOPT_CIPSO:
+			case IPOPT_SEC:
+			case IPOPT_SID:
+				if(!corrupt) /* on !corrup : we always avoid to inject if this options ar present */
+					return false;
+				break;
+ip_opts_len_check:	default:
+				option_len = ((unsigned char *)optptr)[i+1];
+				if(option_len > (actual_opts_len - i)) {
+					/* 
+					 * the packet contains invalid options
+					 * we avoid injection regardless of the corrupt value.
+					 */
+					return false;
+				}
+				i += option_len;
+		}
+	}
+
+	return true;
+}
+
+/*
+ *	returns true if injection is possible, false instead;
+ *      in addition it registers the presence of some options.
+ */
+bool HDRoptions::checkTCPOPTINJPossibility(void) {
+	unsigned char option;
+	unsigned int option_len;
+	
+	for (unsigned int i = sizeof(struct tcphdr); i < actual_opts_len;) {
+		option = ((unsigned char *)optptr)[i];
+
+		switch(option) {
+			case TCPOPT_EOL:
+				if(corrupt) /* on corrupt : eol can be stripped off */
+					option = TCPOPT_NOP;
+				i++;
+				continue;
+			case TCPOPT_NOP:
+				i++;
+				continue;
+			case TCPOPT_MAXSEG:
+			case TCPOPT_WINDOW:
+			case TCPOPT_SACK_PERMITTED:
+			case TCPOPT_SACK:
+				if(!corrupt) /* on !corrupt : we always avoid to inject if this options ar present */
+					return false;
+tcp_opts_len_check:	default:
+				option_len = ((unsigned char *)optptr)[i+1];
+				if(option_len > (actual_opts_len - i)) {
+					/* 
+					 * the packet contains invalid options
+					 * we avoid injection regardless of the corrupt value.
+					 */
+					return false;
+				}
+				i += option_len;
+				break;
+		}
+	}
+
+	return true;
+
+}
+
+
+HDRoptions::HDRoptions(injector_t t, bool corrupt, unsigned char *optptr, unsigned int &actual_opts_len, unsigned int &target_opts_len) :
+	type(t),
+	corrupt(corrupt),
+	optptr(optptr),
+	actual_opts_len(actual_opts_len),
+	target_opts_len(target_opts_len),
+	available_opts_len(target_opts_len - actual_opts_len),
+	opt_ip_timestamp(false),
+	opt_ip_rr(false)
 {
+	switch(type) {
+		case IPOPTS_INJECTOR:
+			if(!checkIPOPTINJPossibility())
+				throw exception();
+			break;
+		case TCPOPTS_INJECTOR:
+			if(!checkTCPOPTINJPossibility())
+				throw exception();
+			break;
+	}
+}
+
+bool HDRoptions::randomInjector(void) 
+{
+
+	/*
+	 * it's permitted to an option to force an other using the force_next class variable,
+	 * but in this case it's required to the option to check the possibility of the "combo";
+	 * it has for example to check if there is space for the second injection.
+	 * 
+	 * we need this because we want permit the caller to do a finite number cycle of injection
+	 * so at the end of a single randomInjector() call we need to know exatly if the packet has
+	 * been corrupted or not.
+	 */ 
+
 	const char* optstr = NULL;
 	unsigned int injectetdopt_size = 0;
-	unsigned int lprev = actual_length;
+	unsigned int lprev = actual_opts_len;
 	/* 
 	 * force next is used in BAD and GOOD condition, when an option may force 
 	 * the next one, for mayhem reason or for coherence
@@ -405,89 +569,78 @@ void HDRoptions::randomInjector(bool is_good)
 	
 	if(type == IPOPTS_INJECTOR) {
 
-		if(force_next != -1) {
-			switchval = force_next;
-			force_next = -1;
-		} else {
-			/* random value between 0 and SJIP_OPT_TS (last option) */
-			switchval = (random() % (SJIP_OPT_TS + 1));
-		}
-
+		/* random value between 0 and SJIP_OPT_TS (last option) */
+		switchval = (random() % (SJIP_OPT_TIMESTAMP + 1));
 		switch(switchval) {
-			case SJIP_OPT_SSRR:
-				optstr = "SSRR";
-				injectetdopt_size = m_IPOPT_SSRR(is_good);
-			case SJIP_OPT_LSRR:
-				optstr = "LSRR";
-				injectetdopt_size = m_IPOPT_LSRR(is_good);
-				break;
-			case SJIP_OPT_RA:
-				optstr = "RA";
-				injectetdopt_size = m_IPOPT_RA(is_good);
-				break;
-			case SJIP_OPT_CIPSO:
-				optstr = "CIPSO";
-				injectetdopt_size = m_IPOPT_CIPSO(is_good);
-				break;
 			case SJIP_OPT_SEC:
 				optstr = "SEC";
-				injectetdopt_size = m_IPOPT_SEC(is_good);
+				injectetdopt_size = m_IPOPT_SEC();
 				break;
 			case SJIP_OPT_SID:
 				optstr = "SID";
-				injectetdopt_size = m_IPOPT_SID(is_good);
+				injectetdopt_size = m_IPOPT_SID();
 				break;
-			case SJIP_OPT_NOOP: // VERIFY/THINK ABOUT: use NOOP, or not ?
-				optstr = "NOOP";
-				injectetdopt_size = m_IPOPT_NOOP(is_good);
+			case SJIP_OPT_LSRR:
+				optstr = "LSRR";
+				injectetdopt_size = m_IPOPT_LSRR();
 				break;
-			case SJIP_OPT_TS:
-				optstr = "TS";
-				injectetdopt_size = m_IPOPT_TIMESTAMP(is_good);
+			case SJIP_OPT_RR:
+				optstr = "RR";
+				injectetdopt_size = m_IPOPT_RR();
+				break;
+			case SJIP_OPT_RA:
+				optstr = "RA";
+				injectetdopt_size = m_IPOPT_RA();
+				break;
+			case SJIP_OPT_CIPSO:
+				optstr = "CIPSO";
+				injectetdopt_size = m_IPOPT_CIPSO();
+				break;
+			case SJIP_OPT_TIMESTAMP:
+				optstr = "TIMESTAMP";
+				injectetdopt_size = m_IPOPT_TIMESTAMP();
 				break;
 		}
-		
+	
 	} else {
 		
-		if(force_next != -1) {
-			switchval = force_next;
-				force_next = -1;
-		} else {
-			/* at this time we have no BAD options
-			 * so we can do a random value between 0 and SJTCP_OPT_SACK (last option) */
-			switchval = (random() % (SJTCP_OPT_SACK + 1));
-		}
+		/* at this time we have no BAD options
+		 * so we can do a random value between 0 and SJTCP_OPT_SACK (last option) */
+		switchval = (random() % (SJTCP_OPT_SACK + 1));
 
 		switch(switchval) {
 			case SJTCP_OPT_TIMESTAMP:
-				injectetdopt_size = m_TCPOPT_TIMESTAMP(is_good);
+				injectetdopt_size = m_TCPOPT_TIMESTAMP();
 				break;
 			case SJTCP_OPT_EOL:
-				injectetdopt_size = m_TCPOPT_EOL(is_good);
+				injectetdopt_size = m_TCPOPT_EOL();
 				break;
 			case SJTCP_OPT_NOP:
-				injectetdopt_size = m_TCPOPT_NOP(is_good);
+				injectetdopt_size = m_TCPOPT_NOP();
 				break;
 			case SJTCP_OPT_MAXSEG:
-				injectetdopt_size = m_TCPOPT_MAXSEG(is_good);
+				injectetdopt_size = m_TCPOPT_MAXSEG();
 				break;
 			case SJTCP_OPT_WINDOW:
-				injectetdopt_size = m_TCPOPT_WINDOW(is_good);
+				injectetdopt_size = m_TCPOPT_WINDOW();
 				break;
 			case SJTCP_OPT_SACK_PERMITTED:
-				injectetdopt_size = m_TCPOPT_SACK_PERMITTED(is_good);
+				injectetdopt_size = m_TCPOPT_SACK_PERMITTED();
 				break;
 			case SJTCP_OPT_SACK:
-				injectetdopt_size = m_TCPOPT_SACK(is_good);
+				injectetdopt_size = m_TCPOPT_SACK();
 				break;
 		}
 	}	
 
 	if(injectetdopt_size) {
 		optptr += injectetdopt_size;
-		actual_length += injectetdopt_size;
-		available_length = (target_length - actual_length);
+		actual_opts_len += injectetdopt_size;
+		available_opts_len = (target_opts_len - actual_opts_len);
 		debug.log(DEBUG_LEVEL, "Injected %sOPT %s size %u previous len %u actual %u", 
-			type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_length);
-	}
+			type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_opts_len);
+		
+		return true;
+	} else
+		return false;
 }

@@ -39,7 +39,7 @@ Process::Process(struct sj_config &runcfg) :
 
 	if (getuid() || geteuid())  {
 		debug.log(ALL_LEVEL, "Process: required root privileges");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
         struct passwd *userinfo_result;
@@ -53,7 +53,7 @@ Process::Process(struct sj_config &runcfg) :
 
 	if(userinfo_buf == NULL || groupinfo_buf == NULL) {
                 debug.log(ALL_LEVEL, "Process: problem in memory allocation for userinfo or groupinfo");
-                SJ_RUNTIME_EXCEPTION();
+                SJ_RUNTIME_EXCEPTION("");
 	}
 
         getpwnam_r(runconfig.user, &userinfo, (char*)userinfo_buf, userinfo_buf_len, &userinfo_result);
@@ -61,7 +61,7 @@ Process::Process(struct sj_config &runcfg) :
 
         if (userinfo_result == NULL || groupinfo_result == NULL) {
                 debug.log(ALL_LEVEL, "Process: invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
         }
 }
 
@@ -80,7 +80,7 @@ int Process::detach()
 
 	if ((pid_child = fork()) == -1) {
 		debug.log(ALL_LEVEL, "detach: unable to fork (calling pid %d, parent %d)", getpid(), getppid());
-		SJ_RUNTIME_EXCEPTION();	
+		SJ_RUNTIME_EXCEPTION("");	
 	}
 	
 	if (pid_child)
@@ -125,7 +125,7 @@ void Process::jail()
 {
 	if(runconfig.chroot_dir == NULL) {
                 debug.log(ALL_LEVEL, "jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	mkdir(runconfig.chroot_dir, 0700);
@@ -133,12 +133,12 @@ void Process::jail()
 	if (chown(runconfig.chroot_dir, userinfo.pw_uid, groupinfo.gr_gid)) {
                 debug.log(ALL_LEVEL, "jail: chown of %s to %s:%s failed: %s: unable to start sniffjoke",
 			runconfig.chroot_dir, runconfig.user, runconfig.group, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	if (chdir(runconfig.chroot_dir) || chroot(runconfig.chroot_dir)) {
 		debug.log(ALL_LEVEL, "jail: chroot into %s: %s: unable to start sniffjoke", runconfig.chroot_dir, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	debug.log(VERBOSE_LEVEL, "jail: chroot'ed process %d in %s", getpid(), runconfig.chroot_dir);
@@ -148,7 +148,7 @@ void Process::privilegesDowngrade()
 {
 	if (setgid(groupinfo.gr_gid) || setuid(userinfo.pw_uid)) {
 		debug.log(ALL_LEVEL, "privilegesDowngrade: error loosing root privileges");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	debug.log(VERBOSE_LEVEL, "privilegesDowngrade: process %d downgrade privileges to uid %d gid %d", 
@@ -219,7 +219,7 @@ void Process::writePidfile(void)
         FILE *pidFile = fopen(SJ_PIDFILE, "w+");
         if(pidFile == NULL) {
                 debug.log(ALL_LEVEL, "writePidfile: unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
-                SJ_RUNTIME_EXCEPTION();
+                SJ_RUNTIME_EXCEPTION("");
         }
 
 	fprintf(pidFile, "%d", getpid());
@@ -238,7 +238,7 @@ void Process::unlinkPidfile(void)
 	fclose(pidFile);
 	if(unlink(SJ_PIDFILE)) {
 		debug.log(VERBOSE_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
-                SJ_RUNTIME_EXCEPTION();
+                SJ_RUNTIME_EXCEPTION("");
 	}
 }
 

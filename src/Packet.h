@@ -38,28 +38,30 @@
 
 using namespace std;
 
+/* IT'S FUNDAMENTAL TO HAVE ALL ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
+
 /* if the packet is inject from sniffjoke is marked with the evilbit */
 enum evilbit_t { MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2 };
 
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
-enum source_t { SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 3, TTLBFORCE = 4 };
+enum source_t { SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 4, TTLBFORCE = 8 };
 
 /* status mean what sniffjoke has to do with the packet. KEEP is used when a packet is 
  * delayed, YOUNG when a packet was created by sniffjoke, SEND has to be send */
-enum status_t { STATUSUNASSIGNED = 0, ANY_STATUS = 1, SEND = 2, KEEP = 3, YOUNG = 4 };
+enum status_t { STATUSUNASSIGNED = 0, SEND = 2, KEEP = 4, YOUNG = 8 };
 
 /* Every sniffjoke packet is based on be discarged from the remote host and accepted from
  * the sniffer, in order to obtain the sniffer tracking poisoning, those marker mean if the
  * packet need to be plain and correct (INNOCENT) to expire prematurely (PRESCRIPTION) to be 
  * consider bad and discarged (GUILTY, corrupt the TCP checksum), MALFORMED (weird ip options)
  * or a random choose of those */
-enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 3, MALFORMED = 4, RANDOMDAMAGE = 5 };
+enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8, RANDOMDAMAGE = 16 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
-enum proto_t { PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 3 };
+enum proto_t { PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 4 };
 
 /* a sniffjoke packet should be send before the oroginal packet or after the original packet */
-enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 3 };
+enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 4 };
 
 class Packet {
 private:
@@ -104,8 +106,8 @@ public:
 	void fixIpTcpSum(void);
 
 	/* autochecking */
-	bool checkTCPOPT(void);
-	bool checkIPOPT(void);
+	//bool checkTCPOPT(void);
+	//bool checkIPOPT(void);
 	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
@@ -115,11 +117,11 @@ public:
 	void TCPPAYLOAD_fillrandom(void);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */
-	void Inject_IPOPT(bool, bool);
-	void Inject_TCPOPT(bool, bool);
+	bool Inject_IPOPT(bool, bool);
+	bool Inject_TCPOPT(bool, bool);
 
 	/* utilities */
-	void selflog(const char *, const char *);
+	void selflog(const char *, const char *) const;
 	char debug_buf[LARGEBUF];
 };
 

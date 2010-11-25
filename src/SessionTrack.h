@@ -33,18 +33,18 @@ using namespace std;
 
 class SessionTrack {
 public:
+	time_t access_timestamp; /* access timestamp used to decretee expiry */
+
 	unsigned int daddr;
 	unsigned short sport;
 	unsigned short dport;
 	unsigned int isn;
 	unsigned int packet_number;
-	bool shutdown;
 
-	SessionTrack(const Packet &pb);
-	~SessionTrack();
+	SessionTrack(const Packet &);
 	
 	/* utilities */
-	void selflog(const char *, const char *);
+	void selflog(const char *, const char *) const;
 	/* no personal buffer used in selflog, maybe in the future */
 };
 
@@ -53,7 +53,7 @@ public:
 	unsigned int daddr;
 	unsigned short sport;
 	unsigned short dport;
-	bool operator<(SessionTrackKey comp) const;
+	bool operator<(SessionTrackKey) const;
 };
 
 typedef map<SessionTrackKey, SessionTrack> SessionTrackMap;

@@ -23,20 +23,13 @@
 #include "SessionTrack.h"
 
 SessionTrack::SessionTrack(const Packet &pkt) :
+	access_timestamp(0),
 	daddr(pkt.ip->daddr),
 	sport(pkt.tcp->source),
 	dport(pkt.tcp->dest),
 	isn(pkt.tcp->seq),
-	packet_number(1),
-	shutdown(false)
-{
-	debug.log(DEBUG_LEVEL, "%s: daddr(%s) sport(%d) dport(%d) isn(%x)", __func__, inet_ntoa(*((struct in_addr *)&(daddr))), sport, dport, isn);
-}
-
-SessionTrack::~SessionTrack()
-{
-	debug.log(DEBUG_LEVEL, "%s: daddr(%s) sport(%d) dport(%d) isn(%x)", __func__, inet_ntoa(*((struct in_addr *)&(daddr))), sport, dport, isn);
-}
+	packet_number(1)
+{}
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {
@@ -58,14 +51,13 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 	}
 }
 
-void SessionTrack::selflog(const char *func, const char *lmsg) 
+void SessionTrack::selflog(const char *func, const char *lmsg) const
 {
-	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x shutdown %s #pkt %d: [%s]",
+	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x #pkt %d: [%s]",
 		func, ntohs(sport), 
 		inet_ntoa(*((struct in_addr *)&daddr)),
                 ntohl(isn),
 		ntohs(dport), 
-		shutdown ? "TRUE" : "FALSE",
 		packet_number, lmsg
 	);
 }

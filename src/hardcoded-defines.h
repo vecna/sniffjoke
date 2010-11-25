@@ -45,8 +45,9 @@
 #define SUFFIX_LF_PACKETS               ".packets"
 #define SUFFIX_LF_SESSIONS              ".sessions"
 #define DEFAULT_DEBUG_LEVEL             2
-#define DEFAULT_MAX_TTLPROBE		30
+#define DEFAULT_MAX_TTLPROBE		35
 #define DEFAULT_MAX_SEXTRACK		4096
+#define DEFAULT_MAX_TTLFOCUS		4096
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
 
@@ -55,7 +56,7 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 /* TTL related define */
-#define TTLFOCUSMAP_FILE		"ttlfocus.bin"
+#define TTLFOCUSCACHE_FILE		"ttlfocus.bin"
 
 /* the maximum value of bruteforced TTL */
 #define STARTING_ARB_TTL		46

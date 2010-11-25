@@ -38,7 +38,7 @@ class fake_close_fin : public Hack
 {
 #define HACK_NAME	"Fake Fin"
 public:
-	virtual void createHack(Packet &orig_packet)
+	virtual void createHack(const Packet &orig_packet)
 	{
 		Packet* pkt = new Packet(orig_packet);
 

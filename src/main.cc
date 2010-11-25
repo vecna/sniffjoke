@@ -56,12 +56,9 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
-	"Testing options (not saved in configuration file):\n"\
-	" --disable-prescription\tdisables prescription scramble technique\t\n"\
-	" \t\t\tpackets that need this will be marked guilty, using the scramble checksum technique\n\n"\
-	" --disable-malformation\tdisables malformation scramble technique\t\n"\
-	" \t\t\tpackets that need this will be marked guilty, using the scramble checksum technique\n\n"\
-	" --only [plugin.so,YYY]\tspecify the plugin and tricks to use\n\n"\
+	"testing options (not saved in configuration file):\n"\
+	" --only-plugin [plugin.so]\tspecify the single plugin to use\n"\
+	" --scramble [Y/N][Y/N][Y/N]\tspecify enabled scamble techniques (it's required at least one Y)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
@@ -98,10 +95,12 @@ static void sj_version(const char *pname)
 	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
-runtime_error sj_runtime_exception(const char* func, const char* file, long line)
+runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
 	stringstream stream;
 	stream << file << "(" << line << ") function: " << func << "()";
+	if(msg != NULL)
+		stream << " : " << msg;
 	return std::runtime_error(stream.str());
 }
 
@@ -136,7 +135,7 @@ static bool client_command_found(char **av, const int ac, struct command *sjcmdl
 					sj_help(av[0], CHROOT_DIR, CHROOT_DIR);
 					exit(-1);
 				}
-				while(--(ptr->related_args) ) {
+				while(--(ptr->related_args)) {
 					usedlen = strlen(retcmd);
 					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[++i]);
 				}
@@ -167,10 +166,9 @@ int main(int argc, char **argv)
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
 		{ "version", no_argument, NULL, 'v' },
+		{ "only-plugins", required_argument, NULL, 'p' },
+		{ "scramble", required_argument, NULL, 's' },
 		{ "help", no_argument, NULL, 'h' },
-		{ "disable-prescription", no_argument, NULL, 'p' },
-		{ "disable-malformation", no_argument, NULL, 'm' },
-		{ "only", required_argument, NULL, 'o' },
 		{ NULL, 0, NULL, 0 }
 	};
 
@@ -197,7 +195,7 @@ int main(int argc, char **argv)
 		useropt.process_type = SJ_SERVER_PROC;
 
 	int charopt;
-	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrhvpmo:", sj_option, NULL)) != -1) {
+	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrvp:s:h", sj_option, NULL)) != -1) {
 		switch(charopt) {
 			case 'f':
 				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
@@ -213,12 +211,14 @@ int main(int argc, char **argv)
 				break;
 			case 'c':
 				snprintf(useropt.chroot_dir, sizeof(useropt.chroot_dir) -1, "%s", optarg);
-				/* this fix usefull when --chroot-dir /tmp is passed and /tmp/ is required */
+				/* this fix it's useful if the useropt path lacks the ending slash */
 				if(useropt.chroot_dir[strlen(useropt.chroot_dir) -1] != '/')
 					useropt.chroot_dir[strlen(useropt.chroot_dir)] = '/';
 				break;
 			case 'd':
 				useropt.debug_level = atoi(optarg);
+				if(useropt.debug_level < 0 || useropt.debug_level > 6)
+					goto sniffjoke_help;
 				break;
 			case 'l':
 				snprintf(useropt.logfname, sizeof(useropt.logfname), "%s", optarg);
@@ -235,14 +235,17 @@ int main(int argc, char **argv)
 				sj_version(argv[0]);
 				return 0;
 			case 'p':
-				useropt.prescription_disabled = true;
+				snprintf(useropt.onlyplugin, sizeof(useropt.onlyplugin), "%s", optarg);
 				break;
-			case 'm':
-				useropt.malformation_disabled = true;
+			case 's':
+				if((strlen(optarg) != 3)
+				|| YNcheck(optarg[0]) || YNcheck(optarg[1]) || YNcheck(optarg[2]))
+					goto sniffjoke_help;
+
+				snprintf(useropt.scramble, sizeof(useropt.scramble), "%s", optarg);
 				break;
-			case 'o':
-				snprintf(useropt.onlyparam, sizeof(useropt.onlyparam), "%s", optarg);
-				break;
+sniffjoke_help:
+			case 'h':
 			default:
 				sj_help(argv[0], useropt.chroot_dir, CHROOT_DIR);
 				return -1;

@@ -39,11 +39,10 @@ struct sj_cmdline_opts {
 		char logfname_packets[LARGEBUF];
 		char logfname_sessions[LARGEBUF];
 		unsigned int debug_level;
-		bool prescription_disabled;
-		bool malformation_disabled;
 		/* END OF COMMON PART WITH sj_config_opt */
 
-		char onlyparam[MEDIUMBUF];
+		char onlyplugin[MEDIUMBUF];
+		char scramble[4];   /* 3 options chars + \0 */
 		bool go_foreground;
 		bool force_restart;
 		
@@ -81,18 +80,17 @@ struct sj_config {
 		char logfname_packets[LARGEBUF];	/* default: idem */
 		char logfname_sessions[LARGEBUF];	/* default: idem */
 		unsigned int debug_level;		/* default: idem */
-		bool prescription_disabled;		/* default: false */
-		bool malformation_disabled;		/* default: false */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
-		unsigned int scrambletech;		/* default: idem */
+		unsigned int scrambletech;		/* default: idem */		
+		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + gw_mac_str */
 
 		unsigned short max_ttl_probe;		/* default: idem */
-		unsigned int max_sex_track;		/* default: idem */
+		unsigned int max_ttlfocus;		/* default: idem */
+		unsigned int max_sextrack;		/* default: idem */
 		Strength portconf[PORTNUMBER];
-		bool listenport[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -100,9 +98,7 @@ struct sj_config {
 		char gw_mac_addr[ETH_ALEN];		/* default: autodetect, the conversion of _str */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
 		int tun_number;				/* default: autodetect */
-		unsigned int port_conf_set_n;		/* number of "set" usage */
 
-		char *error;
 };
 
 class UserConf {
@@ -141,7 +137,7 @@ public:
 		void handle_cmd_set(unsigned short, unsigned short, Strength);
 		void handle_cmd_loglevel(int);
 		void handle_cmd_listen(int);
-		bool parse_port_weight(char *weightstr, Strength *value);
+		bool parse_port_weight(char *, Strength *);
 };
 
 #endif /* SJ_CONF_H */

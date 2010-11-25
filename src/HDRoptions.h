@@ -28,66 +28,54 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
-/* present in linux/ip.h */
-#define IPOPT_CIPSO	(6 |IPOPT_CONTROL|IPOPT_COPY)
-
 enum injector_t { IPOPTS_INJECTOR = 0, TCPOPTS_INJECTOR = 1 };
 
 class HDRoptions {
 private:
 	injector_t type;
+	bool corrupt;
 	unsigned char *optptr;
-	unsigned int &actual_length;
-	unsigned int &target_length;
-	unsigned int available_length;
-	
-	int force_next;
-	
-	/* IP HDR Injector specific status variables */
-	bool lsrr_set, ssrr_set;
+	unsigned int &actual_opts_len;
+	unsigned int &target_opts_len;
+	unsigned int available_opts_len;
 
-#define CONST_RA_SIZE 4
-	unsigned int m_IPOPT_RA(bool);
-#define CONST_RR_SIZE 4
-	unsigned int m_IPOPT_RR(bool);
-#define CONST_SEC_SIZE 11
-	unsigned int m_IPOPT_SEC(bool);
-#define CONST_SID_SIZE 4
-	unsigned int m_IPOPT_SID(bool);
-#define CONST_NOOP_SIZE	1
-	unsigned int m_IPOPT_NOOP(bool);
-#define CONST_CIPSO_SIZE 8
-	unsigned int m_IPOPT_CIPSO(bool);
-#define CONST_TIMESTAMP_SIZE 4
-	unsigned int m_IPOPT_TIMESTAMP(bool);
+	/*
+	 * options we need to check the presence for;
+	 * some options are good but if repeated may corrupt the packet.
+	 */
+	bool opt_ip_timestamp;
+	bool opt_ip_rr;
 
-	/* will be random between 8 and 40, but until we are not sure that is useful, is keep const */
-#define CONST_LSRR_SIZE	8
-	unsigned int m_IPOPT_LSRR(bool);
+	unsigned int m_IPOPT_NOOP(void);
+	unsigned int m_IPOPT_LSRR(void);
+	unsigned int m_IPOPT_RR(void);
+	unsigned int m_IPOPT_RA(void);
+	unsigned int m_IPOPT_CIPSO(void);
+	unsigned int m_IPOPT_TIMESTAMP(void);
+	unsigned int m_IPOPT_SEC(void);
+	unsigned int m_IPOPT_SID(void);
 
-	/* little difference */
-#define CONST_SSRR_SIZE	12
-	unsigned int m_IPOPT_SSRR(bool);
+	unsigned int m_TCPOPT_TIMESTAMP(void);
+	unsigned int m_TCPOPT_EOL(void);
+	unsigned int m_TCPOPT_NOP(void);
+	unsigned int m_TCPOPT_MAXSEG(void);
+	unsigned int m_TCPOPT_WINDOW(void);
+	unsigned int m_TCPOPT_SACK_PERMITTED(void);
+	unsigned int m_TCPOPT_SACK(void);
 
-	unsigned int m_TCPOPT_TIMESTAMP(bool);
-	unsigned int m_TCPOPT_EOL(bool);
-	unsigned int m_TCPOPT_NOP(bool);
-	unsigned int m_TCPOPT_MAXSEG(bool);
-	unsigned int m_TCPOPT_WINDOW(bool);
-	unsigned int m_TCPOPT_SACK_PERMITTED(bool);
-	unsigned int m_TCPOPT_SACK(bool);
+	bool checkIPOPTINJPossibility(void);	
+	bool checkTCPOPTINJPossibility(void);
 
 public:
 	/* used for internal definition of IP opt functions */
-#define SJIP_OPT_SSRR			0
-#define SJIP_OPT_LSRR			1
-#define SJIP_OPT_RR			2
-#define SJIP_OPT_RA			3
-#define SJIP_OPT_CIPSO			4
-#define SJIP_OPT_SEC			5
-#define SJIP_OPT_SID			6
-#define SJIP_OPT_NOOP			7
-#define SJIP_OPT_TS			8
+#define SJIP_OPT_LSRR			0
+#define SJIP_OPT_RR			1
+#define SJIP_OPT_RA			2
+#define SJIP_OPT_CIPSO			3
+#define SJIP_OPT_NOOP			4
+#define SJIP_OPT_TIMESTAMP		5
+#define SJIP_OPT_SEC			6
+#define SJIP_OPT_SID			7
 
 #define SJTCP_OPT_TIMESTAMP		0
 #define SJTCP_OPT_EOL			1
@@ -97,13 +85,10 @@ public:
 #define SJTCP_OPT_SACK_PERMITTED	5
 #define SJTCP_OPT_SACK			6
 
-
 	/* used for internal definition of TCP opt functions */
 
-	HDRoptions(injector_t, unsigned char *, unsigned int &, unsigned int &);
-	~HDRoptions();
-	
-	void randomInjector(bool);
+	HDRoptions(injector_t, bool, unsigned char *, unsigned int &, unsigned int &);
+	bool randomInjector();
 };
 
 #endif /* HDROPTIONS_H */

@@ -42,7 +42,7 @@ class valid_rst_fake_seq : public Hack
 {
 #define HACK_NAME	"true RST w/ invalid SEQ"
 public:
-	virtual void createHack(Packet &orig_packet)
+	virtual void createHack(const Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 

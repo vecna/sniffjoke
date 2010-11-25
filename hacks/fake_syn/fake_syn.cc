@@ -40,7 +40,7 @@ class fake_syn : public Hack
 {
 #define HACK_NAME	"Fake SYN"
 public:
-	virtual	void createHack(Packet &orig_packet)
+	virtual	void createHack(const Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 

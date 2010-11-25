@@ -38,7 +38,7 @@ PluginTrack::PluginTrack(const char *plugabspath) :
 	pluginHandler = dlopen(plugabspath, RTLD_NOW);
 	if(pluginHandler == NULL) {
 		debug.log(ALL_LEVEL, "PluginTrack: unable to load plugin %s: %s", plugabspath, dlerror());
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	debug.log(DEBUG_LEVEL, "PluginTrack: opened %s plugin", plugabspath);
@@ -51,20 +51,20 @@ PluginTrack::PluginTrack(const char *plugabspath) :
 
         if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of create/delete object", pluginPath);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
         }
 
         selfObj = fp_CreateHackObj();
 
         if(selfObj->hackName == NULL) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of ->hackName member", pluginPath);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
         }
 
         if(selfObj->hackFrequency == FREQUENCYUNASSIGNED) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin #%d (%s) lack of ->hack_frequency",
                         selfObj->hackName);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 }
 
@@ -92,7 +92,7 @@ void HackPool::importPlugin(const char *plugabspath, const char *plugrelpath)
 		debug.log(DEBUG_LEVEL, "HackPool: plugin %s implementation accepted", plugin.selfObj->hackName);
 	} catch (runtime_error &e) {
 		debug.log(ALL_LEVEL, "HackPool: unable to load plugin %s", plugrelpath);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 }
@@ -104,7 +104,7 @@ void HackPool::parseEnablerFile(const char *enabler)
 
 	if((plugfile = fopen(enabler, "r")) == NULL) {
 		debug.log(ALL_LEVEL, "HackPool: unable to open in reading %s: %s", enabler, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	int line = 0;
@@ -124,7 +124,7 @@ void HackPool::parseEnablerFile(const char *enabler)
 		if(strlen(plugrelpath) < 4 || feof(plugfile)) {
 			debug.log(ALL_LEVEL, "HackPool: reading %s: importend %d plugins, matched interruption at line %d",
 				PLUGINSENABLER, size(), line);
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 		}
 
 		memset(plugabspath, 0x00, sizeof(plugabspath));
@@ -149,7 +149,7 @@ HackPool::HackPool(sj_config &runcfg)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
-	if(runcfg.scrambletech)  {
+	if(runcfg.onlyplugin[0])  {
 		char plugabspath[MEDIUMBUF];
 		memset(plugabspath, 0x00, sizeof(plugabspath));
 		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, runcfg.onlyplugin);
@@ -160,7 +160,7 @@ HackPool::HackPool(sj_config &runcfg)
 
 	if(!size()) {
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly 0 plugins: FAILURE while loading detected");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	} else
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly %d plugins", size());
 }
@@ -172,7 +172,7 @@ HackPool::~HackPool()
 	/* call the distructor loaded from the plugins */
 	vector<PluginTrack>::iterator it;
 	PluginTrack *plugin;
-	for ( it = begin(); it != end(); it++ ) 
+	for (it = begin(); it != end(); it++) 
 	{
 		plugin = &(*it);
 

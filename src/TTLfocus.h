@@ -34,61 +34,63 @@
 
 using namespace std;
 
-#define TTLPROBEINTERVAL 50000000 // 50ms
+/* IT'S FUNDAMENTAL TO HAVE ALL THIS ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
-enum ttlsearch_t { TTL_KNOWN = 1, TTL_BRUTALFORCE = 3, TTL_UNKNOWN = 9 };
-
-struct ttlfocus_cache_record {
-	unsigned int daddr;
-	unsigned short expiring_ttl;
-	unsigned short min_working_ttl;
-	unsigned short synack_ttl;
-	unsigned short sent_probe;
-	unsigned short received_probe;
-	unsigned short puppet_port;
-	unsigned int rand_key;
-	ttlsearch_t status;
-};
-
+enum ttlsearch_t { TTL_KNOWN = 0, TTL_BRUTEFORCE = 1, TTL_UNKNOWN = 2 };
 
 class TTLFocus {
 public:
-	ttlsearch_t status;
-	unsigned int daddr;
-	unsigned short expiring_ttl;
-	unsigned short min_working_ttl;
-	unsigned short synack_ttl;
-	unsigned short sent_probe;
-	unsigned short received_probe;
-	unsigned short puppet_port;
-	unsigned int rand_key;
-	
-	/*
-	 * copy of the reference syn packet.
-	 * it's used only during ttl broutefoce,
-	 * and it' not saved into the cache.
-	 * (We mantain cache only for status TTL_[UN]KNOWN)
-	 */ 
-	vector<unsigned char> synpbuf_copy;
-	
-	struct timespec next_probe_time;
+	/* timing variables */
+	time_t access_timestamp;		/* access timestamp used to decretee expiry */
+	struct timespec next_probe_time;	/* timeout value used for ttlprobe schedule */
 
-	TTLFocus(const Packet &syn);
-	TTLFocus(const TTLFocus& cpy);
-	TTLFocus(const struct ttlfocus_cache_record& cpy);
-	void scheduleNextProbe();
-	bool isProbeIntervalPassed(const struct timespec&) const;
+	/* status variables */
+	ttlsearch_t status;			/* status of the traceroute */
+	unsigned int rand_key;			/* random key used as try to discriminate traceroute packet */
+	unsigned short puppet_port;		/* random port used with the aim to not disturbe a session */
+#define PUPPET_MARGIN	10			/* margin to mantain between real dest port and puppet port
+						   with the aim to not disturbe a session */
+	unsigned short sent_probe;		/* number of sent probes */
+	unsigned short received_probe;		/* number of received probes */
+	
+	/* ttl informations, results of the analysis */
+	unsigned int daddr;			/* destination of the traceroute */
+	unsigned short expiring_ttl;		/* the min exiping_ttl found during analysis */
+	unsigned short min_working_ttl;		/* the min working ttl found during analysis */
+	unsigned short synack_ttl;		/* the value of the ttl read in the synack packet */
+
+
+	Packet probe_dummy;			/* dummy ttlprobe packet generated from the packet
+						   that scattered the ttlfocus creation. */
+
+	TTLFocus(const Packet &pkt);
+	TTLFocus(const struct ttlfocus_cache_record &);
+	void selectPuppetPort();
+	void scheduleNextProbe50ms();
+	void scheduleNextProbe2mins();
+	bool isProbeIntervalPassed(const struct timespec &) const;
 
 	/* utilities */
-	void selflog(const char *, const char *);
+	void selflog(const char *, const char *) const;
 	char debug_buf[LARGEBUF];
 };
 
-class TTLFocusMap : public std::map<const unsigned int, TTLFocus> {
+class TTLFocusMap : public map<const unsigned int, TTLFocus> {
 public:
-        void dump();
-        void load();
+        void dump(const char *);
+        void load(const char *);
 };
 
+struct ttlfocus_cache_record {
+	unsigned int daddr;			/* destination of the traceroute */
+	unsigned short expiring_ttl;		/* the min exiping_ttl found during analysis */
+	unsigned short min_working_ttl;		/* the min working ttl found during analysis */
+	unsigned short synack_ttl;		/* the value of the ttl read in the synack packet */
+	
+	unsigned char probe_dummy[40];		/* dummy ttlprobe packet generated from the packet
+						   that scattered the ttlfocus creation.
+						   the packet size is always 40 bytes long,
+						   (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
+};
 
 #endif /* SJ_TTLFOCUS_H */

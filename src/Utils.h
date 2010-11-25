@@ -70,9 +70,9 @@ enum size_buf_t {
 #define PACKETS_DEBUG		6
 #define PACKETS_DEBUG_NAME      "packets"
 
-#define SJ_RUNTIME_EXCEPTION()	throw sj_runtime_exception(__func__, __FILE__, __LINE__)
+#define SJ_RUNTIME_EXCEPTION(x) throw sj_runtime_exception(__func__, __FILE__, __LINE__, x)
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
-std::runtime_error sj_runtime_exception(const char* func, const char* file, long line);
+std::runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char *msg);
 void* memset_random(void *s, size_t n);
 void sigtrap(int signal);
 
