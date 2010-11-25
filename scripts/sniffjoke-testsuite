@@ -1,4 +1,20 @@
-#!/bin/sh -x
+#!/bin/sh 
+
+start_singletest() {
+	TESTID="sj_$OS_$x_$y"
+	echo "$PLUGIN e $SCRAMBLE e $TESTID"
+	echo "+ Starting sniffjoke with $nowplug and $nowscramb and server $SERVER (test ID: $TESTID)"
+	$SNIFFJOKEBIN --debug 6 --chroot-dir /tmp/$id --plugin $nowplug,$nowscramb
+	$SNIFFJOKEBIN set 80 80 heavy 
+	$SNIFFJOKEBIN start 
+	pushd /tmp/$id
+	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
+	curl -d "sparedata=`cat $GENERATEDFILE`" $server > received_echo
+	CHECKSUM=´md5sum $GENERATEDFILE | cut -b -32´
+	sniffjoke quit
+	echo "* checksum to compare $VERIFTYSUM | $CHECKSUM"
+	popd
+}
 
 echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
 
@@ -8,18 +24,15 @@ if [ $USERID != "0" ]; then
 	exit;
 fi
 
-if [ -x $1 ]; then
-	SNIFFJOKEBIN=$1
-else
-	SNIFFJOKEBIN="/usr/local/bin/sniffjoke"
+SNIFFJOKEBIN="/usr/local/bin/sniffjoke"
 
-if [ -x $SNIFFJOKEBIN ]; then
-	echo "$SNIFFJOKEBIN is not a valid executable, pass sniffjoke path as (only) argument or install it"
+if [ ! -x $SNIFFJOKEBIN ]; then
+	echo "$SNIFFJOKEBIN is not a valid executable"
 	exit;
 fi
 
 echo "+ Starting SniffJoke hacks test"
-echo "* Stopping running sniffjoke ($SNIFFJOKE quit)"
+echo "* Stopping running sniffjoke ($SNIFFJOKEBIN quit)"
 $SNIFFJOKEBIN quit
 
 plugins[0]="/usr/local/lib/sniffjoke/fake_close_fin.so"
@@ -41,42 +54,34 @@ SERVERFILE="/tmp/testsuite.info"
 rm -f $SERVERFILE
 wget -O $SERVERFILE $FILEURL
 
-if [ ! -e $SERVERFILE ]; then
+if [ -ne $SERVERFILE ]; then
 	echo "- unable to retriver $SERVERFILE by wget $FILEURL"
 	exit;
 fi
 
-plug_i=`seq 0 7`
+plug_i=`seq 0 7` 
 scramb_i=`seq 0 2`
 
-for x in $plug_i; do
-	for y in $scamb_i; do
-		WINSERVER=´grep "WINDOWS=" $SERVERFILE | cut -b 8-´
-		LINSERVER=´grep "LINUX=" $SERVERFILE | cut -b 6-´
-		OTHSERVER=´grep "OTHER=" $SERVERFILE | cut -b 6-´
-	done
-done
+# generate the test file
+GENERATEDFILE="/tmp/tosend_data.generated"
+seq 1000 3000 > $GENERATEDFILE
+VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
-TODO - make this a function
-	rm -rf tmpdir.$x
-	mkdir tmpdir.$x
-	cd tmpdir.$x
-	for y in `seq 1 5`; do echo -n "$x $y " >> generated-1.$x; done
-	for y in `seq 1 5`; do echo -n "$x $y " >> generated-2.$x; done
-	md5sum generated-1.$x > generated-1.$x.md5sum
-	md5sum generated-2.$x > generated-2.$x.md5sum
-	generate_hacking_option
-	echo "+ Starting sniffjoke in the $x instance"
-	sniffjoke --force --debug 6 --hacking $HACKOPT
-	sleep 1
-	if [ ! -e "/tmp/sniffjoke/sniffjoke_service" ]; then 
-		echo "- Bad, on instance $x sniffjoke IS NOT running!"; exit;
-	fi
-	sniffjoke clear
-	sniffjoke set 80 80 heavy 
-	sniffjoke start
-	curl -d "sparedata=`cat generated-1.$x`" http://www.delirandom.net/sniffjoke_test/post_echo.php > received-1.$x
-	curl -d "sparedata=`cat generated-2.$x`" http://www.delirandom.net/sniffjoke_test/post_echo.php > received-2.$x
-	sniffjoke quit
-	cd ..
+for x in $plug_i; do
+	for y in $scramb_i; do
+		PLUGIN={plugins[$x]}
+		SCRAMBLE={scrambling[$y]}
+
+		OS="WINDOWS"
+		SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
+		start_singletest 
+
+		OS="LINUX"
+		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+		start_singletest 
+
+		OS="OTHER"
+		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+		start_singletest 
+	done
 done
