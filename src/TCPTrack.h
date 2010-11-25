@@ -34,12 +34,10 @@
 class TCPTrack {
 private:
 	struct sj_config &runconfig;
-	bool youngpacketspresent;
 	
-	struct timespec clock;		/* clock time updated by analyze_packet_queue */
-	unsigned int apq_round_time;	/* round time updated by analyze_packet_queue */
-	
-#define APQ_ROUND_LIMIT		10000	/* upper count limit of apq_round_time */
+	struct timespec clock;			/* clock time updated by analyze_packet_queue */
+		
+#define APQ_MANAGMENT_ROUTINE_TIMER	60	/* manager routine time interval in seconds */
 
 	PacketQueue p_queue;
 	SessionTrackMap sex_map;
@@ -48,13 +46,12 @@ private:
 
 	bool percentage(unsigned int, Frequency, Strength);
 
+	void inject_ttlprobe_in_queue(TTLFocus &);
 	
-	void enque_ttl_probe(TTLFocus &);
-	
-	bool analyze_ttl_stats(TTLFocus&);
-
-	void manage_sessions_map();
-	void manage_ttlfocus_map();
+	SessionTrack& get_sessiontrack(const Packet &pkt);
+	TTLFocus& get_ttlfocus(const Packet &pkt);
+	void manage_expired_sessiontracks();
+	void manage_expired_ttlfocuses();
 
 	/* this functions are called inside analyze_packets_queue;
 	 * boolean functions return true if the packet must be sended */ 
@@ -65,10 +62,8 @@ private:
 	bool analyze_outgoing(Packet &);
 	bool analyze_keep(Packet &);
 
-	bool is_session_protected(struct tcphdr *, Strength[PORTNUMBER], bool[PORTNUMBER]);
-	
-	void inject_hack_in_queue(Packet &, const SessionTrack *);
-	void last_pkt_fix(Packet &);
+	void inject_hack_in_queue(Packet &);
+	bool last_pkt_fix(Packet &);
 
 public:
 	TCPTrack(sj_config&, HackPool&);
@@ -76,7 +71,8 @@ public:
 
 	void writepacket(const source_t, const unsigned char*, int);
 	Packet* readpacket(void);
-	void analyze_packets_queue(void);
+	void analyze_packets_queue();
+	void force_send(void);
 };
 
 #endif /* SJ_TCPTRACK_H */

@@ -48,8 +48,6 @@
 #define DEFAULT_MAX_TTLPROBE		35
 #define DEFAULT_MAX_SEXTRACK		4096
 #define DEFAULT_MAX_TTLFOCUS		4096
-#define TTLFOCUS_EXPIRETIME		604800	/* access expire time in seconds (1 WEEK) */
-#define SESSIONTRACK_EXPIRETIME		1200	/* access expire time in seconds (5 MINUTES) */
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
 
@@ -58,7 +56,7 @@
 #define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 /* TTL related define */
-#define TTLFOCUSMAP_FILE		"ttlfocus.bin"
+#define TTLFOCUSCACHE_FILE		"ttlfocus.bin"
 
 /* the maximum value of bruteforced TTL */
 #define STARTING_ARB_TTL		46

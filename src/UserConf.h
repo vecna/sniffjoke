@@ -84,13 +84,13 @@ struct sj_config {
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
-		unsigned int scrambletech;		/* default: idem */
+		unsigned int scrambletech;		/* default: idem */		
+		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + gw_mac_str */
 
 		unsigned short max_ttl_probe;		/* default: idem */
-		unsigned int max_ttlfocus;	/* default: idem */
-		unsigned int max_sextrack;	/* default: idem */
+		unsigned int max_ttlfocus;		/* default: idem */
+		unsigned int max_sextrack;		/* default: idem */
 		Strength portconf[PORTNUMBER];
-		bool listenport[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
 		char gw_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -98,9 +98,7 @@ struct sj_config {
 		char gw_mac_addr[ETH_ALEN];		/* default: autodetect, the conversion of _str */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
 		int tun_number;				/* default: autodetect */
-		unsigned int port_conf_set_n;		/* number of "set" usage */
 
-		char *error;
 };
 
 class UserConf {

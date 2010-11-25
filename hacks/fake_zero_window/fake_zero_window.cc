@@ -39,7 +39,7 @@ class fake_zero_window : public Hack
 {
 #define HACK_NAME	"Fake 0-window"
 public:
-	virtual void createHack(Packet &orig_packet)
+	virtual void createHack(const Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 

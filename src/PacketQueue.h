@@ -32,14 +32,15 @@ enum queue_t { Q_ANY = -1, Q_PRIORITY_SEND = 0, Q_SEND = 1, Q_YOUNG = 2, Q_KEEP 
 
 class PacketQueue {
 private:
+	unsigned int pkt_count;
 	Packet **front;
 	Packet **back;
 	bool iterate_through_all;
 	unsigned int cur_queue;
 	Packet *cur_pkt;
 	Packet *next_pkt;
-public:
 
+public:
 	PacketQueue();
 	~PacketQueue(void);
 	void insert(queue_t, Packet &);
@@ -50,6 +51,7 @@ public:
 	Packet* get();
 	Packet* get(source_t, proto_t);
 	Packet* get(unsigned int);
+	unsigned int size(){ return pkt_count; };
 };
 
 #endif /* SJ_PACKET_QUEUE_H */

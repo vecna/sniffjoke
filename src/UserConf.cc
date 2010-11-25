@@ -66,8 +66,8 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	compare_check_copy(runconfig.group, sizeof(runconfig.group), DROP_GROUP, cmdline_opts.group);
 	compare_check_copy(runconfig.chroot_dir, sizeof(runconfig.chroot_dir), CHROOT_DIR, cmdline_opts.chroot_dir);
 	compare_check_copy(runconfig.logfname, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE, cmdline_opts.logfname);
-	compare_check_copy(runconfig.logfname_packets, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE""SUFFIX_LF_PACKETS, cmdline_opts.logfname);
-	compare_check_copy(runconfig.logfname_sessions, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE""SUFFIX_LF_SESSIONS, cmdline_opts.logfname);
+	compare_check_copy(runconfig.logfname_packets, sizeof(runconfig.logfname_packets), CHROOT_DIR""LOGFILE""SUFFIX_LF_PACKETS, cmdline_opts.logfname);
+	compare_check_copy(runconfig.logfname_sessions, sizeof(runconfig.logfname_sessions), CHROOT_DIR""LOGFILE""SUFFIX_LF_SESSIONS, cmdline_opts.logfname);
 
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
 		runconfig.debug_level = cmdline_opts.debug_level;
@@ -84,12 +84,12 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		runconfig.scrambletech |= (cmdline_opts.scramble[2] == 'Y') ? SCRAMBLE_MALFORMED : 0;
 		if(!runconfig.scrambletech) {
 			debug.log(ALL_LEVEL, "--scramble: at least one scramble technique is required");
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 		}
 	} else {
 		runconfig.scrambletech = (SCRAMBLE_TTL | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED);
 	}
-
+	
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 	dump();
@@ -104,9 +104,11 @@ UserConf::~UserConf()
 /* Read command line values if present, preserve the previous options, and otherwise import default */
 void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *sjdefault, const char *useropt)
 {
-	if(useropt[0]) strncpy(target, useropt, tlen);
+	target[0] = 0x00;
 	
-	if(target[0]) strncpy(target, sjdefault, tlen);
+	if(useropt[0] != 0x00) strncpy(target, useropt, tlen);
+	
+	if(target[0] == 0x00) strncpy(target, sjdefault, tlen);
 }
 
 /* private function useful for resolution of code/name */
@@ -143,7 +145,7 @@ void UserConf::autodetect_local_interface()
 
 	if (i < 3) {
 		debug.log(ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	} else {
 		debug.log(ALL_LEVEL, "  == detected external interface with default gateway: %s", runconfig.interface);
 	}
@@ -190,7 +192,7 @@ void UserConf::autodetect_gw_ip_address()
 		runconfig.gw_ip_addr[i] = imp_str[i];
 	if (strlen(runconfig.gw_ip_addr) < 7) {
 		debug.log(ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	} else  {
 		debug.log(ALL_LEVEL, "  == acquired gateway ip address: %s", runconfig.gw_ip_addr);
 	}
@@ -222,7 +224,7 @@ void UserConf::autodetect_gw_mac_address()
 		runconfig.gw_mac_str[i] = imp_str[i];
 	if (i != 17) {
 		debug.log(ALL_LEVEL, "  -- unable to autodetect gateway mac address");
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	} else {
 		debug.log(ALL_LEVEL, "  == automatically acquired mac address: %s", runconfig.gw_mac_str);
 		unsigned int mac[6];
@@ -270,13 +272,7 @@ void UserConf::network_setup(void)
 	debug.log(VERBOSE_LEVEL, "-- default gateway ip address: %s", runconfig.gw_ip_addr);
 	debug.log(VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", runconfig.tun_number);
 
-
-	/* FIXME, is this incomplete? who does set this ? */
-	if(runconfig.port_conf_set_n) {
-		debug.log(VERBOSE_LEVEL,"-- loaded %d TCP port set, verify them with sniffjoke stat",
-			runconfig.port_conf_set_n
-		);
-	}
+	snprintf(runconfig.ttlfocuscache_file, MEDIUMBUF, "%s_%s", TTLFOCUSCACHE_FILE, runconfig.gw_mac_str);
 }
 
 bool UserConf::load(const char* configfile)
@@ -291,7 +287,7 @@ bool UserConf::load(const char* configfile)
 			debug.log(ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
 				sizeof(runconfig), configfile, strerror(errno)
 			);
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 		}
 
 		debug.log(DEBUG_LEVEL, "reading of %s: %d byte readed", configfile, sizeof(struct sj_config));
@@ -300,7 +296,7 @@ bool UserConf::load(const char* configfile)
 			debug.log(ALL_LEVEL, "sniffjoke config: %s seems to be corrupted - delete or check the argument",
 				configfile
 			);
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 		}
 		fclose(loadfd);
 		return true;
@@ -330,6 +326,7 @@ void UserConf::dump(void)
 		/* resetting variables we do not want to save */
 		memset(configcopy.onlyplugin, 0, sizeof(configcopy.onlyplugin));
 		configcopy.scrambletech = 0;
+		memset(runconfig.ttlfocuscache_file, 0, sizeof(runconfig.ttlfocuscache_file));
 
 		if((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {
 			/* ret - 1 because fwrite return the number of written item */
@@ -359,18 +356,6 @@ char *UserConf::handle_cmd(const char *cmd)
 		handle_cmd_stat();
 	} else if (!memcmp(cmd, "info", strlen("info"))) {
 		handle_cmd_info();
-	} else if (!memcmp(cmd, "listen", strlen("listen"))) {
-		int port;
-		const char *portstr = strchr(cmd, ' ');
-
-		if(portstr == NULL)
-			goto handle_listen_error;
-		
-		port = atoi(++portstr);
-		if(port < 0 || port > PORTNUMBER)
-			goto handle_listen_error;
-
-		handle_cmd_listen(port);
 	} else if (!memcmp(cmd, "showport", strlen("showport"))) {
 		handle_cmd_showport();
 	} else if (!memcmp(cmd, "set", strlen("set"))) {
@@ -407,11 +392,6 @@ char *UserConf::handle_cmd(const char *cmd)
 		debug.log(ALL_LEVEL, "wrong command %s", cmd);
 	}
 	
-	return &io_buf[0];
-
-handle_listen_error:
-	snprintf(io_buf, strlen(io_buf), "invalid listen command: expected a valid port as argument\n");
-	debug.log(ALL_LEVEL, "%s", io_buf);
 	return &io_buf[0];
 
 handle_set_error:
@@ -543,14 +523,7 @@ void UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength
 	do {
 		runconfig.portconf[start] = what;
 		start++;
-	} while (start <= end );
-}
-
-void UserConf::handle_cmd_listen(int bindport)
-{
-	runconfig.listenport[bindport] = true;
-	snprintf(io_buf, sizeof(io_buf), "set port %d as listen service to protect\n", bindport);
-	debug.log(ALL_LEVEL, "%s", io_buf);
+	} while (start <= end);
 }
 
 void UserConf::handle_cmd_loglevel(int newloglevel)

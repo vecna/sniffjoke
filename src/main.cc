@@ -95,10 +95,12 @@ static void sj_version(const char *pname)
 	printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
-runtime_error sj_runtime_exception(const char* func, const char* file, long line)
+runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
 	stringstream stream;
 	stream << file << "(" << line << ") function: " << func << "()";
+	if(msg != NULL)
+		stream << " : " << msg;
 	return std::runtime_error(stream.str());
 }
 
@@ -133,7 +135,7 @@ static bool client_command_found(char **av, const int ac, struct command *sjcmdl
 					sj_help(av[0], CHROOT_DIR, CHROOT_DIR);
 					exit(-1);
 				}
-				while(--(ptr->related_args) ) {
+				while(--(ptr->related_args)) {
 					usedlen = strlen(retcmd);
 					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[++i]);
 				}

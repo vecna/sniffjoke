@@ -40,12 +40,11 @@ public:
 	unsigned short dport;
 	unsigned int isn;
 	unsigned int packet_number;
-	bool shutdown;
 
 	SessionTrack(const Packet &);
 	
 	/* utilities */
-	void selflog(const char *, const char *);
+	void selflog(const char *, const char *) const;
 	/* no personal buffer used in selflog, maybe in the future */
 };
 
@@ -57,15 +56,6 @@ public:
 	bool operator<(SessionTrackKey) const;
 };
 
-class SessionTrackMap : public map<SessionTrackKey, SessionTrack> {
-public:
-        void dump();
-        void load();
-        
-	SessionTrack* add_sessiontrack(const Packet &);
-	SessionTrack* get_sessiontrack(const Packet &, bool);
-	void clear_sessiontrack(const Packet &);
-	void manage_expired();
-};
+typedef map<SessionTrackKey, SessionTrack> SessionTrackMap;
 
 #endif /* SJ_SESSIONTRACK_H */

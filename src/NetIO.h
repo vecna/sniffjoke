@@ -48,7 +48,7 @@ private:
         /* poll variables, two file descriptors */
         struct pollfd fds[2];
         int nfds;
-	
+
 	TCPTrack *conntrack;
 
 	unsigned char pktbuf[MTU];

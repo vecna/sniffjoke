@@ -106,8 +106,8 @@ public:
 	void fixIpTcpSum(void);
 
 	/* autochecking */
-	bool checkTCPOPT(void);
-	bool checkIPOPT(void);
+	//bool checkTCPOPT(void);
+	//bool checkIPOPT(void);
 	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
@@ -117,11 +117,11 @@ public:
 	void TCPPAYLOAD_fillrandom(void);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */
-	void Inject_IPOPT(bool, bool);
-	void Inject_TCPOPT(bool, bool);
+	bool Inject_IPOPT(bool, bool);
+	bool Inject_TCPOPT(bool, bool);
 
 	/* utilities */
-	void selflog(const char *, const char *);
+	void selflog(const char *, const char *) const;
 	char debug_buf[LARGEBUF];
 };
 

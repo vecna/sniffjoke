@@ -168,7 +168,7 @@ void SniffJoke::server() {
 SniffJoke::~SniffJoke()
 {
 	debug.log(DEBUG_LEVEL, "%s [process %d, role %s]", __func__, getpid(), 
-		opts.process_type == SJ_SERVER_PROC ? "service" : "client" );
+		opts.process_type == SJ_SERVER_PROC ? "service" : "client");
 
 	switch (opts.process_type) {
 		case SJ_SERVER_PROC:
@@ -214,7 +214,7 @@ int SniffJoke::bind_unixsocket()
 
 	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
 		debug.log(ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	memset(&sjsrv, 0x00, sizeof(sjsrv));
@@ -225,7 +225,7 @@ int SniffJoke::bind_unixsocket()
 		if (unlink(SniffJoke_socket_path)) {
 			debug.log(ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
 				SniffJoke_socket_path, strerror(errno));
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 		}
 	}
 								
@@ -234,7 +234,7 @@ int SniffJoke::bind_unixsocket()
 		debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
 			 SniffJoke_socket_path, strerror(errno)
 		);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
@@ -242,7 +242,7 @@ int SniffJoke::bind_unixsocket()
 		debug.log(ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
 			SniffJoke_socket_path, strerror(errno)
 		);
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 	debug.log(VERBOSE_LEVEL, "Successful binding of unix socket in %s", SniffJoke_socket_path);
 
@@ -257,7 +257,7 @@ void SniffJoke::handle_unixsocket(int srvsock)
 	struct sockaddr_un fromaddr;
 
 	if ((rlen = recv_command(srvsock, r_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 
 	if (!rlen)
 		return;
@@ -297,7 +297,7 @@ void SniffJoke::send_command(const char *cmdstring)
 	unlink(SJ_CLIENT_UNIXSOCK);
 	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
 		debug.log(ALL_LEVEL, "FATAL: unable to bind client to %s: %s", SJ_CLIENT_UNIXSOCK, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	/* Set up address structure for server/service socket */
@@ -307,12 +307,12 @@ void SniffJoke::send_command(const char *cmdstring)
 
 	if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 		debug.log(ALL_LEVEL, "FATAL: unable to send message [%s] via %s: %s - Rembember: what SniffJoke run with --chroot-dir or --config parms, you need to pass the same options in the client (the unix socket used reside under chroot dir)", cmdstring, SJ_SERVICE_UNIXSOCK, strerror(errno));
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	/* We receive a max of HUGEBUF -1 saving us from segfault during printf */
 	if ((rlen = recv_command(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1)
-		SJ_RUNTIME_EXCEPTION();
+		SJ_RUNTIME_EXCEPTION("");
 
 	if (rlen == 0)
 		debug.log(ALL_LEVEL, "unreceived response for the command [%s]", cmdstring);
@@ -358,7 +358,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 		
 		if ((debug.logstream = fopen(userconf.runconfig.logfname, "a+")) == NULL) {
 			debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", userconf.runconfig.logfname, strerror(errno));
-			SJ_RUNTIME_EXCEPTION();
+			SJ_RUNTIME_EXCEPTION("");
 		} else {
 			debug.log(DEBUG_LEVEL, "opened log file %s", userconf.runconfig.logfname);
 		}	
@@ -366,7 +366,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 		if (debug.debuglevel >= PACKETS_DEBUG) {
 			if ((debug.packet_logstream = fopen(userconf.runconfig.logfname_packets, "a+")) == NULL) {
 				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", userconf.runconfig.logfname_packets, strerror(errno));
-				SJ_RUNTIME_EXCEPTION();
+				SJ_RUNTIME_EXCEPTION("");
 			} else {
 				debug.log(ALL_LEVEL, "opened for packets debug: %s successful", userconf.runconfig.logfname_packets);
 			}
@@ -375,7 +375,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 		if (debug.debuglevel >= SESSION_DEBUG) {
 			if ((debug.session_logstream = fopen(userconf.runconfig.logfname_sessions, "a+")) == NULL) {
 				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", userconf.runconfig.logfname_sessions, strerror(errno));
-				SJ_RUNTIME_EXCEPTION();
+				SJ_RUNTIME_EXCEPTION("");
 			} else {
 				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", userconf.runconfig.logfname_sessions);
 			}
