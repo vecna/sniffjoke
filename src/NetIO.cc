@@ -209,65 +209,93 @@ void NetIO::network_io(void)
 	/* 
 	 * This is a critical function for sniffjoke operativity.
 	 * 
-	 * The objective is to have an acquisition stage quite constant
-	 * with a max duration of 50ms; in fact we have to call the function
-	 * conntrack->analyze_packets_queue() with a max interval of 50 ms
-	 * to permit the conntrack ttl schedule to go forward.
+	 * The objective is to have an acquisition stage quite constant.
 	 * 
-	 * So We have to mantain constant the product timeout * cycle = 50
+	 * The solution is implemented using two realtime timeout:
 	 * 
-	 * In this way, due to the poll value We can have a max burst = cycle * 2 = 100pkts
+	 *   - one applied when there is some data received : 0.5ms.
+	 *   - a second applied when there is no data received: 50ms.
+	 *     this is second timeout is needed because we need to call the
+	 *     conntrack->analyze_packets_queue() with a max interval of 50 ms
+	 *     to permit internal schedules (like the ttl one) to go forward.
 	 * 
 	 */
+	 
+	bool data_received = false; 
+	 
+	struct timespec clock;
+	clock_gettime(CLOCK_REALTIME, &clock);
+	
+	struct timespec maxcycletime_with_data_received = clock;
+	updateSchedule(maxcycletime_with_data_received, 0, 500000);
+	
+	struct timespec maxcycletime_with_no_data_received = clock;
+	updateSchedule(maxcycletime_with_no_data_received, 0, 5000000);
+
+	struct timespec polltimeout;
 
 	int size;
-
-	unsigned int cycle = 1;
-	while (cycle--)
-	{
-		nfds = poll(fds, 2, 1); // POLL TIMEOUT = 1ms
-
+	
+	while (1)
+	{	
+		polltimeout.tv_sec = 0;
+		polltimeout.tv_nsec = 500000;
+		nfds = ppoll(fds, 2, &polltimeout, NULL);
 		if (nfds <= 0) {
 			if (nfds == -1) {
 	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in poll: %s", strerror(errno));
 				SJ_RUNTIME_EXCEPTION("");
 			}
-			continue;
-		}
+		} else {
 		
-		if (fds[0].revents) { /* POLLIN is the unique event managed */
-			if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
-				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-					debug.log(DEBUG_LEVEL, "network_io: recv from network: error: %s", strerror(errno));
-					break;
-				}
-			} else {
-				if(runconfig.active == true) { /* add packet in connection tracking queue */
-					conntrack->writepacket(NETWORK, pktbuf, size);
-				} else { /* bypass the connection tracking queue */
-					if ((size = write(tunfd, pktbuf, size)) == -1)
-						SJ_RUNTIME_EXCEPTION(strerror(errno));
-				}
-			}
-		}
-
-		if (fds[1].revents) { /* POLLIN is the unique event managed */
-			if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
-				if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-					debug.log(DEBUG_LEVEL, "network_io: read from tunnel: error: %s", strerror(errno));
-					break;
-				}
-			} else {
-				if(runconfig.active == true) {
-					/* add packet in connection tracking queue */
-					conntrack->writepacket(TUNNEL, pktbuf, size);
-				} else { /* bypass the connection tracking queue */
-					if ((size = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1)
-						SJ_RUNTIME_EXCEPTION(strerror(errno));
-
+			data_received = true;
+			
+			if (fds[0].revents) { /* POLLIN is the unique event managed */
+				if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
+					if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+						debug.log(DEBUG_LEVEL, "network_io: recv from network: error: %s", strerror(errno));
+						break;
+					}
+				} else {
+					if(runconfig.active == true) { /* add packet in connection tracking queue */
+						conntrack->writepacket(NETWORK, pktbuf, size);
+					} else { /* bypass the connection tracking queue */
+						if ((size = write(tunfd, pktbuf, size)) == -1)
+							SJ_RUNTIME_EXCEPTION(strerror(errno));
+					}
 				}
 			}
+
+			if (fds[1].revents) { /* POLLIN is the unique event managed */
+				if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
+					if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+						debug.log(DEBUG_LEVEL, "network_io: read from tunnel: error: %s", strerror(errno));
+						break;
+					}
+				} else {
+					if(runconfig.active == true) {
+						/* add packet in connection tracking queue */
+						conntrack->writepacket(TUNNEL, pktbuf, size);
+					} else { /* bypass the connection tracking queue */
+						if ((size = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1)
+							SJ_RUNTIME_EXCEPTION(strerror(errno));
+
+					}
+				}
+			}
+			
 		}
+
+		clock_gettime(CLOCK_REALTIME, &clock);
+
+		if(data_received) {
+			if(isSchedulePassed(clock, maxcycletime_with_data_received))
+				break;
+		} else {
+			if(isSchedulePassed(clock, maxcycletime_with_no_data_received))
+				break;
+		}
+			
 	}
 	
 	conntrack->analyze_packets_queue();

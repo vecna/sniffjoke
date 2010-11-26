@@ -106,10 +106,54 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
 
 void* memset_random(void *s, size_t n)
 {
+	/* 
+	 * highly optimized memset_random
+	 * 
+	 * long int random(void).
+	 * 
+	 * long int is variable on different architectures;
+	 * for example on linux 64 bit is 8 chars long,
+	 * so do a while using single chars its an inefficient choice.
+	 * 
+	 */
+
+	unsigned int longint = n / sizeof(long int);
+	unsigned int finalbytes = n % sizeof(long int);
 	unsigned char *cp = (unsigned char*)s;
-	while (n-- > 0)
-		*cp++ = (unsigned char)random();
+
+	while (longint-- > 0) {
+		*((long int*)cp) = random();
+		cp += sizeof(long int);
+	}
+	
+	while (finalbytes-- > 0) {
+		*cp = (unsigned char)random();
+		cp++;
+	}
+
 	return s;
+}
+
+void updateSchedule(struct timespec &schedule, time_t sec, long ns)
+{
+#define NSEC_PER_SEC 1000000000
+	schedule.tv_sec += sec;
+	if(ns) {
+		unsigned int temp = schedule.tv_nsec + ns;
+		schedule.tv_sec += temp / NSEC_PER_SEC;
+		schedule.tv_nsec = temp % NSEC_PER_SEC;
+	}
+}
+
+bool isSchedulePassed(const struct timespec& clock, const struct timespec& schedule)
+{
+    if(clock.tv_sec > schedule.tv_sec)
+        return true;
+
+    else if(clock.tv_sec == schedule.tv_sec && clock.tv_nsec > schedule.tv_nsec)
+        return true;
+
+    return false;
 }
 
 void sigtrap(int signal)

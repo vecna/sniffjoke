@@ -86,32 +86,6 @@ void TTLFocus::selectPuppetPort()
 		puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
 }
 
-void TTLFocus::scheduleNextProbe50ms()
-{
-	if(50000000 > 1000000000 - next_probe_time.tv_nsec) {
-		next_probe_time.tv_sec++;
-		next_probe_time.tv_nsec = next_probe_time.tv_nsec + 50000000 - 1000000000;
-	} else {
-		next_probe_time.tv_nsec = next_probe_time.tv_nsec + 50000000;
-	}
-}
-
-void TTLFocus::scheduleNextProbe2mins()
-{
-	next_probe_time.tv_sec += 120;
-}
-
-bool TTLFocus::isProbeIntervalPassed(const struct timespec& now) const
-{
-    if(now.tv_sec > next_probe_time.tv_sec)
-        return true;
-
-    else if(now.tv_sec == next_probe_time.tv_sec && now.tv_nsec > next_probe_time.tv_nsec)
-        return true;
-
-    return false;
-}
-
 void TTLFocus::selflog(const char *func, const char *umsg) const
 {
 	const char *status_name;
@@ -137,7 +111,7 @@ void TTLFocusMap::load(const char* dumpfile)
 	struct ttlfocus_cache_record tmp;
 	int ret;
 	
-	debug.log(VERBOSE_LEVEL, "loading ttlfocusmap from %s",  dumpfile);
+	debug.log(ALL_LEVEL, "loading ttlfocusmap from %s",  dumpfile);
 	
 	FILE *loadfd = fopen(dumpfile, "r");
 	if(loadfd == NULL) {
@@ -160,7 +134,7 @@ void TTLFocusMap::load(const char* dumpfile)
 		);
 		SJ_RUNTIME_EXCEPTION("");
 	}
-	debug.log(VERBOSE_LEVEL, "ttlfocusmap load completed: %u records loaded", records_num);
+	debug.log(ALL_LEVEL, "ttlfocusmap load completed: %u records loaded", records_num);
 }
 
 
@@ -170,7 +144,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 	TTLFocus* tmp = NULL;
 	struct ttlfocus_cache_record cache_record;
 
-	debug.log(VERBOSE_LEVEL, "dumping ttlfocusmap to %s",  dumpfile);
+	debug.log(ALL_LEVEL, "dumping ttlfocusmap to %s",  dumpfile);
 
 	FILE *dumpfd = fopen(dumpfile, "w");
         if(dumpfd == NULL) {
@@ -182,7 +156,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 
 		tmp = &(it->second);
 
-		/* We saves only with TTL_KNOWN status */
+		/* we saves only with TTL_KNOWN status */
 		if(tmp->status != TTL_KNOWN)
 			continue;
 
@@ -212,5 +186,5 @@ void TTLFocusMap::dump(const char* dumpfile)
 	}
 	fclose(dumpfd);
 
-	debug.log(VERBOSE_LEVEL, "ttlfocusmap dump completed: %u records dumped", records_num);
+	debug.log(ALL_LEVEL, "ttlfocusmap dump completed: %u records dumped", records_num);
 }

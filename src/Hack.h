@@ -33,7 +33,7 @@ using namespace std;
  * HackPacket - pure virtual methods 
  *
  * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
- * We understood how to do a plugin and load it.
+ * we understood how to do a plugin and load it.
  * HackPacket classes are implemented as external modules and the programmer
  * shoulds implement Condition and createHack, constructor and distructor methods.
  *

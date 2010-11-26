@@ -310,7 +310,7 @@ void SniffJoke::send_command(const char *cmdstring)
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	/* We receive a max of HUGEBUF -1 saving us from segfault during printf */
+	/* we receive a max of HUGEBUF -1 saving us from segfault during printf */
 	if ((rlen = recv_command(sock, received_buf, HUGEBUF, (struct sockaddr *)&from, stdout, "from the command sending engine")) == -1)
 		SJ_RUNTIME_EXCEPTION("");
 

@@ -68,7 +68,6 @@ public:
 	void selectPuppetPort();
 	void scheduleNextProbe50ms();
 	void scheduleNextProbe2mins();
-	bool isProbeIntervalPassed(const struct timespec &) const;
 
 	/* utilities */
 	void selflog(const char *, const char *) const;
