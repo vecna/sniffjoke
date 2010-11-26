@@ -149,7 +149,7 @@ void SniffJoke::server() {
 
 		mitm->prepare_conntrack(conntrack.get());
 
-		listening_unix_socket = bind_unixsocket();
+		admin_socket = bind_admin_socket();
 
 		/* main block */
 		while (alive) {
@@ -158,7 +158,7 @@ void SniffJoke::server() {
 			mitm->network_io();
 			mitm->queue_flush();
 
-			handle_unixsocket(listening_unix_socket);
+			handle_admin_socket(admin_socket);
 
 			proc.sigtrapEnable();
 		}

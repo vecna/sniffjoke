@@ -44,21 +44,22 @@ static auto_ptr<SniffJoke> sniffjoke;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
-	" --config [filename]\tconfig file [default: %s%s]\n"\
-	" --enabler [filename]\tplugins enabler file [default: %s]\n"\
-	" --user [username]\tdowngrade priviledge to the specified user [default: %s]\n"\
-	" --group [groupname]\tdowngrade priviledge to the specified group [default: %s]\n"\
-	" --chroot-dir [dir]\truns chroted into the specified dir [default: %s]\n"\
-	" --logfile [file]\tset a logfile, [default: %s%s]\n"\
-	" --debug [level 1-6]\tset up verbosoty level [default: %d]\n"\
+	" --config <filename>\tconfig file [default: %s%s]\n"\
+	" --enabler <filename>\tplugins enabler file [default: %s]\n"\
+	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
+	" --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
+	" --chroot-dir <dir>\truns chroted into the specified dir [default: %s]\n"\
+	" --logfile <file>\tset a logfile, [default: %s%s]\n"\
+	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
 	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
+	" --tcp\t\tenable tcp administration instead of unix socket\n"\
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
 	"testing options (not saved in configuration file):\n"\
-	" --only-plugin [plugin.so]\tspecify the single plugin to use\n"\
-	" --scramble [Y/N][Y/N][Y/N]\tspecify enabled scamble techniques (it's required at least one Y)\n\n"\
+	" --only-plugin <plugin.so>\tspecify the single plugin to use\n"\
+	" --scramble <Y|N><Y|N><Y|N>\tselect scrambling techniques (order: TTL, checksum, IPmalform)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
@@ -68,8 +69,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" info\t\t\tget massive info about sniffjoke internet stats\n"\
 	" showport\t\tshow TCP ports strongness of injection\n"\
 	" set start end value\tset per tcp ports the strongness of injection\n"\
-	" listen port\t\tserver mode: protect the incoming connections\n"\
-	" \t\t\tthe values are: [heavy|normal|light|none]\n"\
+	" \t\t\tthe values are: <heavy|normal|light|none>\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
 	" loglevel\t\t[1-6] change the loglevel\n\n"\
@@ -165,6 +165,7 @@ int main(int argc, char **argv)
 		{ "debug", required_argument, NULL, 'd' },
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
+		{ "tcp", no_argument, NULL, 't' },
 		{ "version", no_argument, NULL, 'v' },
 		{ "only-plugins", required_argument, NULL, 'p' },
 		{ "scramble", required_argument, NULL, 's' },
@@ -182,7 +183,6 @@ int main(int argc, char **argv)
 		{ "quit",     1 },
 		{ "info",     1 },
 		{ "saveconf", 1 },
-		{ "listen",   2 }, 	/* the listen port */
 		{ "loglevel", 2 }, 	/* the loglevel */
 		{ "set",      4 }, 	/* set start_port end_port value */
 		{ NULL,       0	}
@@ -195,10 +195,13 @@ int main(int argc, char **argv)
 		useropt.process_type = SJ_SERVER_PROC;
 
 	int charopt;
-	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:xrvp:s:h", sj_option, NULL)) != -1) {
+	while ((charopt = getopt_long(argc, argv, "tf:e:u:g:c:d:l:xrvp:s:h", sj_option, NULL)) != -1) {
 		switch(charopt) {
 			case 'f':
 				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
+				break;
+			case 't':
+				useropt.tcp_admin = true;
 				break;
 			case 'e':
 				snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);

@@ -45,6 +45,7 @@ struct sj_cmdline_opts {
 		char scramble[4];   /* 3 options chars + \0 */
 		bool go_foreground;
 		bool force_restart;
+		bool tcp_admin;
 		
 		sj_proc_t process_type;
 		char cmd_buffer[MEDIUMBUF];
@@ -69,6 +70,7 @@ struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool active;				/* default: false = NOT ACTIVE */
 		bool chrooted;				/* defauit: false = NOT CHROOTED */
+		bool tcp_admin;				/* default: false = socket unix administration */
 	
 		/* START OF COMMON PART WITH sj_cmdline_opt */
 		char cfgfname[MEDIUMBUF];		/* default: check hardcoded-defines.h */
@@ -136,7 +138,6 @@ public:
 		void handle_cmd_showport(void);
 		void handle_cmd_set(unsigned short, unsigned short, Strength);
 		void handle_cmd_loglevel(int);
-		void handle_cmd_listen(int);
 		bool parse_port_weight(char *, Strength *);
 };
 
