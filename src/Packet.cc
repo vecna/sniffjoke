@@ -118,7 +118,7 @@ void Packet::mark(source_t source, judge_t wtf, evilbit_t morality) {
 
 void Packet::updatePacketMetadata()
 {	
-	/* START INITIAL METADATA RESET */
+	/* start initial metadata reset */
 	ip = NULL;
 	iphdrlen = 0; 
 	tcp = NULL;
@@ -126,43 +126,42 @@ void Packet::updatePacketMetadata()
 	payload = NULL;
 	datalen = 0;
 	icmp = NULL;
-	/* END INITIAL METADATA RESET */
+	/* end initial metadata reset */
 
-	/* START IPHDR UPDATE */
+	/* start iphdr update */
 	if(pbuf.size() < sizeof(struct iphdr))
 		throw exception();
 
 	ip = (struct iphdr *)&(pbuf[0]);	
 	iphdrlen = (ip->ihl * 4);
-	/* END IPHDR UPDATE */
+	/* end iphdr update */
 	
 	switch(ip->protocol) {
 		case IPPROTO_TCP:	
-			/* START TCPHDR UPDATE */
+			/* start tcphdr update */
 			if(pbuf.size() < sizeof(struct iphdr) + sizeof(struct tcphdr))
-				exit(666);//throw exception();
+				throw exception();
 
 			proto = TCP;
 			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
 			tcphdrlen = tcp->doff * 4;
-			/* END TCPHDR UPDATE */
+			/* end tcphdr update */
 
-			/* START PAYLOAD UPDATE */
+			/* start payload update */
 			datalen = pbuf.size() - iphdrlen - tcphdrlen;
 			if(datalen)
 				payload = (unsigned char *)tcp + tcphdrlen;
-			/* END PAYLOAD UPDATE */
+			/* end payload update */
 			
 			break;
-
 		case IPPROTO_ICMP: 
-			/* START ICMPHDR UPDATE */
+			/* start icmphdr update */
 			if(pbuf.size() < sizeof(struct iphdr) + sizeof(struct icmphdr))
 				throw exception();
 
 			proto = ICMP;
 			icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
-			/* END ICMPHDR UPDATE */
+			/* end icmphdr update */
 			
 			break;
 		default:
@@ -363,7 +362,8 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	}
 
 	if(target_iphdrlen != actual_iphdrlen) {
-		// iphdrlen must be a multiple of 4
+		/* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
+		   to inject options not aligned to 4 */
 		actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
 		IPHDR_resize(actual_iphdrlen);
 	}
@@ -411,7 +411,8 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	}
 
 	if(target_tcphdrlen != actual_tcphdrlen) {
-		// tcphdrlen must be a multiple of 4
+		/* tcphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
+		   to inject options not aligned to 4 */
 		actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
 		TCPHDR_resize(actual_tcphdrlen);
 	}

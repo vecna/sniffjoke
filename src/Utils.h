@@ -70,10 +70,12 @@ enum size_buf_t {
 #define PACKETS_DEBUG		6
 #define PACKETS_DEBUG_NAME      "packets"
 
-#define SJ_RUNTIME_EXCEPTION(x) throw sj_runtime_exception(__func__, __FILE__, __LINE__, x)
+#define SJ_RUNTIME_EXCEPTION(msg) throw sj_runtime_exception(__func__, __FILE__, __LINE__, msg)
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
-std::runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char *msg);
-void* memset_random(void *s, size_t n);
-void sigtrap(int signal);
+std::runtime_error sj_runtime_exception(const char *, const char *, long, const char *);
+void* memset_random(void *, size_t);
+void updateSchedule(struct timespec &, time_t, long);
+bool isSchedulePassed(const struct timespec &, const struct timespec &);
+void sigtrap(int);
 
 #endif /* SJ_UTILS_H */

@@ -40,13 +40,29 @@
  * but checking:
  * http://www.faqs.org/rfcs/rfc1812.html
  * seems that some weird ipoptions will cause a packet to be discarged
- * on the route, without ever reach the server. We aim to create 
+ * on the route, without ever reach the server. we aim to create 
  * ipoptions accepted by the router, and discarded from the remote host.
  */ 
 
 #include "HDRoptions.h"
 #include "Packet.h"
 #include "Debug.h"
+
+unsigned int HDRoptions::m_IPOPT_NOOP(void)
+{
+#define IPOPT_NOOP_SIZE 1
+
+	if(corrupt) /* this option never corrupts the packet */
+		return 0;
+
+	if(available_opts_len < IPOPT_NOOP_SIZE)
+		return 0;
+
+	optptr[0] = IPOPT_NOOP;
+
+	return IPOPT_NOOP_SIZE;
+}
+
 
 unsigned int HDRoptions::m_IPOPT_LSRR(void) 
 {
@@ -98,7 +114,7 @@ unsigned int HDRoptions::m_IPOPT_LSRR(void)
 	 *         opt->srr = optptr - iph;
 	 *         break;
 	 * 
-	 *  We want to send LSRR option 2 times.
+	 *  we want to send LSRR option 2 times.
 	 *  so we have to respect all checks that lead to an error. 
 	 *  using SSRR is also possibile but the packet will be trashed by the
 	 *  first router.
@@ -111,7 +127,7 @@ unsigned int HDRoptions::m_IPOPT_LSRR(void)
 	unsigned int routes_2 = 3 + random() % 3; /* 3 - 5 */
 	unsigned int size_lsrr_1 = 3 + 4 * routes_1;
 	unsigned int size_lsrr_2 = 3 + 4 * routes_2;
-	unsigned int req_size = size_lsrr_1 + size_lsrr_2 + 2;
+	unsigned int req_size = size_lsrr_1 + size_lsrr_2;
 
 	if(available_opts_len < req_size)
 		return 0;
@@ -121,17 +137,10 @@ unsigned int HDRoptions::m_IPOPT_LSRR(void)
 	optptr[2] = 4 + 4 * (random() % routes_1);
 	memset_random(&optptr[3], size_lsrr_1 - 3);
 	
-	optptr += size_lsrr_1;
-	
-	optptr[0] = IPOPT_LSRR;
-	optptr[1] = size_lsrr_2;
-	optptr[2] = 4 + 4 * (random() % routes_2);
-	memset_random(&optptr[3], size_lsrr_2 - 3);
-	
-	optptr += size_lsrr_2;
-	
-	optptr[0] = IPOPT_NOOP;
-	optptr[1] = IPOPT_NOOP;
+	optptr[size_lsrr_1 + 0] = IPOPT_LSRR;
+	optptr[size_lsrr_1 + 1] = size_lsrr_2;
+	optptr[size_lsrr_1 + 2] = 4 + 4 * (random() % routes_2);
+	memset_random(&optptr[size_lsrr_1 + 3], size_lsrr_2 - 3);
 	
 	opt_ip_rr = true;
 
@@ -158,7 +167,7 @@ unsigned int HDRoptions::m_IPOPT_RR(void)
 	 *
 	 *       [...]
 	 * 
-	 *   so here have two conditions We can disattend;
+	 *   so here have two conditions we can disattend;
 	 *   It's possible to create a unique hack that
 	 *   due to random() exploits the first or the latter.
 	 */
@@ -196,27 +205,25 @@ unsigned int HDRoptions::m_IPOPT_RR(void)
 	
 	memset_random(&optptr[3], 4 * routes);
 	
-	optptr[size_rr] = IPOPT_NOOP;
-
-	return size_rr + 1;
+	return size_rr;
 }
 
 
 unsigned int HDRoptions::m_IPOPT_RA(void)
 {
-#define CONST_RA_SIZE 4
+#define IPOPT_RA_SIZE 4
 
 	if(corrupt) /* this option never corrupts the packet */
 		return 0;
 
-	if(available_opts_len < CONST_RA_SIZE)
+	if(available_opts_len < IPOPT_RA_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_RA;
-	optptr[1] = CONST_RA_SIZE;
+	optptr[1] = IPOPT_RA_SIZE;
 	memset_random(&optptr[2], 2);
 
-	return CONST_RA_SIZE;
+	return IPOPT_RA_SIZE;
 }
 
 unsigned int HDRoptions::m_IPOPT_CIPSO(void) 
@@ -240,27 +247,27 @@ unsigned int HDRoptions::m_IPOPT_CIPSO(void)
 	 *       }
 	 *       break;
 	 * 
-	 *   so here have two conditions We can disattend;
+	 *   so here have two conditions we can disattend;
 	 *     - The CIPSO option can be not setted on the socket
 	 *     - also if CIPSO option is setted the random data would
 	 *       lead the packet to be discarded.
 	 */
 
 #define IPOPT_CIPSO	(6 |IPOPT_CONTROL|IPOPT_COPY)
-#define CONST_CIPSO_SIZE 8
+#define IPOPT_CIPSO_SIZE 8
 
 	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	if(available_opts_len < CONST_CIPSO_SIZE)
+	if(available_opts_len < IPOPT_CIPSO_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_CIPSO;
-	optptr[1] = CONST_CIPSO_SIZE;
+	optptr[1] = IPOPT_CIPSO_SIZE;
 
 	memset_random(&optptr[2], 6);
 
-	return CONST_CIPSO_SIZE;
+	return IPOPT_CIPSO_SIZE;
 }
 
 
@@ -284,45 +291,43 @@ unsigned int HDRoptions::m_IPOPT_SEC(void)
 	 *   but not used in hacks at the moment
 	 */
 
-#define CONST_SEC_SIZE 11
+#define IPOPT_SEC_SIZE 11
 
 	if(!corrupt) /* this options always corrupts the packet */
 		return 0;
 
-	if(available_opts_len < CONST_SEC_SIZE + 1)
+	if(available_opts_len < IPOPT_SEC_SIZE)
 		return 0;
 
 	/* TODO - cohorent data for security OPT */
 	/* http://www.faqs.org/rfcs/rfc791.html "Security" */
 	optptr[0] = IPOPT_SEC;
-	optptr[1] = CONST_SEC_SIZE;
+	optptr[1] = IPOPT_SEC_SIZE;
 	
 	memset_random(&optptr[2], 9);
-	
-	optptr[10] = IPOPT_NOOP;
 
 	/* NOP not included in the option size */
-	return CONST_SEC_SIZE + 1;
+	return IPOPT_SEC_SIZE;
 }
 
 unsigned int HDRoptions::m_IPOPT_SID(void)
 {
 	/* for verbose description see the m_IPOPT_SEC comment */
 
-#define CONST_SID_SIZE 4
+#define IPOPT_SID_SIZE 4
 
 	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	if(available_opts_len < CONST_SID_SIZE)
+	if(available_opts_len < IPOPT_SID_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_SID;
-	optptr[1] = CONST_SID_SIZE;
+	optptr[1] = IPOPT_SID_SIZE;
 	
 	memset_random(&optptr[2], 2);
 
-	return CONST_SID_SIZE;
+	return IPOPT_SID_SIZE;
 }
 
 unsigned int HDRoptions::m_IPOPT_TIMESTAMP(void) 
@@ -346,7 +351,7 @@ unsigned int HDRoptions::m_IPOPT_TIMESTAMP(void)
 	 *
 	 *       [...]
 	 * 
-	 *   so here have two conditions We can disattend;
+	 *   so here have two conditions we can disattend;
 	 *   It's possible to create a unique hack that
 	 *   due tu random() exploit one or the other.
 	 */
@@ -366,11 +371,11 @@ unsigned int HDRoptions::m_IPOPT_TIMESTAMP(void)
 	if(!corrupt) {	/* good */
 		
 		/* 
-		 * We set the same IPOPT_TS_TSANDADDR suboption We will
+		 * we set the same IPOPT_TS_TSANDADDR suboption we will
 		 * set for the corrupted injection.
 		 * This suboption tells router to register their ip and
 		 * to put a timestamp.
-		 * We set the pointer (optr[2]) as full because of course
+		 * we set the pointer (optr[2]) as full because of course
 		 * we does not help the sniffer offering him so precious informations =)
 		 */ 
 
@@ -460,7 +465,7 @@ bool HDRoptions::checkIPOPTINJPossibility(void) {
 			case IPOPT_SID:
 				if(!corrupt) /* on !corrup : we always avoid to inject if this options ar present */
 					return false;
-				break;
+				goto ip_opts_len_check;
 ip_opts_len_check:	default:
 				option_len = ((unsigned char *)optptr)[i+1];
 				if(option_len > (actual_opts_len - i)) {
@@ -503,6 +508,7 @@ bool HDRoptions::checkTCPOPTINJPossibility(void) {
 			case TCPOPT_SACK:
 				if(!corrupt) /* on !corrupt : we always avoid to inject if this options ar present */
 					return false;
+				goto tcp_opts_len_check;
 tcp_opts_len_check:	default:
 				option_len = ((unsigned char *)optptr)[i+1];
 				if(option_len > (actual_opts_len - i)) {
@@ -569,65 +575,69 @@ bool HDRoptions::randomInjector(void)
 	
 	if(type == IPOPTS_INJECTOR) {
 
-		/* random value between 0 and SJIP_OPT_TS (last option) */
-		switchval = (random() % (SJIP_OPT_TIMESTAMP + 1));
+		/* random value between 0 and SJ_IPOPT_TS (last option) */
+		switchval = (random() % (SJ_IPOPT_SID + 1));
 		switch(switchval) {
-			case SJIP_OPT_SEC:
-				optstr = "SEC";
-				injectetdopt_size = m_IPOPT_SEC();
+			case SJ_IPOPT_NOOP:
+				optstr = "NOOP";
+				injectetdopt_size = m_IPOPT_NOOP();
 				break;
-			case SJIP_OPT_SID:
-				optstr = "SID";
-				injectetdopt_size = m_IPOPT_SID();
+			case SJ_IPOPT_TIMESTAMP:
+				optstr = "TIMESTAMP";
+				injectetdopt_size = m_IPOPT_TIMESTAMP();
 				break;
-			case SJIP_OPT_LSRR:
+			case SJ_IPOPT_LSRR:
 				optstr = "LSRR";
 				injectetdopt_size = m_IPOPT_LSRR();
 				break;
-			case SJIP_OPT_RR:
+			case SJ_IPOPT_RR:
 				optstr = "RR";
 				injectetdopt_size = m_IPOPT_RR();
 				break;
-			case SJIP_OPT_RA:
+			case SJ_IPOPT_RA:
 				optstr = "RA";
 				injectetdopt_size = m_IPOPT_RA();
 				break;
-			case SJIP_OPT_CIPSO:
+			case SJ_IPOPT_CIPSO:
 				optstr = "CIPSO";
 				injectetdopt_size = m_IPOPT_CIPSO();
 				break;
-			case SJIP_OPT_TIMESTAMP:
-				optstr = "TIMESTAMP";
-				injectetdopt_size = m_IPOPT_TIMESTAMP();
+			case SJ_IPOPT_SEC:
+				optstr = "SEC";
+				injectetdopt_size = m_IPOPT_SEC();
+				break;
+			case SJ_IPOPT_SID:
+				optstr = "SID";
+				injectetdopt_size = m_IPOPT_SID();
 				break;
 		}
 	
 	} else {
 		
 		/* at this time we have no BAD options
-		 * so we can do a random value between 0 and SJTCP_OPT_SACK (last option) */
-		switchval = (random() % (SJTCP_OPT_SACK + 1));
+		 * so we can do a random value between 0 and SJ_TCPOPT_SACK (last option) */
+		switchval = (random() % (SJ_TCPOPT_SACK + 1));
 
 		switch(switchval) {
-			case SJTCP_OPT_TIMESTAMP:
-				injectetdopt_size = m_TCPOPT_TIMESTAMP();
-				break;
-			case SJTCP_OPT_EOL:
+			case SJ_TCPOPT_EOL:
 				injectetdopt_size = m_TCPOPT_EOL();
 				break;
-			case SJTCP_OPT_NOP:
+			case SJ_TCPOPT_NOP:
 				injectetdopt_size = m_TCPOPT_NOP();
 				break;
-			case SJTCP_OPT_MAXSEG:
+			case SJ_TCPOPT_TIMESTAMP:
+				injectetdopt_size = m_TCPOPT_TIMESTAMP();
+				break;
+			case SJ_TCPOPT_MAXSEG:
 				injectetdopt_size = m_TCPOPT_MAXSEG();
 				break;
-			case SJTCP_OPT_WINDOW:
+			case SJ_TCPOPT_WINDOW:
 				injectetdopt_size = m_TCPOPT_WINDOW();
 				break;
-			case SJTCP_OPT_SACK_PERMITTED:
+			case SJ_TCPOPT_SACK_PERMITTED:
 				injectetdopt_size = m_TCPOPT_SACK_PERMITTED();
 				break;
-			case SJTCP_OPT_SACK:
+			case SJ_TCPOPT_SACK:
 				injectetdopt_size = m_TCPOPT_SACK();
 				break;
 		}

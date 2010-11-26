@@ -106,8 +106,6 @@ public:
 	void fixIpTcpSum(void);
 
 	/* autochecking */
-	//bool checkTCPOPT(void);
-	//bool checkIPOPT(void);
 	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
