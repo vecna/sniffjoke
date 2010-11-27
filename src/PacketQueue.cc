@@ -33,8 +33,8 @@ PacketQueue::PacketQueue() :
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	memset(front, NULL, sizeof(Packet*)*LAST_QUEUE + 1);
-	memset(back, NULL, sizeof(Packet*)*LAST_QUEUE + 1);
+	memset(front, NULL, sizeof(Packet*)*(LAST_QUEUE + 1));
+	memset(back, NULL, sizeof(Packet*)*(LAST_QUEUE + 1));
 }
 
 
@@ -57,7 +57,8 @@ void PacketQueue::insert(queue_t queue, Packet &pkt)
 	if (front[queue] == NULL) {
 		pkt.prev = NULL;
 		pkt.next = NULL;
-		front[queue] = back[queue] = &pkt;
+		front[queue] = &pkt;
+		back[queue] = &pkt;
 	} else {
 		pkt.prev = back[queue];
 		pkt.next = NULL;
@@ -78,10 +79,13 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 			return;
 		}
 	}
-	
+
+	/*
+	 * ref is not front of any queue;
+	 * so it always has prev that we cand dereference without checking != NULL
+	 */
 	pkt.prev = ref.prev;
-	if(ref.prev != NULL)
-		ref.prev->next = &pkt;
+	ref.prev->next = &pkt;
 	pkt.next = &ref;
 	ref.prev = &pkt;
 }
@@ -99,9 +103,12 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 		}
 	}
 	
+	/*
+	 * ref is not back of any queue;
+	 * so it always has next that we can dereference without checking != NULL
+	 */
 	pkt.next = ref.next;
-	if(ref.next != NULL)
-		ref.next->prev = &pkt;
+	ref.next->prev = &pkt;
 	pkt.prev = &ref;
 	ref.next = &pkt;
 }
@@ -115,22 +122,31 @@ void PacketQueue::remove(const Packet &pkt)
 				front[i] = NULL;
 				back[i] = NULL;
 			} else {
+				/*
+				 * in this case we have always a next;
+				 * so we can dereference it without checking != NULL
+				 */
 				front[i] = front[i]->next;
 				front[i]->prev = NULL;
 			}
 			return;
 		} else if (back[i] == &pkt) {
+			/*
+			 * in this case we have always a prev;
+			 * so we can dereference it without checking != NULL
+			 */
 			back[i] = back[i]->prev;
 			back[i]->next = NULL;
 			return;
 		}
 	}
 
-	if(pkt.prev != NULL)
-		pkt.prev->next = pkt.next;
-
-	if(pkt.next != NULL)
-		pkt.next->prev = pkt.prev;
+	/*
+	 * pkt is not front or back of any queue;
+	 * so it always has prev and next that we cand dereference without checking != NULL
+	 */
+	pkt.prev->next = pkt.next;
+	pkt.next->prev = pkt.prev;
 
 	return;
 }

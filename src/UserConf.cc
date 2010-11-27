@@ -50,8 +50,6 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		runconfig.MAGIC = MAGICVAL;
 		runconfig.active = false;
 		runconfig.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
-		runconfig.max_sextrack = DEFAULT_MAX_SEXTRACK;
-		runconfig.max_ttlfocus = DEFAULT_MAX_TTLFOCUS;
 
 		/* default is to set all TCP ports in "NORMAL" aggressivity level */
 		for(unsigned int i = 0; i < PORTNUMBER; i++)

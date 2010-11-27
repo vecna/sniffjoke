@@ -46,8 +46,6 @@
 #define SUFFIX_LF_SESSIONS              ".sessions"
 #define DEFAULT_DEBUG_LEVEL             2
 #define DEFAULT_MAX_TTLPROBE		35
-#define DEFAULT_MAX_SEXTRACK		4096
-#define DEFAULT_MAX_TTLFOCUS		4096
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
 

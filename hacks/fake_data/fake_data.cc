@@ -49,21 +49,23 @@ public:
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-		Packet* pkt1 = new Packet(orig_packet);
-		Packet* pkt2 = new Packet(orig_packet);
-		pkt1->TCPPAYLOAD_fillrandom();
-		pkt2->TCPPAYLOAD_fillrandom();
+		unsigned int pkts = 2;
 		
-		pkt1->position = ANTICIPATION;
-		pkt2->position = POSTICIPATION;
-		pkt1->wtf = RANDOMDAMAGE;
-		pkt2->wtf = RANDOMDAMAGE;
+		while(pkts--) {
+			Packet* pkt = new Packet(orig_packet);
+			pkt->TCPPAYLOAD_fillrandom();
+			
+			if(pkts == 1)
+				pkt->position = ANTICIPATION;
+			else
+				pkt->position = POSTICIPATION;
 
-		pkt1->selflog(HACK_NAME, "Hacked packet");
-		pkt2->selflog(HACK_NAME, "Hacked packet");
+			pkt->wtf = RANDOMDAMAGE;
 
-		pktVector.push_back(pkt1);
-		pktVector.push_back(pkt2);
+			pkt->selflog(HACK_NAME, "Hacked packet");
+
+			pktVector.push_back(pkt);
+		}
 	}
 
 	virtual bool Condition(const Packet &orig_packet)

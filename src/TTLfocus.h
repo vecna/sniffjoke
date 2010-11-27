@@ -55,8 +55,9 @@ public:
 	
 	/* ttl informations, results of the analysis */
 	unsigned int daddr;			/* destination of the traceroute */
-	unsigned short expiring_ttl;		/* the min exiping_ttl found during analysis */
-	unsigned short min_working_ttl;		/* the min working ttl found during analysis */
+	unsigned short ttl_estimate;		/* hop count estimate found during ttlbruteforce;
+						 *   on status KNOWN   : represents the min working ttl found
+						 *   on status UNKNOWN : represents the max expired ttl found */
 	unsigned short synack_ttl;		/* the value of the ttl read in the synack packet */
 
 
@@ -66,8 +67,6 @@ public:
 	TTLFocus(const Packet &pkt);
 	TTLFocus(const struct ttlfocus_cache_record &);
 	void selectPuppetPort();
-	void scheduleNextProbe50ms();
-	void scheduleNextProbe2mins();
 
 	/* utilities */
 	void selflog(const char *, const char *) const;
@@ -83,7 +82,7 @@ public:
 struct ttlfocus_cache_record {
 	unsigned int daddr;			/* destination of the traceroute */
 	unsigned short expiring_ttl;		/* the min exiping_ttl found during analysis */
-	unsigned short min_working_ttl;		/* the min working ttl found during analysis */
+	unsigned short ttl_estimate;		/* the min working ttl found during analysis */
 	unsigned short synack_ttl;		/* the value of the ttl read in the synack packet */
 	
 	unsigned char probe_dummy[40];		/* dummy ttlprobe packet generated from the packet

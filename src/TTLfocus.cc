@@ -37,8 +37,7 @@ TTLFocus::TTLFocus(const Packet &pkt) :
 	sent_probe(0),
 	received_probe(0),
 	daddr(pkt.ip->daddr),
-	expiring_ttl(0),
-        min_working_ttl(0xff),
+        ttl_estimate(0xff),
 	synack_ttl(0),
 	probe_dummy(pkt)
 {
@@ -67,8 +66,7 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	sent_probe(0),
 	received_probe(0),
 	daddr(cpy.daddr),
-	expiring_ttl(cpy.expiring_ttl),
-	min_working_ttl(cpy.min_working_ttl),
+	ttl_estimate(cpy.ttl_estimate),
 	synack_ttl(cpy.synack_ttl),
 	probe_dummy(cpy.probe_dummy, sizeof(cpy.probe_dummy))
 {
@@ -98,8 +96,8 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
 	}
 
 	debug.log(SESSION_DEBUG, 
-		"%s [%s] m_sent %d, m_recv %d m_expiring %d [%s]",
-		func, status_name, sent_probe, received_probe, expiring_ttl, umsg
+		"%s [%s] m_sent %d, m_recv %d ttl_estimate %u [%s]",
+		func, status_name, sent_probe, received_probe, ttl_estimate, umsg
 	);
 
 	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
@@ -161,8 +159,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 			continue;
 
 		cache_record.daddr = tmp->daddr;
-		cache_record.expiring_ttl = tmp->expiring_ttl;
-		cache_record.min_working_ttl = tmp->min_working_ttl;
+		cache_record.ttl_estimate = tmp->ttl_estimate;
 		cache_record.synack_ttl = tmp->synack_ttl;
 
 		/*

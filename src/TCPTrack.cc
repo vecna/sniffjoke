@@ -29,8 +29,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define TTLFOCUS_EXPIRETIME		604800	/* access expire time in seconds (1 WEEK) */
-#define SESSIONTRACK_EXPIRETIME		1200	/* access expire time in seconds (5 MINUTES) */
+#define TTLFOCUS_EXPIRYTIME		604800	/* access expire time in seconds (1 WEEK) */
+#define SESSIONTRACK_EXPIRYTIME		1200	/* access expire time in seconds (5 MINUTES) */
 
 TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	runconfig(runcfg),
@@ -174,8 +174,8 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 		p_queue.insert(Q_PRIORITY_SEND, *injpkt);
 			
-		snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %d [exp %d min work %d]",
-			ttlfocus.sent_probe, ttlfocus.expiring_ttl, ttlfocus.min_working_ttl
+		snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
+			ttlfocus.sent_probe, ttlfocus.ttl_estimate
 		);
 		
 		injpkt->selflog(__func__, injpkt->debug_buf);
@@ -184,8 +184,6 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		updateSchedule(ttlfocus.next_probe_time, 0, 50);
 
 	} else if (ttlfocus.status == TTL_KNOWN) {		
-		ttlfocus.sent_probe++;
-
 		ttlfocus.selectPuppetPort();
 		
 		ttlfocus.synack_ttl = 0;
@@ -193,11 +191,11 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		ttlfocus.received_probe = 0;
 			
 		unsigned int pkts = 5;
-		unsigned int ttl = ttlfocus.min_working_ttl > 5 ? ttlfocus.min_working_ttl - 5 : 0;
+		unsigned int ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
 		while(pkts--) {
+			ttlfocus.sent_probe++;
 			Packet *injpkt = new Packet(ttlfocus.probe_dummy);
 			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-			ttlfocus.sent_probe++;
 			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
 			injpkt->ip->ttl = ttl;
 			injpkt->tcp->source = ttlfocus.puppet_port;
@@ -205,8 +203,8 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			p_queue.insert(Q_PRIORITY_SEND, *injpkt);
 			ttl++;
 				
-			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %d [exp %d min work %d]",
-				ttlfocus.sent_probe, ttlfocus.expiring_ttl, ttlfocus.min_working_ttl
+			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
+				ttlfocus.sent_probe, ttlfocus.ttl_estimate
 			);
 				
 			injpkt->selflog(__func__, injpkt->debug_buf);
@@ -221,30 +219,46 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 /* return a sessiontrack given a packet; return a new sessiontrack if no one exist */
 SessionTrack& TCPTrack::get_sessiontrack(const Packet &pkt)
 {
+	SessionTrack *sessiontrack;
+	
 	/* create map key */
 	SessionTrackKey key = { pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest };
-	/* try to insert a new elem, return an old one if already exists */
-	SessionTrack &sessiontrack = sex_map.insert(pair<SessionTrackKey, SessionTrack>(key, pkt)).first->second;
+	
+	/* check if the key it's already present */
+	SessionTrackMap::iterator it = sex_map.find(key);
+	if(it != sex_map.end()) /* on hit: return the sessiontrack object. */
+		sessiontrack = &(it->second);
+	else /* on miss: create a new sessiontrack and insert it into the map */
+		sessiontrack = &sex_map.insert(pair<SessionTrackKey, SessionTrack>(key, pkt)).first->second;
+		
 	/* update access timestamp using global clock */
-	sessiontrack.access_timestamp = clock.tv_sec;
-	return sessiontrack;
+	sessiontrack->access_timestamp = clock.tv_sec;
+
+	return *sessiontrack;
 }
 
 /* return a ttlfocus given a packet; return a new ttlfocus if no one exist */
 TTLFocus& TCPTrack::get_ttlfocus(const Packet &pkt)
 {
-	/* try to insert a new elem, return an old one if already exists */
-	TTLFocus &ttlfocus = ttlfocus_map.insert(pair<const unsigned int, TTLFocus>(pkt.ip->daddr, pkt)).first->second;
+	TTLFocus *ttlfocus;
+	
+	/* check if the key it's already present */
+	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
+	if(it != ttlfocus_map.end()) /* on hit: return the ttlfocus object. */
+		ttlfocus = &(it->second);
+	else /* on miss: create a new ttlfocus and insert it into the map */
+		ttlfocus = &ttlfocus_map.insert(pair<const unsigned int, TTLFocus>(pkt.ip->daddr, pkt)).first->second;
+	
 	/* update access timestamp using global clock */
-	ttlfocus.access_timestamp = clock.tv_sec;
-	return ttlfocus;
+	ttlfocus->access_timestamp = clock.tv_sec;
+	return *ttlfocus;
 }
 
 /* cycles on sex_map and delete recors if expired */
 void TCPTrack::manage_expired_sessiontracks()
 {
 	for(SessionTrackMap::iterator it = sex_map.begin(); it != sex_map.end();) {
-		if((*it).second.access_timestamp + SESSIONTRACK_EXPIRETIME < clock.tv_sec)
+		if((*it).second.access_timestamp + SESSIONTRACK_EXPIRYTIME < clock.tv_sec)
 			sex_map.erase(it++);
 		else
 			it++;
@@ -255,7 +269,7 @@ void TCPTrack::manage_expired_sessiontracks()
 void TCPTrack::manage_expired_ttlfocuses()
 {
 	for(TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end();) {
-		if((*it).second.access_timestamp + TTLFOCUS_EXPIRETIME < clock.tv_sec)
+		if((*it).second.access_timestamp + TTLFOCUS_EXPIRYTIME < clock.tv_sec)
 			ttlfocus_map.erase(it++);
 		else
 			it++;
@@ -282,7 +296,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 	if (badiph->protocol == IPPROTO_TCP) {
 		/* 
 		 * Here we call the find() mathod of std::map because
-		 * we want to test the ttl existance an NEVER NEVER NEVER create a new one
+		 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
 		 * to not permit an external packet to force us to activate a ttlbrouteforce session
 		 */ 
 		TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
@@ -294,19 +308,27 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 			if (ttlfocus->status != TTL_KNOWN && expired_ttl == exp_double_check) {
 				ttlfocus->received_probe++;
 
-				if (expired_ttl > ttlfocus->expiring_ttl) {
-					ttlfocus->expiring_ttl = expired_ttl;
-					snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "good TTL: recv %d", expired_ttl);
+				if (expired_ttl >= ttlfocus->ttl_estimate) {
+					/*
+					 * If we are changing our estimation due to an expired
+					 * we have to set status = TTL_UNKNOWN
+					 * this is particolar important to permit recalibration.
+					 */ 
+					ttlfocus->status = TTL_UNKNOWN;
+					ttlfocus->ttl_estimate = expired_ttl + 1;
+					snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "good TTL: recv %u", expired_ttl);
 					ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 				}
 				else  {
-					snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "BAD TTL!: recv %d", expired_ttl);
+					snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "BAD TTL!: recv %u", expired_ttl);
 					ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 				}
+
+				/* the expired icmp scattered due to our ttl probes so we can trasparently remove it */
+				p_queue.remove(pkt);
+				delete &pkt;
+				return false;
 			}
-			p_queue.remove(pkt);
-			delete &pkt;
-			return false;
 		}
 	}
 	
@@ -319,19 +341,18 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
 {
 	/* 
-	 * Here we call the find() mathod of std::map because
-	 * we want to test the ttl existance an NEVER NEVER NEVER create a new one
+	 * Here, as for we call the find() mathod of std::map because
+	 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
 	 * to not permit an external packet to force us to activate a ttlbrouteforce session
-	 */	
+	 */ 
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	if (it != ttlfocus_map.end()) {
 		TTLFocus *ttlfocus = &(it->second);
 		if(ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) {
 			/* probably a topology change has happened - we need a solution wtf!!  */
 			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), 
-				"probable net topology change! #probe %d [exp %d min work %d synack ttl %d]",
-				ttlfocus->sent_probe, ttlfocus->expiring_ttl, 
-				ttlfocus->min_working_ttl, ttlfocus->synack_ttl
+				"probable net topology change! #probe %u [ttl_estimate %u synack ttl %u]",
+				ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->synack_ttl
 			);
 			pkt.selflog(__func__, pkt.debug_buf);
 		}
@@ -339,36 +360,44 @@ void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
 }
 
 /*
- * this function was written when only the outgoing (client) connection was 
- * treat by sniffjoke, now also the server connections are trapped. the comments
- * and the variable referring to synack will not be exactly true in the 
- * server view. is only matter of naming anyway
+ * this function analyzes the a tcp syn+ack;
+ * Due to the ttlbruteforce stage a syn + ack will scatter for ttl >= expiring, so if the received packet
+ * matches the puppet port used for the current ttlbruteforce session we can discern the ttl as:
+ *     
+ *     unsigned char discern_ttl =  ntohl(synack.tcp->ack_seq) - ttlfocus->rand_key - 1;
  */
 bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
 {
+	/* 
+	 * Here we call the find() mathod of std::map because
+	 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
+	 * to not permit an external packet to force us to activate a ttlbrouteforce session
+	 */ 
 	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
 	if (it != ttlfocus_map.end()) {
 		TTLFocus *ttlfocus = &(it->second);
 
-		snprintf(synack.debug_buf, sizeof(synack.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
-		synack.selflog(__func__, synack.debug_buf);
-
 		if (synack.tcp->dest == ttlfocus->puppet_port) {
+
+			snprintf(synack.debug_buf, sizeof(synack.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
+			synack.selflog(__func__, synack.debug_buf);
+
 			unsigned char discern_ttl =  ntohl(synack.tcp->ack_seq) - ttlfocus->rand_key - 1;
 
 			ttlfocus->received_probe++;
-			ttlfocus->status = TTL_KNOWN;
 
-			if (ttlfocus->min_working_ttl > discern_ttl && discern_ttl <= ttlfocus->sent_probe) { 
-				ttlfocus->min_working_ttl = discern_ttl;
-				ttlfocus->expiring_ttl = discern_ttl - 1;
+			if (ttlfocus->status == TTL_UNKNOWN || discern_ttl < ttlfocus->ttl_estimate) { 
+				ttlfocus->ttl_estimate = discern_ttl;
 				ttlfocus->synack_ttl = synack.ip->ttl;
 			}
+			
+			ttlfocus->status = TTL_KNOWN;
 
-			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "discerned TTL %d minworking %d expiring %d incoming value %d", 
-				discern_ttl, ttlfocus->min_working_ttl, ttlfocus->expiring_ttl, ttlfocus->synack_ttl);
+			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "discerned TTL %u ttl_estimate %u incoming value %u", 
+				discern_ttl, ttlfocus->ttl_estimate, ttlfocus->synack_ttl);
 			ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 
+			/* the syn+ack scattered due to our ttl probes so we can trasparently remove it */
 			p_queue.remove(synack);
 			delete &synack;			
 			return false;
@@ -414,7 +443,7 @@ bool TCPTrack::analyze_outgoing(Packet &pkt)
 }
 
 bool TCPTrack::analyze_keep(Packet &pkt) {
-	if(pkt.source == TUNNEL && pkt.proto == TCP) {
+	if(pkt.source == TUNNEL) {
 		TTLFocus &ttlfocus = get_ttlfocus(pkt);
 		if (ttlfocus.status == TTL_BRUTEFORCE)
 			return false;
@@ -640,10 +669,15 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	/* TTL modification - every packet subjected if possible */
 	TTLFocus &ttlfocus = get_ttlfocus(pkt);
 	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
+		/*
+		 * here we use the ttl_estimate value to set the ttl in the packet;
+		 * at the time, we does use the precise estimate for testing our infrastructure, but probably
+		 * in real applications we will need a safe margin 1 or 2 hops.
+		 */
 		if (pkt.wtf == PRESCRIPTION) 
-			pkt.ip->ttl = ttlfocus.expiring_ttl - (random() % 5);
+			pkt.ip->ttl = ttlfocus.ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
 		else
-			pkt.ip->ttl = ttlfocus.min_working_ttl + (random() % 5);
+			pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); 		/* [+0, +4], 5 values */
 	} else {
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
 	}

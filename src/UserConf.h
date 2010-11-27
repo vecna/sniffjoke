@@ -88,8 +88,6 @@ struct sj_config {
 		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + gw_mac_str */
 
 		unsigned short max_ttl_probe;		/* default: idem */
-		unsigned int max_ttlfocus;		/* default: idem */
-		unsigned int max_sextrack;		/* default: idem */
 		Strength portconf[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
