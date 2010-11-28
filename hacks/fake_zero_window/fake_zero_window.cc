@@ -47,7 +47,6 @@ public:
 
 		pkt->TCPPAYLOAD_resize(0);
 
-		pkt->tcp->syn = pkt->tcp->fin = pkt->tcp->rst = 0;
 		pkt->tcp->psh = pkt->tcp->ack = 0;
 		pkt->tcp->window = 0;
 
@@ -57,6 +56,15 @@ public:
 		pkt->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(pkt);
+	}
+
+	virtual bool Condition(const Packet &orig_packet)
+	{
+		return (
+			!orig_packet.tcp->syn &&
+			!orig_packet.tcp->rst &&
+			!orig_packet.tcp->fin
+		);
 	}
 
 	fake_zero_window() {

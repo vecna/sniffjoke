@@ -40,15 +40,13 @@ using namespace std;
 
 /* IT'S FUNDAMENTAL TO HAVE ALL ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
+enum queue_t { QUEUEUNASSIGNED = -1, YOUNG = 0,	KEEP = 1, SEND = 2, PRIORITY_SEND = 3 };
+
 /* if the packet is inject from sniffjoke is marked with the evilbit */
 enum evilbit_t { MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2 };
 
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
 enum source_t { SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 4, TTLBFORCE = 8 };
-
-/* status mean what sniffjoke has to do with the packet. KEEP is used when a packet is 
- * delayed, YOUNG when a packet was created by sniffjoke, SEND has to be send */
-enum status_t { STATUSUNASSIGNED = 0, SEND = 2, KEEP = 4, YOUNG = 8 };
 
 /* Every sniffjoke packet is based on be discarged from the remote host and accepted from
  * the sniffer, in order to obtain the sniffer tracking poisoning, those marker mean if the
@@ -65,6 +63,7 @@ enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, PO
 
 class Packet {
 private:
+	queue_t queue;
 	Packet *prev;
 	Packet *next;
 	friend class PacketQueue;

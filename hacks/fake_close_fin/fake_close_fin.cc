@@ -63,7 +63,12 @@ public:
 
 	virtual bool Condition(const Packet &orig_packet)
 	{
-		return (orig_packet.tcp->ack != 0);
+		return (
+			!orig_packet.tcp->syn &&
+			!orig_packet.tcp->rst &&
+			!orig_packet.tcp->fin &&
+			orig_packet.tcp->ack
+		);
 	}
 
 	fake_close_fin() {

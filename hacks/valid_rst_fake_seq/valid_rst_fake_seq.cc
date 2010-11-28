@@ -53,9 +53,8 @@ public:
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
 		pkt->tcp->window = htons((unsigned short)(-1));
-		pkt->tcp->rst = pkt->tcp->ack = 1;
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
-		pkt->tcp->fin = pkt->tcp->psh = pkt->tcp->syn = 0;
+		pkt->tcp->psh;
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = INNOCENT;
@@ -67,7 +66,12 @@ public:
 
 	virtual bool Condition(const Packet &orig_packet)
 	{
-		return (orig_packet.tcp->ack != 0);
+		return (
+			!orig_packet.tcp->syn &&
+			!orig_packet.tcp->rst &&
+			!orig_packet.tcp->fin &&
+			orig_packet.tcp->ack
+		);
 	}
 
 	valid_rst_fake_seq() {

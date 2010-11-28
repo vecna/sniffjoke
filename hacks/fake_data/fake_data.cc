@@ -54,6 +54,14 @@ public:
 		while(pkts--) {
 			Packet* pkt = new Packet(orig_packet);
 			pkt->TCPPAYLOAD_fillrandom();
+
+			orig_packet.tcp->rst = 0;
+			orig_packet.tcp->fin = 0;
+			
+			if(random() % 2)
+				orig_packet.tcp->psh = 1;
+			else
+				orig_packet.tcp->psh = 0;
 			
 			if(pkts == 1)
 				pkt->position = ANTICIPATION;
@@ -70,7 +78,10 @@ public:
 
 	virtual bool Condition(const Packet &orig_packet)
 	{
-		return (orig_packet.payload != NULL);		
+		return (
+			!orig_packet.tcp->syn &&
+			orig_packet.payload != NULL
+		);
 	}
 
 	fake_data() {
