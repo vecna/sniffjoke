@@ -302,6 +302,14 @@ bool UserConf::load(const char* configfile)
 			);
 			SJ_RUNTIME_EXCEPTION("");
 		}
+
+		if (!memcmp(runconfig.version, SW_VERSION, strlen(SW_VERSION))) {
+			debug.log(ALL_LEVEL, "sniffjoke config: %s was the config version, sniffjoke is %s, delete the old configuration: %s",
+				runconfig.version, SW_VERSION, configfile
+			);
+			SJ_RUNTIME_EXCEPTION("");
+		}
+
 		fclose(loadfd);
 		return true;
 	} else {
@@ -318,6 +326,7 @@ void UserConf::dump(void)
 	memcpy(&configcopy, &runconfig, sizeof(runconfig));
 
 	configcopy.MAGIC = MAGICVAL;
+	snprintf(configcopy.version, SMALLBUF, "%s", SW_VERSION);
 
 	if(!chroot_status)
 		snprintf(configfile, LARGEBUF, "%s%s", configcopy.chroot_dir, configcopy.cfgfname);

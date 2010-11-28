@@ -79,3 +79,7 @@ extern "C"  Hack* CreateHackObject() {
 extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
 }
+
+extern "C" const char *versionValue() {
+ 	return SW_VERSION;
+}
