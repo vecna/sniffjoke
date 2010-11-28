@@ -44,38 +44,46 @@ public:
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-		Packet* pkt = new Packet(orig_packet);
+		unsigned int pkts = 2;
 
-		pkt->TCPPAYLOAD_resize(0);
-	  
-		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+		while(pkts--) {
+			Packet* pkt = new Packet(orig_packet);
 
-		pkt->tcp->psh = 0;
-		pkt->tcp->syn = 1;
+			pkt->TCPPAYLOAD_resize(0);
+		  
+			pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 
-		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
+			pkt->tcp->psh = 0;
+			pkt->tcp->syn = 1;
 
-		/* 20% is a SYN ACK */
-		if ((random() % 5) == 0) { 
-			pkt->tcp->ack = 1;
-			pkt->tcp->ack_seq = random();
-		} else {
-			pkt->tcp->ack = pkt->tcp->ack_seq = 0;
+			pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
+
+			/* 20% is a SYN ACK */
+			if ((random() % 5) == 0) { 
+				pkt->tcp->ack = 1;
+				pkt->tcp->ack_seq = random();
+			} else {
+				pkt->tcp->ack = pkt->tcp->ack_seq = 0;
+			}
+
+			/* 20% had source and dest port reversed */
+			if ((random() % 5) == 0) {
+				unsigned short swap = pkt->tcp->source;
+				pkt->tcp->source = pkt->tcp->dest;
+				pkt->tcp->dest = swap;
+			}
+
+			if(pkts == 1)
+				pkt->position = ANTICIPATION;
+			else
+				pkt->position = POSTICIPATION;
+			
+			pkt->wtf = RANDOMDAMAGE;
+			
+			pkt->selflog(HACK_NAME, "Hacked packet");
+
+			pktVector.push_back(pkt);
 		}
-
-		/* 20% had source and dest port reversed */
-		if ((random() % 5) == 0) {
-			unsigned short swap = pkt->tcp->source;
-			pkt->tcp->source = pkt->tcp->dest;
-			pkt->tcp->dest = swap;
-		}
-
-		pkt->position = ANTICIPATION;
-		pkt->wtf = RANDOMDAMAGE;
-		
-		pkt->selflog(HACK_NAME, "Hacked packet");
-
-		pktVector.push_back(pkt);
 	}
 
 	fake_syn() {

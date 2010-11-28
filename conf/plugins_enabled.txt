@@ -7,7 +7,7 @@ fake_close_fin.so
 #fake_close_rst.so
 fake_data.so
 fake_seq.so
-#fake_syn.so
+fake_syn.so
 #fake_zero_window.so
 #shift_ack.so
 valid_rst_fake_seq.so

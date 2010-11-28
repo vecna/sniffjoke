@@ -46,8 +46,6 @@
 #define SUFFIX_LF_SESSIONS              ".sessions"
 #define DEFAULT_DEBUG_LEVEL             2
 #define DEFAULT_MAX_TTLPROBE		35
-#define DEFAULT_MAX_SEXTRACK		4096
-#define DEFAULT_MAX_TTLFOCUS		4096
 #define DEFAULT_IP_ADMIN		"127.0.0.1"
 #define DEFAULT_UDP_ADMIN_PORT		8844
 
