@@ -166,9 +166,9 @@ NetIO::NetIO(sj_config& runcfg) :
 		debug.log(DEBUG_LEVEL, "NetIO: setting network socket to non blocking mode successfull");
 	}
 
-	fds[0].fd = netfd;
+	fds[0].fd = tunfd;
 	fds[0].events = POLLIN;
-	fds[1].fd = tunfd;
+	fds[1].fd = netfd;
 	fds[1].events = POLLIN;
 }
 
@@ -234,8 +234,7 @@ void NetIO::network_io(void)
 
 	struct timespec polltimeout;
 
-	int size;
-	
+	int ret;
 	while (1)
 	{	
 		polltimeout.tv_sec = 0;
@@ -250,36 +249,33 @@ void NetIO::network_io(void)
 		
 			data_received = true;
 			
-			if (fds[0].revents) { /* POLLIN is the unique event managed */
-				if ((size = recv(netfd, pktbuf, MTU, 0)) == -1) {
-					if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-						debug.log(DEBUG_LEVEL, "network_io: recv from network: error: %s", strerror(errno));
-						break;
+			for(unsigned int i = 0; i < 2; i++) { 
+			
+				if (fds[i].revents) { /* POLLIN is the unique event managed */
+				
+					if(i)
+						ret = recv(netfd, pktbuf, MTU, 0);
+					else
+						ret = read(tunfd, pktbuf, MTU_FAKE);
+
+					
+					if (ret == -1 && (errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+						debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
+							i ? "network" : "tunnel", strerror(errno));
+						SJ_RUNTIME_EXCEPTION(strerror(errno));
+						continue;
 					}
-				} else {
+					
 					if(runconfig.active == true) { /* add packet in connection tracking queue */
-						conntrack->writepacket(NETWORK, pktbuf, size);
+						conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, ret);
 					} else { /* bypass the connection tracking queue */
-						if ((size = write(tunfd, pktbuf, size)) == -1)
-							SJ_RUNTIME_EXCEPTION(strerror(errno));
-					}
-				}
-			}
+						if(i)
+							ret = write(tunfd, pktbuf, ret);
+						else
+							ret = sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 
-			if (fds[1].revents) { /* POLLIN is the unique event managed */
-				if ((size = read(tunfd, pktbuf, MTU_FAKE)) == -1) {
-					if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-						debug.log(DEBUG_LEVEL, "network_io: read from tunnel: error: %s", strerror(errno));
-						break;
-					}
-				} else {
-					if(runconfig.active == true) {
-						/* add packet in connection tracking queue */
-						conntrack->writepacket(TUNNEL, pktbuf, size);
-					} else { /* bypass the connection tracking queue */
-						if ((size = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1)
+						if(ret == -1)
 							SJ_RUNTIME_EXCEPTION(strerror(errno));
-
 					}
 				}
 			}
@@ -301,7 +297,7 @@ void NetIO::network_io(void)
 	conntrack->analyze_packets_queue();
 }
 
-/* this method send all the packets sets as "SEND" */
+/* this method send all the packets  "PRIORITY_SEND" or "SEND" */
 void NetIO::queue_flush(void)
 {
 	/* 
@@ -309,14 +305,26 @@ void NetIO::queue_flush(void)
 	 * the other source_t could be LOCAL or TUNNEL;
 	 * in both case the packets goes through the network.
 	 */
+	int size;
+	int ret;
 	while ((pkt = conntrack->readpacket()) != NULL) {
-		if (pkt->source == NETWORK) {
-			if ((write(tunfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size())) == -1)
-				SJ_RUNTIME_EXCEPTION(strerror(errno));
-		} else {
-			if ((sendto(netfd, (void*)&(pkt->pbuf[0]), pkt->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1)
-				SJ_RUNTIME_EXCEPTION(strerror(errno));
+		size = pkt->pbuf.size();
+		while(1) {
+			if (pkt->source == NETWORK)
+				ret = write(tunfd, (void*)&(pkt->pbuf[0]), size);
+			else
+				ret = sendto(netfd, (void*)&(pkt->pbuf[0]), size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+
+			if (ret != size) {
+				if (ret == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
+					continue;
+				else
+					SJ_RUNTIME_EXCEPTION(strerror(errno));
+			} else {
+				break;
+			}
 		}
+		
 		delete pkt;
 	}
 }

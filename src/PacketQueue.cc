@@ -24,17 +24,14 @@
 
 PacketQueue::PacketQueue() :
 	pkt_count(0),
-	front(new Packet*[LAST_QUEUE + 1]),
-	back(new Packet*[LAST_QUEUE + 1]),
-	iterate_through_all(true),
 	cur_queue(FIRST_QUEUE),
 	cur_pkt(NULL),
 	next_pkt(NULL)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	memset(front, NULL, sizeof(Packet*)*(LAST_QUEUE + 1));
-	memset(back, NULL, sizeof(Packet*)*(LAST_QUEUE + 1));
+	memset(front, NULL, sizeof(Packet*)*(QUEUE_NUM));
+	memset(back, NULL, sizeof(Packet*)*(QUEUE_NUM));
 }
 
 
@@ -42,18 +39,21 @@ PacketQueue::~PacketQueue(void)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	select(Q_ANY);
-	while (get() && cur_pkt != NULL) {
-		delete cur_pkt;
+	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
+		select((queue_t)i);
+		while (get() && cur_pkt != NULL) {
+			delete cur_pkt;
+		}
 	}
-
-	delete[] front;
-	delete[] back;
 }
 
-void PacketQueue::insert(queue_t queue, Packet &pkt)
+void PacketQueue::insert(Packet &pkt, queue_t queue)
 {
+	if(pkt.queue != QUEUEUNASSIGNED)
+		remove(pkt);
+	
 	pkt_count++;
+	pkt.queue = queue;
 	if (front[queue] == NULL) {
 		pkt.prev = NULL;
 		pkt.next = NULL;
@@ -69,19 +69,22 @@ void PacketQueue::insert(queue_t queue, Packet &pkt)
 
 void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
+	if(pkt.queue != QUEUEUNASSIGNED)
+		remove(pkt);	
+
 	pkt_count++;
-	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
-		if (front[i] == &ref) {
-			pkt.prev = NULL;
-			pkt.next = &ref;
-			ref.prev = &pkt;
-			front[i] = &pkt;
-			return;
-		}
+	pkt.queue = ref.queue;
+	
+	if (front[ref.queue] == &ref) {
+		pkt.prev = NULL;
+		pkt.next = &ref;
+		ref.prev = &pkt;
+		front[ref.queue] = &pkt;
+		return;
 	}
 
 	/*
-	 * ref is not front of any queue;
+	 * ref is not front of the queue;
 	 * so it always has prev that we cand dereference without checking != NULL
 	 */
 	pkt.prev = ref.prev;
@@ -92,19 +95,22 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 
 void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
+	if(pkt.queue != QUEUEUNASSIGNED)
+		remove(pkt);
+	
 	pkt_count++;
-	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
-		if (back[i] == &ref) {
-			pkt.prev = &ref;
-			pkt.next = NULL;
-			ref.next = &pkt;
-			back[i] = &pkt;
-			return;
-		}
+	pkt.queue = ref.queue;
+
+	if (back[ref.queue] == &ref) {
+		pkt.prev = &ref;
+		pkt.next = NULL;
+		ref.next = &pkt;
+		back[ref.queue] = &pkt;
+		return;
 	}
 	
 	/*
-	 * ref is not back of any queue;
+	 * ref is not back of the queue;
 	 * so it always has next that we can dereference without checking != NULL
 	 */
 	pkt.next = ref.next;
@@ -116,29 +122,27 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 void PacketQueue::remove(const Packet &pkt)
 {
 	pkt_count--;
-	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
-		if (front[i] == &pkt) {
-			if (back[i] == &pkt) {
-				front[i] = NULL;
-				back[i] = NULL;
-			} else {
-				/*
-				 * in this case we have always a next;
-				 * so we can dereference it without checking != NULL
-				 */
-				front[i] = front[i]->next;
-				front[i]->prev = NULL;
-			}
-			return;
-		} else if (back[i] == &pkt) {
+	if (front[pkt.queue] == &pkt) {
+		if (back[pkt.queue] == &pkt) {
+			front[pkt.queue] = NULL;
+			back[pkt.queue] = NULL;
+		} else {
 			/*
-			 * in this case we have always a prev;
+			 * in this case we have always a next;
 			 * so we can dereference it without checking != NULL
 			 */
-			back[i] = back[i]->prev;
-			back[i]->next = NULL;
-			return;
+			front[pkt.queue] = front[pkt.queue]->next;
+			front[pkt.queue]->prev = NULL;
 		}
+		return;
+	} else if (back[pkt.queue] == &pkt) {
+		/*
+		 * in this case we have always a prev;
+		 * so we can dereference it without checking != NULL
+		 */
+		back[pkt.queue] = back[pkt.queue]->prev;
+		back[pkt.queue]->next = NULL;
+		return;
 	}
 
 	/*
@@ -152,32 +156,18 @@ void PacketQueue::remove(const Packet &pkt)
 }
 
 void PacketQueue::select(queue_t queue) {
-	if(queue == Q_ANY) {
-		cur_queue = FIRST_QUEUE;
-		iterate_through_all = true;
-	} else {
-		cur_queue = queue;
-		iterate_through_all = false;
-	}
-
+	cur_queue = queue;
 	cur_pkt = NULL;
 	next_pkt = front[cur_queue];
 }
 
 Packet* PacketQueue::get()
 {
-	while (1) {
-		if (next_pkt != NULL) {
-			cur_pkt = next_pkt;
-			next_pkt = next_pkt->next;
-			return cur_pkt; /* FOUND */
-		}
-		
-		if (iterate_through_all && cur_queue != LAST_QUEUE) {
-			cur_queue++;
-			next_pkt = front[cur_queue];
-		} else {
-			return NULL; /* NOT FOUND */
-		}
+	if (next_pkt != NULL) {
+		cur_pkt = next_pkt;
+		next_pkt = next_pkt->next;
+		return cur_pkt; /* FOUND */
 	}
+
+	return NULL; /* NOT FOUND */
 }

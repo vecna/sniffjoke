@@ -27,6 +27,7 @@
 #define MAXTCPHEADER 60
 
 Packet::Packet(const unsigned char* buff, int size) :
+	queue(QUEUEUNASSIGNED),
 	prev(NULL),
 	next(NULL),
 	evilbit(MORALITYUNASSIGNED),
@@ -50,6 +51,7 @@ Packet::Packet(const unsigned char* buff, int size) :
 }
 
 Packet::Packet(const Packet& pkt) :
+	queue(QUEUEUNASSIGNED),
 	prev(NULL),
 	next(NULL),
 	evilbit(MORALITYUNASSIGNED),

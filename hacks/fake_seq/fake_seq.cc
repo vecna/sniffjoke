@@ -81,7 +81,12 @@ public:
 
 	virtual bool Condition(const Packet &orig_packet)
 	{
-		return (orig_packet.payload != NULL);
+		return (
+			!orig_packet.tcp->syn &&
+			!orig_packet.tcp->rst &&
+			!orig_packet.tcp->fin &&
+			orig_packet.payload != NULL
+		);
 	}
 
 	fake_seq() {

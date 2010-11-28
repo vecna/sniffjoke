@@ -85,6 +85,15 @@ public:
 			pktVector.push_back(pkt);
 		}
 	}
+	
+	virtual bool Condition(const Packet &orig_packet)
+	{
+		return (
+			orig_packet.tcp->syn &&
+			!orig_packet.tcp->rst &&
+			!orig_packet.tcp->fin
+		);
+	}
 
 	fake_syn() {
 		hackName = HACK_NAME;

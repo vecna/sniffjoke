@@ -172,7 +172,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		injpkt->ip->ttl = ttlfocus.sent_probe;
 		injpkt->tcp->source = ttlfocus.puppet_port;
 		injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
-		p_queue.insert(Q_PRIORITY_SEND, *injpkt);
+		p_queue.insert(*injpkt, PRIORITY_SEND);
 			
 		snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
 			ttlfocus.sent_probe, ttlfocus.ttl_estimate
@@ -200,7 +200,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			injpkt->ip->ttl = ttl;
 			injpkt->tcp->source = ttlfocus.puppet_port;
 			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
-			p_queue.insert(Q_PRIORITY_SEND, *injpkt);
+			p_queue.insert(*injpkt, PRIORITY_SEND);
 			ttl++;
 				
 			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
@@ -284,7 +284,7 @@ void TCPTrack::manage_expired_ttlfocuses()
 */
 bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 {
-	if (pkt.icmp->type == ICMP_TIME_EXCEEDED)
+	if (pkt.icmp->type != ICMP_TIME_EXCEEDED)
 		return true;
 
 	const struct iphdr *badiph;
@@ -316,12 +316,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 					 */ 
 					ttlfocus->status = TTL_UNKNOWN;
 					ttlfocus->ttl_estimate = expired_ttl + 1;
-					snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "good TTL: recv %u", expired_ttl);
-					ttlfocus->selflog(__func__, ttlfocus->debug_buf);
-				}
-				else  {
-					snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "BAD TTL!: recv %u", expired_ttl);
-					ttlfocus->selflog(__func__, ttlfocus->debug_buf);
+				} else  {
 				}
 
 				/* the expired icmp scattered due to our ttl probes so we can trasparently remove it */
@@ -434,8 +429,7 @@ bool TCPTrack::analyze_outgoing(Packet &pkt)
 	
 	TTLFocus &ttlfocus = get_ttlfocus(pkt);
 	if (ttlfocus.status == TTL_BRUTEFORCE) {
-		p_queue.remove(pkt);
-		p_queue.insert(Q_KEEP, pkt);
+		p_queue.insert(pkt, KEEP);
 		return false;
 	}
 	
@@ -709,7 +703,7 @@ void TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 		* forged packet are sent before the originals one.
 		*/
 		
-		p_queue.insert(Q_YOUNG, *pkt);
+		p_queue.insert(*pkt, YOUNG);
 	
 		return;
 		
@@ -730,7 +724,7 @@ Packet* TCPTrack::readpacket()
 {
 	Packet *pkt;
 
-	p_queue.select(Q_PRIORITY_SEND);
+	p_queue.select(PRIORITY_SEND);
 	while ((pkt = p_queue.get()) != NULL) {
 		p_queue.remove(*pkt);
 		if(!last_pkt_fix(*pkt))
@@ -740,7 +734,7 @@ Packet* TCPTrack::readpacket()
 		
 	}
 
-	p_queue.select(Q_SEND);
+	p_queue.select(SEND);
 	while ((pkt = p_queue.get()) != NULL) {
 		p_queue.remove(*pkt);
 		if(!last_pkt_fix(*pkt))
@@ -809,7 +803,7 @@ void TCPTrack::analyze_packets_queue()
 	 *       every packets from the tunnel will be associated to a session (and session counter updated)
 	 *       and to a ttlfocus (if the ttlfocus does not currently exist a ttlbrouteforce session will start).
 	 */
-	p_queue.select(Q_YOUNG);
+	p_queue.select(YOUNG);
 	while ((pkt = p_queue.get()) != NULL) {
 		send = true;
 		if(pkt->source == NETWORK) {
@@ -823,7 +817,7 @@ void TCPTrack::analyze_packets_queue()
 
 				send = analyze_incoming_tcp_synack(*pkt);
 			}
-		} else if(pkt->source == TUNNEL) {
+		} else /* pkt->source == TUNNEL */ {
 			if(pkt->proto == TCP) {
 				/* check if hacks must be bypassed for this destination port */
 				if (runconfig.portconf[ntohs(pkt->tcp->dest)] != NONE)
@@ -831,24 +825,20 @@ void TCPTrack::analyze_packets_queue()
 			}
 		}
 			
-		if(send == true) {
-			p_queue.remove(*pkt);
-			p_queue.insert(Q_SEND, *pkt);
-		}
+		if(send == true)
+			p_queue.insert(*pkt, SEND);
 	}
 
 	/* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
-	p_queue.select(Q_KEEP);
+	p_queue.select(KEEP);
 	while ((pkt = p_queue.get()) != NULL) {
 		send = analyze_keep(*pkt);
-		if(send == true) {
-			p_queue.remove(*pkt);
-			p_queue.insert(Q_SEND, *pkt);
-		}
+		if(send == true)
+			p_queue.insert(*pkt, SEND);
 	}
 
 	/* for every packet in SEND queue we insert some random hacks */
-	p_queue.select(Q_SEND);	
+	p_queue.select(SEND);	
 	while ((pkt = p_queue.get()) != NULL) {
 		if(pkt->proto == TCP && pkt->source == TUNNEL)
 			inject_hack_in_queue(*pkt);
