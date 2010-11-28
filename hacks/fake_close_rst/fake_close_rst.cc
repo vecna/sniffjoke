@@ -47,6 +47,7 @@ public:
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
 		pkt->TCPPAYLOAD_resize(0);
+
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->psh = 0;
 		pkt->tcp->rst = 1;

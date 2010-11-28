@@ -55,13 +55,13 @@ public:
 			Packet* pkt = new Packet(orig_packet);
 			pkt->TCPPAYLOAD_fillrandom();
 
-			orig_packet.tcp->rst = 0;
-			orig_packet.tcp->fin = 0;
+			pkt->tcp->rst = 0;
+			pkt->tcp->fin = 0;
 			
 			if(random() % 2)
-				orig_packet.tcp->psh = 1;
+				pkt->tcp->psh = 1;
 			else
-				orig_packet.tcp->psh = 0;
+				pkt->tcp->psh = 0;
 			
 			if(pkts == 1)
 				pkt->position = ANTICIPATION;
