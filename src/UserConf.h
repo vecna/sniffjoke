@@ -39,14 +39,15 @@ struct sj_cmdline_opts {
 		char logfname_packets[LARGEBUF];
 		char logfname_sessions[LARGEBUF];
 		unsigned int debug_level;
+		char admin_address[MEDIUMBUF];
+		unsigned short admin_port;
 		/* END OF COMMON PART WITH sj_config_opt */
 
 		char onlyplugin[MEDIUMBUF];
 		char scramble[4];   /* 3 options chars + \0 */
 		bool go_foreground;
 		bool force_restart;
-		bool tcp_admin;
-		
+
 		sj_proc_t process_type;
 		char cmd_buffer[MEDIUMBUF];
 };
@@ -70,7 +71,6 @@ struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		bool active;				/* default: false = NOT ACTIVE */
 		bool chrooted;				/* defauit: false = NOT CHROOTED */
-		bool tcp_admin;				/* default: false = socket unix administration */
 	
 		/* START OF COMMON PART WITH sj_cmdline_opt */
 		char cfgfname[MEDIUMBUF];		/* default: check hardcoded-defines.h */
@@ -82,6 +82,8 @@ struct sj_config {
 		char logfname_packets[LARGEBUF];	/* default: idem */
 		char logfname_sessions[LARGEBUF];	/* default: idem */
 		unsigned int debug_level;		/* default: idem */
+		char admin_address[MEDIUMBUF];		/* default: idem */
+		unsigned short admin_port;		/* default: idem */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */

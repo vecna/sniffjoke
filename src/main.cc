@@ -53,7 +53,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
 	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --tcp\t\tenable tcp administration instead of unix socket\n"\
+	" --admin <addr>[:port]\tspecify administration interface [default: localhost:%d]\n"\
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
@@ -86,7 +86,7 @@ static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const ch
 		DROP_USER, DROP_GROUP, 
 		basedir,
 		basedir, LOGFILE,
-		DEFAULT_DEBUG_LEVEL
+		DEFAULT_DEBUG_LEVEL, DEFAULT_UDP_ADMIN_PORT
 	);
 }
 
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
 		{ "debug", required_argument, NULL, 'd' },
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
-		{ "tcp", no_argument, NULL, 't' },
+		{ "admin", required_argument, NULL, 'a' },
 		{ "version", no_argument, NULL, 'v' },
 		{ "only-plugins", required_argument, NULL, 'p' },
 		{ "scramble", required_argument, NULL, 's' },
@@ -239,13 +239,23 @@ int main(int argc, char **argv)
 		useropt.process_type = SJ_SERVER_PROC;
 
 	int charopt;
-	while ((charopt = getopt_long(argc, argv, "tf:e:u:g:c:d:l:xrvp:s:h", sj_option, NULL)) != -1) {
+	char *port = NULL;
+	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:a:xrvp:s:h", sj_option, NULL)) != -1) {
 		switch(charopt) {
 			case 'f':
 				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
 				break;
-			case 't':
-				useropt.tcp_admin = true;
+			case 'a':
+				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
+				if((port = strchr(useropt.admin_address, ':')) != NULL) {
+					*port = 0x00;
+					int checked_port = atoi(++port);
+
+					if(checked_port > PORTNUMBER || checked_port < 0)
+						goto sniffjoke_help;
+
+					useropt.admin_port = (unsigned short)checked_port;
+				}
 				break;
 			case 'e':
 				snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);

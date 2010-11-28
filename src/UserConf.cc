@@ -65,9 +65,15 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	compare_check_copy(runconfig.user, sizeof(runconfig.user), DROP_USER, cmdline_opts.user);
 	compare_check_copy(runconfig.group, sizeof(runconfig.group), DROP_GROUP, cmdline_opts.group);
 	compare_check_copy(runconfig.chroot_dir, sizeof(runconfig.chroot_dir), CHROOT_DIR, cmdline_opts.chroot_dir);
+	compare_check_copy(runconfig.admin_address, sizeof(runconfig.admin_address), DEFAULT_IP_ADMIN, cmdline_opts.admin_address);
 	compare_check_copy(runconfig.logfname, sizeof(runconfig.logfname), CHROOT_DIR""LOGFILE, cmdline_opts.logfname);
 	compare_check_copy(runconfig.logfname_packets, sizeof(runconfig.logfname_packets), CHROOT_DIR""LOGFILE""SUFFIX_LF_PACKETS, cmdline_opts.logfname);
 	compare_check_copy(runconfig.logfname_sessions, sizeof(runconfig.logfname_sessions), CHROOT_DIR""LOGFILE""SUFFIX_LF_SESSIONS, cmdline_opts.logfname);
+
+	if(cmdline_opts.admin_port != 0)
+		runconfig.admin_port = cmdline_opts.admin_port;
+	else
+		runconfig.admin_port = DEFAULT_UDP_ADMIN_PORT;
 
 	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
 		runconfig.debug_level = cmdline_opts.debug_level;

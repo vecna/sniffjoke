@@ -48,12 +48,10 @@
 #define DEFAULT_MAX_TTLPROBE		35
 #define DEFAULT_MAX_SEXTRACK		4096
 #define DEFAULT_MAX_TTLFOCUS		4096
+#define DEFAULT_IP_ADMIN		"127.0.0.1"
+#define DEFAULT_UDP_ADMIN_PORT		8844
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
-
-/* those are used under chroot */
-#define SJ_SERVICE_UNIXSOCK		"sniffjoke_service" 
-#define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 /* TTL related define */
 #define TTLFOCUSCACHE_FILE		"ttlfocus.bin"
