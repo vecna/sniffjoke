@@ -69,6 +69,7 @@ enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
+		char version[SMALLBUF];			/* SW_VERSION from hardcoded-defines.h */
 		bool active;				/* default: false = NOT ACTIVE */
 		bool chrooted;				/* defauit: false = NOT CHROOTED */
 	

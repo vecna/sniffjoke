@@ -110,6 +110,9 @@ public:
 		/* The hacks constructed must be pushed inside pktVector */
 		pktVector.push_back(pkt1);
 		pktVector.push_back(pkt2);
+
+		/* you should modify the orig_packet too, if required */
+		orig_packet.tcp->urg = 1;
 	}
 
 	/* Optional condition that the orig_packet must fulfil to make this hack work */
@@ -141,4 +144,12 @@ extern "C"  Hack* CreateHackObject() {
  */
 extern "C" void DeleteHackObject(Hack *who) {
 	delete who;
+}
+
+/*
+ * Hack version, every loaded plugin is checked to be explicitally written & compiled with the
+ * same sniffjoke version.
+ */
+extern "C" const char *versionValue() {
+ 	return SW_VERSION;
 }

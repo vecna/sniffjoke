@@ -26,12 +26,13 @@
 #include <dlfcn.h>
 
 PluginTrack::PluginTrack(const char *plugabspath) :
+	selfObj(NULL),
 	pluginHandler(NULL),
+	pluginPath(NULL),
+	enabled(false),
 	fp_CreateHackObj(NULL),
 	fp_DeleteHackObj(NULL),
-	selfObj(NULL),
-	pluginPath(NULL),
-	enabled(false)
+	fp_versionValue(NULL)
 {
 	debug.log(VERBOSE_LEVEL, __func__);	
 
@@ -48,11 +49,18 @@ PluginTrack::PluginTrack(const char *plugabspath) :
         /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
         fp_CreateHackObj = (constructor_f *)dlsym(pluginHandler, "CreateHackObject");
         fp_DeleteHackObj = (destructor_f *)dlsym(pluginHandler, "DeleteHackObject");
+	fp_versionValue = (version_f *)dlsym(pluginHandler, "versionValue");
 
-        if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL) {
+        if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of create/delete object", pluginPath);
 		SJ_RUNTIME_EXCEPTION("");
         }
+
+	if(strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION)) {
+		debug.log(ALL_LEVEL, "PluginTrack: loading %s incorred version (%s) with SniffJoke %s",
+			pluginPath, fp_versionValue(), SW_VERSION);
+		SJ_RUNTIME_EXCEPTION("");
+	}
 
         selfObj = fp_CreateHackObj();
 

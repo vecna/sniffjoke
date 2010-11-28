@@ -32,15 +32,18 @@ using namespace std;
 
 typedef Hack* constructor_f();
 typedef void destructor_f(Hack *);
+typedef const char* version_f();
 
 class PluginTrack {
 public:
-	void *pluginHandler;	
-	constructor_f *fp_CreateHackObj;
-	destructor_f *fp_DeleteHackObj;
 	Hack* selfObj;
+	void *pluginHandler;	
 	char *pluginPath;
 	bool enabled;
+
+	constructor_f *fp_CreateHackObj;
+	destructor_f *fp_DeleteHackObj;
+	version_f *fp_versionValue;
 
 	PluginTrack(const char *);
 	PluginTrack(const PluginTrack&);
