@@ -53,7 +53,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
 	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --admin <addr>[:port]\tspecify administration interface [default: localhost:%d]\n"\
+	" --admin <IPv4>[:port]\tspecify administration IP address [default: 127.0.0.1:%d]\n"\
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\

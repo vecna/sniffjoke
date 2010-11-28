@@ -35,7 +35,6 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
-#include <netdb.h>
 
 using namespace std;
 
@@ -75,7 +74,6 @@ private:
 	void kill_child();
 	int udp_admin_socket(char [MEDIUMBUF], unsigned short);
 	void handle_admin_socket(int admin_socket);
-	void hostname2ip(char [MEDIUMBUF], struct in_addr *);
 	int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);	
 	void send_command(const char *cmdstring, char [MEDIUMBUF], unsigned short);
 	bool parse_port_weight(char *weightstr, Strength *Value);

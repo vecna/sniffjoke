@@ -206,19 +206,6 @@ void SniffJoke::client_cleanup() {
 
 }
 
-void SniffJoke::hostname2ip(char admin_address[MEDIUMBUF], struct in_addr *addrcont)
-{
-	if(!inet_aton(admin_address, addrcont)) {
-		struct hostent *resolved_name;
-		resolved_name = gethostbyname(admin_address);
-		if(resolved_name == NULL) {
-			debug.log(ALL_LEVEL, "unable to resolve %s used in in --admin option", admin_address);
-			SJ_RUNTIME_EXCEPTION("");
-		}
-		memcpy((void *)&addrcont->s_addr, &resolved_name->h_addr_list[0], sizeof(unsigned int));
-	}
-}
-
 int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], unsigned short bindport)
 {
 	int ret;
@@ -230,7 +217,11 @@ int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], unsigned short bi
 	}
 
 	memset(&in_service, 0x00, sizeof(in_service));
-	hostname2ip(admin_address, &in_service.sin_addr);
+	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
+	if(!inet_aton(admin_address, &in_service.sin_addr)) {
+		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", admin_address);
+		SJ_RUNTIME_EXCEPTION("");
+	}
 	in_service.sin_family = AF_INET;
 	in_service.sin_port = htons(bindport);
 
@@ -292,7 +283,11 @@ void SniffJoke::send_command(const char *cmdstring, char serveraddr[MEDIUMBUF], 
 	memset(&service_sin, 0x00, sizeof(service_sin));
 	service_sin.sin_family = AF_INET;
 	service_sin.sin_port = htons(serverport);
-	hostname2ip(serveraddr, &service_sin.sin_addr);
+	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
+	if(!inet_aton(serveraddr, &service_sin.sin_addr)) {
+		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", serveraddr);
+		SJ_RUNTIME_EXCEPTION("");
+	}
 	
 	if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&service_sin, sizeof(service_sin)) == -1) {
 		debug.log(ALL_LEVEL, "FATAL: unable to send message [%s] via %s:%d: %s", cmdstring, serveraddr, serverport, strerror(errno) );
