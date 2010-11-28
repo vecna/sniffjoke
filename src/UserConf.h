@@ -39,13 +39,15 @@ struct sj_cmdline_opts {
 		char logfname_packets[LARGEBUF];
 		char logfname_sessions[LARGEBUF];
 		unsigned int debug_level;
+		char admin_address[MEDIUMBUF];
+		unsigned short admin_port;
 		/* END OF COMMON PART WITH sj_config_opt */
 
 		char onlyplugin[MEDIUMBUF];
 		char scramble[4];   /* 3 options chars + \0 */
 		bool go_foreground;
 		bool force_restart;
-		
+
 		sj_proc_t process_type;
 		char cmd_buffer[MEDIUMBUF];
 };
@@ -80,6 +82,8 @@ struct sj_config {
 		char logfname_packets[LARGEBUF];	/* default: idem */
 		char logfname_sessions[LARGEBUF];	/* default: idem */
 		unsigned int debug_level;		/* default: idem */
+		char admin_address[MEDIUMBUF];		/* default: idem */
+		unsigned short admin_port;		/* default: idem */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
@@ -134,7 +138,6 @@ public:
 		void handle_cmd_showport(void);
 		void handle_cmd_set(unsigned short, unsigned short, Strength);
 		void handle_cmd_loglevel(int);
-		void handle_cmd_listen(int);
 		bool parse_port_weight(char *, Strength *);
 };
 

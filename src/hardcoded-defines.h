@@ -46,12 +46,10 @@
 #define SUFFIX_LF_SESSIONS              ".sessions"
 #define DEFAULT_DEBUG_LEVEL             2
 #define DEFAULT_MAX_TTLPROBE		35
+#define DEFAULT_IP_ADMIN		"127.0.0.1"
+#define DEFAULT_UDP_ADMIN_PORT		8844
 
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
-
-/* those are used under chroot */
-#define SJ_SERVICE_UNIXSOCK		"sniffjoke_service" 
-#define SJ_CLIENT_UNIXSOCK		"sniffjoke_client"
 
 /* TTL related define */
 #define TTLFOCUSCACHE_FILE		"ttlfocus.bin"

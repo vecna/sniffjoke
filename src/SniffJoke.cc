@@ -59,7 +59,7 @@ void SniffJoke::client() {
 
 	proc.jail();
 	proc.privilegesDowngrade();
-	send_command(opts.cmd_buffer);
+	send_command(opts.cmd_buffer, userconf.runconfig.admin_address, userconf.runconfig.admin_port);
 
 	return;
 }
@@ -149,7 +149,7 @@ void SniffJoke::server() {
 
 		mitm->prepare_conntrack(conntrack.get());
 
-		listening_unix_socket = bind_unixsocket();
+		admin_socket = udp_admin_socket(userconf.runconfig.admin_address, userconf.runconfig.admin_port);
 
 		/* main block */
 		while (alive) {
@@ -158,7 +158,7 @@ void SniffJoke::server() {
 			mitm->network_io();
 			mitm->queue_flush();
 
-			handle_unixsocket(listening_unix_socket);
+			handle_admin_socket(admin_socket);
 
 			proc.sigtrapEnable();
 		}
@@ -206,55 +206,50 @@ void SniffJoke::client_cleanup() {
 
 }
 
-int SniffJoke::bind_unixsocket()
+int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], unsigned short bindport)
 {
-	const char *SniffJoke_socket_path = SJ_SERVICE_UNIXSOCK; 
-	struct sockaddr_un sjsrv;
-	int sock;
+	int ret;
+	struct sockaddr_in in_service;
 
-	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		debug.log(ALL_LEVEL, "FATAL: unable to open unix socket (%s): %s", SJ_SERVICE_UNIXSOCK, strerror(errno));
+	if ((ret = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		debug.log(ALL_LEVEL, "FATAL: unable to open UDP socket: %s", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	memset(&sjsrv, 0x00, sizeof(sjsrv));
-	sjsrv.sun_family = AF_UNIX;
-	memcpy(sjsrv.sun_path, SniffJoke_socket_path, strlen(SniffJoke_socket_path));
-
-	if (!access(SniffJoke_socket_path, F_OK)) {
-		if (unlink(SniffJoke_socket_path)) {
-			debug.log(ALL_LEVEL, "FATAL: unable to unlink %s before using as unix socket: %s", 
-				SniffJoke_socket_path, strerror(errno));
-			SJ_RUNTIME_EXCEPTION("");
-		}
+	memset(&in_service, 0x00, sizeof(in_service));
+	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
+	if(!inet_aton(admin_address, &in_service.sin_addr)) {
+		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", admin_address);
+		SJ_RUNTIME_EXCEPTION("");
 	}
-								
-	if (bind(sock, (struct sockaddr *)&sjsrv, sizeof(sjsrv)) == -1) {
-		close(sock);
-		debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind unix socket %s: %s", 
-			 SniffJoke_socket_path, strerror(errno)
+	in_service.sin_family = AF_INET;
+	in_service.sin_port = htons(bindport);
+
+	if (bind(ret, (struct sockaddr *)&in_service, sizeof(in_service)) == -1) {
+		close(ret);
+		debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind UDP socket %s:%d: %s", 
+			 admin_address, ntohs(in_service.sin_port), strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
-		close(sock);
-		debug.log(ALL_LEVEL, "FATAL ERROR: unable to set non blocking unix socket %s: %s",
-			SniffJoke_socket_path, strerror(errno)
+	if (fcntl(ret, F_SETFL, O_NONBLOCK) == -1) {
+		close(ret);
+		debug.log(ALL_LEVEL, "FATAL ERROR: unable to set non blocking administration socket: %s",
+			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
 	}
-	debug.log(VERBOSE_LEVEL, "Successful binding of unix socket in %s", SniffJoke_socket_path);
 
-	return sock;
+	return ret;
 }
 
-void SniffJoke::handle_unixsocket(int srvsock)
+void SniffJoke::handle_admin_socket(int srvsock)
 {
 	char r_command[MEDIUMBUF];
 	char* output = NULL;
+	struct sockaddr_in fromaddr;
 	int rlen;
-	struct sockaddr_un fromaddr;
 
 	if ((rlen = recv_command(srvsock, r_command, MEDIUMBUF, (struct sockaddr *)&fromaddr, NULL, "from the command receiving engine")) == -1) 
 		SJ_RUNTIME_EXCEPTION("");
@@ -271,42 +266,31 @@ void SniffJoke::handle_unixsocket(int srvsock)
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
 }
 
-void SniffJoke::send_command(const char *cmdstring)
+void SniffJoke::send_command(const char *cmdstring, char serveraddr[MEDIUMBUF], unsigned short serverport)
 {
 	int sock;
 	char received_buf[HUGEBUF];
-	struct sockaddr_un servaddr;/* address of server */
-	struct sockaddr_un clntaddr;/* address of client */
-	struct sockaddr_un from; /* address used for receiving data */
+	struct sockaddr_in service_sin;/* address of service */
+	struct sockaddr_in from; /* address used for receiving data */
 	int rlen;
 	
 	/* Create a UNIX datagram socket for client */
-	if ((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
-		debug.log(ALL_LEVEL, "FATAL: unable to open UNIX/DGRAM socket for connect to SniffJoke service: %s", strerror(errno));
+	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		debug.log(ALL_LEVEL, "FATAL: unable to open UDP socket for connect to SniffJoke service: %s", strerror(errno));
 		exit(0);
 	}
 
-	/*
-	 * Client will bind to an address so the server/service will get an address in its recvfrom call and use it to
-	 * send data back to the client.  
-	 */
-	memset(&clntaddr, 0x00, sizeof(clntaddr));
-	clntaddr.sun_family = AF_UNIX;
-	strcpy(clntaddr.sun_path, SJ_CLIENT_UNIXSOCK);
-
-	unlink(SJ_CLIENT_UNIXSOCK);
-	if (bind(sock, (const sockaddr *)&clntaddr, sizeof(clntaddr)) == -1) {
-		debug.log(ALL_LEVEL, "FATAL: unable to bind client to %s: %s", SJ_CLIENT_UNIXSOCK, strerror(errno));
+	memset(&service_sin, 0x00, sizeof(service_sin));
+	service_sin.sin_family = AF_INET;
+	service_sin.sin_port = htons(serverport);
+	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
+	if(!inet_aton(serveraddr, &service_sin.sin_addr)) {
+		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", serveraddr);
 		SJ_RUNTIME_EXCEPTION("");
 	}
-
-	/* Set up address structure for server/service socket */
-	memset(&servaddr, 0x00, sizeof(servaddr));
-	servaddr.sun_family = AF_UNIX;
-	strcpy(servaddr.sun_path, SJ_SERVICE_UNIXSOCK);
-
-	if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		debug.log(ALL_LEVEL, "FATAL: unable to send message [%s] via %s: %s - Rembember: what SniffJoke run with --chroot-dir or --config parms, you need to pass the same options in the client (the unix socket used reside under chroot dir)", cmdstring, SJ_SERVICE_UNIXSOCK, strerror(errno));
+	
+	if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *)&service_sin, sizeof(service_sin)) == -1) {
+		debug.log(ALL_LEVEL, "FATAL: unable to send message [%s] via %s:%d: %s", cmdstring, serveraddr, serverport, strerror(errno) );
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
@@ -328,7 +312,7 @@ int SniffJoke::recv_command(int sock, char *databuf, int bufsize, struct sockadd
 
 	/* we receive up to bufsize -1 having databuf[bufsize] = 0 and saving us from future segfaults */
 
-	int fromlen = sizeof(struct sockaddr_un), ret;
+	int fromlen = sizeof(struct sockaddr_in), ret;
 
 	if ((ret = recvfrom(sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
 	{
