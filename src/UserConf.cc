@@ -303,8 +303,8 @@ bool UserConf::load(const char* configfile)
 			SJ_RUNTIME_EXCEPTION("");
 		}
 
-		if (!memcmp(runconfig.version, SW_VERSION, strlen(SW_VERSION))) {
-			debug.log(ALL_LEVEL, "sniffjoke config: %s was the config version, sniffjoke is %s, delete the old configuration: %s",
+		if (memcmp(runconfig.version, SW_VERSION, strlen(SW_VERSION))) {
+			debug.log(ALL_LEVEL, "sniffjoke config: (%s) is the config version, sniffjoke (%s): delete the old configuration: %s",
 				runconfig.version, SW_VERSION, configfile
 			);
 			SJ_RUNTIME_EXCEPTION("");

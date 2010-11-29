@@ -1,19 +1,19 @@
-#!/bin/sh 
+#!/bin/sh -x
 
 start_singletest() {
-	TESTID="sj_$OS_$x_$y"
-	echo "$PLUGIN e $SCRAMBLE e $TESTID"
+	TESTID=`echo "sj_$OS_$x_$y"`
+	echo "$PLUGIN e $SCRAMBLE e $TESTID e $PPATH"
 	echo "+ Starting sniffjoke with $nowplug and $nowscramb and server $SERVER (test ID: $TESTID)"
-	$SNIFFJOKEBIN --debug 6 --chroot-dir /tmp/$id --plugin $nowplug,$nowscramb
+	$SNIFFJOKEBIN --debug 1 --chroot-dir /tmp/$TESTID --only-plugin $nowplug --scramble $nowscramb
 	$SNIFFJOKEBIN set 80 80 heavy 
 	$SNIFFJOKEBIN start 
-	pushd /tmp/$id
+	cd /tmp/$TESTID
 	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
 	curl -d "sparedata=`cat $GENERATEDFILE`" $server > received_echo
-	CHECKSUM=´md5sum $GENERATEDFILE | cut -b -32´
+	CHECKSUM=`md5sum $GENERATEDFILE | cut -b -32`
 	sniffjoke quit
 	echo "* checksum to compare $VERIFTYSUM | $CHECKSUM"
-	popd
+	cd ..
 }
 
 echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
@@ -35,18 +35,11 @@ echo "+ Starting SniffJoke hacks test"
 echo "* Stopping running sniffjoke ($SNIFFJOKEBIN quit)"
 $SNIFFJOKEBIN quit
 
-plugins[0]="/usr/local/lib/sniffjoke/fake_close_fin.so"
-plugins[1]="/usr/local/lib/sniffjoke/fake_close_rst.so"
-plugins[2]="/usr/local/lib/sniffjoke/fake_data.so"
-plugins[3]="/usr/local/lib/sniffjoke/fake_seq.so"
-plugins[4]="/usr/local/lib/sniffjoke/fake_syn.so"
-plugins[5]="/usr/local/lib/sniffjoke/fake_zero_window.so"
-plugins[6]="/usr/local/lib/sniffjoke/shift_ack.so"
-plugins[7]="/usr/local/lib/sniffjoke/valid_rst_fake_seq.so"
+PPATH="/usr/local/lib/sniffjoke"
 
-scrambling[0]="YNN"
-scrambling[1]="NYN"
-scrambling[2]="NNY"
+plugins=( fake_close_fin.so fake_close_fin.so fake_close_rst.so fake_data.so fake_seq.so fake_syn.so fake_zero_window.so shift_ack.so valid_rst_fake_seq.so )
+
+scrambling=(YNN NYN NNY)
 
 FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
 echo "retrivering multi-OS testing server list ($FILEURL)"
@@ -54,34 +47,32 @@ SERVERFILE="/tmp/testsuite.info"
 rm -f $SERVERFILE
 wget -O $SERVERFILE $FILEURL
 
-if [ -ne $SERVERFILE ]; then
+if ! [ -e $SERVERFILE ]; then
 	echo "- unable to retriver $SERVERFILE by wget $FILEURL"
 	exit;
 fi
-
-plug_i=`seq 0 7` 
-scramb_i=`seq 0 2`
 
 # generate the test file
 GENERATEDFILE="/tmp/tosend_data.generated"
 seq 1000 3000 > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
-for x in $plug_i; do
-	for y in $scramb_i; do
-		PLUGIN={plugins[$x]}
-		SCRAMBLE={scrambling[$y]}
+for PLUGIN in ${plugins[@]}; do
+	for SCRAMBLE in ${scrambling[@]}; do
 
 		OS="WINDOWS"
 		SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
+		echo $SERVER
 		start_singletest 
 
 		OS="LINUX"
 		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+		echo $SERVER
 		start_singletest 
 
 		OS="OTHER"
 		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+		echo $SERVER
 		start_singletest 
 	done
 done

@@ -1,4 +1,5 @@
-Sniffjoke 0.4 usage
+				      __ _________ _ _ _____ __
+				      == Sniffjoke 0.4 usage ==
 
 sniffjoke --help
 
@@ -6,15 +7,16 @@ this command returns three piece of information,
 
 	the option usefull when sniffjoke is started (by hand or by init script)
 
- --config [filename]	config file [default: /usr/local/var/sniffjoke/sjconf.bin]
- --enabler [filename]	plugins enabler file [default: /usr/local/etc/sniffjoke/plugins_enabled.txt]
- --user [username]	downgrade priviledge to the specified user [default: sniffjoke]
- --group [groupname]	downgrade priviledge to the specified group [default: sniffjoke]
- --chroot-dir [dir]	runs chroted into the specified dir [default: /usr/local/var/sniffjoke/]
- --logfile [file]	set a logfile, [default: /usr/local/var/sniffjoke/sniffjoke.log]
- --debug [level 1-6]	set up verbosoty level [default: 2]
+ --config <filename>	config file [default: /usr/local/var/sniffjoke/sjconf.bin]
+ --enabler <filename>	plugins enabler file [default: /usr/local/etc/sniffjoke/plugins_enabled.txt]
+ --user <username>	downgrade priviledge to the specified user [default: sniffjoke]
+ --group <groupname>	downgrade priviledge to the specified group [default: sniffjoke]
+ --chroot-dir <dir>	runs chroted into the specified dir [default: /usr/local/var/sniffjoke/]
+ --logfile <file>	set a logfile, [default: /usr/local/var/sniffjoke/sniffjoke.log]
+ --debug <level 1-6>	set up verbosoty level [default: 2]
 			1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets
  --foreground		running in foreground [default:background]
+ --admin <IPv4>[:port]	specify administration IP address [default: 127.0.0.1:8844]
  --force		force restart if sniffjoke service
  --version		show sniffjoke version
  --help			show this help (special --help hacking)
@@ -23,10 +25,7 @@ this command returns three piece of information,
 	in a binary file, sniffjoke run under chroot directory and inside them there are files
 	usefull for sniffjoke and for the user.
 
-	when you start sniffjoke it use the default chroot directory where the configuration
-	settings, the unix socket, the networking analysis cache and the logfile are stored.
-
-	the option usefull when sniffjoke is running, and neet to be managed (usually called client mode)
+	the following options when sniffjoke is running and need to be managed (usually called client mode)
 
 while sniffjoke is running, you should send one of those commands as command line argument:
 
@@ -44,11 +43,7 @@ while sniffjoke is running, you should send one of those commands as command lin
  loglevel		[1-6] change the loglevel
 
 	those command are used and accepted only when sniffjoke is running and the 
-	"client instance" found the unix socket used for communication. Default unix 
-	sockets are /usr/local/var/sniffjoke/sniffjoke_client and 
-	/usr/local/var/sniffjoke/sniffjoke_service, if your service has been started 
-	with --chroot-dir options, this will be used in the instance too (because otherwise
-	the client don't know where the sockets are placed)
+	"client instance" is listening and reachable in the UDP port.
 
 	when you set your port rules, save the configuration with saveconf and continue
 	to use sniffjoke. when you restart sniffjoke, using the same --chroot-dir, the 
@@ -56,7 +51,9 @@ while sniffjoke is running, you should send one of those commands as command lin
 
 when sniffjoke is is on testing mode, other options are used (by the script sniffjoke-testsuite)
 
-
+testing options (not saved in configuration file):
+ --only-plugin <plugin.so>	specify the single plugin to use
+ --scramble <Y|N><Y|N><Y|N>	select scrambling techniques (order: TTL, checksum, IPmalform)
 
 [*] DEFAULTS:
 

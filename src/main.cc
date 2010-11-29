@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 		{ "force", no_argument, NULL, 'r' },
 		{ "admin", required_argument, NULL, 'a' },
 		{ "version", no_argument, NULL, 'v' },
-		{ "only-plugins", required_argument, NULL, 'p' },
+		{ "only-plugin", required_argument, NULL, 'p' },
 		{ "scramble", required_argument, NULL, 's' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, 0, NULL, 0 }
