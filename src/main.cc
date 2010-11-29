@@ -205,11 +205,11 @@ int main(int argc, char **argv)
 		{ "user", required_argument, NULL, 'u' },
 		{ "group", required_argument, NULL, 'g' },
 		{ "chroot-dir", required_argument, NULL, 'c' },
-		{ "logfile", required_argument, NULL, 'l' },
 		{ "debug", required_argument, NULL, 'd' },
+		{ "logfile", required_argument, NULL, 'l' },
+		{ "admin", required_argument, NULL, 'a' },		
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
-		{ "admin", required_argument, NULL, 'a' },
 		{ "version", no_argument, NULL, 'v' },
 		{ "only-plugin", required_argument, NULL, 'p' },
 		{ "scramble", required_argument, NULL, 's' },
@@ -245,18 +245,6 @@ int main(int argc, char **argv)
 			case 'f':
 				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
 				break;
-			case 'a':
-				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
-				if((port = strchr(useropt.admin_address, ':')) != NULL) {
-					*port = 0x00;
-					int checked_port = atoi(++port);
-
-					if(checked_port > PORTNUMBER || checked_port < 0)
-						goto sniffjoke_help;
-
-					useropt.admin_port = (unsigned short)checked_port;
-				}
-				break;
 			case 'e':
 				snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);
 				break;
@@ -281,6 +269,18 @@ int main(int argc, char **argv)
 				snprintf(useropt.logfname, sizeof(useropt.logfname), "%s", optarg);
 				snprintf(useropt.logfname_packets, sizeof(useropt.logfname_packets), "%s%s", optarg, SUFFIX_LF_PACKETS);
 				snprintf(useropt.logfname_sessions, sizeof(useropt.logfname_sessions), "%s%s", optarg, SUFFIX_LF_SESSIONS);
+				break;
+			case 'a':
+				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
+				if((port = strchr(useropt.admin_address, ':')) != NULL) {
+					*port = 0x00;
+					int checked_port = atoi(++port);
+
+					if(checked_port > PORTNUMBER || checked_port < 0)
+						goto sniffjoke_help;
+
+					useropt.admin_port = (unsigned short)checked_port;
+				}
 				break;
 			case 'x':
 				useropt.go_foreground = true;

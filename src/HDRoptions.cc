@@ -134,17 +134,14 @@ unsigned int HDRoptions::m_IPOPT_LSRR(void)
 
 	optptr[0] = IPOPT_LSRR;
 	optptr[1] = size_lsrr_2;
-	optptr[2] = 4 + 4 * (random() % routes_1);
+	optptr[2] = 4;
 	memset_random(&optptr[3], size_lsrr_1 - 3);
 	
 	optptr[size_lsrr_1 + 0] = IPOPT_LSRR;
 	optptr[size_lsrr_1 + 1] = size_lsrr_2;
-	optptr[size_lsrr_1 + 2] = 4 + 4 * (random() % routes_2);
+	optptr[size_lsrr_1 + 2] = 4;
 	memset_random(&optptr[size_lsrr_1 + 3], size_lsrr_2 - 3);
 	
-	opt_ip_rr = true;
-
-	return req_size;
 }
 
 unsigned int HDRoptions::m_IPOPT_RR(void)
@@ -204,7 +201,9 @@ unsigned int HDRoptions::m_IPOPT_RR(void)
 	}
 	
 	memset_random(&optptr[3], 4 * routes);
-	
+
+	opt_ip_rr = true;
+
 	return size_rr;
 }
 
@@ -604,12 +603,12 @@ bool HDRoptions::randomInjector(void)
 				break;
 			case SJ_IPOPT_SEC:
 				optstr = "SEC";
-				injectetdopt_size = m_IPOPT_SEC();
-				break;
+				//injectetdopt_size = m_IPOPT_SEC();
+				//break;
 			case SJ_IPOPT_SID:
 				optstr = "SID";
-				injectetdopt_size = m_IPOPT_SID();
-				break;
+				//injectetdopt_size = m_IPOPT_SID();
+				//break;
 		}
 	
 	} else {
