@@ -24,7 +24,8 @@ dump_scramble_file() {
 start_singletest() {
 	TESTID=`echo "sj-$OS-$PLUGNDX-$SCRAMBNDX"`
 	echo "+ Starting sniffjoke with $PLUGIN and $SCRAMBLE to [$SERVER] (test ID: $TESTID)"
-	$SNIFFJOKEBIN --debug 6 --logfile /tmp/$TESTID/logtest --chroot-dir /tmp/$TESTID --only-plugin $PPATH/$PLUGIN --scramble $SCRAMBLE
+	mkdir /tmp/$TESTID
+	$SNIFFJOKEBIN --debug 6 --logfile /tmp/$TESTID/logtest --chroot-dir /tmp/$TESTID --only-plugin $PLUGIN --scramble $SCRAMBLE
 	sleep 1
 	$SNIFFJOKEBIN set 80 80 heavy 
 	$SNIFFJOKEBIN start 
@@ -99,19 +100,20 @@ for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
 		PLUGIN=`tail -$PLUGNDX $PLUGINLIST | head -1`
 		SCRAMBLE=`tail -$SCRAMBNDX $SCRAMBLELIST | head -1`
 
-		OS="WINDOWS"
-		SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
-		echo $SERVER
-		start_singletest 
+#		OS="WINDOWS"
+#		SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
+#		echo $SERVER
+#		start_singletest 
 
+		# those test need to be fixed or be used only where my test script will be hosted
 		OS="LINUX"
 		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
 		echo $SERVER
 		start_singletest 
 
-		OS="OTHER"
-		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
-		echo $SERVER
-		start_singletest 
+#		OS="OTHER"
+#		SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+#		echo $SERVER
+#		start_singletest 
 	done
 done

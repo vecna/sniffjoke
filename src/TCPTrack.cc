@@ -388,7 +388,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
 			
 			ttlfocus->status = TTL_KNOWN;
 
-			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "discerned TTL %u ttl_estimate %u incoming value %u", 
+			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "received probe sent with %u, (stable) ttl_estimate %u incoming value %u", 
 				discern_ttl, ttlfocus->ttl_estimate, ttlfocus->synack_ttl);
 			ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 
