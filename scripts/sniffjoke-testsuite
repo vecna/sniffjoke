@@ -1,19 +1,48 @@
-#!/bin/sh -x
+#!/bin/sh
+
+PLUGINLIST="/tmp/sniffjoke-testsuite-plugins"
+SCRAMBLELIST="/tmp/sniffjoke-testsuite-scramble"
+
+# if you want modify the test, simply create those file by hands
+dump_plugin_file() {
+	echo "fake_close_fin.so" > $PLUGINLIST
+	echo "fake_close_rst.so" >> $PLUGINLIST
+	echo "fake_data.so" >> $PLUGINLIST
+	echo "fake_seq.so" >> $PLUGINLIST
+	echo "fake_syn.so" >> $PLUGINLIST
+	echo "fake_zero_window.so" >> $PLUGINLIST
+	echo "shift_ack.so" >> $PLUGINLIST
+	echo "valid_rst_fake_seq.so" >> $PLUGINLIST
+}
+
+dump_scramble_file() {
+	echo "YNN" > $SCRAMBLELIST
+	echo "NYN" >> $SCRAMBLELIST
+	echo "NNY" >> $SCRAMBLELIST
+}
 
 start_singletest() {
-	TESTID=`echo "sj_$OS_$x_$y"`
-	echo "$PLUGIN e $SCRAMBLE e $TESTID e $PPATH"
-	echo "+ Starting sniffjoke with $nowplug and $nowscramb and server $SERVER (test ID: $TESTID)"
-	$SNIFFJOKEBIN --debug 1 --chroot-dir /tmp/$TESTID --only-plugin $nowplug --scramble $nowscramb
+	TESTID=`echo "sj-$OS-$PLUGNDX-$SCRAMBNDX"`
+	echo "+ Starting sniffjoke with $PLUGIN and $SCRAMBLE to [$SERVER] (test ID: $TESTID)"
+	$SNIFFJOKEBIN --debug 6 --logfile /tmp/$TESTID/logtest --chroot-dir /tmp/$TESTID --only-plugin $PPATH/$PLUGIN --scramble $SCRAMBLE
+	sleep 1
 	$SNIFFJOKEBIN set 80 80 heavy 
 	$SNIFFJOKEBIN start 
 	cd /tmp/$TESTID
 	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
-	curl -d "sparedata=`cat $GENERATEDFILE`" $server > received_echo
+	INTERFACE=`$SNIFFJOKEBIN stat | grep "local interface" | cut -b 19- | sed -es/\,.*//`
+	echo "starting tcpdump in $INTERFACE dumping /tmp/$TESTID/$TESTID.pcap tcp port 80"
+	(tcpdump -i $INTERFACE -w /tmp/$TESTID/$TESTID.pcap -s 0 tcp port 80) &
+	sleep 1
+	curl -d "sparedata=`cat $GENERATEDFILE`" $SERVER > received_echo
+	$SNIFFJOKEBIN quit
+	killall -9 tcpdump
 	CHECKSUM=`md5sum $GENERATEDFILE | cut -b -32`
-	sniffjoke quit
-	echo "* checksum to compare $VERIFTYSUM | $CHECKSUM"
 	cd ..
+	echo "finished test in $TESTID"
+	echo "Results for $PLUGIN + $SCRAMBLE\t (sent) $VERIFYSUM (recv) $CHECKSUM" >> /tmp/sniffjoke-stats
+	sleep 1
+	clear
 }
 
 echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
@@ -37,10 +66,6 @@ $SNIFFJOKEBIN quit
 
 PPATH="/usr/local/lib/sniffjoke"
 
-plugins=( fake_close_fin.so fake_close_fin.so fake_close_rst.so fake_data.so fake_seq.so fake_syn.so fake_zero_window.so shift_ack.so valid_rst_fake_seq.so )
-
-scrambling=(YNN NYN NNY)
-
 FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
 echo "retrivering multi-OS testing server list ($FILEURL)"
 SERVERFILE="/tmp/testsuite.info"
@@ -57,8 +82,22 @@ GENERATEDFILE="/tmp/tosend_data.generated"
 seq 1000 3000 > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
-for PLUGIN in ${plugins[@]}; do
-	for SCRAMBLE in ${scrambling[@]}; do
+if ! [ -e $PLUGINLIST ]; then
+	dump_plugin_file
+fi
+
+if ! [ -e $SCRAMBLELIST ]; then
+	dump_scramble_file
+fi
+
+PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
+SCRAMBLE_NUMBER=`wc -l < $SCRAMBLELIST`
+
+for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
+	for SCRAMBNDX in `seq 1 $SCRAMBLE_NUMBER`; do
+
+		PLUGIN=`tail -$PLUGNDX $PLUGINLIST | head -1`
+		SCRAMBLE=`tail -$SCRAMBNDX $SCRAMBLELIST | head -1`
 
 		OS="WINDOWS"
 		SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`

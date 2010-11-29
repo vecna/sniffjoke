@@ -123,8 +123,8 @@ unsigned int HDRoptions::m_IPOPT_LSRR(void)
 	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	unsigned int routes_1 = 3 + random() % 3; /* 3 - 5 */
-	unsigned int routes_2 = 3 + random() % 3; /* 3 - 5 */
+	unsigned int routes_1 = 1 + random() % 3; /* 1 - 3 */
+	unsigned int routes_2 = 1 + random() % 3; /* 1 - 3 */
 	unsigned int size_lsrr_1 = 3 + 4 * routes_1;
 	unsigned int size_lsrr_2 = 3 + 4 * routes_2;
 	unsigned int req_size = size_lsrr_1 + size_lsrr_2;
@@ -141,7 +141,8 @@ unsigned int HDRoptions::m_IPOPT_LSRR(void)
 	optptr[size_lsrr_1 + 1] = size_lsrr_2;
 	optptr[size_lsrr_1 + 2] = 4;
 	memset_random(&optptr[size_lsrr_1 + 3], size_lsrr_2 - 3);
-	
+
+	return (size_lsrr_1 + size_lsrr_2);
 }
 
 unsigned int HDRoptions::m_IPOPT_RR(void)
