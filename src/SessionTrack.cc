@@ -28,7 +28,7 @@ SessionTrack::SessionTrack(const Packet &pkt) :
 	sport(pkt.tcp->source),
 	dport(pkt.tcp->dest),
 	isn(pkt.tcp->seq),
-	packet_number(1)
+	packet_number(0)
 {}
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
@@ -53,6 +53,9 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 
 void SessionTrack::selflog(const char *func, const char *lmsg) const
 {
+	if(debug.level() == SUPPRESS_LOG)
+		return;
+
 	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x #pkt %d: [%s]",
 		func, ntohs(sport), 
 		inet_ntoa(*((struct in_addr *)&daddr)),

@@ -59,7 +59,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		debug.log(ALL_LEVEL, "NetIO: unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: /dev/net/tun opened successfull");
+		debug.log(DEBUG_LEVEL, "NetIO: /dev/net/tun opened successfully");
 	}
 
 	memset(&ifr, 0x00, sizeof(ifr));
@@ -72,7 +72,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		debug.log(ALL_LEVEL, "NetIO: unable to set flags in tunnel interface: %s", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: setting TUN flags correctly");
+		debug.log(DEBUG_LEVEL, "NetIO: setting TUN flags successfully");
 	}
 
 	tmpfd = socket (AF_INET, SOCK_DGRAM, 0);
@@ -82,7 +82,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		debug.log(ALL_LEVEL, "NetIO: unable to set SIOCSIFTXQLEN in interface %s: %s", ifr.ifr_name, strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: setting SIOCSIFTXQLEN correctly in %s", ifr.ifr_name);
+		debug.log(DEBUG_LEVEL, "NetIO: setting SIOCSIFTXQLEN in %s successfully", ifr.ifr_name);
 	}
 	close (tmpfd);
 		
@@ -90,14 +90,14 @@ NetIO::NetIO(sj_config& runcfg) :
 		debug.log(ALL_LEVEL, "NetIO: unable to set non blocking socket: how is this possibile !? %s", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: set NONBLOCK in socket successful");
+		debug.log(DEBUG_LEVEL, "NetIO: set NONBLOCK in socket successfully");
 	}
 
 	if ((ret = fcntl (tunfd, F_SETFD, FD_CLOEXEC)) == -1) {
 		debug.log(ALL_LEVEL, "NetIO: unable to fcntl FD_CLOEXEC in tunnel: %s", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: set CLOSE on EXIT flag in TUN successful");
+		debug.log(DEBUG_LEVEL, "NetIO: set CLOSE on EXIT flag in TUN successfully");
 	}
 
 	debug.log(VERBOSE_LEVEL, "NetIO: deleting default gateway in routing table...");
@@ -120,8 +120,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	strcpy(orig_gw.ifr_name, (const char *)runconfig.interface);
 	tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	
-	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) 
-	{
+	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) {
 		debug.log(ALL_LEVEL, "NetIO: fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand",
 			runconfig.interface);
 		SJ_RUNTIME_EXCEPTION("");
@@ -134,9 +133,8 @@ NetIO::NetIO(sj_config& runcfg) :
 			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
-	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: open successful datalink layer socket packet");
-	}
+	} else
+		debug.log(DEBUG_LEVEL, "NetIO: open datalink layer socket packet successfully");
 
 	send_ll.sll_family = PF_PACKET;
 	send_ll.sll_protocol = htons(ETH_P_IP);
@@ -153,18 +151,16 @@ NetIO::NetIO(sj_config& runcfg) :
 			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
-	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: binding successful datalink layer interface");
-	}
+	} else
+		debug.log(DEBUG_LEVEL, "NetIO: binding datalink layer interface successfully");
 
 	if ((ret = fcntl (netfd, F_SETFL, O_NONBLOCK)) == -1) {
 		debug.log(ALL_LEVEL, "NetIO: unable to set socket in non blocking mode: %s - fix your routing table by hand",
 			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
-	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: setting network socket to non blocking mode successfull");
-	}
+	} else
+		debug.log(DEBUG_LEVEL, "NetIO: setting network socket to non blocking mode successfully");
 
 	fds[0].fd = tunfd;
 	fds[0].events = POLLIN;
@@ -232,11 +228,9 @@ void NetIO::network_io(void)
 	struct timespec maxcycletime_with_no_data_received = clock;
 	updateSchedule(maxcycletime_with_no_data_received, 0, 5000000);
 
-	struct timespec polltimeout;
-
-	int ret;
 	while (1)
 	{	
+		struct timespec polltimeout;
 		polltimeout.tv_sec = 0;
 		polltimeout.tv_nsec = 500000;
 		nfds = ppoll(fds, 2, &polltimeout, NULL);
@@ -248,8 +242,10 @@ void NetIO::network_io(void)
 		} else {
 		
 			data_received = true;
-			
+
 			for(unsigned int i = 0; i < 2; i++) { 
+
+				int ret;
 			
 				if (fds[i].revents) { /* POLLIN is the unique event managed */
 				
@@ -305,11 +301,11 @@ void NetIO::queue_flush(void)
 	 * the other source_t could be LOCAL or TUNNEL;
 	 * in both case the packets goes through the network.
 	 */
-	int size;
-	int ret;
+	Packet *pkt;
 	while ((pkt = conntrack->readpacket()) != NULL) {
-		size = pkt->pbuf.size();
+		int size = pkt->pbuf.size();
 		while(1) {
+			int ret;
 			if (pkt->source == NETWORK)
 				ret = write(tunfd, (void*)&(pkt->pbuf[0]), size);
 			else

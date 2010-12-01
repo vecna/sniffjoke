@@ -31,30 +31,31 @@ Debug::Debug() :
 
 void Debug::log(unsigned int errorlevel, const char *msg, ...) 
 {
-	va_list arguments;
-	time_t now = time(NULL);
-	FILE *output_flow;
-
-	if (logstream != NULL)
-		output_flow = logstream;
-	else
-		output_flow = stderr;
-
-	if (errorlevel == PACKETS_DEBUG && packet_logstream != NULL)
-		output_flow = packet_logstream;
-
-	if (errorlevel == SESSION_DEBUG && session_logstream != NULL)
-		output_flow = session_logstream;
-
 	if (errorlevel <= debuglevel) { 
-		char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
-		strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+	
+		va_list arguments;
+		time_t now = time(NULL);
+		FILE *output_flow;
 
-		va_start(arguments, msg);
-		fprintf(output_flow, "%s ", time_str);
-		vfprintf(output_flow, msg, arguments);
-		fprintf(output_flow, "\n");
-		fflush(output_flow);
-		va_end(arguments);
+		if (logstream != NULL)
+			output_flow = logstream;
+		else
+			output_flow = stderr;
+
+		if (errorlevel == PACKETS_DEBUG && packet_logstream != NULL)
+			output_flow = packet_logstream;
+
+		if (errorlevel == SESSION_DEBUG && session_logstream != NULL)
+			output_flow = session_logstream;
+
+			char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
+			strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+
+			va_start(arguments, msg);
+			fprintf(output_flow, "%s ", time_str);
+			vfprintf(output_flow, msg, arguments);
+			fprintf(output_flow, "\n");
+			fflush(output_flow);
+			va_end(arguments);
 	}
 }

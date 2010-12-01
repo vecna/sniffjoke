@@ -36,6 +36,7 @@
 #include <stdexcept>
 #include <sstream>
 
+#include <stdint.h>
 #include <unistd.h>
 
 #include "hardcoded-defines.h"

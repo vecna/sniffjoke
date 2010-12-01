@@ -39,7 +39,7 @@ TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	debug.log(VERBOSE_LEVEL, __func__);
 	
 	/* random pool initialization */
-	for (int i = 0; i < ((random() % 40) + 3); i++) 
+	for (unsigned int i = 0; i < ((random() % 40) + 3); i++) 
 		srandom((unsigned int)time(NULL) ^ random());
 		
 	ttlfocus_map.load(runconfig.ttlfocuscache_file);
@@ -190,10 +190,10 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		ttlfocus.sent_probe = 0;
 		ttlfocus.received_probe = 0;
 			
-		unsigned int pkts = 5;
-		unsigned int ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
+		uint8_t pkts = 5;
+		uint8_t ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
+		ttlfocus.sent_probe += pkts;
 		while(pkts--) {
-			ttlfocus.sent_probe++;
 			Packet *injpkt = new Packet(ttlfocus.probe_dummy);
 			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
 			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
@@ -316,7 +316,6 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 					 */ 
 					ttlfocus->status = TTL_UNKNOWN;
 					ttlfocus->ttl_estimate = expired_ttl + 1;
-				} else  {
 				}
 
 				/* the expired icmp scattered due to our ttl probes so we can trasparently remove it */
@@ -336,7 +335,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
 {
 	/* 
-	 * Here, as for we call the find() mathod of std::map because
+	 * Here we call the find() mathod of std::map because
 	 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
 	 * to not permit an external packet to force us to activate a ttlbrouteforce session
 	 */ 
@@ -388,7 +387,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
 			
 			ttlfocus->status = TTL_KNOWN;
 
-			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "received probe sent with %u, (stable) ttl_estimate %u incoming value %u", 
+			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "discerned TTL %u ttl_estimate %u incoming value %u", 
 				discern_ttl, ttlfocus->ttl_estimate, ttlfocus->synack_ttl);
 			ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 
@@ -650,13 +649,15 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 				pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
 		}
 
-		// VERIFY - TCP doesn't cause a failure of the packet, the BAD TCPOPT will be used always
+		/* At the time we are not apart of TCP options that lead destination to drop the packet,
+		 * so for the moment no tcp options are injection.
 		if (RANDOMPERCENT(20)) {
 			if RANDOMPERCENT(50)
-				pkt.Inject_TCPOPT(/* corrupt ? */ false, /* stript previous ? */ true);
+				pkt.Inject_TCPOPT(/ * corrupt ? * / false, / * stript previous ? * / true);
 			else
-				pkt.Inject_TCPOPT(/* corrupt ? */ true, /* stript previous ? */ true);		
+				pkt.Inject_TCPOPT(/ * corrupt ? * / true, / * stript previous ? * / true);		
 		}
+		*/
 	}
 
 	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */	
@@ -682,7 +683,7 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 
 	/* corrupted checksum application if required */
 	if (pkt.wtf == GUILTY)
-		pkt.tcp->check ^= (0xd34d ^ (unsigned short)random());
+		pkt.tcp->check += 0xd34d;
 
 	pkt.selflog(__func__, "Packet ready to be send");
 	
@@ -723,7 +724,6 @@ void TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 Packet* TCPTrack::readpacket()
 {
 	Packet *pkt;
-
 	p_queue.select(PRIORITY_SEND);
 	while ((pkt = p_queue.get()) != NULL) {
 		p_queue.remove(*pkt);
@@ -775,7 +775,6 @@ void TCPTrack::analyze_packets_queue()
 		return;	
 
 	Packet *pkt;
-	bool send;
 
 	/* update the internal clock */
 	clock_gettime(CLOCK_REALTIME, &clock);
@@ -785,7 +784,6 @@ void TCPTrack::analyze_packets_queue()
 		manage_expired_sessiontracks();
 		manage_expired_ttlfocuses();
 	}
-	
 
 	/*
 	 * we analyze all YOUNG packets (received from NETWORK and from TUNNEL)
@@ -805,7 +803,7 @@ void TCPTrack::analyze_packets_queue()
 	 */
 	p_queue.select(YOUNG);
 	while ((pkt = p_queue.get()) != NULL) {
-		send = true;
+		bool send = true;
 		if(pkt->source == NETWORK) {
 			if(pkt->proto == ICMP) {
 				send = analyze_incoming_icmp(*pkt);
@@ -832,7 +830,7 @@ void TCPTrack::analyze_packets_queue()
 	/* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
 	p_queue.select(KEEP);
 	while ((pkt = p_queue.get()) != NULL) {
-		send = analyze_keep(*pkt);
+		bool send = analyze_keep(*pkt);
 		if(send == true)
 			p_queue.insert(*pkt, SEND);
 	}

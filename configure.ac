@@ -72,6 +72,7 @@ AC_CHECK_HEADERS(getopt.h,,exit 1)
 AC_CHECK_HEADERS(grp.h,,exit 1)
 AC_CHECK_HEADERS(poll.h,,exit 1)
 AC_CHECK_HEADERS(pwd.h,,exit 1)
+AC_CHECK_HEADERS(stdint.h,,exit 1)
 AC_CHECK_HEADERS(unistd.h,,exit 1)
 AC_CHECK_HEADERS(wait.h,,exit 1)
 AC_CHECK_HEADERS(arpa/inet.h,,exit 1)
@@ -98,5 +99,9 @@ AC_CONFIG_FILES( Makefile
                  hacks/fake_zero_window/Makefile
                  hacks/shift_ack/Makefile
                  hacks/valid_rst_fake_seq/Makefile)
+
+
+CFLAGS="-O3 -ansi -pedantic -Wall"
+CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

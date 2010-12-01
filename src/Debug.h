@@ -28,13 +28,14 @@
 class Debug {
 private:
 	bool enabled;
-	unsigned int debuglevel;
+	uint8_t debuglevel;
 	FILE *logstream;
 	FILE *session_logstream;
 	FILE *packet_logstream;
 	friend class SniffJoke;
 public:
 	Debug();
+	uint8_t level() { return debuglevel; };
 	void log(unsigned int errorlevel, const char *msg, ...);
 };
 

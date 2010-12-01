@@ -35,9 +35,9 @@ private:
 	injector_t type;
 	bool corrupt;
 	unsigned char *optptr;
-	unsigned int &actual_opts_len;
-	unsigned int &target_opts_len;
-	unsigned int available_opts_len;
+	uint8_t &actual_opts_len;	/* max value 40 on IP and TCP too */
+	uint8_t &target_opts_len;	/* max value 40 on IP and TCP too */
+	uint8_t available_opts_len;	/* max value 40 on IP and TCP too */
 
 	/*
 	 * options we need to check the presence for;
@@ -46,22 +46,22 @@ private:
 	bool opt_ip_timestamp;
 	bool opt_ip_rr;
 
-	unsigned int m_IPOPT_NOOP(void);
-	unsigned int m_IPOPT_TIMESTAMP(void);
-	unsigned int m_IPOPT_LSRR(void);
-	unsigned int m_IPOPT_RR(void);
-	unsigned int m_IPOPT_RA(void);
-	unsigned int m_IPOPT_CIPSO(void);
-	unsigned int m_IPOPT_SEC(void);
-	unsigned int m_IPOPT_SID(void);
+	uint8_t m_IPOPT_NOOP(void);
+	uint8_t m_IPOPT_TIMESTAMP(void);
+	uint8_t m_IPOPT_LSRR(void);
+	uint8_t m_IPOPT_RR(void);
+	uint8_t m_IPOPT_RA(void);
+	uint8_t m_IPOPT_CIPSO(void);
+	uint8_t m_IPOPT_SEC(void);
+	uint8_t m_IPOPT_SID(void);
 
-	unsigned int m_TCPOPT_EOL(void);
-	unsigned int m_TCPOPT_NOP(void);
-	unsigned int m_TCPOPT_TIMESTAMP(void);
-	unsigned int m_TCPOPT_MAXSEG(void);
-	unsigned int m_TCPOPT_WINDOW(void);
-	unsigned int m_TCPOPT_SACK_PERMITTED(void);
-	unsigned int m_TCPOPT_SACK(void);
+	uint8_t m_TCPOPT_EOL(void);
+	uint8_t m_TCPOPT_NOP(void);
+	uint8_t m_TCPOPT_TIMESTAMP(void);
+	uint8_t m_TCPOPT_MAXSEG(void);
+	uint8_t m_TCPOPT_WINDOW(void);
+	uint8_t m_TCPOPT_SACK_PERMITTED(void);
+	uint8_t m_TCPOPT_SACK(void);
 
 	bool checkIPOPTINJPossibility(void);	
 	bool checkTCPOPTINJPossibility(void);
@@ -87,7 +87,7 @@ public:
 
 	/* used for internal definition of TCP opt functions */
 
-	HDRoptions(injector_t, bool, unsigned char *, unsigned int &, unsigned int &);
+	HDRoptions(injector_t, bool, unsigned char *, uint8_t &, uint8_t &);
 	bool randomInjector();
 };
 
