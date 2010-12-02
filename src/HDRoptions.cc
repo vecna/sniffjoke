@@ -31,7 +31,7 @@
  *
  * - rules for adding: check the link :
  *   http://www.iana.org/assignments/ip-parameters 
- *   test versus Linux/BSD/win, submit to us, we are happy to add
+ *   test versus Linux/BSD/win/lose, submit to us, we are happy to add
  *   every bit of randomization available.
  *
  * I've based a lot of consideration on:
@@ -459,7 +459,7 @@ bool HDRoptions::checkIPOPTINJPossibility(void) {
 					return false;
 				goto ip_opts_len_check;
 ip_opts_len_check:	default:
-				option_len = (unsigned short)optptr[i+1];
+				option_len = (uint8_t)optptr[i+1];
 				if(option_len > (actual_opts_len - i)) {
 					/* 
 					 * the packet contains invalid options
@@ -500,7 +500,7 @@ bool HDRoptions::checkTCPOPTINJPossibility(void) {
 					return false;
 				goto tcp_opts_len_check;
 tcp_opts_len_check:	default:
-				option_len = (unsigned short)optptr[i+1];
+				option_len = (uint8_t)optptr[i+1];
 				if(option_len > (actual_opts_len - i)) {
 					/* 
 					 * the packet contains invalid options
@@ -630,6 +630,7 @@ bool HDRoptions::randomInjector(void)
 			type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_opts_len);
 		
 		return true;
-	} else
+	} else {
 		return false;
+	}
 }

@@ -66,6 +66,7 @@ public:
 
 	TTLFocus(const Packet &pkt);
 	TTLFocus(const struct ttlfocus_cache_record &);
+	~TTLFocus();
 	void selectPuppetPort();
 
 	/* utilities */
@@ -73,8 +74,10 @@ public:
 	char debug_buf[LARGEBUF];
 };
 
-class TTLFocusMap : public map<const unsigned int, TTLFocus> {
+class TTLFocusMap : public map<const uint32_t, TTLFocus*> {
 public:
+        ~TTLFocusMap();
+        void manage_expired();
         void dump(const char *);
         void load(const char *);
 };

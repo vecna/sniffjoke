@@ -219,13 +219,12 @@ void NetIO::network_io(void)
 	 
 	bool data_received = false; 
 	 
-	struct timespec clock;
-	clock_gettime(CLOCK_REALTIME, &clock);
+	clock_gettime(CLOCK_REALTIME, &sj_clock);
 	
-	struct timespec maxcycletime_with_data_received = clock;
+	struct timespec maxcycletime_with_data_received = sj_clock;
 	updateSchedule(maxcycletime_with_data_received, 0, 500000);
 	
-	struct timespec maxcycletime_with_no_data_received = clock;
+	struct timespec maxcycletime_with_no_data_received = sj_clock;
 	updateSchedule(maxcycletime_with_no_data_received, 0, 5000000);
 
 	while (1)
@@ -278,13 +277,13 @@ void NetIO::network_io(void)
 			
 		}
 
-		clock_gettime(CLOCK_REALTIME, &clock);
+		clock_gettime(CLOCK_REALTIME, &sj_clock);
 
 		if(data_received) {
-			if(isSchedulePassed(clock, maxcycletime_with_data_received))
+			if(isSchedulePassed(sj_clock, maxcycletime_with_data_received))
 				break;
 		} else {
-			if(isSchedulePassed(clock, maxcycletime_with_no_data_received))
+			if(isSchedulePassed(sj_clock, maxcycletime_with_no_data_received))
 				break;
 		}
 			

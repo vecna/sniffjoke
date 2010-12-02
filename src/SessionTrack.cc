@@ -27,9 +27,15 @@ SessionTrack::SessionTrack(const Packet &pkt) :
 	daddr(pkt.ip->daddr),
 	sport(pkt.tcp->source),
 	dport(pkt.tcp->dest),
-	isn(pkt.tcp->seq),
 	packet_number(0)
-{}
+{
+	selflog(__func__, NULL);
+}
+
+SessionTrack::~SessionTrack()
+{
+	selflog(__func__, NULL);
+}
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {
@@ -59,8 +65,27 @@ void SessionTrack::selflog(const char *func, const char *lmsg) const
 	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x #pkt %d: [%s]",
 		func, ntohs(sport), 
 		inet_ntoa(*((struct in_addr *)&daddr)),
-                ntohl(isn),
 		ntohs(dport), 
 		packet_number, lmsg
 	);
+}
+
+SessionTrackMap::~SessionTrackMap() {
+	for(SessionTrackMap::iterator it = begin(); it != end();) {
+		delete &(*it->second);
+		erase(it++);
+	}
+}
+
+/* cycles on map and delete expired records */
+void SessionTrackMap::manage_expired()
+{
+	for(SessionTrackMap::iterator it = begin(); it != end();) {
+		if((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock.tv_sec) {
+			delete &(*it->second);
+			erase(it++);
+		} else {
+			it++;
+		}
+	}
 }

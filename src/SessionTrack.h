@@ -35,13 +35,13 @@ class SessionTrack {
 public:
 	time_t access_timestamp; /* access timestamp used to decretee expiry */
 
-	unsigned int daddr;
-	unsigned short sport;
-	unsigned short dport;
-	unsigned int isn;
-	unsigned int packet_number;
+	uint32_t daddr;
+	uint16_t sport;
+	uint16_t dport;
+	uint32_t packet_number;
 
 	SessionTrack(const Packet &);
+	~SessionTrack();
 	
 	/* utilities */
 	void selflog(const char *, const char *) const;
@@ -50,12 +50,16 @@ public:
 
 class SessionTrackKey {
 public:
-	unsigned int daddr;
-	unsigned short sport;
-	unsigned short dport;
+	uint32_t daddr;
+	uint16_t sport;
+	uint16_t dport;
 	bool operator<(SessionTrackKey) const;
 };
 
-typedef map<SessionTrackKey, SessionTrack> SessionTrackMap;
+class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*> {
+public:
+        ~SessionTrackMap();
+        void manage_expired();
+};
 
 #endif /* SJ_SESSIONTRACK_H */

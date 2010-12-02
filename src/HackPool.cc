@@ -47,6 +47,14 @@ PluginTrack::PluginTrack(const char *plugabspath) :
 	pluginPath = strdup(plugabspath);
 
         /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
+        
+        /* 
+	 * GCC/GXX -> warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
+	 *
+	 * THE IS NO WAY TO AVOID IT!
+	 * for this reason our makefile is without -Werror 
+	 */
+        
         fp_CreateHackObj = (constructor_f *)dlsym(pluginHandler, "CreateHackObject");
         fp_DeleteHackObj = (destructor_f *)dlsym(pluginHandler, "DeleteHackObject");
 	fp_versionValue = (version_f *)dlsym(pluginHandler, "versionValue");
@@ -83,13 +91,6 @@ PluginTrack::PluginTrack(const PluginTrack& cpy) {
 	selfObj = cpy.selfObj;
 	pluginPath = cpy.pluginPath;
 	enabled = cpy.enabled;
-
-	/* 
-	 * GCC/GXX -> warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
-	 *
-	 * THE IS NO WAY TO AVOID IT!
-	 * for this reason our makefile is without -Werror 
-	 */
 }
 
 void HackPool::importPlugin(const char *plugabspath, const char *plugrelpath)

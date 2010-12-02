@@ -42,24 +42,16 @@
 #include "hardcoded-defines.h"
 #include "Debug.h"
 
-/* the struct used for index the sniffjoke-client-commands */
-struct command {
-	const char *cmd;
-	int related_args;
-};
-
 enum size_buf_t {
-		SMALLBUF = 64,
-		MEDIUMBUF = 256,
-		LARGEBUF = 1024,
-		HUGEBUF = 4096,
-		GARGANTUABUF = 4096 * 4
+	SMALLBUF = 64,
+	MEDIUMBUF = 256,
+	LARGEBUF = 1024,
+	HUGEBUF = 4096,
+	GARGANTUABUF = 4096 * 4
 };
-
-/* not used ATM */
-#define SUPPRESS_LOG		1
 
 /* loglevels */
+#define SUPPRESS_LOG		1
 #define ALL_LEVEL		2
 #define ALL_LEVEL_NAME		"default"
 #define VERBOSE_LEVEL		3
@@ -70,6 +62,12 @@ enum size_buf_t {
 #define SESSION_DEBUG_NAME	"hacks"
 #define PACKETS_DEBUG		6
 #define PACKETS_DEBUG_NAME      "packets"
+
+/*
+ * there is a single clock in sniffjoke, global and
+ * manteined by the NetIO module (network_io)
+ */
+extern timespec sj_clock;
 
 #define SJ_RUNTIME_EXCEPTION(msg) throw sj_runtime_exception(__func__, __FILE__, __LINE__, msg)
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
