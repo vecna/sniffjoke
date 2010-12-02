@@ -38,7 +38,11 @@ using namespace std;
 
 Debug debug;
 
+timespec sj_clock;
+
 static struct sj_cmdline_opts useropt;
+
+static char randomstate[256];
 
 static auto_ptr<SniffJoke> sniffjoke;
 
@@ -104,6 +108,14 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
 	return std::runtime_error(stream.str());
 }
 
+void init_random()
+{
+	/* random pool initialization */
+	srandom(time(NULL));
+	for (unsigned int i = 0; i < random() % 10; i++) 
+		srandom(random());
+}
+
 void* memset_random(void *s, size_t n)
 {
 	/* 
@@ -162,11 +174,9 @@ void sigtrap(int signal)
 	
 }
 
-static bool client_command_found(char **av, const int ac, struct command *sjcmdlist, char *retcmd) 
+static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd) 
 {
-	int i;
-
-	for(i = 0; i < ac; i++) 
+	for(uint32_t i = 0; i < ac; i++) 
 	{
 		struct command *ptr;
 		for(ptr = &sjcmdlist[0]; ptr->cmd != NULL; ptr++) 
@@ -317,6 +327,8 @@ sniffjoke_help:
 		sj_help(argv[0], useropt.chroot_dir, CHROOT_DIR);
 		return -1;
 	}
+
+	init_random();
 
 	try {
 		sniffjoke = auto_ptr<SniffJoke> (new SniffJoke(useropt));

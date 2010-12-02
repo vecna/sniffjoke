@@ -55,7 +55,10 @@ TTLFocus::TTLFocus(const Packet &pkt) :
 	
 	selectPuppetPort();
 	
-	clock_gettime(CLOCK_REALTIME, &next_probe_time);
+	/* setting n_p_t to sj_clock we force update on next check */
+	next_probe_time = sj_clock;
+	
+	selflog(__func__, NULL);
 }
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
@@ -70,9 +73,19 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	synack_ttl(cpy.synack_ttl),
 	probe_dummy(cpy.probe_dummy, sizeof(cpy.probe_dummy))
 {
-	clock_gettime(CLOCK_REALTIME, &next_probe_time);
+	selectPuppetPort();	
+
+	/* setting n_p_t to sj_clock we force update on next check */
+	next_probe_time = sj_clock;
 
 	selectPuppetPort();
+
+	selflog(__func__, NULL);
+}
+
+TTLFocus::~TTLFocus()
+{
+	selflog(__func__, NULL);
 }
 
 void TTLFocus::selectPuppetPort()
@@ -82,6 +95,48 @@ void TTLFocus::selectPuppetPort()
         if(puppet_port > realport - PUPPET_MARGIN
 	&& puppet_port < realport + PUPPET_MARGIN)
 		puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
+}
+
+void TTLFocus::selflog(const char *func, const char *umsg) const
+{
+	if(debug.level() == SUPPRESS_LOG)
+		return;
+		
+	const char *status_name;
+
+	switch(status) {
+		case TTL_KNOWN: status_name = "TTL known"; break;
+		case TTL_BRUTEFORCE: status_name = "BRUTEFORCE running"; break;
+		case TTL_UNKNOWN: status_name = "TTL UNKNOWN"; break;
+		default: status_name = "badly unset TTL status"; break;
+	}
+
+	debug.log(SESSION_DEBUG, 
+		"%s (%s) [%s] m_sent %d, m_recv %d ttl_estimate %u synackttl %u [%s]",
+		func, inet_ntoa(*((struct in_addr *)&(daddr))), status_name, sent_probe, received_probe, ttl_estimate, synack_ttl, umsg
+	);
+
+	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
+}
+
+TTLFocusMap::~TTLFocusMap() {
+	for(TTLFocusMap::iterator it = begin(); it != end();) {
+		delete &(*it->second);
+		erase(it++);
+	}
+}
+
+/* cycles on map and delete expired records */
+void TTLFocusMap::manage_expired()
+{
+	for(TTLFocusMap::iterator it = begin(); it != end();) {
+		if((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock.tv_sec) {
+			delete &(*it->second);
+			erase(it++);
+		} else {
+			it++;
+		}
+	}
 }
 
 void TTLFocusMap::load(const char* dumpfile)
@@ -101,7 +156,7 @@ void TTLFocusMap::load(const char* dumpfile)
 	while((ret = fread(&tmp, sizeof(struct ttlfocus_cache_record), 1, loadfd)) == 1) {
 		records_num++;
 		TTLFocus *ttlfocus = new TTLFocus(tmp);
-		insert(pair<int, TTLFocus>(ttlfocus->daddr, *ttlfocus));
+		insert(pair<const uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
 	}
 
 	fclose(loadfd);
@@ -120,7 +175,6 @@ void TTLFocusMap::load(const char* dumpfile)
 void TTLFocusMap::dump(const char* dumpfile)
 {
 	unsigned int records_num = 0;
-	TTLFocus* tmp = NULL;
 	struct ttlfocus_cache_record cache_record;
 
 	debug.log(ALL_LEVEL, "dumping ttlfocusmap to %s",  dumpfile);
@@ -133,7 +187,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 
 	for (TTLFocusMap::iterator it = begin(); it != end(); it++) {
 
-		tmp = &(it->second);
+		TTLFocus *tmp = it->second;
 
 		/* we saves only with TTL_KNOWN status */
 		if(tmp->status != TTL_KNOWN)
@@ -165,26 +219,4 @@ void TTLFocusMap::dump(const char* dumpfile)
 	fclose(dumpfd);
 
 	debug.log(ALL_LEVEL, "ttlfocusmap dump completed: %u records dumped", records_num);
-}
-
-void TTLFocus::selflog(const char *func, const char *umsg) const
-{
-	if(debug.level() == SUPPRESS_LOG)
-		return;
-
-	const char *status_name;
-
-	switch(status) {
-		case TTL_KNOWN: status_name = "TTL known"; break;
-		case TTL_BRUTEFORCE: status_name = "BRUTEFORCE running"; break;
-		case TTL_UNKNOWN: status_name = "TTL UNKNOWN"; break;
-		default: status_name = "badly unset TTL status"; break;
-	}
-
-	debug.log(SESSION_DEBUG, 
-		"%s [%s] m_sent %d, m_recv %d ttl_estimate %u [%s]",
-		func, status_name, sent_probe, received_probe, ttl_estimate, umsg
-	);
-
-	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
 }

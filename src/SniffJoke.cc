@@ -177,8 +177,7 @@ SniffJoke::~SniffJoke()
 			} else {
 				if(service_pid != 0) {
 					server_root_cleanup();
-				}
-					
+				}					
 			}	
 			break;
 		case SJ_CLIENT_PROC:

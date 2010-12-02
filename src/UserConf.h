@@ -52,6 +52,13 @@ struct sj_cmdline_opts {
 		char cmd_buffer[MEDIUMBUF];
 };
 
+/* the struct used for index the sniffjoke-client-commands */
+struct command {
+	const char *cmd;
+	int related_args;
+};
+
+
 /* those are the value used for track port strength of TCP coverage */
 #define PORTNUMBER  65535
 enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };

@@ -29,25 +29,23 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define TTLFOCUS_EXPIRYTIME		604800	/* access expire time in seconds (1 WEEK) */
-#define SESSIONTRACK_EXPIRYTIME		1200	/* access expire time in seconds (5 MINUTES) */
-
 TCPTrack::TCPTrack(sj_config& runcfg, HackPool& hpp) :
 	runconfig(runcfg),
 	hack_pool(hpp)
 {
-	debug.log(VERBOSE_LEVEL, __func__);
-	
-	/* random pool initialization */
-	for (unsigned int i = 0; i < ((random() % 40) + 3); i++) 
-		srandom((unsigned int)time(NULL) ^ random());
-		
+	debug.log(VERBOSE_LEVEL, __func__);	
 	ttlfocus_map.load(runconfig.ttlfocuscache_file);
 }
 
 TCPTrack::~TCPTrack(void) 
 {
 	debug.log(VERBOSE_LEVEL, __func__);
+
+	for(SessionTrackMap::iterator it = sex_map.begin(); it != sex_map.end();) {
+		delete &(*it->second);
+		sex_map.erase(it++);
+	}
+
 	ttlfocus_map.dump(runconfig.ttlfocuscache_file);
 }
 
@@ -60,9 +58,9 @@ TCPTrack::~TCPTrack(void)
  *   - a specifi frequency selector provided by hacks programmer.
  *   - a port strengh selector (none|light|normal|heavy) defined in running configuration
  */
-bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Strength weightness)
+bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength weightness)
 {
-	unsigned int this_percentage = 0, freqret = 0;
+	uint32_t this_percentage = 0, freqret = 0;
 	switch(freqkind) {
 		case RARE:
 			freqret = 3;
@@ -83,13 +81,13 @@ bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Streng
 				freqret = 1;
 			break;
 		case TIMEBASED5S:
-			if(!((unsigned int)clock.tv_sec % 5))
+			if(!((unsigned int)sj_clock.tv_sec % 5))
 				freqret = 12;
 			else
 				freqret = 1;
 			break;
 		case TIMEBASED20S:
-			if(!((unsigned int)clock.tv_sec % 20))
+			if(!((unsigned int)sj_clock.tv_sec % 20))
 				freqret = 12;
 			else
 				freqret = 1;
@@ -156,7 +154,7 @@ bool TCPTrack::percentage(unsigned int packet_number, Frequency freqkind, Streng
 void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 {
 	/* if the ttlfocus is not accessed from more than 30 seconds or the probe interval is not passed we return immediatly */
-	if((ttlfocus.access_timestamp < clock.tv_sec - 30) || !isSchedulePassed(clock, ttlfocus.next_probe_time))
+	if((ttlfocus.access_timestamp < sj_clock.tv_sec - 30) || !isSchedulePassed(clock, ttlfocus.next_probe_time))
 		return;
 
 	if (ttlfocus.sent_probe == runconfig.max_ttl_probe) {
@@ -222,17 +220,19 @@ SessionTrack& TCPTrack::get_sessiontrack(const Packet &pkt)
 	SessionTrack *sessiontrack;
 	
 	/* create map key */
-	SessionTrackKey key = { pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest };
+	const SessionTrackKey key = { pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest };
 	
 	/* check if the key it's already present */
 	SessionTrackMap::iterator it = sex_map.find(key);
 	if(it != sex_map.end()) /* on hit: return the sessiontrack object. */
-		sessiontrack = &(it->second);
-	else /* on miss: create a new sessiontrack and insert it into the map */
-		sessiontrack = &sex_map.insert(pair<SessionTrackKey, SessionTrack>(key, pkt)).first->second;
+		sessiontrack = it->second;
+	else { /* on miss: create a new sessiontrack and insert it into the map */
+		SessionTrack *newsession = new SessionTrack(pkt);
+		sessiontrack = sex_map.insert(pair<const SessionTrackKey, SessionTrack*>(key, newsession)).first->second;
+	}
 		
 	/* update access timestamp using global clock */
-	sessiontrack->access_timestamp = clock.tv_sec;
+	sessiontrack->access_timestamp = sj_clock.tv_sec;
 
 	return *sessiontrack;
 }
@@ -245,35 +245,15 @@ TTLFocus& TCPTrack::get_ttlfocus(const Packet &pkt)
 	/* check if the key it's already present */
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
 	if(it != ttlfocus_map.end()) /* on hit: return the ttlfocus object. */
-		ttlfocus = &(it->second);
-	else /* on miss: create a new ttlfocus and insert it into the map */
-		ttlfocus = &ttlfocus_map.insert(pair<const unsigned int, TTLFocus>(pkt.ip->daddr, pkt)).first->second;
+		ttlfocus = it->second;
+	else { /* on miss: create a new ttlfocus and insert it into the map */
+		TTLFocus *newttlfocus = new TTLFocus(pkt);
+		ttlfocus = ttlfocus_map.insert(pair<const uint32_t, TTLFocus*>(pkt.ip->daddr, newttlfocus)).first->second;
+	}
 	
 	/* update access timestamp using global clock */
-	ttlfocus->access_timestamp = clock.tv_sec;
+	ttlfocus->access_timestamp = sj_clock.tv_sec;
 	return *ttlfocus;
-}
-
-/* cycles on sex_map and delete recors if expired */
-void TCPTrack::manage_expired_sessiontracks()
-{
-	for(SessionTrackMap::iterator it = sex_map.begin(); it != sex_map.end();) {
-		if((*it).second.access_timestamp + SESSIONTRACK_EXPIRYTIME < clock.tv_sec)
-			sex_map.erase(it++);
-		else
-			it++;
-	}
-}
-
-/* cycles on ttlfocus_map and delete recors if expired */
-void TCPTrack::manage_expired_ttlfocuses()
-{
-	for(TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end();) {
-		if((*it).second.access_timestamp + TTLFOCUS_EXPIRYTIME < clock.tv_sec)
-			ttlfocus_map.erase(it++);
-		else
-			it++;
-	}
 }
 
 /*
@@ -301,7 +281,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 		 */ 
 		TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
 		if(it != ttlfocus_map.end()) {
-			TTLFocus *ttlfocus = &(it->second);
+			TTLFocus *ttlfocus = it->second;
 			unsigned char expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 			unsigned char exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
@@ -341,7 +321,7 @@ void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
 	 */ 
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	if (it != ttlfocus_map.end()) {
-		TTLFocus *ttlfocus = &(it->second);
+		TTLFocus *ttlfocus = it->second;
 		if(ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) {
 			/* probably a topology change has happened - we need a solution wtf!!  */
 			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), 
@@ -369,7 +349,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
 	 */ 
 	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
 	if (it != ttlfocus_map.end()) {
-		TTLFocus *ttlfocus = &(it->second);
+		TTLFocus *ttlfocus = it->second;
 
 		if (synack.tcp->dest == ttlfocus->puppet_port) {
 
@@ -463,17 +443,14 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 {
 	SessionTrack &sessiontrack = get_sessiontrack(orig_pkt);
 
-	vector<PluginTrack>::iterator it;
-	PluginTrack *hppe;
-	
 	/* SELECT APPLICABLE HACKS */
-	for (it = hack_pool.begin(); it != hack_pool.end(); it++) {
-		hppe = &(*it);
-		hppe->enabled = true;
-		hppe->enabled &= hppe->selfObj->Condition(orig_pkt);
-		hppe->enabled &= percentage(
+	for (	vector<PluginTrack>::iterator it = hack_pool.begin(); it != hack_pool.end(); it++) {
+		PluginTrack &hppe = *it;
+		hppe.enabled = true;
+		hppe.enabled &= hppe.selfObj->Condition(orig_pkt);
+		hppe.enabled &= percentage(
 					sessiontrack.packet_number,
-					hppe->selfObj->hackFrequency,
+					hppe.selfObj->hackFrequency,
 					runconfig.portconf[ntohs(orig_pkt.tcp->dest)]
 				);
 	}
@@ -482,68 +459,63 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 	random_shuffle(hack_pool.begin(), hack_pool.end());
 
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
-	for (it = hack_pool.begin(); it != hack_pool.end(); it++) 
+	for (vector<PluginTrack>::iterator it = hack_pool.begin(); it != hack_pool.end(); it++) 
 	{
-		/* must be moved in the do/while loop based on HackPacket->num_pkt_gen */
-		vector<Packet*>::iterator hack_it;
-		Packet *injpkt;
-
-		hppe = &(*it);
-		if(!hppe->enabled) 
+		PluginTrack &hppe = *it;
+		if(!hppe.enabled) 
 			continue;
 
-		hppe->selfObj->createHack(orig_pkt);
+		hppe.selfObj->createHack(orig_pkt);
 		
-		for (hack_it = hppe->selfObj->pktVector.begin() ; hack_it < hppe->selfObj->pktVector.end(); hack_it++) {
-		
-			injpkt = *hack_it;
+		for (vector<Packet*>::iterator hack_it = hppe.selfObj->pktVector.begin(); hack_it < hppe.selfObj->pktVector.end(); hack_it++) {
+			Packet &injpkt = **hack_it;
 
 			/*
 			 * we trust in the external developer, but is required a safety check by sniffjoke :)
 			 * source and status are ignored in selfIntegrityCheck.
 			 */
-			if(!injpkt->selfIntegrityCheck(hppe->selfObj->hackName)) 
+			if(!injpkt.selfIntegrityCheck(hppe.selfObj->hackName)) 
 			{
-				debug.log(ALL_LEVEL, "invalid packet generated by hack %s", hppe->selfObj->hackName);
+				debug.log(ALL_LEVEL, "invalid packet generated by hack %s", hppe.selfObj->hackName);
 
 				/* if you are running with --debug 6, I suppose you are the developing the plugins */
 				if(runconfig.debug_level == PACKETS_DEBUG) 
 					throw runtime_error("");
 
 				/* otherwise, the error was reported and sniffjoke continue to work */
-				delete injpkt;
+				delete &injpkt;
 				continue;
 			}
 
 
 			/* here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
 			 * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too */
-			injpkt->mark(LOCAL, EVIL);
+			injpkt.mark(LOCAL, EVIL);
 
-			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injected from %s", hppe->selfObj->hackName);
-			injpkt->selflog(__func__, injpkt->debug_buf);
+			snprintf(injpkt.debug_buf, sizeof(injpkt.debug_buf), "Injected from %s", hppe.selfObj->hackName);
+			injpkt.selflog(__func__, injpkt.debug_buf);
 
-			switch(injpkt->position) {
+			switch(injpkt.position) {
 				case ANTICIPATION:
-					p_queue.insert_before(*injpkt, orig_pkt);
+					p_queue.insert_before(injpkt, orig_pkt);
 					break;
 				case POSTICIPATION:
-					p_queue.insert_after(*injpkt, orig_pkt);
+					p_queue.insert_after(injpkt, orig_pkt);
 					break;
 				case ANY_POSITION:
 					if(random() % 2)
-						p_queue.insert_before(*injpkt, orig_pkt);
+						p_queue.insert_before(injpkt, orig_pkt);
 					else
-						p_queue.insert_after(*injpkt, orig_pkt);
+						p_queue.insert_after(injpkt, orig_pkt);
 					break;
 				case POSITIONUNASSIGNED:
 		                        debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
 		                        SJ_RUNTIME_EXCEPTION("");
 			}
 		}
-		hppe->selfObj->pktVector.clear();
+		hppe.selfObj->pktVector.clear();
 		
-		if(hppe->selfObj->removeOrigPkt == true) {
+		if(hppe.selfObj->removeOrigPkt == true) {
 			p_queue.remove(orig_pkt);
 			delete &orig_pkt;
 		}
@@ -776,13 +748,10 @@ void TCPTrack::analyze_packets_queue()
 
 	Packet *pkt;
 
-	/* update the internal clock */
-	clock_gettime(CLOCK_REALTIME, &clock);
-	
 	/* manage expired sessions and ttlfocuses every APQ_MANAGMENT_ROUTINE_TIMER seconds */
-	if(!(clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
-		manage_expired_sessiontracks();
-		manage_expired_ttlfocuses();
+	if(!(sj_clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
+		sex_map.manage_expired();
+		ttlfocus_map.manage_expired();
 	}
 
 	/*
@@ -845,7 +814,7 @@ void TCPTrack::analyze_packets_queue()
 
 	/* we need to verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN*/
 	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); it++) {
-		if((*it).second.status & (TTL_BRUTEFORCE | TTL_KNOWN))
-			inject_ttlprobe_in_queue((*it).second);
+		if((*it).second->status & (TTL_BRUTEFORCE | TTL_KNOWN))
+			inject_ttlprobe_in_queue(*(*it).second);
 	}
 }
