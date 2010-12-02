@@ -459,7 +459,7 @@ void UserConf::handle_cmd_stat(void)
 {
 	debug.log(VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, sizeof(io_buf), 
-		"\nsniffjoke:\t\t%s\n" \
+		"\nsniffjoke status:\t\t%s\n" \
 		"gateway mac address:\t\t%s\n" \
 		"gateway ip address:\t\t%s\n" \
 		"local interface:\t\t%s\n" \
@@ -475,10 +475,10 @@ void UserConf::handle_cmd_stat(void)
 
 	if(runconfig.onlyplugin[0]) {
 		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
-			"selected plugin:\t\t%s\n", runconfig.onlyplugin);
+			"selected plugin:\t\t\t%s\n", runconfig.onlyplugin);
 	} else {
 		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
-			"plugins file:\t\t%s\n", runconfig.enabler);
+			"plugins file:\t\t\t%s\n", runconfig.enabler);
 	}
 }
 

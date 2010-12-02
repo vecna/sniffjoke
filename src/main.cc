@@ -41,9 +41,6 @@ Debug debug;
 timespec sj_clock;
 
 static struct sj_cmdline_opts useropt;
-
-static char randomstate[256];
-
 static auto_ptr<SniffJoke> sniffjoke;
 
 #define SNIFFJOKE_HELP_FORMAT \
@@ -112,7 +109,7 @@ void init_random()
 {
 	/* random pool initialization */
 	srandom(time(NULL));
-	for (unsigned int i = 0; i < random() % 10; i++) 
+	for (unsigned int i = 0; i < ((unsigned int)random() % 10); i++) 
 		srandom(random());
 }
 
@@ -271,7 +268,7 @@ int main(int argc, char **argv)
 				break;
 			case 'd':
 				useropt.debug_level = atoi(optarg);
-				if(useropt.debug_level < 0 || useropt.debug_level > 6)
+				if(useropt.debug_level < 1 || useropt.debug_level > 6)
 					goto sniffjoke_help;
 				break;
 			case 'l':
