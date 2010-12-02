@@ -53,7 +53,6 @@ private:
 
 	unsigned char pktbuf[MTU];
 	int size;
-	Packet *pkt;
 
 public:
 

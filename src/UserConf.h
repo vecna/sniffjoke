@@ -38,9 +38,9 @@ struct sj_cmdline_opts {
 		char logfname[LARGEBUF];
 		char logfname_packets[LARGEBUF];
 		char logfname_sessions[LARGEBUF];
-		unsigned int debug_level;
+		uint8_t debug_level;
 		char admin_address[MEDIUMBUF];
-		unsigned short admin_port;
+		uint16_t admin_port;
 		/* END OF COMMON PART WITH sj_config_opt */
 
 		char onlyplugin[MEDIUMBUF];
@@ -82,17 +82,17 @@ struct sj_config {
 		char logfname[LARGEBUF];		/* default: idem */
 		char logfname_packets[LARGEBUF];	/* default: idem */
 		char logfname_sessions[LARGEBUF];	/* default: idem */
-		unsigned int debug_level;		/* default: idem */
+		uint8_t debug_level;			/* default: idem */
 		char admin_address[MEDIUMBUF];		/* default: idem */
-		unsigned short admin_port;		/* default: idem */
+		uint16_t admin_port;			/* default: idem */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
-		unsigned int scrambletech;		/* default: idem */		
+		uint8_t scrambletech;			/* default: idem */		
 		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + gw_mac_str */
 
-		unsigned short max_ttl_probe;		/* default: idem */
+		uint8_t max_ttl_probe;			/* default: idem */
 		Strength portconf[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -100,7 +100,7 @@ struct sj_config {
 		char gw_mac_str[SMALLBUF];		/* default: autodetect */
 		char gw_mac_addr[ETH_ALEN];		/* default: autodetect, the conversion of _str */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
-		int tun_number;				/* default: autodetect */
+		uint8_t tun_number;			/* default: autodetect */
 
 };
 

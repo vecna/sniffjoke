@@ -84,25 +84,6 @@ void TTLFocus::selectPuppetPort()
 		puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
 }
 
-void TTLFocus::selflog(const char *func, const char *umsg) const
-{
-	const char *status_name;
-
-	switch(status) {
-		case TTL_KNOWN: status_name = "TTL known"; break;
-		case TTL_BRUTEFORCE: status_name = "BRUTEFORCE running"; break;
-		case TTL_UNKNOWN: status_name = "TTL UNKNOWN"; break;
-		default: status_name = "badly unset TTL status"; break;
-	}
-
-	debug.log(SESSION_DEBUG, 
-		"%s [%s] m_sent %d, m_recv %d ttl_estimate %u [%s]",
-		func, status_name, sent_probe, received_probe, ttl_estimate, umsg
-	);
-
-	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
-}
-
 void TTLFocusMap::load(const char* dumpfile)
 {
 	unsigned int records_num = 0;
@@ -184,4 +165,26 @@ void TTLFocusMap::dump(const char* dumpfile)
 	fclose(dumpfd);
 
 	debug.log(ALL_LEVEL, "ttlfocusmap dump completed: %u records dumped", records_num);
+}
+
+void TTLFocus::selflog(const char *func, const char *umsg) const
+{
+	if(debug.level() == SUPPRESS_LOG)
+		return;
+
+	const char *status_name;
+
+	switch(status) {
+		case TTL_KNOWN: status_name = "TTL known"; break;
+		case TTL_BRUTEFORCE: status_name = "BRUTEFORCE running"; break;
+		case TTL_UNKNOWN: status_name = "TTL UNKNOWN"; break;
+		default: status_name = "badly unset TTL status"; break;
+	}
+
+	debug.log(SESSION_DEBUG, 
+		"%s [%s] m_sent %d, m_recv %d ttl_estimate %u [%s]",
+		func, status_name, sent_probe, received_probe, ttl_estimate, umsg
+	);
+
+	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
 }

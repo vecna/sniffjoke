@@ -29,5 +29,4 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			SniffJoke.h \
 			main.cc
 
-AM_CPPFLAGS =		-ansi -pedantic -Wall
 sniffjoke_LDFLAGS =	-lrt -Wl,-export-dynamic

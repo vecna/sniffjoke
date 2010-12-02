@@ -239,7 +239,6 @@ int main(int argc, char **argv)
 		useropt.process_type = SJ_SERVER_PROC;
 
 	int charopt;
-	char *port = NULL;
 	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:a:xrvp:s:h", sj_option, NULL)) != -1) {
 		switch(charopt) {
 			case 'f':
@@ -272,6 +271,7 @@ int main(int argc, char **argv)
 				break;
 			case 'a':
 				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
+				char* port;
 				if((port = strchr(useropt.admin_address, ':')) != NULL) {
 					*port = 0x00;
 					int checked_port = atoi(++port);

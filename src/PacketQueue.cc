@@ -39,7 +39,7 @@ PacketQueue::~PacketQueue(void)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	for (unsigned int i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
+	for (uint8_t i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
 		select((queue_t)i);
 		while (get() && cur_pkt != NULL) {
 			delete cur_pkt;

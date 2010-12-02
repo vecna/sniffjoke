@@ -115,7 +115,7 @@ void HackPool::parseEnablerFile(const char *enabler)
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	int line = 0;
+	uint8_t line = 0;
 	do {
 		char plugrelpath[SMALLBUF];
 
@@ -178,11 +178,9 @@ HackPool::~HackPool()
 	debug.log(VERBOSE_LEVEL, __func__);
 
 	/* call the distructor loaded from the plugins */
-	vector<PluginTrack>::iterator it;
-	PluginTrack *plugin;
-	for (it = begin(); it != end(); it++) 
+	for (vector<PluginTrack>::iterator it = begin(); it != end(); it++) 
 	{
-		plugin = &(*it);
+		PluginTrack *plugin = &(*it);
 
 		debug.log(VERBOSE_LEVEL, "~HackPool: calling %s destructor (%s)",	plugin->selfObj->hackName, plugin->pluginPath);
 

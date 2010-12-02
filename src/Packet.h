@@ -40,6 +40,7 @@ using namespace std;
 
 /* IT'S FUNDAMENTAL TO HAVE ALL ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
+/* queue_t is a a reflection variable used by packet to know in what queue it's inserted */
 enum queue_t { QUEUEUNASSIGNED = -1, YOUNG = 0,	KEEP = 1, SEND = 2, PRIORITY_SEND = 3 };
 
 /* if the packet is inject from sniffjoke is marked with the evilbit */
@@ -68,8 +69,6 @@ private:
 	Packet *next;
 	friend class PacketQueue;
 
-	bool check_evil_packet(const unsigned char *buff, unsigned int nbyte);
-
 public:
 	evilbit_t evilbit;
 	source_t source;
@@ -80,17 +79,17 @@ public:
 	vector<unsigned char> pbuf;
 
 	struct iphdr *ip;
-	unsigned int iphdrlen;
+	uint8_t iphdrlen;	/* [20 - 60] bytes */
 
 	struct tcphdr *tcp;
-	unsigned int tcphdrlen;
+	uint8_t tcphdrlen;	/* [20 - 60] bytes */
 
 	unsigned char *payload;
-	unsigned int datalen;
+	uint16_t datalen;	/* [0 - 65515] bytes */
 
 	struct icmphdr *icmp;
 	
-	Packet(const unsigned char *, int);
+	Packet(const unsigned char *, uint16_t);
 	Packet(const Packet &);
 	virtual ~Packet(void) {};
 
@@ -100,17 +99,17 @@ public:
 	void mark(source_t, judge_t, evilbit_t);
 	
 	/* IP/TCP checksum functions */
-	unsigned int half_cksum(const void *, int);
-	unsigned short compute_sum(unsigned int);
+	uint32_t half_cksum(const void *, uint16_t);
+	uint16_t compute_sum(uint32_t);
 	void fixIpTcpSum(void);
 
 	/* autochecking */
 	bool selfIntegrityCheck(const char *);
 	
 	/* functions required in TCP/IP packets forging */
-	void IPHDR_resize(unsigned int);
-	void TCPHDR_resize(unsigned int);
-	void TCPPAYLOAD_resize(unsigned int);
+	void IPHDR_resize(uint8_t);
+	void TCPHDR_resize(uint8_t);
+	void TCPPAYLOAD_resize(uint16_t);
 	void TCPPAYLOAD_fillrandom(void);
 
 	/* MALFORMED hacks and distortion of INNOCENT packets */

@@ -46,19 +46,19 @@ public:
 
 	/* status variables */
 	ttlsearch_t status;			/* status of the traceroute */
-	unsigned int rand_key;			/* random key used as try to discriminate traceroute packet */
-	unsigned short puppet_port;		/* random port used with the aim to not disturbe a session */
-#define PUPPET_MARGIN	10			/* margin to mantain between real dest port and puppet port
+	uint8_t rand_key;			/* random key used as try to discriminate traceroute packet */
+	uint16_t puppet_port;			/* random port used with the aim to not disturbe a session */
+#define PUPPET_MARGIN 10			/* margin to mantain between real dest port and puppet port
 						   with the aim to not disturbe a session */
-	unsigned short sent_probe;		/* number of sent probes */
-	unsigned short received_probe;		/* number of received probes */
+	uint8_t sent_probe;			/* number of sent probes */
+	uint8_t received_probe;			/* number of received probes */
 	
 	/* ttl informations, results of the analysis */
-	unsigned int daddr;			/* destination of the traceroute */
-	unsigned short ttl_estimate;		/* hop count estimate found during ttlbruteforce;
-						 *   on status KNOWN   : represents the min working ttl found
-						 *   on status UNKNOWN : represents the max expired ttl found */
-	unsigned short synack_ttl;		/* the value of the ttl read in the synack packet */
+	uint32_t daddr;				/* destination of the traceroute */
+	uint8_t ttl_estimate;			/* hop count estimate found during ttlbruteforce;
+						     on status KNOWN   : represents the min working ttl found
+						     on status UNKNOWN : represents the max expired ttl found */
+	uint8_t synack_ttl;			/* the value of the ttl read in the synack packet */
 
 
 	Packet probe_dummy;			/* dummy ttlprobe packet generated from the packet
@@ -80,15 +80,15 @@ public:
 };
 
 struct ttlfocus_cache_record {
-	unsigned int daddr;			/* destination of the traceroute */
-	unsigned short expiring_ttl;		/* the min exiping_ttl found during analysis */
-	unsigned short ttl_estimate;		/* the min working ttl found during analysis */
-	unsigned short synack_ttl;		/* the value of the ttl read in the synack packet */
+	uint32_t daddr;			/* destination of the traceroute */
+	uint8_t expiring_ttl;		/* the min exiping_ttl found during analysis */
+	uint8_t ttl_estimate;		/* the min working ttl found during analysis */
+	uint8_t synack_ttl;		/* the value of the ttl read in the synack packet */
 	
-	unsigned char probe_dummy[40];		/* dummy ttlprobe packet generated from the packet
-						   that scattered the ttlfocus creation.
-						   the packet size is always 40 bytes long,
-						   (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
+	unsigned char probe_dummy[40];	/* dummy ttlprobe packet generated from the packet
+					   that scattered the ttlfocus creation.
+					   the packet size is always 40 bytes long,
+					   (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
 };
 
 #endif /* SJ_TTLFOCUS_H */
