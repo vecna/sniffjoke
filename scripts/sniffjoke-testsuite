@@ -80,7 +80,7 @@ fi
 
 # generate the test file
 GENERATEDFILE="/tmp/tosend_data.generated"
-seq 1000 3000 > $GENERATEDFILE
+seq 1000 3000 | tr -d [:cntrl:] > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 if ! [ -e $PLUGINLIST ]; then
