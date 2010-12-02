@@ -459,22 +459,27 @@ void UserConf::handle_cmd_stat(void)
 {
 	debug.log(VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, sizeof(io_buf), 
-		"\nsniffjoke runconfig:\t\t%s\n" \
+		"\nsniffjoke:\t\t%s\n" \
 		"gateway mac address:\t\t%s\n" \
 		"gateway ip address:\t\t%s\n" \
-		"local interface:\t\t%s, %s address\n" \
+		"local interface:\t\t%s\n" \
+		"local ip address:\t\t%s\n" \
 		"dynamic tunnel interface:\ttun%d\n" \
 		"log level:\t\t\t%d at file %s\n" \
-		"plugins file:\t\t\t%s\n" \
 		"chroot directory:\t\t%s\n",
-		runconfig.active == true ? "TRUE" : "FALSE",
-		runconfig.gw_mac_str,
-		runconfig.gw_ip_addr,
-		runconfig.interface, runconfig.local_ip_addr,
-		runconfig.tun_number,
-		runconfig.debug_level, runconfig.logfname,
-		runconfig.enabler, runconfig.chroot_dir
+	runconfig.active == true ? "ACTIVE" : "PASSIVE",
+	runconfig.gw_mac_str, runconfig.gw_ip_addr,
+	runconfig.interface, runconfig.local_ip_addr, runconfig.tun_number,
+	runconfig.debug_level, runconfig.logfname, runconfig.chroot_dir
 	);
+
+	if(runconfig.onlyplugin[0]) {
+		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
+			"selected plugin:\t\t%s\n", runconfig.onlyplugin);
+	} else {
+		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
+			"plugins file:\t\t%s\n", runconfig.enabler);
+	}
 }
 
 void UserConf::handle_cmd_info(void)
