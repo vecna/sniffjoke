@@ -38,6 +38,27 @@ SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
 	debug.log(VERBOSE_LEVEL, __func__);
 }
 
+SniffJoke::~SniffJoke()
+{
+	debug.log(DEBUG_LEVEL, "%s [process %d, role %s]", __func__, getpid(), 
+		opts.process_type == SJ_SERVER_PROC ? "service" : "client");
+
+	switch (opts.process_type) {
+		case SJ_SERVER_PROC:
+			if (getuid() || geteuid()) {
+				server_user_cleanup();
+			} else {
+				server_root_cleanup();
+			}	
+			break;
+		case SJ_CLIENT_PROC:
+			client_cleanup();
+			break;
+	}
+
+	debug_cleanup();
+}
+
 void SniffJoke::run()
 {
 	switch (opts.process_type) {
@@ -165,34 +186,13 @@ void SniffJoke::server() {
 	}
 }
 
-SniffJoke::~SniffJoke()
-{
-	debug.log(DEBUG_LEVEL, "%s [process %d, role %s]", __func__, getpid(), 
-		opts.process_type == SJ_SERVER_PROC ? "service" : "client");
-
-	switch (opts.process_type) {
-		case SJ_SERVER_PROC:
-			if (getuid() || geteuid()) {
-				server_user_cleanup();
-			} else {
-				if(service_pid != 0) {
-					server_root_cleanup();
-				}					
-			}	
-			break;
-		case SJ_CLIENT_PROC:
-			client_cleanup();
-			break;
-	}
-
-	debug_cleanup();
-}
-
 void SniffJoke::server_root_cleanup()
 {
-	debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
-	kill(service_pid, SIGTERM);
-	waitpid(service_pid, NULL, WUNTRACED);
+	if(service_pid) {
+		debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
+		kill(service_pid, SIGTERM);
+		waitpid(service_pid, NULL, WUNTRACED);
+	}
 	proc.unlinkPidfile();
 }
 
@@ -205,7 +205,7 @@ void SniffJoke::client_cleanup() {
 
 }
 
-int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], unsigned short bindport)
+int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], uint16_t bindport)
 {
 	int ret;
 	struct sockaddr_in in_service;
@@ -265,7 +265,7 @@ void SniffJoke::handle_admin_socket(int srvsock)
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
 }
 
-void SniffJoke::send_command(const char *cmdstring, char serveraddr[MEDIUMBUF], unsigned short serverport)
+void SniffJoke::send_command(const char *cmdstring, char serveraddr[MEDIUMBUF], uint16_t serverport)
 {
 	int sock;
 	char received_buf[HUGEBUF];

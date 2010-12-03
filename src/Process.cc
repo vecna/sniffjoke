@@ -30,7 +30,7 @@
 #include <wait.h>
 
 /* startup of the process */
-Process::Process(struct sj_config &runcfg) :
+Process::Process(const struct sj_config &runcfg) :
 	runconfig(runcfg),
 	userinfo_buf(NULL),
 	groupinfo_buf(NULL)
@@ -254,7 +254,7 @@ void Process::background()
 	for (i = getdtablesize(); i >= 0; --i)
 		close(i);
 
-	i=open("/dev/null",O_RDWR);	/* stdin  */
+	i = open("/dev/null",O_RDWR);	/* stdin  */
 	dup(i);				/* stdout */
 	dup(i);				/* stderr */	
 }

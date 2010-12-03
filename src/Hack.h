@@ -43,19 +43,24 @@ using namespace std;
  */
 
 /* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
-enum Frequency { FREQUENCYUNASSIGNED = 0, RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
+enum Frequency { RARE = 1, COMMON = 2, PACKETS10PEEK = 3, PACKETS30PEEK = 4,
 		 TIMEBASED5S = 5, TIMEBASED20S = 6, STARTPEEK = 7, LONGPEEK = 8 };
 
 class Hack {
 public:
 	const char *hackName;		/* hack name as const string */
-	Frequency hackFrequency;	/* hack frequency */
-	bool removeOrigPkt;		/* boolean to be set true if the hack
+	const Frequency hackFrequency;	/* hack frequency */
+	const bool removeOrigPkt;	/* boolean to be set true if the hack
 					   needs to remove the original packet */
 
 	vector<Packet*> pktVector;	/* std vector of Packet* used for created hack packets */
 
-	Hack() : hackName(NULL), hackFrequency(FREQUENCYUNASSIGNED), removeOrigPkt(false) {};
+
+	Hack(const char* hackName, Frequency hackFrequency, bool removeOrigPkt = false) :
+		hackName(hackName),
+		hackFrequency(hackFrequency),
+		removeOrigPkt(removeOrigPkt)
+	{};
 	virtual bool Condition(const Packet &) { return true; };
 	virtual void createHack(const Packet &) = 0;
 };

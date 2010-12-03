@@ -70,11 +70,7 @@ public:
 		);
 	}
 
-	shift_ack() {
-		hackName = HACK_NAME;
-		hackFrequency = RARE;
-	}
-
+	shift_ack() : Hack(HACK_NAME, RARE) {}
 };
 
 extern "C"  Hack* CreateHackObject() {

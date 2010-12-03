@@ -39,7 +39,7 @@ PacketQueue::~PacketQueue(void)
 {
 	debug.log(DEBUG_LEVEL, __func__);
 
-	for (uint8_t i = FIRST_QUEUE; i <= LAST_QUEUE; i++) {
+	for (uint8_t i = FIRST_QUEUE; i <= LAST_QUEUE; ++i) {
 		select((queue_t)i);
 		while (get() && cur_pkt != NULL) {
 			delete cur_pkt;
@@ -98,7 +98,7 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 	if(pkt.queue != QUEUEUNASSIGNED)
 		remove(pkt);
 	
-	pkt_count++;
+	++pkt_count;
 	pkt.queue = ref.queue;
 
 	if (back[ref.queue] == &ref) {
@@ -121,7 +121,7 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 
 void PacketQueue::remove(const Packet &pkt)
 {
-	pkt_count--;
+	--pkt_count;
 	if (front[pkt.queue] == &pkt) {
 		if (back[pkt.queue] == &pkt) {
 			front[pkt.queue] = NULL;

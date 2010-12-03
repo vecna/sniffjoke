@@ -52,7 +52,7 @@ public:
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
-		pkt->tcp->window = htons((unsigned short)(-1));
+		pkt->tcp->window = htons((uint16_t)(-1));
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
 		pkt->tcp->psh;
 
@@ -74,11 +74,7 @@ public:
 		);
 	}
 
-	valid_rst_fake_seq() {
-		hackName = HACK_NAME;
-		hackFrequency = STARTPEEK;
-	}
-
+	valid_rst_fake_seq() : Hack(HACK_NAME, STARTPEEK) {}
 };
 
 extern "C"  Hack* CreateHackObject() {

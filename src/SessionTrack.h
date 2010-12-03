@@ -58,6 +58,7 @@ public:
 
 class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*> {
 public:
+	SessionTrackMap();
         ~SessionTrackMap();
         void manage_expired();
 };

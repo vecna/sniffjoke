@@ -29,7 +29,7 @@ Debug::Debug() :
 	packet_logstream(NULL)
 {}
 
-void Debug::log(unsigned int errorlevel, const char *msg, ...) 
+void Debug::log(uint8_t errorlevel, const char *msg, ...) 
 {
 	if (errorlevel <= debuglevel) { 
 	

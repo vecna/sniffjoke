@@ -36,7 +36,7 @@
 
 class fake_close_fin : public Hack
 {
-#define HACK_NAME	"Fake Fin"
+#define HACK_NAME	"Fake FIN"
 public:
 	virtual void createHack(const Packet &orig_packet)
 	{
@@ -71,10 +71,7 @@ public:
 		);
 	}
 
-	fake_close_fin() {
-		hackName = HACK_NAME;
-		hackFrequency = PACKETS30PEEK;
-	}
+	fake_close_fin() : Hack(HACK_NAME, PACKETS30PEEK) {}
 };
 
 extern "C"  Hack* CreateHackObject() {

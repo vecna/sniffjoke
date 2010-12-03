@@ -54,12 +54,11 @@ NetIO::NetIO(sj_config& runcfg) :
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	if ((tunfd = open("/dev/net/tun", O_RDWR)) == -1) {
-		/* this is a serious problem, sniffjoke treat them as FATAL error */
+	if ((tunfd = open("/dev/net/tun", O_RDWR)) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: /dev/net/tun opened successfully");
+	} else {
 		debug.log(ALL_LEVEL, "NetIO: unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
-	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: /dev/net/tun opened successfully");
 	}
 
 	memset(&ifr, 0x00, sizeof(ifr));
@@ -68,36 +67,36 @@ NetIO::NetIO(sj_config& runcfg) :
 	ifr.ifr_flags = IFF_NO_PI;
 	ifr.ifr_flags |= IFF_TUN;
 
-	if ((ret = ioctl (tunfd, TUNSETIFF, (void *) &ifr)) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to set flags in tunnel interface: %s", strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");
+	if ((ret = ioctl(tunfd, TUNSETIFF, (void *) &ifr)) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: flags set successfully in tun socket");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: setting TUN flags successfully");
+		debug.log(ALL_LEVEL, "NetIO: unable to set flags in tunnel socket: %s", strerror(errno));
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	tmpfd = socket (AF_INET, SOCK_DGRAM, 0);
+	tmpfd = socket(AF_INET, SOCK_DGRAM, 0);
 	memcpy(netifr.ifr_name, ifr.ifr_name, IFNAMSIZ);
 	netifr.ifr_qlen = 100;
-	if ((ret = ioctl (tmpfd, SIOCSIFTXQLEN, (void *) &netifr)) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to set SIOCSIFTXQLEN in interface %s: %s", ifr.ifr_name, strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");
+	if ((ret = ioctl (tmpfd, SIOCSIFTXQLEN, (void *) &netifr)) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: ioctl(SIOCGIFINDEX) executed successfully on interface %s", ifr.ifr_name);
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: setting SIOCSIFTXQLEN in %s successfully", ifr.ifr_name);
+		debug.log(ALL_LEVEL, "NetIO: unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s", ifr.ifr_name, strerror(errno));
+		SJ_RUNTIME_EXCEPTION("");
 	}
 	close (tmpfd);
 		
-	if ((ret = fcntl (tunfd, F_SETFL, O_NONBLOCK)) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to set non blocking socket: how is this possibile !? %s", strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");
+	if ((ret = fcntl(tunfd, F_SETFL, O_NONBLOCK)) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: flag O_NONBLOCK set successfully in tun socket");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: set NONBLOCK in socket successfully");
+		debug.log(ALL_LEVEL, "NetIO: unable to set flag O_NONBLOCK in tun socket: %s", strerror(errno));
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	if ((ret = fcntl (tunfd, F_SETFD, FD_CLOEXEC)) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to fcntl FD_CLOEXEC in tunnel: %s", strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");
+	if ((ret = fcntl(tunfd, F_SETFD, FD_CLOEXEC)) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: flag FD_CLOEXEC set successfully in tun socket");
 	} else {
-		debug.log(DEBUG_LEVEL, "NetIO: set CLOSE on EXIT flag in TUN successfully");
+		debug.log(ALL_LEVEL, "NetIO: unable to set flag FD_CLOEXEC in tun socket: %s", strerror(errno));
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	debug.log(VERBOSE_LEVEL, "NetIO: deleting default gateway in routing table...");
@@ -120,21 +119,24 @@ NetIO::NetIO(sj_config& runcfg) :
 	strcpy(orig_gw.ifr_name, (const char *)runconfig.interface);
 	tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	
-	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: fatal error, unable to SIOCGIFINDEX %s interface, fix your routing table by hand",
-			runconfig.interface);
+	if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: ioctl(SIOCGIFINDEX) executed successfully on interface %s", runconfig.interface);
+	} else {
+		debug.log(ALL_LEVEL, "NetIO: unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
+			runconfig.interface, strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	close(tmpfd);
 
-	if ((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to open datalink layer packet: %s - fix your routing table by hand",
+	if ((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) != -1) {
+		debug.log(DEBUG_LEVEL, "NetIO: datalink layer socket packet opened successfully");
+	} else {
+		debug.log(ALL_LEVEL, "NetIO: unable to open datalink layer packet: %s",
 			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
-	} else
-		debug.log(DEBUG_LEVEL, "NetIO: open datalink layer socket packet successfully");
+	}
 
 	send_ll.sll_family = PF_PACKET;
 	send_ll.sll_protocol = htons(ETH_P_IP);
@@ -146,21 +148,23 @@ NetIO::NetIO(sj_config& runcfg) :
 	memset(send_ll.sll_addr, 0xFF, sizeof(send_ll.sll_addr));
 	memcpy(send_ll.sll_addr, runconfig.gw_mac_addr, ETH_ALEN);
 
-	if ((ret = bind(netfd, (struct sockaddr *)&send_ll, sizeof(send_ll))) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to bind datalink layer interface: %s - fix your routing table by hand",
-			strerror(errno)
-		);
-		SJ_RUNTIME_EXCEPTION("");
-	} else
+	if ((ret = bind(netfd, (struct sockaddr *)&send_ll, sizeof(send_ll))) != -1) {
 		debug.log(DEBUG_LEVEL, "NetIO: binding datalink layer interface successfully");
-
-	if ((ret = fcntl (netfd, F_SETFL, O_NONBLOCK)) == -1) {
-		debug.log(ALL_LEVEL, "NetIO: unable to set socket in non blocking mode: %s - fix your routing table by hand",
+	} else {
+		debug.log(ALL_LEVEL, "NetIO: unable to bind datalink layer interface: %s",
 			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
-	} else
+	}
+
+	if ((ret = fcntl (netfd, F_SETFL, O_NONBLOCK)) != -1) {
 		debug.log(DEBUG_LEVEL, "NetIO: setting network socket to non blocking mode successfully");
+	} else {
+		debug.log(ALL_LEVEL, "NetIO: unable to set socket in non blocking mode: %s",
+			strerror(errno)
+		);
+		SJ_RUNTIME_EXCEPTION("");
+	}
 
 	fds[0].fd = tunfd;
 	fds[0].events = POLLIN;
@@ -242,9 +246,9 @@ void NetIO::network_io(void)
 		
 			data_received = true;
 
-			for(unsigned int i = 0; i < 2; i++) { 
+			for(uint8_t i = 0; i < 2; ++i) { 
 
-				int ret;
+				int16_t ret;
 			
 				if (fds[i].revents) { /* POLLIN is the unique event managed */
 				

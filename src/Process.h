@@ -35,8 +35,7 @@
 
 class Process {
 private:
-
-	struct sj_config &runconfig;
+	const struct sj_config &runconfig;
 
         struct passwd userinfo;
 	void* userinfo_buf;
@@ -47,12 +46,13 @@ private:
 	sigset_t sig_oset;
 	struct sigaction action;
 public:
-	Process(struct sj_config &);
+	Process(const struct sj_config &);
 	~Process();
 
 	pid_t readPidfile();
 	void writePidfile();
 	void unlinkPidfile();
+
 
 	int detach();
 	void jail();

@@ -37,7 +37,7 @@
 
 class fake_zero_window : public Hack
 {
-#define HACK_NAME	"Fake 0-window"
+#define HACK_NAME	"Fake 0-WINDOW"
 public:
 	virtual void createHack(const Packet &orig_packet)
 	{
@@ -67,11 +67,7 @@ public:
 		);
 	}
 
-	fake_zero_window() {
-		hackName = HACK_NAME;
-		hackFrequency = TIMEBASED20S;
-	}
-
+	fake_zero_window() : Hack(HACK_NAME, TIMEBASED20S) {};
 };
 
 extern "C"  Hack* CreateHackObject() {

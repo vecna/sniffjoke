@@ -123,11 +123,11 @@ uint8_t HDRoptions::m_IPOPT_LSRR(void)
 	if(!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	uint8_t routes_1 = 1 + random() % 3; /* 1 - 3 */
-	uint8_t routes_2 = 1 + random() % 3; /* 1 - 3 */
-	uint8_t size_lsrr_1 = 3 + 4 * routes_1;
-	uint8_t size_lsrr_2 = 3 + 4 * routes_2;
-	uint8_t req_size = size_lsrr_1 + size_lsrr_2;
+	const uint8_t routes_1 = 1 + random() % 3; /* 1 - 3 */
+	const uint8_t routes_2 = 1 + random() % 3; /* 1 - 3 */
+	const uint8_t size_lsrr_1 = 3 + 4 * routes_1;
+	const uint8_t size_lsrr_2 = 3 + 4 * routes_2;
+	const uint8_t req_size = size_lsrr_1 + size_lsrr_2;
 
 	if(available_opts_len < req_size)
 		return 0;
@@ -170,8 +170,8 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
 	 *   due to random() exploits the first or the latter.
 	 */
 
-	uint8_t routes = 1 + random() % 5; /* 1 - 5 */
-	uint8_t size_rr = 3 + routes * 4;
+	const uint8_t routes = 1 + random() % 5; /* 1 - 5 */
+	const uint8_t size_rr = 3 + routes * 4;
 
 	if(!corrupt && opt_ip_rr) /* this option corrupts the packet if repeated */
 		return 0;
@@ -353,8 +353,8 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
 	 *   due tu random() exploit one or the other.
 	 */
 
-	uint8_t timestamps = 1 + random() % 5; /* 1 - 5 */
-	uint8_t size_timestamp = 4 + timestamps * 8;
+	const uint8_t timestamps = 1 + random() % 5; /* 1 - 5 */
+	const uint8_t size_timestamp = 4 + timestamps * 8;
 
 	if(!corrupt && opt_ip_timestamp) /* this option corrupts the packet if repeated */
 		return 0;
@@ -434,17 +434,17 @@ uint8_t HDRoptions::m_TCPOPT_SACK(void) {
 bool HDRoptions::checkIPOPTINJPossibility(void) {
 	
 	for (uint8_t i = sizeof(struct iphdr); i < actual_opts_len;) {
-		unsigned char *option = &optptr[i];
+		unsigned char* const option = &optptr[i];
 		uint8_t option_len;
 
 		switch(*option) {
 			case IPOPT_END:
 				if(corrupt) /* on corrupt : end can be stripped off */
 					*option =  IPOPT_NOOP;
-				i++;
+				++i;
 				continue;
 			case  IPOPT_NOOP:
-				i++;
+				++i;
 				continue;
 			case IPOPT_TIMESTAMP:
 				opt_ip_timestamp = true; /* on !corrupt : we can't inject timestamp if just present */
@@ -480,17 +480,17 @@ ip_opts_len_check:	default:
  */
 bool HDRoptions::checkTCPOPTINJPossibility(void) {
 	for (uint8_t i = sizeof(struct tcphdr); i < actual_opts_len;) {
-		unsigned char *option = &optptr[i];
+		unsigned char* const option = &optptr[i];
 		uint8_t option_len;
 
 		switch(*option) {
 			case TCPOPT_EOL:
 				if(corrupt) /* on corrupt : eol can be stripped off */
 					*option = TCPOPT_NOP;
-				i++;
+				++i;
 				continue;
 			case TCPOPT_NOP:
-				i++;
+				++i;
 				continue;
 			case TCPOPT_MAXSEG:
 			case TCPOPT_WINDOW:

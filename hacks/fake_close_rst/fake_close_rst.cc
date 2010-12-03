@@ -71,10 +71,7 @@ public:
 		);
 	}
 
-	fake_close_rst() {
-		hackName = HACK_NAME;
-		hackFrequency = TIMEBASED20S;
-	}
+	fake_close_rst() : Hack(HACK_NAME, TIMEBASED20S) {};
 };
 
 extern "C"  Hack* CreateHackObject() {

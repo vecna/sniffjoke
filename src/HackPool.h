@@ -36,25 +36,23 @@ typedef const char* version_f();
 
 class PluginTrack {
 public:
-	Hack* selfObj;
-	void *pluginHandler;	
-	char *pluginPath;
-	bool enabled;
+	void *pluginHandler;
 
 	constructor_f *fp_CreateHackObj;
 	destructor_f *fp_DeleteHackObj;
 	version_f *fp_versionValue;
+	
+	Hack* selfObj;
 
 	PluginTrack(const char *);
-	PluginTrack(const PluginTrack&);
 };
 
-class HackPool : public vector<PluginTrack> {
+class HackPool : public vector<PluginTrack *> {
 private:
 	void importPlugin(const char *, const char *);
 	void parseEnablerFile(const char *);
 public:
-	HackPool(sj_config &);
+	HackPool(const sj_config &);
 	~HackPool();
 };
 

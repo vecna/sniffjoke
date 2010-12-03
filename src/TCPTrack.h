@@ -33,7 +33,7 @@
 
 class TCPTrack {
 private:
-	struct sj_config &runconfig;
+	const struct sj_config &runconfig;
 	
 	struct timespec clock;			/* clock time updated by analyze_packet_queue */
 		
@@ -44,12 +44,12 @@ private:
 	TTLFocusMap ttlfocus_map;
 	HackPool &hack_pool;
 
-	bool percentage(unsigned int, Frequency, Strength);
+	bool percentage(uint32_t, Frequency, Strength);
 
 	void inject_ttlprobe_in_queue(TTLFocus &);
 	
-	SessionTrack& get_sessiontrack(const Packet &pkt);
-	TTLFocus& get_ttlfocus(const Packet &pkt);
+	SessionTrack& get_sessiontrack(const Packet &);
+	TTLFocus& get_ttlfocus(const Packet &);
 	void manage_expired_sessiontracks();
 	void manage_expired_ttlfocuses();
 
@@ -66,10 +66,10 @@ private:
 	bool last_pkt_fix(Packet &);
 
 public:
-	TCPTrack(sj_config&, HackPool&);
+	TCPTrack(const sj_config &, HackPool &);
 	~TCPTrack(void);
 
-	void writepacket(const source_t, const unsigned char*, int);
+	void writepacket(const source_t, const unsigned char *, int);
 	Packet* readpacket(void);
 	void analyze_packets_queue();
 	void force_send(void);

@@ -76,10 +76,11 @@ public:
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*> {
 public:
+        TTLFocusMap();
         ~TTLFocusMap();
         void manage_expired();
-        void dump(const char *);
         void load(const char *);
+        void dump(const char *);
 };
 
 struct ttlfocus_cache_record {

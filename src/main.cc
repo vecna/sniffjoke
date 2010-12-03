@@ -109,7 +109,7 @@ void init_random()
 {
 	/* random pool initialization */
 	srandom(time(NULL));
-	for (unsigned int i = 0; i < ((unsigned int)random() % 10); i++) 
+	for (uint8_t i = 0; i < ((uint8_t)random() % 10); ++i) 
 		srandom(random());
 }
 
@@ -126,8 +126,8 @@ void* memset_random(void *s, size_t n)
 	 * 
 	 */
 
-	unsigned int longint = n / sizeof(long int);
-	unsigned int finalbytes = n % sizeof(long int);
+	size_t longint = n / sizeof(long int);
+	size_t finalbytes = n % sizeof(long int);
 	unsigned char *cp = (unsigned char*)s;
 
 	while (longint-- > 0) {
@@ -137,7 +137,7 @@ void* memset_random(void *s, size_t n)
 	
 	while (finalbytes-- > 0) {
 		*cp = (unsigned char)random();
-		cp++;
+		++cp;
 	}
 
 	return s;
@@ -148,7 +148,7 @@ void updateSchedule(struct timespec &schedule, time_t sec, long ns)
 #define NSEC_PER_SEC 1000000000
 	schedule.tv_sec += sec;
 	if(ns) {
-		unsigned int temp = schedule.tv_nsec + ns;
+		uint32_t temp = schedule.tv_nsec + ns;
 		schedule.tv_sec += temp / NSEC_PER_SEC;
 		schedule.tv_nsec = temp % NSEC_PER_SEC;
 	}
@@ -173,10 +173,10 @@ void sigtrap(int signal)
 
 static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd) 
 {
-	for(uint32_t i = 0; i < ac; i++) 
+	for(uint32_t i = 0; i < ac; ++i) 
 	{
 		struct command *ptr;
-		for(ptr = &sjcmdlist[0]; ptr->cmd != NULL; ptr++) 
+		for(ptr = &sjcmdlist[0]; ptr->cmd != NULL; ++ptr) 
 		{
 			if(!strcmp(ptr->cmd, av[i])) 
 			{
@@ -188,7 +188,8 @@ static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdli
 				}
 				while(--(ptr->related_args)) {
 					usedlen = strlen(retcmd);
-					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[++i]);
+					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[i]);
+					++i;
 				}
 				return true;
 			}
@@ -286,7 +287,7 @@ int main(int argc, char **argv)
 					if(checked_port > PORTNUMBER || checked_port < 0)
 						goto sniffjoke_help;
 
-					useropt.admin_port = (unsigned short)checked_port;
+					useropt.admin_port = (uint16_t)checked_port;
 				}
 				break;
 			case 'x':

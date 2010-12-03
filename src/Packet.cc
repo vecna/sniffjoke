@@ -99,30 +99,30 @@ void Packet::updatePacketMetadata()
 
 	/* start ip update */
 	if(pktlen < sizeof(struct iphdr))
-		throw exception();
+		SJ_RUNTIME_EXCEPTION("");
 
 	ip = (struct iphdr *)&(pbuf[0]);
-	iphdrlen = (ip->ihl * 4);
+	iphdrlen = ip->ihl * 4;
 
 	if(pktlen < iphdrlen)
-		throw exception();
+		SJ_RUNTIME_EXCEPTION("");
 	
 	if(pktlen < ntohs(ip->tot_len))
-		throw exception();
+		SJ_RUNTIME_EXCEPTION("");
 	/* end ip update */
 	
 	switch(ip->protocol) {
 		case IPPROTO_TCP:
 			/* start tcp update */
 			if(pktlen < iphdrlen + sizeof(struct tcphdr))
-				throw exception();
+				SJ_RUNTIME_EXCEPTION("");
 
 			proto = TCP;
 			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
 			tcphdrlen = tcp->doff * 4;
 			
 			if(pktlen < iphdrlen + tcphdrlen)
-				throw exception();
+				SJ_RUNTIME_EXCEPTION("");
 
 			datalen = pktlen - iphdrlen - tcphdrlen;
 			if(datalen)
@@ -132,7 +132,7 @@ void Packet::updatePacketMetadata()
 		case IPPROTO_ICMP: 
 			/* start icmp update */
 			if(pktlen < iphdrlen + sizeof(struct icmphdr))
-				throw exception();
+				SJ_RUNTIME_EXCEPTION("");
 
 			proto = ICMP;
 			icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
@@ -147,7 +147,7 @@ void Packet::updatePacketMetadata()
 
 uint32_t Packet::half_cksum(const void* data, uint16_t len)
 {
-	const unsigned short *usdata = (const unsigned short *)data;
+	const uint16_t *usdata = (uint16_t *)data;
 	uint32_t sum = 0;
 
 	while (len > 1)
@@ -159,7 +159,7 @@ uint32_t Packet::half_cksum(const void* data, uint16_t len)
 	}
 
 	if (len == 1)
-		sum += (unsigned short) *(unsigned char*)usdata;
+		sum += *(uint8_t *)usdata;
 
 	return sum;
 }
@@ -169,13 +169,13 @@ uint16_t Packet::compute_sum(uint32_t sum)
 	while(sum>>16)
              sum = (sum & 0xFFFF) + (sum >> 16);
 
-	return (unsigned short) ~sum;
+	return ~sum;
 }
 
 void Packet::fixIpTcpSum(void)
 {
-	unsigned int sum;
-	unsigned int l4len = ntohs(ip->tot_len) - iphdrlen;
+	const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
+	uint32_t sum;
 
 	ip->check = 0;
 	sum = half_cksum((const void *)ip, iphdrlen);
@@ -217,19 +217,22 @@ errorinfo:
 
 void Packet::IPHDR_resize(uint8_t size) 
 {
-	uint16_t pktlen = pbuf.size();
+	if(size == iphdrlen)
+		return;
+	
+	const uint16_t pktlen = pbuf.size();
 	
 	/* 
 	 * safety checks delegated to the function caller:
 	 *   size : must be multiple of 4;
-	 *   size : must be >= sizeof(struct iphdr))
-	 *   size : must be <= MAXIPHEADER
-	 *   pktlen - iphdrlen + size : must be <= MTU
+	 *   size : must be >= sizeof(struct iphdr));
+	 *   size : must be <= MAXIPHEADER;
+	 *   pktlen - iphdrlen + size : must be <= MTU.
 	 */
 
 	/* its important to update values into hdr before vector insert call because it can cause relocation */
-	ip->ihl = (size / 4);
-
+	ip->ihl = size / 4;
+	
 	vector<unsigned char>::iterator it = pbuf.begin();
 
 	if(iphdrlen < size) {
@@ -246,18 +249,21 @@ void Packet::IPHDR_resize(uint8_t size)
 
 void Packet::TCPHDR_resize(uint8_t size)
 {
-	uint16_t pktlen = pbuf.size();
+	if(size == tcphdrlen)
+		return;
+	
+	const uint16_t pktlen = pbuf.size();
 
 	/* 
 	 * safety checks delegated to the function caller:
-	 *   size : must be multiple of 4;
-	 *   size : must be >= sizeof(struct tcphdr))
-	 *   size : must be <= MAXTCPHEADER
-	 *   pktlen - tcphdrlen + size : must be <= MTU
+	 *   - size : must be multiple of 4;
+	 *   - size : must be >= sizeof(struct tcphdr));
+	 *   - size : must be <= MAXTCPHEADER;
+	 *   - pktlen - tcphdrlen + size : must be <= MTU.
 	 */
 	
 	/* its important to update values into hdr before vector insert call because it can cause relocation */
-	tcp->doff = (size / 4);
+	tcp->doff = size / 4;
 	
 	vector<unsigned char>::iterator it = pbuf.begin() + iphdrlen;
 
@@ -274,17 +280,17 @@ void Packet::TCPHDR_resize(uint8_t size)
 
 void Packet::TCPPAYLOAD_resize(uint16_t size)
 {
-	uint16_t pktlen = pbuf.size();
+	if(size == datalen)
+		return;
+	
+	const uint16_t pktlen = pbuf.size();
 	
 	/* begin safety checks */
 	if(pktlen - datalen + size > MTU)
 		SJ_RUNTIME_EXCEPTION("");
 	/* end safety checks */
 
-	if(datalen == size) /* there is nothing to do in this case */
-		return;
-		
-	const unsigned short new_total_len = pktlen - datalen + size;
+	const uint16_t new_total_len = pktlen - datalen + size;
 
 	/* its important to update values into hdr before vector insert call because it can cause relocation */
 	ip->tot_len = ntohs(new_total_len);
@@ -296,7 +302,7 @@ void Packet::TCPPAYLOAD_resize(uint16_t size)
 
 void Packet::TCPPAYLOAD_fillrandom()
 {
-	const unsigned diff = pbuf.size() - (iphdrlen + tcphdrlen);
+	const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
 	memset_random(payload, diff);
 }
 
@@ -305,7 +311,7 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	
 	bool injected = false;
 	
-	uint16_t pktlen = pbuf.size();
+	const uint16_t pktlen = pbuf.size();
 
 	uint8_t actual_iphdrlen = iphdrlen;
 
@@ -315,13 +321,13 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	selflog(__func__, debug_buf);
 
 	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
-		uint16_t freespace = MTU - pktlen + iphdrlen - sizeof(struct iphdr);
+		const uint16_t freespace = MTU - pktlen + iphdrlen - sizeof(struct iphdr);
 		actual_iphdrlen = sizeof(struct iphdr);
 		target_iphdrlen = sizeof(struct iphdr) + (random() % (MAXIPHEADER - sizeof(struct iphdr)));
 		if(freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
 	} else {
-		uint16_t freespace = MTU - pktlen;
+		const uint16_t freespace = MTU - pktlen;
 		target_iphdrlen = iphdrlen + (random() % (MAXIPHEADER - iphdrlen));
 		if(freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
@@ -363,7 +369,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 {
 	bool injected = false;
 
-	uint16_t pktlen = pbuf.size();
+	const uint16_t pktlen = pbuf.size();
 	
 	uint8_t actual_tcphdrlen = tcphdrlen;
 	
@@ -398,7 +404,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 		do {
 			injected |= TCPInjector.randomInjector();
 
-		} while(target_tcphdrlen != actual_tcphdrlen && --MAXITERATION); 
+		} while(target_tcphdrlen != actual_tcphdrlen && MAXITERATION--); 
 
 	} catch(exception &e) {
 		selflog(__func__, "tcp injection is not possibile");		
@@ -422,11 +428,8 @@ void Packet::selflog(const char *func, const char *loginfo) const
 	if(debug.level() == SUPPRESS_LOG)
 		return;
 	
-	const char *evilstr, *wtfstr, *sourcestr;
-	char *p, protoinfo[MEDIUMBUF]; 
-
-	/* inet_ntoa use a static buffer */
-	char saddr[MEDIUMBUF], daddr[MEDIUMBUF];
+	const char *evilstr, *wtfstr, *sourcestr, *p;
+	char protoinfo[MEDIUMBUF], saddr[MEDIUMBUF], daddr[MEDIUMBUF];
 
 	p = inet_ntoa(*((struct in_addr *)&(ip->saddr)));
 	strncpy(saddr, p, sizeof(saddr));

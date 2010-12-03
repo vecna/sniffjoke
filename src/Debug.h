@@ -36,7 +36,7 @@ private:
 public:
 	Debug();
 	uint8_t level() { return debuglevel; };
-	void log(unsigned int errorlevel, const char *msg, ...);
+	void log(uint8_t errorlevel, const char *msg, ...);
 };
 
 extern Debug debug;

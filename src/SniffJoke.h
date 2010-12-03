@@ -72,10 +72,10 @@ private:
 	void server_root_cleanup();
 	void server_user_cleanup();
 	void kill_child();
-	int udp_admin_socket(char [MEDIUMBUF], unsigned short);
+	int udp_admin_socket(char [MEDIUMBUF], uint16_t);
 	void handle_admin_socket(int admin_socket);
 	int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);	
-	void send_command(const char *cmdstring, char [MEDIUMBUF], unsigned short);
+	void send_command(const char *cmdstring, char [MEDIUMBUF], uint16_t);
 	bool parse_port_weight(char *weightstr, Strength *Value);
 };
 

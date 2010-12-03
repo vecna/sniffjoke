@@ -44,7 +44,7 @@ public:
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-		unsigned int pkts = 2;
+		uint8_t pkts = 2;
 
 		while(pkts--) {
 			Packet* pkt = new Packet(orig_packet);
@@ -68,7 +68,7 @@ public:
 
 			/* 20% had source and dest port reversed */
 			if ((random() % 5) == 0) {
-				unsigned short swap = pkt->tcp->source;
+				uint16_t swap = pkt->tcp->source;
 				pkt->tcp->source = pkt->tcp->dest;
 				pkt->tcp->dest = swap;
 			}
@@ -95,11 +95,7 @@ public:
 		);
 	}
 
-	fake_syn() {
-		hackName = HACK_NAME;
-		hackFrequency = RARE;
-	}
-
+	fake_syn() : Hack(HACK_NAME, RARE) {};
 };
 
 extern "C"  Hack* CreateHackObject() {

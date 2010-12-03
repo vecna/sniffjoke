@@ -62,7 +62,7 @@ void SessionTrack::selflog(const char *func, const char *lmsg) const
 	if(debug.level() == SUPPRESS_LOG)
 		return;
 
-	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, ISN %x #pkt %d: [%s]",
+	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: [%s]",
 		func, ntohs(sport), 
 		inet_ntoa(*((struct in_addr *)&daddr)),
 		ntohs(dport), 
@@ -70,7 +70,12 @@ void SessionTrack::selflog(const char *func, const char *lmsg) const
 	);
 }
 
+SessionTrackMap::SessionTrackMap() {
+	debug.log(VERBOSE_LEVEL, __func__);	
+}
+
 SessionTrackMap::~SessionTrackMap() {
+	debug.log(VERBOSE_LEVEL, __func__);
 	for(SessionTrackMap::iterator it = begin(); it != end();) {
 		delete &(*it->second);
 		erase(it++);

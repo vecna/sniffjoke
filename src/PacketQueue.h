@@ -32,7 +32,7 @@
 
 class PacketQueue {
 private:
-	unsigned int pkt_count;
+	uint32_t pkt_count;
 	Packet *front[QUEUE_NUM];
 	Packet *back[QUEUE_NUM];
 	queue_t cur_queue;
@@ -48,7 +48,7 @@ public:
 	void remove(const Packet &);
 	void select(queue_t);
 	Packet* get();
-	unsigned int size(){ return pkt_count; };
+	uint32_t size(){ return pkt_count; };
 };
 
 #endif /* SJ_PACKET_QUEUE_H */

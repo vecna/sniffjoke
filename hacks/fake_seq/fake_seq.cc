@@ -89,11 +89,7 @@ public:
 		);
 	}
 
-	fake_seq() {
-		hackName = HACK_NAME;
-		hackFrequency = TIMEBASED5S;
-	}
-
+	fake_seq() : Hack(HACK_NAME, TIMEBASED5S) {};
 };
 
 extern "C"  Hack* CreateHackObject() {

@@ -117,7 +117,7 @@ private:
 		const char *resolve_weight_name(int);
 		bool load(const char *);
 		void dump(void);
-		void compare_check_copy(char *target, unsigned int tlen, const char *sjdefault, const char *useropt);
+		void compare_check_copy(char *target, uint32_t tlen, const char *sjdefault, const char *useropt);
 		void autodetect_local_interface(void);
 		void autodetect_local_interface_ip_address(void);
 		void autodetect_gw_ip_address(void);
@@ -144,7 +144,7 @@ public:
 		void handle_cmd_stat(void);
 		void handle_cmd_info(void);
 		void handle_cmd_showport(void);
-		void handle_cmd_set(unsigned short, unsigned short, Strength);
+		void handle_cmd_set(unsigned short, uint16_t, Strength);
 		void handle_cmd_loglevel(int);
 		bool parse_port_weight(char *, Strength *);
 };

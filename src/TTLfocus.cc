@@ -90,7 +90,7 @@ TTLFocus::~TTLFocus()
 
 void TTLFocus::selectPuppetPort()
 {
-	unsigned short realport = probe_dummy.tcp->source;
+	uint16_t realport = probe_dummy.tcp->source;
 	puppet_port = (realport + random()) % 32767 + 1;
         if(puppet_port > realport - PUPPET_MARGIN
 	&& puppet_port < realport + PUPPET_MARGIN)
@@ -119,7 +119,12 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
 	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
 }
 
+TTLFocusMap::TTLFocusMap() {
+	debug.log(VERBOSE_LEVEL, __func__);	
+}
+
 TTLFocusMap::~TTLFocusMap() {
+	debug.log(VERBOSE_LEVEL, __func__);	
 	for(TTLFocusMap::iterator it = begin(); it != end();) {
 		delete &(*it->second);
 		erase(it++);
@@ -134,14 +139,14 @@ void TTLFocusMap::manage_expired()
 			delete &(*it->second);
 			erase(it++);
 		} else {
-			it++;
+			++it;
 		}
 	}
 }
 
 void TTLFocusMap::load(const char* dumpfile)
 {
-	unsigned int records_num = 0;
+	uint32_t records_num = 0;
 	struct ttlfocus_cache_record tmp;
 	int ret;
 	
@@ -174,7 +179,7 @@ void TTLFocusMap::load(const char* dumpfile)
 
 void TTLFocusMap::dump(const char* dumpfile)
 {
-	unsigned int records_num = 0;
+	uint32_t records_num = 0;
 	struct ttlfocus_cache_record cache_record;
 
 	debug.log(ALL_LEVEL, "dumping ttlfocusmap to %s",  dumpfile);
@@ -185,7 +190,7 @@ void TTLFocusMap::dump(const char* dumpfile)
                 return;
         }
 
-	for (TTLFocusMap::iterator it = begin(); it != end(); it++) {
+	for (TTLFocusMap::iterator it = begin(); it != end(); ++it) {
 
 		TTLFocus *tmp = it->second;
 
@@ -214,7 +219,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 			return;
 		}
 		
-		records_num++;
+		++records_num;
 	}
 	fclose(dumpfd);
 

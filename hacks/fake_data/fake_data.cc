@@ -43,13 +43,13 @@
 
 class fake_data : public Hack
 {
-#define HACK_NAME "Fake data"
+#define HACK_NAME "Fake DATA"
 public:
 	virtual void createHack(const Packet &orig_packet)
 	{
 		orig_packet.selflog(HACK_NAME, "Original packet");
 
-		unsigned int pkts = 2;
+		uint8_t pkts = 2;
 		
 		while(pkts--) {
 			Packet* pkt = new Packet(orig_packet);
@@ -84,10 +84,7 @@ public:
 		);
 	}
 
-	fake_data() {
-		hackName = HACK_NAME;
-		hackFrequency = COMMON;
-	}
+	fake_data() : Hack(HACK_NAME, COMMON) {};
 };
 
 extern "C"  Hack* CreateHackObject() {

@@ -52,7 +52,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		runconfig.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
 
 		/* default is to set all TCP ports in "NORMAL" aggressivity level */
-		for(unsigned int i = 0; i < PORTNUMBER; i++)
+		for(uint16_t i = 0; i < PORTNUMBER; ++i)
 			runconfig.portconf[i] = NORMAL;
 	}
 
@@ -108,7 +108,7 @@ UserConf::~UserConf()
 }
 
 /* Read command line values if present, preserve the previous options, and otherwise import default */
-void UserConf::compare_check_copy(char *target, unsigned int tlen, const char *sjdefault, const char *useropt)
+void UserConf::compare_check_copy(char *target, uint32_t tlen, const char *sjdefault, const char *useropt)
 {
 	target[0] = 0x00;
 	
@@ -138,7 +138,7 @@ void UserConf::autodetect_local_interface()
 	const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	unsigned int i;
+	uint8_t i;
 
 	debug.log(ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd);
 
@@ -146,7 +146,7 @@ void UserConf::autodetect_local_interface()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
-	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); i++)
+	for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); ++i)
 		runconfig.interface[i] = imp_str[i];
 
 	if (i < 3) {
@@ -163,7 +163,7 @@ void UserConf::autodetect_local_interface_ip_address()
 	char cmd[MEDIUMBUF];
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	unsigned int i;
+	uint8_t i;
 	snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-", 
 		runconfig.interface
 	);
@@ -174,7 +174,7 @@ void UserConf::autodetect_local_interface_ip_address()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
-	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++)
+	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
 		runconfig.local_ip_addr[i] = imp_str[i];
 
 	debug.log(ALL_LEVEL, "  == acquired local ip address: %s", runconfig.local_ip_addr);
@@ -186,7 +186,7 @@ void UserConf::autodetect_gw_ip_address()
 	const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32"; 
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	unsigned int i;
+	uint8_t i;
 
 	debug.log(ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd);
 
@@ -194,7 +194,7 @@ void UserConf::autodetect_gw_ip_address()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
-	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); i++) 
+	for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i) 
 		runconfig.gw_ip_addr[i] = imp_str[i];
 	if (strlen(runconfig.gw_ip_addr) < 7) {
 		debug.log(ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
@@ -209,7 +209,7 @@ void UserConf::autodetect_gw_mac_address()
 	char cmd[MEDIUMBUF];
 	FILE *foca;
 	char imp_str[SMALLBUF];
-	unsigned int i;
+	uint8_t i;
 	snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
 
 	debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);
@@ -226,16 +226,16 @@ void UserConf::autodetect_gw_mac_address()
 	fgets(imp_str, SMALLBUF, foca);
 	pclose(foca);
 
-	for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); i++)
+	for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); ++i)
 		runconfig.gw_mac_str[i] = imp_str[i];
 	if (i != 17) {
 		debug.log(ALL_LEVEL, "  -- unable to autodetect gateway mac address");
 		SJ_RUNTIME_EXCEPTION("");
 	} else {
 		debug.log(ALL_LEVEL, "  == automatically acquired mac address: %s", runconfig.gw_mac_str);
-		unsigned int mac[6];
+		uint32_t mac[6];
 		sscanf(runconfig.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-		for (i=0; i<6; i++)
+		for (i=0; i<6; ++i)
 			runconfig.gw_mac_addr[i] = mac[i];	
 	}
 }
@@ -249,7 +249,7 @@ void UserConf::autodetect_first_available_tunnel_interface()
 	debug.log(ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd);
 	
 	foca = popen(cmd, "r");
-	for (runconfig.tun_number = 0; ; runconfig.tun_number++)
+	for (runconfig.tun_number = 0; ; ++runconfig.tun_number)
 	{
 		memset(imp_str, 0x00, sizeof(imp_str));
 		fgets(imp_str, SMALLBUF, foca);
@@ -497,7 +497,7 @@ void UserConf::handle_cmd_showport(void)
 	/* the first port work as initialization */
 	kind = runconfig.portconf[0];
 
-	for (i = 1; i < PORTNUMBER; i++) 
+	for (i = 1; i < PORTNUMBER; ++i) 
 	{
 		/* the kind has changed, so we must print the previous port range */
 		if (runconfig.portconf[i] != kind) 
@@ -518,7 +518,7 @@ void UserConf::handle_cmd_showport(void)
 	snprintf(index, sizeof(io_buf) - actual_io, " %d:%d\t%s\n", acc_start, PORTNUMBER, resolve_weight_name(kind));
 }
 
-void UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength what)
+void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 {
 	const char *what_weightness;
 	switch(what) {
@@ -537,12 +537,12 @@ void UserConf::handle_cmd_set(unsigned short start, unsigned short end, Strength
 
 	if(end == PORTNUMBER) {
 		runconfig.portconf[PORTNUMBER -1] = what;
-		end--;
+		--end;
 	}
 
 	do {
 		runconfig.portconf[start] = what;
-		start++;
+		--start;
 	} while (start <= end);
 }
 
@@ -579,7 +579,7 @@ bool UserConf::parse_port_weight(char *weightstr, Strength *value)
 		{ "normal", 	strlen("normal"), 	NORMAL },
 		{ "heavy", 	strlen("heavy"), 	HEAVY }
 	};
-	for(unsigned int i = 0; i < keywordToParse; i++) {
+	for(uint8_t i = 0; i < keywordToParse; ++i) {
 		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
 			*value = wParse[i].equiv;
 			return true;
