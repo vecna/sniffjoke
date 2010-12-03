@@ -150,11 +150,8 @@ uint32_t Packet::half_cksum(const void* data, uint16_t len)
 	const uint16_t *usdata = (uint16_t *)data;
 	uint32_t sum = 0;
 
-	while (len > 1)
-	{
+	while (len > 1) {
 		sum += *usdata++;
-		if(sum & 0x80000000)
-			sum = (sum & 0xFFFF) + (sum >> 16);
 		len -= 2;
 	}
 
