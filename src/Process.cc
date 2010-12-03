@@ -90,11 +90,6 @@ int Process::detach()
 		 * process delegated to network cleanhup
 		 */
 		 
-		/* from now on there is no need of files in the root, so we can chroot 
-		 * into the same directory where the child will chroot.
-		 * this is also important becose in this way the root process can access
-		 * to the unix socket of the child, for example to request it's 'quit' */
-		 
 		close(pdes[1]);
 	        read(pdes[0], &pid_child, sizeof(pid_t));
 		close(pdes[0]);

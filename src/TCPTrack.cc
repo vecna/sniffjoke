@@ -50,7 +50,7 @@ TCPTrack::~TCPTrack(void)
  *  the calculation involves:
  *   - the session packet_number, because for example hacks must happen, for the most,
  *     at the start of the session (between the first 10 packets),
- *   - a specifi frequency selector provided by hacks programmer.
+ *   - a specified frequency selector provided by hacks programmer.
  *   - a port strengh selector (none|light|normal|heavy) defined in running configuration
  */
 bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength weightness)
