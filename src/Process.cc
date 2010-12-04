@@ -217,6 +217,7 @@ void Process::writePidfile(void)
                 SJ_RUNTIME_EXCEPTION("");
         }
 
+	debug.log(DEBUG_LEVEL, "writePidfile: created pidfile %s from %d", SJ_PIDFILE, getpid());
 	fprintf(pidFile, "%d", getpid());
 	fclose(pidFile);
 }
@@ -235,6 +236,7 @@ void Process::unlinkPidfile(void)
 		debug.log(VERBOSE_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
                 SJ_RUNTIME_EXCEPTION("");
 	}
+	debug.log(DEBUG_LEVEL, "process %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
 }
 
 

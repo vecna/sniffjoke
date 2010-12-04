@@ -40,23 +40,24 @@ SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
 
 SniffJoke::~SniffJoke()
 {
-	debug.log(DEBUG_LEVEL, "%s [process %d, role %s]", __func__, getpid(), 
-		opts.process_type == SJ_SERVER_PROC ? "service" : "client");
-
-	switch (opts.process_type) {
+	switch (opts.process_type) 
+	{
 		case SJ_SERVER_PROC:
 			if (getuid() || geteuid()) {
+				debug.log(DEBUG_LEVEL, "Service with users privileges: %s [%d]", __func__, getpid());
 				server_user_cleanup();
 			} else {
+				debug.log(DEBUG_LEVEL, "Service with root privileges: %s [%d]", __func__, getpid());
 				server_root_cleanup();
 			}	
+			/* closing the log files */
+			debug_cleanup();
 			break;
 		case SJ_CLIENT_PROC:
+			debug.log(DEBUG_LEVEL, "Client: %s [%d]", __func__, getpid());
 			client_cleanup();
 			break;
 	}
-
-	debug_cleanup();
 }
 
 void SniffJoke::run()
@@ -126,8 +127,6 @@ void SniffJoke::server() {
 
 		proc.isolation();
 	}
-
-	proc.writePidfile();
 	
 	/* the code flow reach here, SniffJoke is ready to instance network environment */
 	mitm = auto_ptr<NetIO> (new NetIO(userconf.runconfig));
@@ -144,6 +143,7 @@ void SniffJoke::server() {
 	if(service_pid) {
 		int deadtrace;
 		
+		proc.writePidfile();
 		waitpid(service_pid, &deadtrace, WUNTRACED);
 		
 		if (WIFEXITED(deadtrace))
