@@ -1,0 +1,29 @@
+Hi betatested, I'm glad you are reading this file:
+
+1) test sniffjoke in your system
+2) try to run script/sniffjoke-testsuite and check the output in /tmp/sniffjoke-stats
+3) try to edit your enabler file (default: /usr/local/etc/sniffjoke/plugins_enabled.txt)
+   and use other hacks
+4) try to configure TCP ports with "sniffjoke set"
+5) try sniffjoke in different network environment (your office wifi, your home lan, etc...)
+
+optional:
+
+if you work in distrubtion package, try to make a sniffjoke package to add in your distribution
+
+if you seen a lot of english typos :P please fix them
+
+if you want translate the documentation in your language, we are glad to support your tranalation
+in the sniffjoke official website at the moment in rebuilding
+
+if you had some ideas about TCP hacks, study the plugins and the hacks/hack_skeleton.skel example,
+we are glad to import your plugins
+
+for every question or segnalations, please sent an email to both of the developers:
+
+vecna <vecna@s0ftpj.org>
+evilaliv3 <giovanni.pellerano@evilaliv3.org
+
+
+thanks for your support,
+the Sniffjoke Jokers

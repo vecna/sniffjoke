@@ -48,3 +48,28 @@ when send a fake packet, the packet must appear acceptable for the sniffer and u
    support them and some other not. A packet with an unsupported option will be dropped by the
    kernel, and the sniffer read it. this technique is growing in detail, OS analysis and 
    related studies.
+
+SELECT AND HACKS 
+
+the options --enabler <file> specify a file instlled in your system, containing the list of
+plugins loaded by sniffjooke. 
+
+	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# ls conf/plugins_enabled.txt 
+	conf/plugins_enabled.txt
+	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# cat conf/plugins_enabled.txt 
+	# SniffJoke plugins enabler file
+	#
+	# comment supported
+	#
+	fake_close_fin.so
+	#fake_close_rst.so
+	fake_data.so
+	fake_seq.so
+	#fake_syn.so
+	#fake_zero_window.so
+	#shift_ack.so
+	valid_rst_fake_seq.so
+	# regards
+	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# 
+
+this is the default, and the four commented hacks need to be tested. 
