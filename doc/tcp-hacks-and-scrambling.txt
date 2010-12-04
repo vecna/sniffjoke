@@ -1,0 +1,50 @@
+HACKS & SCAMBLE TECH
+
+
+the hacks define type of injected packet in order to cause a desync in the sniffed flow,
+every hacks is implemented in a separate plugin, present in sniffjoke under the hacks/
+directory
+
+hacks/fake_close_fin/fake_close_fin.cc
+hacks/fake_close_rst/fake_close_rst.cc
+hacks/fake_data/fake_data.cc
+hacks/fake_seq/fake_seq.cc
+hacks/fake_syn/fake_syn.cc
+hacks/fake_zero_window/fake_zero_window.cc
+hacks/shift_ack/shift_ack.cc
+hacks/valid_rst_fake_seq/valid_rst_fake_seq.cc
+
+fake close: hacks that inject a fake signaling that mean the end of the session, the flag
+	    RST or FIN is used. In some network, the flag RST cause the session kill in some
+	    useful third parts (like a transparent proxy), and you will try to disable this
+	    hacks in your hackfile [info at the end of this file].
+
+fake data: hacks that inject block of data that will overwrite the real trasmitted data inside
+	   the reassembled flow
+
+fake seq: h.t.i a packet with a fake sequence number, wishing the sniffer belive to it and goes 
+	  out of sequence
+
+fake zero window: a packet with a tcp window value set to 0
+
+shift ack: acking of a different sequence number 
+
+valid reset fake seq: a *valid* packet (because the other are fake, [below information about the 
+		      scrambling tech]) with a valid RST and a sequence number shifted of 
+		      tcp.window value (or 64k) anyway the kernel ignore them.
+
+SCRAMBLING TECHNOLOGY
+
+when send a fake packet, the packet must appear acceptable for the sniffer and unacceptable
+(or unaccepted) by the server, the technics are three at the moment:
+
+1) fake checksum: tcp checksum is corrupted, if the sniffer don't check it, it record the 
+   packet as good and the server drop it
+
+2) ttl expire: the packets has a TTL value forged to expire before reach the server. the 
+   sniffer record it and the server not
+
+3) corrupted IP options: the IP header support some extension in the options field. some kernel 
+   support them and some other not. A packet with an unsupported option will be dropped by the
+   kernel, and the sniffer read it. this technique is growing in detail, OS analysis and 
+   related studies.
