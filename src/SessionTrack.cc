@@ -86,7 +86,7 @@ SessionTrackMap::~SessionTrackMap() {
 void SessionTrackMap::manage_expired()
 {
 	for(SessionTrackMap::iterator it = begin(); it != end();) {
-		if((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock.tv_sec) {
+		if((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock.tv_sec) {
 			delete &(*it->second);
 			erase(it++);
 		} else {

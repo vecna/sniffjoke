@@ -670,9 +670,9 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
-void TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
+bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
 {
-	try {
+		try {
 		Packet* const pkt = new Packet(buff, nbyte);
 		pkt->mark(source, INNOCENT, GOOD);
 	
@@ -685,11 +685,12 @@ void TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 		
 		p_queue.insert(*pkt, YOUNG);
 	
-		return;
+		return true;
 		
 	} catch (exception &e) {
-		/* malformed packet, ignored */
-		return;
+		/* anomalous/malformed packets are flushed bypassing the queue */
+		debug.log(ALL_LEVEL, e.what());
+		return false;
 	}
 }
 

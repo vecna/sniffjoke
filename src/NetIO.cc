@@ -248,7 +248,7 @@ void NetIO::network_io(void)
 
 			for(uint8_t i = 0; i < 2; ++i) { 
 
-				int16_t ret;
+				ssize_t ret;
 			
 				if (fds[i].revents) { /* POLLIN is the unique event managed */
 				
@@ -256,25 +256,33 @@ void NetIO::network_io(void)
 						ret = recv(netfd, pktbuf, MTU, 0);
 					else
 						ret = read(tunfd, pktbuf, MTU_FAKE);
-
 					
-					if (ret == -1 && (errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-						debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
-							i ? "network" : "tunnel", strerror(errno));
-						SJ_RUNTIME_EXCEPTION(strerror(errno));
-						continue;
+					if ((ret == -1)) {
+						if((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+							continue;
+						} else {
+							debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
+								i ? "network" : "tunnel", strerror(errno));
+							SJ_RUNTIME_EXCEPTION(strerror(errno));
+						}
 					}
 					
-					if(runconfig.active == true) { /* add packet in connection tracking queue */
-						conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, ret);
-					} else { /* bypass the connection tracking queue */
+					if(!((runconfig.active == true) && (conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, ret)))) {
+						/* on insuccess (malformed pkt) bypass the connection tracking queue */
 						if(i)
 							ret = write(tunfd, pktbuf, ret);
 						else
 							ret = sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 
-						if(ret == -1)
-							SJ_RUNTIME_EXCEPTION(strerror(errno));
+						if ((ret == -1)) {
+							if((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+								continue;
+							} else {
+								debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
+									i ? "tunnel" : "network", strerror(errno));
+								SJ_RUNTIME_EXCEPTION(strerror(errno));
+							}
+						}
 					}
 				}
 			}
@@ -306,16 +314,16 @@ void NetIO::queue_flush(void)
 	 */
 	Packet *pkt;
 	while ((pkt = conntrack->readpacket()) != NULL) {
-		int size = pkt->pbuf.size();
+		uint16_t size = pkt->pbuf.size();
 		while(1) {
-			int ret;
+			ssize_t ret;
 			if (pkt->source == NETWORK)
 				ret = write(tunfd, (void*)&(pkt->pbuf[0]), size);
 			else
 				ret = sendto(netfd, (void*)&(pkt->pbuf[0]), size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 
 			if (ret != size) {
-				if (ret == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
+				if ((ret == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
 					continue;
 				else
 					SJ_RUNTIME_EXCEPTION(strerror(errno));

@@ -99,7 +99,7 @@ static void sj_version(const char *pname)
 runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
 	stringstream stream;
-	stream << file << "(" << line << ") function: " << func << "()";
+	stream << "[EXCEPTION] "<< file << "(" << line << ") function: " << func << "()";
 	if(msg != NULL)
 		stream << " : " << msg;
 	return std::runtime_error(stream.str());
@@ -146,15 +146,12 @@ void* memset_random(void *s, size_t n)
 void updateSchedule(struct timespec &schedule, time_t sec, long ns)
 {
 #define NSEC_PER_SEC 1000000000
-	//debug.log(ALL_LEVEL, "antani2 %u %u %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec, sec, ns);
 	schedule.tv_sec += sec;
 	if(ns) {
 		uint32_t temp = schedule.tv_nsec + ns;
 		schedule.tv_sec += temp / NSEC_PER_SEC;
 		schedule.tv_nsec = temp % NSEC_PER_SEC;
 	}
-
-	//debug.log(ALL_LEVEL, "antani2 %u %u %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec, sec, ns);
 }
 
 bool isSchedulePassed(const struct timespec& schedule)
@@ -163,12 +160,9 @@ bool isSchedulePassed(const struct timespec& schedule)
         return true;
 
     else if((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec)) {
-	//debug.log(ALL_LEVEL, "antani2 %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec);
         return true;
     }
         
-//debug.log(ALL_LEVEL, "antani3 %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec);
-
     return false;
 }
 
