@@ -146,21 +146,28 @@ void* memset_random(void *s, size_t n)
 void updateSchedule(struct timespec &schedule, time_t sec, long ns)
 {
 #define NSEC_PER_SEC 1000000000
+	//debug.log(ALL_LEVEL, "antani2 %u %u %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec, sec, ns);
 	schedule.tv_sec += sec;
 	if(ns) {
 		uint32_t temp = schedule.tv_nsec + ns;
 		schedule.tv_sec += temp / NSEC_PER_SEC;
 		schedule.tv_nsec = temp % NSEC_PER_SEC;
 	}
+
+	//debug.log(ALL_LEVEL, "antani2 %u %u %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec, sec, ns);
 }
 
-bool isSchedulePassed(const struct timespec& clock, const struct timespec& schedule)
+bool isSchedulePassed(const struct timespec& schedule)
 {
-    if(clock.tv_sec > schedule.tv_sec)
+    if(sj_clock.tv_sec > schedule.tv_sec)
         return true;
 
-    else if(clock.tv_sec == schedule.tv_sec && clock.tv_nsec > schedule.tv_nsec)
+    else if((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec)) {
+	//debug.log(ALL_LEVEL, "antani2 %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec);
         return true;
+    }
+        
+//debug.log(ALL_LEVEL, "antani3 %u %u %u %u", sj_clock.tv_sec, schedule.tv_sec, sj_clock.tv_nsec, schedule.tv_nsec);
 
     return false;
 }
@@ -200,6 +207,8 @@ static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdli
 
 int main(int argc, char **argv)
 {
+	clock_gettime(CLOCK_REALTIME, &sj_clock);
+	
 	/* 
 	 * set the default values in the configuration struct
 	 * we have only constant length char[] and booleans

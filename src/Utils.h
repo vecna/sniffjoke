@@ -74,7 +74,7 @@ extern timespec sj_clock;
 std::runtime_error sj_runtime_exception(const char *, const char *, long, const char *);
 void* memset_random(void *, size_t);
 void updateSchedule(struct timespec &, time_t, long);
-bool isSchedulePassed(const struct timespec &, const struct timespec &);
+bool isSchedulePassed(const struct timespec &);
 void sigtrap(int);
 
 #endif /* SJ_UTILS_H */

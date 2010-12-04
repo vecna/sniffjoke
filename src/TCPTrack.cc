@@ -145,63 +145,75 @@ bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength w
 void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 {
 	/* if the ttlfocus is not accessed from more than 30 seconds or the probe interval is not passed we return immediatly */
-	if((ttlfocus.access_timestamp < sj_clock.tv_sec - 30) || !isSchedulePassed(clock, ttlfocus.next_probe_time))
+	if((ttlfocus.access_timestamp < sj_clock.tv_sec - 30) || !isSchedulePassed(ttlfocus.next_probe_time))
 		return;
 
 	if (ttlfocus.sent_probe == runconfig.max_ttl_probe) {
 		ttlfocus.status = TTL_UNKNOWN;
-		return;
-	}
-
-	if(ttlfocus.status == TTL_BRUTEFORCE) {
-		++ttlfocus.sent_probe;
-		Packet * const injpkt = new Packet(ttlfocus.probe_dummy);
-		injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-		injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
-		injpkt->ip->ttl = ttlfocus.sent_probe;
-		injpkt->tcp->source = ttlfocus.puppet_port;
-		injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
-		p_queue.insert(*injpkt, PRIORITY_SEND);
-			
-		snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
-			ttlfocus.sent_probe, ttlfocus.ttl_estimate
-		);
-		
-		injpkt->selflog(__func__, injpkt->debug_buf);
-		
-		/* the bruteforce is scheduled with 50ms interval */
-		updateSchedule(ttlfocus.next_probe_time, 0, 50);
-
-	} else if (ttlfocus.status == TTL_KNOWN) {		
-		ttlfocus.selectPuppetPort();
-		
-		ttlfocus.synack_ttl = 0;
 		ttlfocus.sent_probe = 0;
 		ttlfocus.received_probe = 0;
-			
-		uint8_t pkts = 5;
-		uint8_t ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
-		ttlfocus.sent_probe += pkts;
-		while(pkts--) {
-			Packet * const injpkt = new Packet(ttlfocus.probe_dummy);
+		ttlfocus.ttl_estimate = 0xff;
+		ttlfocus.synack_ttl = 0;
+		/* retry scheduled in 10 minutes */
+		updateSchedule(ttlfocus.next_probe_time, 600, 0);
+		return;
+	}
+	
+	Packet *injpkt;
+
+	switch(ttlfocus.status) {
+		case TTL_UNKNOWN:
+			ttlfocus.status = TTL_BRUTEFORCE;
+			/* do not break, continue inside TTL_BRUTEFORCE */
+		case TTL_BRUTEFORCE:
+			++ttlfocus.sent_probe;
+			injpkt = new Packet(ttlfocus.probe_dummy);
 			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
-			injpkt->ip->ttl = ttl;
+			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
+			injpkt->ip->ttl = ttlfocus.sent_probe;
 			injpkt->tcp->source = ttlfocus.puppet_port;
-			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
+			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 			p_queue.insert(*injpkt, PRIORITY_SEND);
-			ttl++;
 				
 			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
 				ttlfocus.sent_probe, ttlfocus.ttl_estimate
 			);
-				
+			
 			injpkt->selflog(__func__, injpkt->debug_buf);
 			
-		}
+			/* the bruteforce is scheduled with 50ms interval */
+			updateSchedule(ttlfocus.next_probe_time, 0, 50000000);
+			break;
+		case TTL_KNOWN:
+			ttlfocus.selectPuppetPort();
+		
+			ttlfocus.sent_probe = 0;
+			ttlfocus.received_probe = 0;
 			
-		/* the ttl verification of a known status is scheduled with 2mins interval */
-		updateSchedule(ttlfocus.next_probe_time, 120, 0);
+			uint8_t pkts = 5;
+			uint8_t ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
+			while(pkts--) {
+				++ttlfocus.sent_probe;
+				injpkt = new Packet(ttlfocus.probe_dummy);
+				injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
+				injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
+				injpkt->ip->ttl = ttl;
+				injpkt->tcp->source = ttlfocus.puppet_port;
+				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
+				p_queue.insert(*injpkt, PRIORITY_SEND);
+				ttl++;
+					
+				snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
+					ttlfocus.sent_probe, ttlfocus.ttl_estimate
+				);
+					
+				injpkt->selflog(__func__, injpkt->debug_buf);
+				
+			}
+				
+			/* the ttl verification of a known status is scheduled with 2mins interval */
+			updateSchedule(ttlfocus.next_probe_time, 120, 0);
+			break;
 	}
 }
 
@@ -274,6 +286,10 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
 			if (ttlfocus->status != TTL_KNOWN && expired_ttl == exp_double_check) {
+				
+				snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED", ntohs(ttlfocus->puppet_port));
+				pkt.selflog(__func__, pkt.debug_buf);
+				
 				++ttlfocus->received_probe;
 
 				if (expired_ttl >= ttlfocus->ttl_estimate) {
@@ -326,31 +342,31 @@ void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
  * Due to the ttlbruteforce stage a syn + ack will scatter for ttl >= expiring, so if the received packet
  * matches the puppet port used for the current ttlbruteforce session we can discern the ttl as:
  *     
- *     unsigned char discern_ttl =  ntohl(synack.tcp->ack_seq) - ttlfocus->rand_key - 1;
+ *     unsigned char discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
  */
-bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
+bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 {
 	/* 
 	 * Here we call the find() mathod of std::map because
 	 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
 	 * to not permit an external packet to force us to activate a ttlbrouteforce session
 	 */ 
-	TTLFocusMap::iterator it = ttlfocus_map.find(synack.ip->saddr);
+	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	if (it != ttlfocus_map.end()) {
 		TTLFocus* const ttlfocus = it->second;
 
-		if (synack.tcp->dest == ttlfocus->puppet_port) {
+		if (pkt.tcp->dest == ttlfocus->puppet_port) {
 
-			snprintf(synack.debug_buf, sizeof(synack.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
-			synack.selflog(__func__, synack.debug_buf);
+			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
+			pkt.selflog(__func__, pkt.debug_buf);
 
-			uint8_t discern_ttl =  ntohl(synack.tcp->ack_seq) - ttlfocus->rand_key - 1;
+			uint8_t discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
 
 			++ttlfocus->received_probe;
 
 			if (ttlfocus->status == TTL_UNKNOWN || discern_ttl < ttlfocus->ttl_estimate) { 
 				ttlfocus->ttl_estimate = discern_ttl;
-				ttlfocus->synack_ttl = synack.ip->ttl;
+				ttlfocus->synack_ttl = pkt.ip->ttl;
 			}
 			
 			ttlfocus->status = TTL_KNOWN;
@@ -360,8 +376,8 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &synack)
 			ttlfocus->selflog(__func__, ttlfocus->debug_buf);
 
 			/* the syn+ack scattered due to our ttl probes so we can trasparently remove it */
-			p_queue.remove(synack);
-			delete &synack;			
+			p_queue.remove(pkt);
+			delete &pkt;			
 			return false;
 		}
 
@@ -733,17 +749,17 @@ Packet* TCPTrack::readpacket()
  */
 void TCPTrack::analyze_packets_queue()
 {
-	/* if all queues are empy we have nothing to do */
-	if(!p_queue.size())
-		return;	
-
-	Packet *pkt;
-
 	/* manage expired sessions and ttlfocuses every APQ_MANAGMENT_ROUTINE_TIMER seconds */
 	if(!(sj_clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
 		sex_map.manage_expired();
 		ttlfocus_map.manage_expired();
 	}
+	
+	/* if all queues are empy we have nothing to do */
+	if(!p_queue.size())
+		goto bypass_queue_analysis;	
+
+	Packet *pkt;
 
 	/*
 	 * we analyze all YOUNG packets (received from NETWORK and from TUNNEL)
@@ -802,10 +818,12 @@ void TCPTrack::analyze_packets_queue()
 			inject_hack_in_queue(*pkt);
 	}
 
+bypass_queue_analysis:
 
 	/* we need to verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN*/
 	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it) {
-		if((*it).second->status & (TTL_BRUTEFORCE | TTL_KNOWN))
+		if((*it).second->status == TTL_BRUTEFORCE || (*it).second->status == TTL_KNOWN) {
 			inject_ttlprobe_in_queue(*(*it).second);
+		}
 	}
 }

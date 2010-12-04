@@ -31,6 +31,7 @@
 
 TTLFocus::TTLFocus(const Packet &pkt) :
 	access_timestamp(0),
+	next_probe_time(sj_clock),
 	status(TTL_BRUTEFORCE),
 	rand_key(random()),
 	puppet_port(0),
@@ -55,14 +56,12 @@ TTLFocus::TTLFocus(const Packet &pkt) :
 	
 	selectPuppetPort();
 	
-	/* setting n_p_t to sj_clock we force update on next check */
-	next_probe_time = sj_clock;
-	
 	selflog(__func__, NULL);
 }
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	access_timestamp(0),
+	next_probe_time(sj_clock),
 	status(TTL_KNOWN),
 	rand_key(random()),
 	puppet_port(0),
@@ -74,11 +73,6 @@ TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
 	probe_dummy(cpy.probe_dummy, sizeof(cpy.probe_dummy))
 {
 	selectPuppetPort();	
-
-	/* setting n_p_t to sj_clock we force update on next check */
-	next_probe_time = sj_clock;
-
-	selectPuppetPort();
 
 	selflog(__func__, NULL);
 }

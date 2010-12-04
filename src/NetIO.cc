@@ -284,10 +284,10 @@ void NetIO::network_io(void)
 		clock_gettime(CLOCK_REALTIME, &sj_clock);
 
 		if(data_received) {
-			if(isSchedulePassed(sj_clock, maxcycletime_with_data_received))
+			if(isSchedulePassed(maxcycletime_with_data_received))
 				break;
 		} else {
-			if(isSchedulePassed(sj_clock, maxcycletime_with_no_data_received))
+			if(isSchedulePassed(maxcycletime_with_no_data_received))
 				break;
 		}
 			
