@@ -443,9 +443,9 @@ bool TCPTrack::analyze_keep(Packet &pkt) {
  * bad checksum FIN packet; bad checksum fake SEQ; valid reset with bad sequence number ...
  *
  */
-void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
+void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 {
-	const SessionTrack &sessiontrack = get_sessiontrack(orig_pkt);
+	const SessionTrack &sessiontrack = get_sessiontrack(origpkt);
 
 	vector<PluginTrack *> applicable_hacks;
 
@@ -453,11 +453,11 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 	for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it) {
 		PluginTrack *hppe = *it;
 		bool applicable = true;
-		applicable &= hppe->selfObj->Condition(orig_pkt);
+		applicable &= hppe->selfObj->Condition(origpkt);
 		applicable &= percentage(
 					sessiontrack.packet_number,
 					hppe->selfObj->hackFrequency,
-					runconfig.portconf[ntohs(orig_pkt.tcp->dest)]
+					runconfig.portconf[ntohs(origpkt.tcp->dest)]
 				);
 		if(applicable)
 			applicable_hacks.push_back(hppe);
@@ -471,7 +471,7 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 	{
 		PluginTrack *hppe = *it;
 
-		hppe->selfObj->createHack(orig_pkt);
+		hppe->selfObj->createHack(origpkt);
 		
 		for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it) {
 			Packet &injpkt = **hack_it;
@@ -493,7 +493,6 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 				continue;
 			}
 
-
 			/* here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
 			 * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too */
 			injpkt.mark(LOCAL, EVIL);
@@ -503,16 +502,16 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 
 			switch(injpkt.position) {
 				case ANTICIPATION:
-					p_queue.insert_before(injpkt, orig_pkt);
+					p_queue.insert_before(injpkt, origpkt);
 					break;
 				case POSTICIPATION:
-					p_queue.insert_after(injpkt, orig_pkt);
+					p_queue.insert_after(injpkt, origpkt);
 					break;
 				case ANY_POSITION:
 					if(random() % 2)
-						p_queue.insert_before(injpkt, orig_pkt);
+						p_queue.insert_before(injpkt, origpkt);
 					else
-						p_queue.insert_after(injpkt, orig_pkt);
+						p_queue.insert_after(injpkt, origpkt);
 					break;
 				case POSITIONUNASSIGNED:
 		                        debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
@@ -523,8 +522,8 @@ void TCPTrack::inject_hack_in_queue(Packet &orig_pkt)
 		hppe->selfObj->pktVector.clear();
 		
 		if(hppe->selfObj->removeOrigPkt == true) {
-			p_queue.remove(orig_pkt);
-			delete &orig_pkt;
+			p_queue.remove(origpkt);
+			delete &origpkt;
 		}
 	}
 }

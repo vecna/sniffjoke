@@ -1,42 +1,80 @@
+==================================================================
+
 SniffJoke 0.4 beta 1
 
-Requirement:
+Yes, thanks FSF, now is 2010, and SniffJoke will be used for the most
+in the 2011/2012, after the 2012 the world will be destroyed by the
+maya-curse, and sniffing will became the second problem in the list.
 
-	Linux OS with tunnel device,
-	wifi/eth default gateway supported only,
+Anyway, if you are reading this file asking to you: "HOW I WILL 
+INSTALL sniffjoke ?" ./configure && make && sudo && make install
 
-Installation (sniffjoke check for the path in your system)
+FSF is optimistic and belives that you will compile SniffJoke in
+a different system beside Linux 2.6.19, (due to the use of ppoll).
 
-	/usr/local/bin/sniffjoke
-		The binary, service and client
+If you are interested to install it on your system or to develop
+a port, you can,  we (vecna + evilaliv3) are plesed and wish that
+some people will mail to us telling something like:
 
-	/usr/local/etc/sniffjoke/plugins_enabled.txt
-		configuration file for plugins enable/disable
+ "hello sniffjoke developer, I'm a (FreeBSD|MacOSX|OpenBSD) user and 
+  developer, and I'm porting sniffjoke to my system. why don't we
+  integrate our work each other ?"
 
-	/usr/local/lib/sniffjoke/*
-		SniffJoke plugins
+and this will obviously be our answer:
 
-	/usr/local/var/sniffjoke/
-		logfile, chroot directory, unix socket, binary conf & ttl cache
+  <vecna+evilaliv3> "sure! you welcome."
 
-HOW TO INSTALL:
+==================================================================
+REQUIREMENTS:
+==================================================================
 
-./autogen.sh
-./configure
-make
-make install
+ - Linux OS (>=2.6.19) with tun kernel module;
+ - wifi/eth as default gateway (no other interface supported).
 
-KNOWLEDGE LINKs:
+==================================================================
+INSTALLATION FILES (paths may vary in your system)
+==================================================================
 
-	the file:
-		README-REALLY-NOW
-	official 0.3 page:
-		http://www.delirandom.net/sniffjoke
-	academic research:
-		http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
-	hacker's bread:
-		http://www.phrack.org/issues.html?issue=54&id=10#article
-	MacOSx ports as kernel module:
-		http://en.roolz.org/trafscrambler.html
-	Wireshark thread about Sj 0.3:
-		http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
+ /usr/local/bin/sniffjoke
+    The binary, service and client
+
+ /usr/local/etc/sniffjoke/plugins_enabled.txt
+    configuration file for plugins enable/disable
+
+ /usr/local/lib/sniffjoke/*
+    SniffJoke plugins
+
+ /usr/local/var/sniffjoke/
+    logfile, chroot directory, unix socket, binary conf & ttl cache
+
+
+==================================================================
+REFERENCE LINKS:
+==================================================================
+
+ the file:
+    README-REALLY-NOW
+
+ official 0.3 page:
+    http://www.delirandom.net/sniffjoke
+
+ academic researchs:
+    http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
+
+ hacker's bread:
+    http://www.phrack.org/issues.html?issue=54&id=10#article
+
+ MacOSx ports as kernel module:
+    http://en.roolz.org/trafscrambler.html
+
+ Wireshark thread about Sj 0.3:
+    http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
+
+==================================================================
+REFERENCE MUSIC: ( sniffjoke it's a product also of this :P )
+==================================================================
+
+Italian text only:
+http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
+http://www.youtube.com/watch?v=Hv4PchuPrGc Uochi Toki - i gesti di cattiveria
+http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica

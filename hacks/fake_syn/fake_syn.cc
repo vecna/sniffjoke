@@ -40,14 +40,13 @@ class fake_syn : public Hack
 {
 #define HACK_NAME	"Fake SYN"
 public:
-	virtual	void createHack(const Packet &orig_packet)
+	virtual	void createHack(const Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");
 
 		uint8_t pkts = 2;
-
 		while(pkts--) {
-			Packet* pkt = new Packet(orig_packet);
+			Packet* const pkt = new Packet(origpkt);
 
 			pkt->TCPPAYLOAD_resize(0);
 		  
@@ -73,25 +72,25 @@ public:
 				pkt->tcp->dest = swap;
 			}
 
-			if(pkts == 1)
+			if(pkts == 2) /* first packet */
 				pkt->position = ANTICIPATION;
-			else
+			else /* second packet */
 				pkt->position = POSTICIPATION;
 			
 			pkt->wtf = RANDOMDAMAGE;
-			
-			pkt->selflog(HACK_NAME, "Hacked packet");
 
+			pkt->selflog(HACK_NAME, "Hacked packet");
+			
 			pktVector.push_back(pkt);
 		}
 	}
 	
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin
+			origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin
 		);
 	}
 

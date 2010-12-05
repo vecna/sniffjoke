@@ -1,10 +1,10 @@
 #! /bin/sh
 
-libtoolize --ltdl --force \
+libtoolize --ltdl --copy --force\
 && aclocal \
-&& autoheader \
-&& automake --add-missing \
-&& autoconf \
+&& autoheader --force\
+&& automake --copy --add-missing --force-missing\
+&& autoconf --force \
 && exit
 
 echo "autogen.sh FAIL - check by hand"

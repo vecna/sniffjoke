@@ -4,13 +4,6 @@ Installation Instructions
 Copyright (C) 1994, 1995, 1996, 1999, 2000, 2001, 2002, 2004, 2005,
 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
 
-Yes, thanks FSF, now is 2010, and SniffJoke will be used for the most
-in the 2011/2012, after the 2012 the world will be destroyed by the
-maya-curse, and sniffing will became the second problem in the list.
-
-Anyway, if you are reading this file asking to you: "HOW I WILL 
-INSTALL sniffjoke ?" ./configure && make && sudo && make install
-
    Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright
 notice and this notice are preserved.  This file is offered as-is,
@@ -117,15 +110,6 @@ is an example:
 
 Compiling For Multiple Architectures
 ====================================
-
-Ops, FSF is optimistic and belive that you will compile SniffJoke in
-a different system beside Linux 2.6.19, (use epoll) no, you can, but 
-we (vecna + evilaliv3) wish that some people will mail to our telling:
-"hello sniffjoke developer, I'm a (FreeBSD|MacOSX|OpenBSD) user and 
-developer, and I'm developing the porting. should we integrate our 
-work each other ?"
-
-<vecna+evilaliv3> sure! you welcome.
 
    You can compile the package for more than one kind of computer at the
 same time, by placing the object files for each architecture in their
@@ -379,10 +363,3 @@ operates.
 `configure' also accepts some other, not widely useful, options.  Run
 `configure --help' for more details.
 
-Installation Music
-======================
-
-Italian text only:
-http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
-http://www.youtube.com/watch?v=Hv4PchuPrGc Uochi Toki - i gesti di cattiveria
-http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica

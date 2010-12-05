@@ -38,11 +38,11 @@ class fake_close_fin : public Hack
 {
 #define HACK_NAME	"Fake FIN"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		Packet* pkt = new Packet(orig_packet);
+		origpkt.selflog(HACK_NAME, "Original packet");
 
-		orig_packet.selflog(HACK_NAME, "Original packet");		
+		Packet* const pkt = new Packet(origpkt);
 
 		pkt->TCPPAYLOAD_resize(0);
 
@@ -55,19 +55,19 @@ public:
 		pkt->position = ANTICIPATION;
 		pkt->wtf = RANDOMDAMAGE;
 		pkt->proto = TCP;
-
+		
 		pkt->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin &&
-			orig_packet.tcp->ack
+			!origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin &&
+			origpkt.tcp->ack
 		);
 	}
 

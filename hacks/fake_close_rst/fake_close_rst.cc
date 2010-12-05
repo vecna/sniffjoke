@@ -40,11 +40,11 @@ class fake_close_rst : public Hack
 {
 #define HACK_NAME	"Fake RST"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		Packet* pkt = new Packet(orig_packet);
+		origpkt.selflog(HACK_NAME, "Original packet");
 
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		Packet* const pkt = new Packet(origpkt);
 
 		pkt->TCPPAYLOAD_resize(0);
 
@@ -61,13 +61,13 @@ public:
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin &&
-			orig_packet.tcp->ack
+			!origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin &&
+			origpkt.tcp->ack
 		);
 	}
 

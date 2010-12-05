@@ -54,14 +54,14 @@ public:
 
 	/* mandatory createHack function, works as a constructor for the hack. */
 	/* every function you need to use is in Packet.h, inside Packet & class */
-	virtual void createHack(Packet &orig_packet)
+	virtual void createHack(Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");
 
 		/* One or more hack packet can be created using new allocation, those are the
 		 * Packets * you will return to SniffJoke */
-		Packet* pkt1 = new Packet(orig_packet);
-		Packet* pkt2 = new Packet(orig_packet);
+		Packet* pkt1 = new Packet(origpkt);
+		Packet* pkt2 = new Packet(origpkt);
 
 		/* Hack can be manipolated using functions defined in Packet.h, fill the data with
 		 * random payload */
@@ -83,8 +83,7 @@ public:
 		/* we want to fill with 'A' the TCPoption and strip the previously present */
 		pkt2->TCPHDR_resize(40);
 
-		int i;
-		for(i = sizeof(struct tcphdr); i < 40; i++)
+		for(uint8_t i = sizeof(struct tcphdr); i < 40; i++)
 			(unsigned char *)&pkt2->tcp[i] = 'A';
 
 		/* Hacks options can be setted like hack position */
@@ -92,10 +91,8 @@ public:
 		/* the fake data is set to be sent BEFORE the original data. we are not
 		 * sure of arrival order, because TCP could support reordering, anyway
 		 * a Packet set in ANTICIPATION is sent before those marked as POSTICIPATION */
-		pkt2->position = ANTICIPATION;
-
-		/* the reset is sent 
-		pkt1->position = POSTICIPATION;
+		pkt1->position = ANTICIPATION;
+		pkt2->position = POSTICIPATION;
 
 		/* the reset we want expire an hop before the service */
 		pkt1->wtf = PRESCRIPTION;
@@ -111,14 +108,14 @@ public:
 		pktVector.push_back(pkt1);
 		pktVector.push_back(pkt2);
 
-		/* you should modify the orig_packet too, if required */
-		orig_packet.tcp->urg = 1;
+		/* you should modify the origpkt too, if required */
+		origpkt.tcp->urg = 1;
 	}
 
-	/* Optional condition that the orig_packet must fulfil to make this hack work */
-	virtual bool Condition(const Packet &orig_packet)
+	/* Optional conditions that the origpkt must fulfil to make this hack work */
+	virtual bool Condition(const Packet &origpkt)
 	{
-		return (orig_packet.payload != NULL);		
+		return (origpkt.payload != NULL);		
 	}
 
 	/* constructor, here hackName and HackFrequency must be defined */
@@ -139,7 +136,7 @@ extern "C"  Hack* CreateHackObject() {
 
 /*
  * Hack destructor.
- * Here can be defined cleanup operation for the hack
+ * Here can be defined cleanup operations for the hack
  *
  */
 extern "C" void DeleteHackObject(Hack *who) {
@@ -147,8 +144,8 @@ extern "C" void DeleteHackObject(Hack *who) {
 }
 
 /*
- * Hack version, every loaded plugin is checked to be explicitally written & compiled with the
- * same sniffjoke version.
+ * Hack version, every loaded plugin is checked to be expressly written and compiled with the
+ * same sniffjoke version as sniffjoke.
  */
 extern "C" const char *versionValue() {
  	return SW_VERSION;

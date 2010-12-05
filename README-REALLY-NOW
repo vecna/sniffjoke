@@ -10,18 +10,18 @@ HEADLINE:
 
 This software is a single peer sniffer obfuscator. when you start sniffjoke
 from your network privileges, the outgoing internet connections became 
-scattered with fake data - whitout interfere with your sessions - and confounding
+scattered with fake data - without interfere with your sessions - and confusing
 the sniffers in the network when their algorithms try to follow your stream.
 
 REMIND:
 
-1) sniffjoke obfuscate the passive data collection: a man in the middle using 
+1) sniffjoke obfuscates the passive data collection: a man in the middle using 
    a passive software like wireshark, dsniff, xplico, carnivore, ecc...
-   ... so DO NOT PROTECT about the data you, willing or not, send to evil third 
+   ... so DOES NOT PROTECT about the data you, willing or not, send to evil third 
    party, like a phisher, facebook or a proxy service.
-2) sniffjoke do not guarantee a protection from an uber network expert that collect
+2) sniffjoke does not guarantee a protection from an uber network expert that collects
    your data BY HANDS (if you know what's a tcp reconstruction flow, you will figure that 
-   is less expensive, for your enemy, buy a whore payed for drug you), sniffjoke 
+   is less expensive, for your enemy, to buy a whore payed for drug you), sniffjoke 
    if effective defense from a massive data collection, a threat well solved by
    cryptography but the lack of security culture in "the others" require some single
    peer solution.
@@ -41,7 +41,7 @@ FEW TECHNICAL INFO:
 1) If you start SniffJoke without the configuration parameter sniffjoke will initialize
    a new one, 
    If that file does not exist SniffJoke will initialize it with default setting
-   or settings provided in command line arguments.
+   or settings provided as command line arguments.
 2) SniffJoke is a software that mangles kernel traffic in userspace. To satisfy
    this condition it requires some weird hack, like creation of a
    fake-tunnel interface and use of the same local IP address. SniffJoke tries
@@ -49,7 +49,7 @@ FEW TECHNICAL INFO:
 3) There are some KNOW BUGS, like duplicated ICMP REPLY when using ping with
    sniffjoke running.
 4) Sniffjoke executes some commands on your box. the code is open, you should detect
-   how the command line are created grepping for the system() functions, in the 
+   how the command line are created grepping for the popen() functions, in the 
    sniffjoke website you should find an exaustive documentation about how does Sj work.
 5) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
    and keep track about your ports setting. restaring Sniffjoke resume previously 

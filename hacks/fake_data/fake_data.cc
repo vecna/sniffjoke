@@ -45,14 +45,14 @@ class fake_data : public Hack
 {
 #define HACK_NAME "Fake DATA"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");	
 
 		uint8_t pkts = 2;
-		
 		while(pkts--) {
-			Packet* pkt = new Packet(orig_packet);
+			Packet* const pkt = new Packet(origpkt);
+
 			pkt->TCPPAYLOAD_fillrandom();
 
 			pkt->tcp->rst = 0;
@@ -63,9 +63,9 @@ public:
 			else
 				pkt->tcp->psh = 0;
 			
-			if(pkts == 1)
+			if(pkts == 2) /* first packet */
 				pkt->position = ANTICIPATION;
-			else
+			else /* second packet */
 				pkt->position = POSTICIPATION;
 
 			pkt->wtf = RANDOMDAMAGE;
@@ -76,11 +76,11 @@ public:
 		}
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			orig_packet.payload != NULL
+			!origpkt.tcp->syn &&
+			origpkt.payload != NULL
 		);
 	}
 

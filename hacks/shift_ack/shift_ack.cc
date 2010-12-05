@@ -43,11 +43,11 @@ class shift_ack : public Hack
 {
 #define HACK_NAME	"unexpected ACK shift"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");
 
-		Packet* pkt = new Packet(orig_packet);
+		Packet* const pkt = new Packet(origpkt);
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) + 65535);
@@ -60,13 +60,13 @@ public:
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin &&
-			orig_packet.tcp->ack
+			!origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin &&
+			origpkt.tcp->ack
 		);
 	}
 

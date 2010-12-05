@@ -39,11 +39,11 @@ class fake_zero_window : public Hack
 {
 #define HACK_NAME	"Fake 0-WINDOW"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");		
 
-		Packet* pkt = new Packet(orig_packet);
+		Packet* const pkt = new Packet(origpkt);
 
 		pkt->TCPPAYLOAD_resize(0);
 
@@ -58,12 +58,12 @@ public:
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin
+			!origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin
 		);
 	}
 

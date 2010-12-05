@@ -42,11 +42,11 @@ class valid_rst_fake_seq : public Hack
 {
 #define HACK_NAME	"true RST w/ invalid SEQ"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");
 
-		Packet* pkt = new Packet(orig_packet);
+		Packet* const pkt = new Packet(origpkt);
 
 		pkt->TCPPAYLOAD_resize(0);
 
@@ -54,7 +54,7 @@ public:
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
 		pkt->tcp->window = htons((uint16_t)(-1));
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
-		pkt->tcp->psh;
+		pkt->tcp->psh = 0;
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = INNOCENT;
@@ -64,13 +64,13 @@ public:
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin &&
-			orig_packet.tcp->ack
+			!origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin &&
+			origpkt.tcp->ack
 		);
 	}
 

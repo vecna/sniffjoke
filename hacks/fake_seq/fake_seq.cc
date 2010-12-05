@@ -40,20 +40,20 @@ class fake_seq : public Hack
 {
 #define HACK_NAME	"Fake SEQ"
 public:
-	virtual void createHack(const Packet &orig_packet)
+	virtual void createHack(const Packet &origpkt)
 	{
-		orig_packet.selflog(HACK_NAME, "Original packet");
+		origpkt.selflog(HACK_NAME, "Original packet");
 
-		Packet* pkt = new Packet(orig_packet);
+		Packet* const pkt = new Packet(origpkt);
 
-		int diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
+		uint16_t diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
 		
 		if(diff > 200) {
 			diff = random() % 200;
 			pkt->TCPPAYLOAD_resize(diff);
 		}	
 		
-		int what = (random() % 3);
+		uint8_t what = (random() % 3);
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 
@@ -73,19 +73,19 @@ public:
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = RANDOMDAMAGE;
-
+		
 		pkt->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &orig_packet)
+	virtual bool Condition(const Packet &origpkt)
 	{
 		return (
-			!orig_packet.tcp->syn &&
-			!orig_packet.tcp->rst &&
-			!orig_packet.tcp->fin &&
-			orig_packet.payload != NULL
+			!origpkt.tcp->syn &&
+			!origpkt.tcp->rst &&
+			!origpkt.tcp->fin &&
+			origpkt.payload != NULL
 		);
 	}
 
