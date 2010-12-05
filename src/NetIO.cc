@@ -260,14 +260,37 @@ void NetIO::network_io(void)
 						ret = recv(netfd, pktbuf, MTU, 0);
 					}
 
-					if ((ret == -1)) {
+					if (ret == -1) {
+						/* 
+						 * on single thread applications after a poll a write returns
+						 * -1 only on error's case.
+						 */
 						debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
 							i == 0 ? "tunnel" : "network", strerror(errno));
 						SJ_RUNTIME_EXCEPTION(strerror(errno));
 					}
 
-					if(runconfig.active == true)
-						conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, ret);
+					if(runconfig.active == true) {
+						conntrack->writepacket(i == 0 ? TUNNEL : NETWORK, pktbuf, ret);
+					} else {
+						/*
+						 * sniffjoke it's disabled? we make a blocking write.
+						 * this could be a drawback but this is not in our interest
+						 */
+						if(i == 0) {
+							int flags = fcntl(netfd, F_GETFL);
+							flags &= ~O_NONBLOCK;
+							fcntl(netfd, F_SETFL, flags);
+							sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+							fcntl(netfd, F_SETFL, O_NONBLOCK);
+						} else {
+							int flags = fcntl(tunfd, F_GETFL);
+							flags &= ~O_NONBLOCK;
+							fcntl(tunfd, F_SETFL, flags);
+							ret = write(tunfd, pktbuf, ret);
+							fcntl(tunfd, F_SETFL, O_NONBLOCK);
+						}
+					}
 				}
 			}
 			
@@ -317,12 +340,19 @@ void NetIO::queue_flush(void)
 				
 					ssize_t ret;
 				
-					if(i == 0) /* it's possibile to write in tunfd */
+					if(i == 0) {
+						/* it's possibile to write in tunfd */
 						ret = write(tunfd, (void*)&(pkt_net->pbuf[0]), pkt_net->pbuf.size());
-					else /* it's possibile to write in netfd */
+					} else {
+						/* it's possibile to write in netfd */
 						ret = sendto(netfd, (void*)&(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+					}
 					
-					if ((ret == -1)) {
+					if (ret == -1) {
+						/* 
+						 * on single thread applications after a poll a write returns
+						 * -1 only on error's case.
+						 */
 						debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
 							i == 0 ? "tunnel" : "network", strerror(errno));
 						SJ_RUNTIME_EXCEPTION(strerror(errno));

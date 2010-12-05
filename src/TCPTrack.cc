@@ -351,10 +351,11 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 	 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
 	 * to not permit an external packet to force us to activate a ttlbrouteforce session
 	 */ 
+
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	if (it != ttlfocus_map.end()) {
 		TTLFocus* const ttlfocus = it->second;
-
+		
 		if (pkt.tcp->dest == ttlfocus->puppet_port) {
 
 			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
@@ -686,7 +687,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
 		
 	} catch (exception &e) {
 		/* anomalous/malformed packets are flushed bypassing the queue */
-		debug.log(ALL_LEVEL, "malformed iriginal packet dropped: %s", e.what());
+		debug.log(ALL_LEVEL, "malformed original packet dropped: %s", e.what());
 	}
 }
 
@@ -697,12 +698,19 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
  * This is possibile for example for hack packet thtat for some reasons
  * fails in application.
  */
-Packet* TCPTrack::readpacket(source_t source)
+Packet* TCPTrack::readpacket(source_t destsource)
 {
+	uint8_t mask;
+	if(destsource == NETWORK)
+		mask = NETWORK;  
+	else
+		mask = TUNNEL | LOCAL | TTLBFORCE;
+		
+	
 	Packet *pkt;
 	p_queue.select(PRIORITY_SEND);
 	while ((pkt = p_queue.get()) != NULL) {
-		if(pkt->source == source) {
+		if(pkt->source & mask) {
 			p_queue.remove(*pkt);
 			if(!last_pkt_fix(*pkt))
 				delete pkt;
@@ -714,7 +722,7 @@ Packet* TCPTrack::readpacket(source_t source)
 
 	p_queue.select(SEND);
 	while ((pkt = p_queue.get()) != NULL) {
-		if(pkt->source == source) {
+		if(pkt->source & mask) {
 			p_queue.remove(*pkt);
 			if(!last_pkt_fix(*pkt))
 				delete pkt;
