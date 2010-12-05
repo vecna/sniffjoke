@@ -28,6 +28,9 @@
 #include <grp.h>
 #include <pwd.h>
 #include <wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 /* startup of the process */
 Process::Process(const struct sj_config &runcfg) :
