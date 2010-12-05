@@ -1,6 +1,6 @@
 #! /bin/sh
 
-libtoolize --automake --ltdl --copy --force\
+libtoolize --automake --copy --force\
 && aclocal \
 && autoheader --force\
 && automake --copy --add-missing --force-missing\
