@@ -626,7 +626,7 @@ bool HDRoptions::randomInjector(void)
 		optptr += injectetdopt_size;
 		actual_opts_len += injectetdopt_size;
 		available_opts_len = (target_opts_len - actual_opts_len);
-		debug.log(DEBUG_LEVEL, "Injected %sOPT %s size %u previous len %u actual %u", 
+		debug.log(PACKETS_DEBUG, "Injected %sOPT %s size %u previous len %u actual %u", 
 			type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_opts_len);
 		
 		return true;
