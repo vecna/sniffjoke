@@ -266,21 +266,26 @@ void NetIO::network_io(void)
 							SJ_RUNTIME_EXCEPTION(strerror(errno));
 						}
 					}
-					
-					if(!((runconfig.active == true) && (conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, ret)))) {
-						/* on insuccess (malformed pkt) bypass the connection tracking queue */
-						if(i)
-							ret = write(tunfd, pktbuf, ret);
-						else
-							ret = sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 
-						if ((ret == -1)) {
-							if((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-								continue;
+					uint16_t size = ret;
+					if(!((runconfig.active == true) && (conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, size)))) {
+						while(1) {
+							/* on insuccess (malformed pkt) bypass the connection tracking queue */
+							if(i)
+								ret = write(tunfd, pktbuf, size);
+							else
+								ret = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+
+							if (ret == size) {
+								break;
 							} else {
-								debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
-									i ? "tunnel" : "network", strerror(errno));
-								SJ_RUNTIME_EXCEPTION(strerror(errno));
+								if ((ret == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+									continue;
+								} else {
+									debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
+										i ? "tunnel" : "network", strerror(errno));
+									SJ_RUNTIME_EXCEPTION(strerror(errno));
+								}
 							}
 						}
 					}
@@ -322,13 +327,16 @@ void NetIO::queue_flush(void)
 			else
 				ret = sendto(netfd, (void*)&(pkt->pbuf[0]), size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 
-			if (ret != size) {
-				if ((ret == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
-					continue;
-				else
-					SJ_RUNTIME_EXCEPTION(strerror(errno));
-			} else {
+			if (ret == size) {
 				break;
+			} else {
+				if ((ret == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+					continue;
+				} else {
+					debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
+						pkt->source == NETWORK ? "tunnel" : "network", strerror(errno));
+					SJ_RUNTIME_EXCEPTION(strerror(errno));
+				}
 			}
 		}
 		
