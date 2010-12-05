@@ -298,7 +298,7 @@ void SniffJoke::send_command(const char *cmdstring, char serveraddr[MEDIUMBUF], 
 		SJ_RUNTIME_EXCEPTION("");
 
 	if (rlen == 0)
-		debug.log(ALL_LEVEL, "unreceived response for the command [%s]", cmdstring);
+		debug.log(ALL_LEVEL, "invalid command [%s] produce no answer. Verify with sniffjoke --help", cmdstring);
 	else	/* the output */ 
 		printf("<SniffJoke service>: %s", received_buf);
 	

@@ -189,8 +189,7 @@ static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdli
 				}
 				while(--(ptr->related_args)) {
 					usedlen = strlen(retcmd);
-					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[i]);
-					++i;
+					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[++i]);
 				}
 				return true;
 			}

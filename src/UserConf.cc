@@ -407,6 +407,7 @@ char *UserConf::handle_cmd(const char *cmd)
 		debug.log(ALL_LEVEL, "wrong command %s", cmd);
 	}
 	
+	debug.log(ALL_LEVEL, "handled command (%s): answer %d bytes length", cmd, strlen(io_buf) );
 	return &io_buf[0];
 
 handle_set_error:
@@ -422,11 +423,9 @@ void UserConf::handle_cmd_start()
 {
 	if (runconfig.active != true) {
 		snprintf(io_buf, sizeof(io_buf), "started sniffjoke as requested!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
 		runconfig.active = true;
 	} else /* sniffjoke is already runconfig */ {
 		snprintf(io_buf, sizeof(io_buf), "received start request, but sniffjoke is already running!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
 	}
 }
 
@@ -434,18 +433,15 @@ void UserConf::handle_cmd_stop()
 {
 	if (runconfig.active != false) {
 		snprintf(io_buf, sizeof(io_buf), "stopped sniffjoke as requested!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
 		runconfig.active = false;
 	} else /* sniffjoke is already stopped */ {
 		snprintf(io_buf, sizeof(io_buf), "received stop request, but sniffjoke is already stopped!\n");
-		debug.log(VERBOSE_LEVEL, "%s", io_buf);
 	}
 }
 
 void UserConf::handle_cmd_quit()
 {
 	alive = false;
-	debug.log(VERBOSE_LEVEL, "quit command requested: dumping configuration");
 	snprintf(io_buf, sizeof(io_buf), "dumped configuration, starting shutdown\n");
 }
 
@@ -457,7 +453,6 @@ void UserConf::handle_cmd_saveconf()
 
 void UserConf::handle_cmd_stat(void) 
 {
-	debug.log(VERBOSE_LEVEL, "stat command requested");
 	snprintf(io_buf, sizeof(io_buf), 
 		"\nsniffjoke status:\t\t%s\n" \
 		"gateway mac address:\t\t%s\n" \
@@ -532,8 +527,7 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 			return;
 	}
 
-	snprintf(io_buf, sizeof(io_buf), "set ports from %d to %d at [%s] level\n", start, end, what_weightness);
-	debug.log(ALL_LEVEL, "%s", io_buf);
+	snprintf(io_buf, sizeof(io_buf), "set TCP ports from %d to %d at [%s] level\n", start, end, what_weightness);
 
 	if(end == PORTNUMBER) {
 		runconfig.portconf[PORTNUMBER -1] = what;
@@ -541,8 +535,7 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 	}
 
 	do {
-		runconfig.portconf[start] = what;
-		--start;
+		runconfig.portconf[start++] = what;
 	} while (start <= end);
 }
 

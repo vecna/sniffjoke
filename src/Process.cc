@@ -227,7 +227,7 @@ void Process::unlinkPidfile(void)
 	FILE *pidFile = fopen(SJ_PIDFILE, "r");
 
 	if (pidFile == NULL) {
-		debug.log(ALL_LEVEL, "%s: not fatal error: unlink of %s impossibile: %s", __func__, SJ_PIDFILE, strerror(errno));
+		debug.log(DEBUG_LEVEL, "%s: unlink of %s: %s", __func__, SJ_PIDFILE, strerror(errno));
 		return;
 	}
 
@@ -236,7 +236,7 @@ void Process::unlinkPidfile(void)
 		debug.log(VERBOSE_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
                 SJ_RUNTIME_EXCEPTION("");
 	}
-	debug.log(DEBUG_LEVEL, "process %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
+	debug.log(DEBUG_LEVEL, "%s: pid %d unlink pidfile %s", __func__, getpid(), SJ_PIDFILE);
 }
 
 

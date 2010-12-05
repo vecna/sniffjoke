@@ -31,7 +31,7 @@
 #include "config.h"
 
 #define SW_NAME                         "SniffJoke"
-#define SW_VERSION                      "0.4-pre1"
+#define SW_VERSION                      "0.4-beta1"
 
 /* Sniffjoke defaults config values */
 #define DROP_USER                       "sniffjoke"
