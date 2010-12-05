@@ -69,8 +69,8 @@ public:
 	TCPTrack(const sj_config &, HackPool &);
 	~TCPTrack(void);
 
-	bool writepacket(const source_t, const unsigned char *, int);
-	Packet* readpacket(void);
+	void writepacket(source_t, const unsigned char *, int);
+	Packet* readpacket(source_t);
 	void analyze_packets_queue();
 	void force_send(void);
 };

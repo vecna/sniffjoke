@@ -74,7 +74,7 @@ public:
 	source_t source;
 	judge_t wtf;
 	proto_t proto;
-	position_t position;	
+	position_t position;
 
 	vector<unsigned char> pbuf;
 

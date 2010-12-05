@@ -669,9 +669,9 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 }
 
 /* the packet is add in the packet queue for be analyzed in a second time */
-bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int nbyte)
+void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte)
 {
-		try {
+	try {
 		Packet* const pkt = new Packet(buff, nbyte);
 		pkt->mark(source, INNOCENT, GOOD);
 	
@@ -682,14 +682,11 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
 		* forged packet are sent before the originals one.
 		*/
 		
-		p_queue.insert(*pkt, YOUNG);
-	
-		return true;
+		p_queue.insert(*pkt, YOUNG);	
 		
 	} catch (exception &e) {
 		/* anomalous/malformed packets are flushed bypassing the queue */
-		debug.log(ALL_LEVEL, e.what());
-		return false;
+		debug.log(ALL_LEVEL, "malformed iriginal packet dropped: %s", e.what());
 	}
 }
 
@@ -700,26 +697,31 @@ bool TCPTrack::writepacket(const source_t source, const unsigned char *buff, int
  * This is possibile for example for hack packet thtat for some reasons
  * fails in application.
  */
-Packet* TCPTrack::readpacket()
+Packet* TCPTrack::readpacket(source_t source)
 {
 	Packet *pkt;
 	p_queue.select(PRIORITY_SEND);
 	while ((pkt = p_queue.get()) != NULL) {
-		p_queue.remove(*pkt);
-		if(!last_pkt_fix(*pkt))
-			delete pkt;
-		else
-			return pkt;
+		if(pkt->source == source) {
+			p_queue.remove(*pkt);
+			if(!last_pkt_fix(*pkt))
+				delete pkt;
+			else
+				return pkt;
+		}
 		
 	}
 
 	p_queue.select(SEND);
 	while ((pkt = p_queue.get()) != NULL) {
-		p_queue.remove(*pkt);
-		if(!last_pkt_fix(*pkt))
-			delete pkt;
-		else
-			return pkt;
+		if(pkt->source == source) {
+			p_queue.remove(*pkt);
+			if(!last_pkt_fix(*pkt))
+				delete pkt;
+			else
+				return pkt;
+		}
+		
 	}
 
 	return NULL;

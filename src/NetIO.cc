@@ -167,9 +167,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	}
 
 	fds[0].fd = tunfd;
-	fds[0].events = POLLIN;
 	fds[1].fd = netfd;
-	fds[1].events = POLLIN;
 }
 
 NetIO::~NetIO(void) 
@@ -232,14 +230,16 @@ void NetIO::network_io(void)
 	updateSchedule(maxcycletime_with_no_data_received, 0, 5000000);
 
 	while (1)
-	{	
+	{
 		struct timespec polltimeout;
 		polltimeout.tv_sec = 0;
 		polltimeout.tv_nsec = 500000;
+		fds[0].events = POLLIN;
+		fds[1].events = POLLIN;
 		nfds = ppoll(fds, 2, &polltimeout, NULL);
 		if (nfds <= 0) {
 			if (nfds == -1) {
-	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in poll: %s", strerror(errno));
+	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in ppoll: %s", strerror(errno));
 				SJ_RUNTIME_EXCEPTION("");
 			}
 		} else {
@@ -248,47 +248,26 @@ void NetIO::network_io(void)
 
 			for(uint8_t i = 0; i < 2; ++i) { 
 
-				ssize_t ret;
-			
 				if (fds[i].revents) { /* POLLIN is the unique event managed */
-				
-					if(i)
-						ret = recv(netfd, pktbuf, MTU, 0);
-					else
+
+					ssize_t ret;
+
+					if(i == 0) {
+						/* it's possibile to read from tunfd */
 						ret = read(tunfd, pktbuf, MTU_FAKE);
-					
+					} else {
+						/* it's possible to read from netfd */
+						ret = recv(netfd, pktbuf, MTU, 0);
+					}
+
 					if ((ret == -1)) {
-						if((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-							continue;
-						} else {
-							debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
-								i ? "network" : "tunnel", strerror(errno));
-							SJ_RUNTIME_EXCEPTION(strerror(errno));
-						}
+						debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
+							i == 0 ? "tunnel" : "network", strerror(errno));
+						SJ_RUNTIME_EXCEPTION(strerror(errno));
 					}
 
-					uint16_t size = ret;
-					if(!((runconfig.active == true) && (conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, size)))) {
-						while(1) {
-							/* on insuccess (malformed pkt) bypass the connection tracking queue */
-							if(i)
-								ret = write(tunfd, pktbuf, size);
-							else
-								ret = sendto(netfd, pktbuf, size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
-
-							if (ret == size) {
-								break;
-							} else {
-								if ((ret == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-									continue;
-								} else {
-									debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
-										i ? "tunnel" : "network", strerror(errno));
-									SJ_RUNTIME_EXCEPTION(strerror(errno));
-								}
-							}
-						}
-					}
+					if(runconfig.active == true)
+						conntrack->writepacket(i ? NETWORK : TUNNEL, pktbuf, ret);
 				}
 			}
 			
@@ -317,29 +296,50 @@ void NetIO::queue_flush(void)
 	 * the other source_t could be LOCAL or TUNNEL;
 	 * in both case the packets goes through the network.
 	 */
-	Packet *pkt;
-	while ((pkt = conntrack->readpacket()) != NULL) {
-		uint16_t size = pkt->pbuf.size();
-		while(1) {
-			ssize_t ret;
-			if (pkt->source == NETWORK)
-				ret = write(tunfd, (void*)&(pkt->pbuf[0]), size);
-			else
-				ret = sendto(netfd, (void*)&(pkt->pbuf[0]), size, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+	Packet *pkt_tun = conntrack->readpacket(TUNNEL);
+	Packet *pkt_net = conntrack->readpacket(NETWORK);
+	while ((pkt_tun != NULL || pkt_net != NULL)) {
+		
+		fds[0].events = (pkt_net != NULL) ? POLLOUT : 0;
+		fds[1].events = (pkt_tun != NULL) ? POLLOUT : 0;
 
-			if (ret == size) {
-				break;
-			} else {
-				if ((ret == -1) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-					continue;
-				} else {
-					debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
-						pkt->source == NETWORK ? "tunnel" : "network", strerror(errno));
-					SJ_RUNTIME_EXCEPTION(strerror(errno));
+		nfds = poll(fds, 2, 0);
+		if (nfds <= 0) {
+			if (nfds == -1) {
+	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in poll: %s", strerror(errno));
+				SJ_RUNTIME_EXCEPTION("");
+			}
+		} else {
+		
+			for(uint8_t i = 0; i < 2; ++i) {
+				
+				if (fds[i].revents) { /* POLLOUT is the unique event managed */
+				
+					ssize_t ret;
+				
+					if(i == 0) /* it's possibile to write in tunfd */
+						ret = write(tunfd, (void*)&(pkt_net->pbuf[0]), pkt_net->pbuf.size());
+					else /* it's possibile to write in netfd */
+						ret = sendto(netfd, (void*)&(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+					
+					if ((ret == -1)) {
+						debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
+							i == 0 ? "tunnel" : "network", strerror(errno));
+						SJ_RUNTIME_EXCEPTION(strerror(errno));
+					}
+					
+					if(i == 0) {
+						/* corretly written in tunfd */
+						delete pkt_net;
+						pkt_net = conntrack->readpacket(NETWORK);
+					} else {
+						/* correctly written in netfd */
+						delete pkt_tun;
+						pkt_tun = conntrack->readpacket(TUNNEL);
+					}
 				}
 			}
+			
 		}
-		
-		delete pkt;
 	}
 }

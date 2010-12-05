@@ -64,6 +64,7 @@ AC_CHECK_HEADERS(ctime,,exit 1)
 AC_CHECK_HEADERS(cctype,,exit 1)
 AC_CHECK_HEADERS(map,,exit 1)
 AC_CHECK_HEADERS(memory,,exit 1)
+AC_CHECK_HEADERS(sstream,,exit 1)
 AC_CHECK_HEADERS(stdexcept,,exit 1)
 AC_CHECK_HEADERS(vector,,exit 1)
 AC_CHECK_HEADERS(dlfcn.h,,exit 1)
@@ -73,6 +74,7 @@ AC_CHECK_HEADERS(grp.h,,exit 1)
 AC_CHECK_HEADERS(poll.h,,exit 1)
 AC_CHECK_HEADERS(pwd.h,,exit 1)
 AC_CHECK_HEADERS(stdint.h,,exit 1)
+AC_CHECK_HEADERS(string.h,,exit 1)
 AC_CHECK_HEADERS(unistd.h,,exit 1)
 AC_CHECK_HEADERS(wait.h,,exit 1)
 AC_CHECK_HEADERS(arpa/inet.h,,exit 1)
@@ -84,8 +86,10 @@ AC_CHECK_HEADERS(netinet/ip_icmp.h,,exit 1)
 AC_CHECK_HEADERS(netinet/tcp.h,,exit 1)
 AC_CHECK_HEADERS(netpacket/packet.h,,exit 1)
 AC_CHECK_HEADERS(sys/ioctl.h,,exit 1)
+AC_CHECK_HEADERS(sys/param.h,,exit 1)
 AC_CHECK_HEADERS(sys/poll.h,,exit 1)
 AC_CHECK_HEADERS(sys/stat.h,,exit 1)
+AC_CHECK_HEADERS(sys/types.h,,exit 1)
 AC_CHECK_HEADERS(sys/un.h,,exit 1)
 
 AC_CONFIG_FILES( Makefile
@@ -101,7 +105,7 @@ AC_CONFIG_FILES( Makefile
                  hacks/valid_rst_fake_seq/Makefile)
 
 
-CFLAGS="-O3 -ansi -pedantic -Wall"
+CFLAGS="-g" #-O3 -ansi -pedantic -Wall"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT
