@@ -1,8 +1,10 @@
-SniffJoke 0.4 - 2010
+SniffJoke 0.4 BETA 1 - 4 December 2010
 
 developed by vecna and evilaliv3
 
-homepage: http://www.delirandom.net/sniffjoke
+OLD homepage: http://www.delirandom.net/sniffjoke
+developing 0.4 beta: http://github.com/vecna/sniffjoke
+developing 0.4 beta: http://github.com/evilaliv3/sniffjoke
 
 HEADLINE:
 
@@ -47,11 +49,21 @@ FEW TECHNICAL INFO:
 3) There are some KNOW BUGS, like duplicated ICMP REPLY when using ping with
    sniffjoke running.
 4) Sniffjoke executes some commands on your box. the code is open, you should detect
-   how the command line are created grepping for the system() functions, or 
-   read the sniffjoke algorithm and commands in:
-   http://www.delirandom.net/sniffjoke/network_commands
+   how the command line are created grepping for the system() functions, in the 
+   sniffjoke website you should find an exaustive documentation about how does Sj work.
 5) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
-   and keep track about your ports setting
+   and keep track about your ports setting. restaring Sniffjoke resume previously 
+   configuration.
+6) the TTL cache is tracked differenty for each network environment you use
 
-Feel free to contribute in the code: GIT= http://github.com/vecna/sniffjoke
-Feel free to contribute in the wiki: http://www.delirandom.net/sniffjoke
+DOCUMENTATION IN WRITING, will be found in doc/* directory
+
+
+
+			WE SUPPORT WIKILEAKS, as everyone should do
+			WE SUPPORT WIKILEAKS, as everyone should do
+			WE SUPPORT WIKILEAKS, as everyone should do
+			WE SUPPORT WIKILEAKS, as everyone should do
+
+Wikileaks is currently under heavy attack. We need your help http://46.59.1.2/mass-mirror.html 
+list of Wikileaks mirrors: http://www.twitlonger.com/show/79s9r1
