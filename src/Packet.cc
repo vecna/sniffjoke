@@ -99,30 +99,30 @@ void Packet::updatePacketMetadata()
 
 	/* start ip update */
 	if(pktlen < sizeof(struct iphdr))
-		SJ_RUNTIME_EXCEPTION("");
+		SJ_RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
 
 	ip = (struct iphdr *)&(pbuf[0]);
 	iphdrlen = ip->ihl * 4;
 
 	if(pktlen < iphdrlen)
-		SJ_RUNTIME_EXCEPTION("");
+		SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen");
 	
 	if(pktlen < ntohs(ip->tot_len))
-		SJ_RUNTIME_EXCEPTION("");
+		SJ_RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
 	/* end ip update */
 	
 	switch(ip->protocol) {
 		case IPPROTO_TCP:
 			/* start tcp update */
 			if(pktlen < iphdrlen + sizeof(struct tcphdr))
-				SJ_RUNTIME_EXCEPTION("");
+				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
 			proto = TCP;
 			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
 			tcphdrlen = tcp->doff * 4;
 			
 			if(pktlen < iphdrlen + tcphdrlen)
-				SJ_RUNTIME_EXCEPTION("");
+				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
 
 			datalen = pktlen - iphdrlen - tcphdrlen;
 			if(datalen)
@@ -132,7 +132,7 @@ void Packet::updatePacketMetadata()
 		case IPPROTO_ICMP: 
 			/* start icmp update */
 			if(pktlen < iphdrlen + sizeof(struct icmphdr))
-				SJ_RUNTIME_EXCEPTION("");
+				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
 			proto = ICMP;
 			icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);

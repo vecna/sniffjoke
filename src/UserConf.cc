@@ -425,7 +425,7 @@ void UserConf::handle_cmd_start()
 		debug.log(VERBOSE_LEVEL, "%s", io_buf);
 		runconfig.active = true;
 	} else /* sniffjoke is already runconfig */ {
-		snprintf(io_buf, sizeof(io_buf), "received start request, but sniffjoke is already runconfig!\n");
+		snprintf(io_buf, sizeof(io_buf), "received start request, but sniffjoke is already running!\n");
 		debug.log(VERBOSE_LEVEL, "%s", io_buf);
 	}
 }
