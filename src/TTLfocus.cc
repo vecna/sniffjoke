@@ -60,7 +60,7 @@ TTLFocus::TTLFocus(const Packet &pkt) :
 }
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
-	access_timestamp(0),
+	access_timestamp(cpy.access_timestamp),
 	next_probe_time(sj_clock),
 	status(TTL_KNOWN),
 	rand_key(random()),
@@ -124,6 +124,26 @@ TTLFocusMap::~TTLFocusMap() {
 		erase(it++);
 	}
 }
+
+/* return a ttlfocus given a packet; return a new ttlfocus if no one exists */
+TTLFocus& TTLFocusMap::get_ttlfocus(const Packet &pkt)
+{
+	TTLFocus *ttlfocus;
+	
+	/* check if the key it's already present */
+	TTLFocusMap::iterator it = find(pkt.ip->daddr);
+	if(it != end()) /* on hit: return the ttlfocus object. */
+		ttlfocus = it->second;
+	else { /* on miss: create a new ttlfocus and insert it into the map */
+		TTLFocus * const newttlfocus = new TTLFocus(pkt);
+		ttlfocus = insert(pair<const uint32_t, TTLFocus*>(pkt.ip->daddr, newttlfocus)).first->second;
+	}
+	
+	/* update access timestamp using global clock */
+	ttlfocus->access_timestamp = sj_clock.tv_sec;
+	return *ttlfocus;
+}
+
 
 /* cycles on map and delete expired records */
 void TTLFocusMap::manage_expired()
@@ -192,6 +212,9 @@ void TTLFocusMap::dump(const char* dumpfile)
 		if(tmp->status != TTL_KNOWN)
 			continue;
 
+
+		cache_record.access_timestamp = tmp->access_timestamp;
+		cache_record.daddr = tmp->daddr;
 		cache_record.daddr = tmp->daddr;
 		cache_record.ttl_estimate = tmp->ttl_estimate;
 		cache_record.synack_ttl = tmp->synack_ttl;

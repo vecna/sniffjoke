@@ -36,6 +36,8 @@
 
 using namespace std;
 
+#define NSEC_PER_SEC 1000000000
+
 Debug debug;
 
 timespec sj_clock;
@@ -143,9 +145,39 @@ void* memset_random(void *s, size_t n)
 	return s;
 }
 
+timespec remainTime(struct timespec &schedule)
+{
+	timespec remain;
+	if(sj_clock.tv_sec > schedule.tv_sec) {
+		remain.tv_sec = 0;
+		remain.tv_nsec = 0;
+	} else if(sj_clock.tv_sec == schedule.tv_sec) {
+		remain.tv_sec = 0;
+		if(sj_clock.tv_nsec >= schedule.tv_nsec) {
+			remain.tv_nsec = 0;
+		} else {
+			remain.tv_nsec = schedule.tv_nsec - sj_clock.tv_nsec;
+		}
+	} else {
+		remain.tv_sec = schedule.tv_sec - sj_clock.tv_sec;
+		if(sj_clock.tv_nsec >= schedule.tv_nsec) {
+			if(remain.tv_sec > 1) {
+				remain.tv_sec -= 1;
+				remain.tv_nsec = NSEC_PER_SEC - (sj_clock.tv_nsec - schedule.tv_nsec);
+			} else {
+				remain.tv_sec = 0;
+				remain.tv_nsec = 0;
+			}
+		} else {
+			remain.tv_nsec = schedule.tv_nsec - sj_clock.tv_nsec;
+		}
+	}
+	
+	return remain;
+}
+
 void updateSchedule(struct timespec &schedule, time_t sec, long ns)
 {
-#define NSEC_PER_SEC 1000000000
 	schedule.tv_sec += sec;
 	if(ns) {
 		uint32_t temp = schedule.tv_nsec + ns;

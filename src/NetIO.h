@@ -53,6 +53,9 @@ private:
 
 	unsigned char pktbuf[MTU];
 	int size;
+	
+	struct timespec polltimeout_on_data;
+	struct timespec closest_schedule;
 
 public:
 

@@ -82,6 +82,30 @@ SessionTrackMap::~SessionTrackMap() {
 	}
 }
 
+/* return a sessiontrack given a packet; return a new sessiontrack if no one exists */
+SessionTrack& SessionTrackMap::get_sessiontrack(const Packet &pkt)
+{
+	SessionTrack *sessiontrack;
+	
+	/* create map key */
+	const SessionTrackKey key = { pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest };
+	
+	/* check if the key it's already present */
+	SessionTrackMap::iterator it = find(key);
+	if(it != end()) /* on hit: return the sessiontrack object. */
+		sessiontrack = it->second;
+	else { /* on miss: create a new sessiontrack and insert it into the map */
+		SessionTrack * const newsession = new SessionTrack(pkt);
+		sessiontrack = insert(pair<const SessionTrackKey, SessionTrack*>(key, newsession)).first->second;
+	}
+		
+	/* update access timestamp using global clock */
+	sessiontrack->access_timestamp = sj_clock.tv_sec;
+
+	return *sessiontrack;
+}
+
+
 /* cycles on map and delete expired records */
 void SessionTrackMap::manage_expired()
 {

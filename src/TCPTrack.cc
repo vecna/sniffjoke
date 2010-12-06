@@ -144,10 +144,6 @@ bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength w
  */
 void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 {
-	/* if the ttlfocus is not accessed from more than 30 seconds or the probe interval is not passed we return immediatly */
-	if((ttlfocus.access_timestamp < sj_clock.tv_sec - 30) || !isSchedulePassed(ttlfocus.next_probe_time))
-		return;
-
 	if (ttlfocus.sent_probe == runconfig.max_ttl_probe) {
 		ttlfocus.status = TTL_UNKNOWN;
 		ttlfocus.sent_probe = 0;
@@ -217,48 +213,6 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 	}
 }
 
-/* return a sessiontrack given a packet; return a new sessiontrack if no one exist */
-SessionTrack& TCPTrack::get_sessiontrack(const Packet &pkt)
-{
-	SessionTrack *sessiontrack;
-	
-	/* create map key */
-	const SessionTrackKey key = { pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest };
-	
-	/* check if the key it's already present */
-	SessionTrackMap::iterator it = sex_map.find(key);
-	if(it != sex_map.end()) /* on hit: return the sessiontrack object. */
-		sessiontrack = it->second;
-	else { /* on miss: create a new sessiontrack and insert it into the map */
-		SessionTrack * const newsession = new SessionTrack(pkt);
-		sessiontrack = sex_map.insert(pair<const SessionTrackKey, SessionTrack*>(key, newsession)).first->second;
-	}
-		
-	/* update access timestamp using global clock */
-	sessiontrack->access_timestamp = sj_clock.tv_sec;
-
-	return *sessiontrack;
-}
-
-/* return a ttlfocus given a packet; return a new ttlfocus if no one exist */
-TTLFocus& TCPTrack::get_ttlfocus(const Packet &pkt)
-{
-	TTLFocus *ttlfocus;
-	
-	/* check if the key it's already present */
-	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
-	if(it != ttlfocus_map.end()) /* on hit: return the ttlfocus object. */
-		ttlfocus = it->second;
-	else { /* on miss: create a new ttlfocus and insert it into the map */
-		TTLFocus * const newttlfocus = new TTLFocus(pkt);
-		ttlfocus = ttlfocus_map.insert(pair<const uint32_t, TTLFocus*>(pkt.ip->daddr, newttlfocus)).first->second;
-	}
-	
-	/* update access timestamp using global clock */
-	ttlfocus->access_timestamp = sj_clock.tv_sec;
-	return *ttlfocus;
-}
-
 /*
  * analyze an incoming icmp packet.
  * at the moment, the unique icmp packet analyzed is the  ICMP_TIME_EXCEEDED.
@@ -285,7 +239,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 			const uint8_t expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
-			if (ttlfocus->status != TTL_KNOWN && expired_ttl == exp_double_check) {
+			if (expired_ttl == exp_double_check) {
 				
 				snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED", ntohs(ttlfocus->puppet_port));
 				pkt.selflog(__func__, pkt.debug_buf);
@@ -301,6 +255,8 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 					ttlfocus->status = TTL_UNKNOWN;
 					ttlfocus->ttl_estimate = expired_ttl + 1;
 				}
+
+				ttlfocus->selflog(__func__, NULL);
 
 				/* the expired icmp scattered due to our ttl probes so we can trasparently remove it */
 				p_queue.remove(pkt);
@@ -357,7 +313,6 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 		TTLFocus* const ttlfocus = it->second;
 		
 		if (pkt.tcp->dest == ttlfocus->puppet_port) {
-
 			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
 			pkt.selflog(__func__, pkt.debug_buf);
 
@@ -365,16 +320,14 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 			++ttlfocus->received_probe;
 
-			if (ttlfocus->status == TTL_UNKNOWN || discern_ttl < ttlfocus->ttl_estimate) { 
+			if (discern_ttl < ttlfocus->ttl_estimate) { 
 				ttlfocus->ttl_estimate = discern_ttl;
 				ttlfocus->synack_ttl = pkt.ip->ttl;
 			}
 			
 			ttlfocus->status = TTL_KNOWN;
 
-			snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf), "discerned TTL %u ttl_estimate %u incoming value %u", 
-				discern_ttl, ttlfocus->ttl_estimate, ttlfocus->synack_ttl);
-			ttlfocus->selflog(__func__, ttlfocus->debug_buf);
+			ttlfocus->selflog(__func__, NULL);
 
 			/* the syn+ack scattered due to our ttl probes so we can trasparently remove it */
 			p_queue.remove(pkt);
@@ -408,10 +361,10 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 bool TCPTrack::analyze_outgoing(Packet &pkt)
 {
-	SessionTrack &sessiontrack = get_sessiontrack(pkt);
+	SessionTrack &sessiontrack = sex_map.get_sessiontrack(pkt);
 	++sessiontrack.packet_number;
 	
-	const TTLFocus &ttlfocus = get_ttlfocus(pkt);
+	const TTLFocus &ttlfocus = ttlfocus_map.get_ttlfocus(pkt);
 	if (ttlfocus.status == TTL_BRUTEFORCE) {
 		p_queue.insert(pkt, KEEP);
 		return false;
@@ -422,7 +375,7 @@ bool TCPTrack::analyze_outgoing(Packet &pkt)
 
 bool TCPTrack::analyze_keep(Packet &pkt) {
 	if(pkt.source == TUNNEL) {
-		const TTLFocus &ttlfocus = get_ttlfocus(pkt);
+		const TTLFocus &ttlfocus = ttlfocus_map.get_ttlfocus(pkt);
 		if (ttlfocus.status == TTL_BRUTEFORCE)
 			return false;
 	}
@@ -446,7 +399,7 @@ bool TCPTrack::analyze_keep(Packet &pkt) {
  */
 void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 {
-	const SessionTrack &sessiontrack = get_sessiontrack(origpkt);
+	const SessionTrack &sessiontrack = sex_map.get_sessiontrack(origpkt);
 
 	vector<PluginTrack *> applicable_hacks;
 
@@ -641,7 +594,7 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 
 	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */	
 	/* TTL modification - every packet subjected if possible */
-	const TTLFocus &ttlfocus = get_ttlfocus(pkt);
+	const TTLFocus &ttlfocus = ttlfocus_map.get_ttlfocus(pkt);
 	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
 		/*
 		 * here we use the ttl_estimate value to set the ttl in the packet;
@@ -757,7 +710,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
  * SEND (packets marked as sendable)
  * 
  */
-void TCPTrack::analyze_packets_queue()
+timespec TCPTrack::analyze_packets_queue()
 {
 	/* manage expired sessions and ttlfocuses every APQ_MANAGMENT_ROUTINE_TIMER seconds */
 	if(!(sj_clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
@@ -830,10 +783,31 @@ void TCPTrack::analyze_packets_queue()
 
 bypass_queue_analysis:
 
-	/* we need to verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN*/
-	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it) {
-		if((*it).second->status == TTL_BRUTEFORCE || (*it).second->status == TTL_KNOWN) {
-			inject_ttlprobe_in_queue(*(*it).second);
-		}
+	/* 
+	 * here we verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN
+	 * doing this there is an optimization we can do: we can keep the closest schedule and
+	 * we can return it to the caller.
+	 * in fact with no incoming packets there is no need to call the analyze_packet_queue until
+	 * the next closest schedule.
+	 */
+	timespec min_schedule;
+	if(ttlfocus_map.begin() != ttlfocus_map.end()) {
+		min_schedule = (*ttlfocus_map.begin()).second->next_probe_time;
+	} else {
+		min_schedule.tv_sec = 0;
+		min_schedule.tv_nsec = 0;
 	}
+
+	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it) {
+		TTLFocus &ttlfocus = *((*it).second);
+		if(ttlfocus.status & (TTL_BRUTEFORCE | TTL_KNOWN)) {
+			if((ttlfocus.access_timestamp > sj_clock.tv_sec - 30) && isSchedulePassed(ttlfocus.next_probe_time))
+				inject_ttlprobe_in_queue(*(*it).second);
+
+			if(ttlfocus.next_probe_time.tv_sec < min_schedule.tv_sec || ttlfocus.next_probe_time.tv_nsec < min_schedule.tv_nsec)
+				min_schedule = ttlfocus.next_probe_time;
+		}	
+	}
+	
+	return min_schedule;
 }

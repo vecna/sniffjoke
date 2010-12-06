@@ -47,11 +47,6 @@ private:
 	bool percentage(uint32_t, Frequency, Strength);
 
 	void inject_ttlprobe_in_queue(TTLFocus &);
-	
-	SessionTrack& get_sessiontrack(const Packet &);
-	TTLFocus& get_ttlfocus(const Packet &);
-	void manage_expired_sessiontracks();
-	void manage_expired_ttlfocuses();
 
 	/* this functions are called inside analyze_packets_queue;
 	 * boolean functions return true if the packet must be sended */ 
@@ -71,7 +66,7 @@ public:
 
 	void writepacket(source_t, const unsigned char *, int);
 	Packet* readpacket(source_t);
-	void analyze_packets_queue();
+	timespec analyze_packets_queue();
 	void force_send(void);
 };
 
