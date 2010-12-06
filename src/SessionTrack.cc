@@ -22,6 +22,10 @@
 
 #include "SessionTrack.h"
 
+#include <memory>
+
+using namespace std;
+
 SessionTrack::SessionTrack(const Packet &pkt) :
 	access_timestamp(0),
 	daddr(pkt.ip->daddr),
@@ -83,7 +87,7 @@ SessionTrackMap::~SessionTrackMap() {
 }
 
 /* return a sessiontrack given a packet; return a new sessiontrack if no one exists */
-SessionTrack& SessionTrackMap::get_sessiontrack(const Packet &pkt)
+SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
 {
 	SessionTrack *sessiontrack;
 	

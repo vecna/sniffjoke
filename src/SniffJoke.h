@@ -51,6 +51,8 @@ private:
 	Process proc;
 	auto_ptr<NetIO> mitm;
 	auto_ptr<HackPool> hack_pool;
+	auto_ptr<SessionTrackMap> sessiontrack_map;
+	auto_ptr<TTLFocusMap> ttlfocus_map;
 	auto_ptr<TCPTrack> conntrack;
 
 	/* after detach:

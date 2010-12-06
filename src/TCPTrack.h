@@ -28,7 +28,7 @@
 #include "Packet.h"
 #include "PacketQueue.h"
 #include "SessionTrack.h"
-#include "TTLfocus.h"
+#include "TTLFocus.h"
 #include "HackPool.h"
 
 class TCPTrack {
@@ -40,8 +40,8 @@ private:
 #define APQ_MANAGMENT_ROUTINE_TIMER	60	/* manager routine time interval in seconds */
 
 	PacketQueue p_queue;
-	SessionTrackMap sex_map;
-	TTLFocusMap ttlfocus_map;
+	SessionTrackMap &sessiontrack_map;
+	TTLFocusMap &ttlfocus_map;
 	HackPool &hack_pool;
 
 	bool percentage(uint32_t, Frequency, Strength);
@@ -61,7 +61,7 @@ private:
 	bool last_pkt_fix(Packet &);
 
 public:
-	TCPTrack(const sj_config &, HackPool &);
+	TCPTrack(const sj_config &, HackPool &, SessionTrackMap &, TTLFocusMap &);
 	~TCPTrack(void);
 
 	void writepacket(source_t, const unsigned char *, int);

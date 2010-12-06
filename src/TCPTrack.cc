@@ -29,19 +29,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-TCPTrack::TCPTrack(const sj_config &runcfg, HackPool &hpp) :
+TCPTrack::TCPTrack(const sj_config &runcfg, HackPool &hpp, SessionTrackMap &sessiontrack_map, TTLFocusMap &ttlfocus_map) :
 	runconfig(runcfg),
+	sessiontrack_map(sessiontrack_map),
+	ttlfocus_map(ttlfocus_map),
 	hack_pool(hpp)
 {
 	debug.log(VERBOSE_LEVEL, __func__);	
-	ttlfocus_map.load(runconfig.ttlfocuscache_file);
 }
 
 TCPTrack::~TCPTrack(void) 
 {
 	debug.log(VERBOSE_LEVEL, __func__);
-
-	ttlfocus_map.dump(runconfig.ttlfocuscache_file);
 }
 
 /*  
@@ -234,7 +233,9 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 		 * to not permit an external packet to force us to activate a ttlbrouteforce session
 		 */ 
 		TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
+		debug.log(ALL_LEVEL, "antani1");
 		if(it != ttlfocus_map.end()) {
+			debug.log(ALL_LEVEL, "antani2");
 			TTLFocus *ttlfocus = it->second;
 			const uint8_t expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
@@ -361,10 +362,10 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 bool TCPTrack::analyze_outgoing(Packet &pkt)
 {
-	SessionTrack &sessiontrack = sex_map.get_sessiontrack(pkt);
+	SessionTrack &sessiontrack = sessiontrack_map.getSessionTrack(pkt);
 	++sessiontrack.packet_number;
 	
-	const TTLFocus &ttlfocus = ttlfocus_map.get_ttlfocus(pkt);
+	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 	if (ttlfocus.status == TTL_BRUTEFORCE) {
 		p_queue.insert(pkt, KEEP);
 		return false;
@@ -375,7 +376,7 @@ bool TCPTrack::analyze_outgoing(Packet &pkt)
 
 bool TCPTrack::analyze_keep(Packet &pkt) {
 	if(pkt.source == TUNNEL) {
-		const TTLFocus &ttlfocus = ttlfocus_map.get_ttlfocus(pkt);
+		const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 		if (ttlfocus.status == TTL_BRUTEFORCE)
 			return false;
 	}
@@ -399,7 +400,7 @@ bool TCPTrack::analyze_keep(Packet &pkt) {
  */
 void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 {
-	const SessionTrack &sessiontrack = sex_map.get_sessiontrack(origpkt);
+	const SessionTrack &sessiontrack = sessiontrack_map.getSessionTrack(origpkt);
 
 	vector<PluginTrack *> applicable_hacks;
 
@@ -594,7 +595,7 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 
 	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */	
 	/* TTL modification - every packet subjected if possible */
-	const TTLFocus &ttlfocus = ttlfocus_map.get_ttlfocus(pkt);
+	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
 		/*
 		 * here we use the ttl_estimate value to set the ttl in the packet;
@@ -714,7 +715,7 @@ timespec TCPTrack::analyze_packets_queue()
 {
 	/* manage expired sessions and ttlfocuses every APQ_MANAGMENT_ROUTINE_TIMER seconds */
 	if(!(sj_clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
-		sex_map.manage_expired();
+		sessiontrack_map.manage_expired();
 		ttlfocus_map.manage_expired();
 	}
 	

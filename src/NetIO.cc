@@ -170,7 +170,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	fds[1].fd = netfd;
 	
 	polltimeout_on_data.tv_sec = 0;
-	polltimeout_on_data.tv_nsec = 10000; /* 0.01 ms */
+	polltimeout_on_data.tv_nsec = 50000; /* 0.05 ms */
 	closest_schedule.tv_sec = 0;
 	closest_schedule.tv_nsec = 0;
 }
@@ -212,7 +212,7 @@ void NetIO::network_io(void)
 	/* 
 	 * This is a critical function for sniffjoke operativity.
 	 *
-	 * this function implements a min acquisition step of 0.01msec
+	 * this function implements a min acquisition step of 0.1msec
 	 * 
 	 * read, read, read and than re-read all comments hundred times
 	 * before thinking to change this :P
@@ -233,12 +233,13 @@ void NetIO::network_io(void)
 	
 		if(data_received) {
 			/* 
-			 * if there is data received we do poll with a timout of 0.01ms
-			 * and we check the deadline of 0.1ms
+			 * if there is data received we do poll with a timeout of 0.05ms
+			 * and we check the deadline of 0.1ms;
+			 * so after having received a packet we will analyze it in 0.5~1 msec
 			 */
 			if(isSchedulePassed(deadline_on_data))
 				break;
-			polltimeout = polltimeout_on_data; /* 0.01 ms */
+			polltimeout = polltimeout_on_data; /* 0.1 ms */
 			nfds = ppoll(fds, 2, &polltimeout, NULL);
 		} else if((closest_schedule.tv_sec != 0) && (closest_schedule.tv_nsec != 0)) {
 			/*
@@ -258,7 +259,7 @@ void NetIO::network_io(void)
 				 * we also will scatter the previous "if(data_received)"
 				 * permitting also tu acquire a burst
 				 */
-				polltimeout = polltimeout_on_data; /* 0.01 ms */
+				polltimeout = polltimeout_on_data; /* 0.1 ms */
 				nfds = ppoll(fds, 2, &polltimeout, NULL);
 			}
 		} else {
@@ -281,13 +282,11 @@ void NetIO::network_io(void)
 			updateSchedule(deadline_on_data, 0, 100000); /* 0.1 ms */
 		}
 
-		/* handling the input fd: 
-		 * i == 0 mean TUNNEL input, i == 1 is the NETWORK input */
 		ssize_t ret;
 		int flags;
 
 		/* it's possibile to read from tunfd */
-		if (fds[0].revents) { 
+		if (fds[0].revents) {
 
 			ret = read(tunfd, pktbuf, MTU_FAKE);
 			if (ret == -1) {

@@ -72,7 +72,7 @@
 
 #define MSGBUF				512
 
-#define TTLFOCUS_EXPIRYTIME		604800	/* access expire time in seconds (1 WEEK) */
 #define SESSIONTRACK_EXPIRYTIME		1200	/* access expire time in seconds (5 MINUTES) */
+#define TTLFOCUS_EXPIRYTIME		604800	/* access expire time in seconds (1 WEEK) */
 
 #endif /* SJ_DEFINES_H */

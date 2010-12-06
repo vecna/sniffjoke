@@ -24,6 +24,8 @@
 #define SJ_CONF_H
 
 #include "Utils.h"
+#include "SessionTrack.h"
+#include "TTLFocus.h"
 #include <net/ethernet.h>
 
 enum sj_proc_t { SJ_SERVER_PROC = 0, SJ_CLIENT_PROC = 1 };
@@ -130,11 +132,15 @@ public:
 		bool &alive;
 		bool chroot_status;
 		struct sj_config runconfig;
+		SessionTrackMap *sessiontrackmap;
+		TTLFocusMap *ttlfocusmap;
 
 		UserConf(const struct sj_cmdline_opts &, bool &alive);
 		~UserConf();
 
 		void network_setup(void);
+		void attach_sessiontrackmap(SessionTrackMap *);
+		void attach_ttlfocusmap(TTLFocusMap *);
 		
 		char* handle_cmd(const char *);
 		void handle_cmd_start(void);

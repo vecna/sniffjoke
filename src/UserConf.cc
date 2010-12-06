@@ -28,7 +28,9 @@
 
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	alive(sj_alive),
-	chroot_status(false)
+	chroot_status(false),
+	sessiontrackmap(NULL),
+	ttlfocusmap(NULL)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
@@ -75,12 +77,11 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	else
 		runconfig.admin_port = DEFAULT_UDP_ADMIN_PORT;
 
-	if(cmdline_opts.debug_level != DEFAULT_DEBUG_LEVEL)
+	if(cmdline_opts.debug_level != 0)
 		runconfig.debug_level = cmdline_opts.debug_level;
-
-	if(runconfig.debug_level == 0)
+	else 
 		runconfig.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
-	
+
 	if(cmdline_opts.onlyplugin[0])
 		snprintf(runconfig.onlyplugin, LARGEBUF, "%s", cmdline_opts.onlyplugin);
 
@@ -355,7 +356,18 @@ void UserConf::dump(void)
 	
 }
 
-char *UserConf::handle_cmd(const char *cmd)
+
+void UserConf::attach_sessiontrackmap(SessionTrackMap* s)
+{
+	sessiontrackmap = s;
+}
+
+void UserConf::attach_ttlfocusmap(TTLFocusMap* t)
+{
+	ttlfocusmap = t;
+}
+
+char* UserConf::handle_cmd(const char *cmd)
 {
 	memset(io_buf, 0x00, sizeof(io_buf));
 

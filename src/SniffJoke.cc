@@ -166,7 +166,9 @@ void SniffJoke::server() {
 
 		proc.privilegesDowngrade();
 
-		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.runconfig, *hack_pool));
+		sessiontrack_map = auto_ptr<SessionTrackMap> (new SessionTrackMap);
+		ttlfocus_map = auto_ptr<TTLFocusMap> (new TTLFocusMap(userconf.runconfig.ttlfocuscache_file));
+		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.runconfig, *hack_pool, *sessiontrack_map, *ttlfocus_map));
 
 		mitm->prepare_conntrack(conntrack.get());
 
