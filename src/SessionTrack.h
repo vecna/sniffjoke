@@ -60,6 +60,7 @@ class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*> {
 public:
 	SessionTrackMap();
         ~SessionTrackMap();
+	SessionTrack& get_sessiontrack(const Packet &);
         void manage_expired();
 };
 

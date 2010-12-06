@@ -59,7 +59,7 @@ enum size_buf_t {
 #define DEBUG_LEVEL		4
 #define DEBUG_LEVEL_NAME	"debug"
 #define SESSION_DEBUG		5
-#define SESSION_DEBUG_NAME	"hacks"
+#define SESSION_DEBUG_NAME	"sessions"
 #define PACKETS_DEBUG		6
 #define PACKETS_DEBUG_NAME      "packets"
 
@@ -73,6 +73,7 @@ extern timespec sj_clock;
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
 std::runtime_error sj_runtime_exception(const char *, const char *, long, const char *);
 void* memset_random(void *, size_t);
+timespec remainTime(struct timespec &);
 void updateSchedule(struct timespec &, time_t, long);
 bool isSchedulePassed(const struct timespec &);
 void sigtrap(int);

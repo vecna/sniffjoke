@@ -34,7 +34,7 @@ using namespace std;
 
 /* IT'S FUNDAMENTAL TO HAVE ALL THIS ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
-enum ttlsearch_t { TTL_KNOWN = 0, TTL_BRUTEFORCE = 1, TTL_UNKNOWN = 2 };
+enum ttlsearch_t { TTL_KNOWN = 1, TTL_BRUTEFORCE = 2, TTL_UNKNOWN = 4 };
 
 class TTLFocus {
 public:
@@ -76,21 +76,23 @@ class TTLFocusMap : public map<const uint32_t, TTLFocus*> {
 public:
         TTLFocusMap();
         ~TTLFocusMap();
+	TTLFocus& get_ttlfocus(const Packet &);
         void manage_expired();
         void load(const char *);
         void dump(const char *);
 };
 
 struct ttlfocus_cache_record {
-	uint32_t daddr;			/* destination of the traceroute */
-	uint8_t expiring_ttl;		/* the min exiping_ttl found during analysis */
-	uint8_t ttl_estimate;		/* the min working ttl found during analysis */
-	uint8_t synack_ttl;		/* the value of the ttl read in the synack packet */
+	time_t access_timestamp;		/* access timestamp used to decretee expiry */
+	uint32_t daddr;				/* destination of the traceroute */
+	uint8_t expiring_ttl;			/* the min exiping_ttl found during analysis */
+	uint8_t ttl_estimate;			/* the min working ttl found during analysis */
+	uint8_t synack_ttl;			/* the value of the ttl read in the synack packet */
 	
-	unsigned char probe_dummy[40];	/* dummy ttlprobe packet generated from the packet
-					   that scattered the ttlfocus creation.
-					   the packet size is always 40 bytes long,
-					   (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
+	unsigned char probe_dummy[40];		/* dummy ttlprobe packet generated from the packet
+						   that scattered the ttlfocus creation.
+						   the packet size is always 40 bytes long,
+						   (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
 };
 
 #endif /* SJ_TTLFOCUS_H */

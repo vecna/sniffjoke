@@ -168,6 +168,11 @@ NetIO::NetIO(sj_config& runcfg) :
 
 	fds[0].fd = tunfd;
 	fds[1].fd = netfd;
+	
+	polltimeout_on_data.tv_sec = 0;
+	polltimeout_on_data.tv_nsec = 100000;
+	closest_schedule.tv_sec = 0;
+	closest_schedule.tv_nsec = 0;
 }
 
 NetIO::~NetIO(void) 
@@ -207,15 +212,8 @@ void NetIO::network_io(void)
 	/* 
 	 * This is a critical function for sniffjoke operativity.
 	 * 
-	 * The objective is to have an acquisition stage quite constant.
-	 * 
-	 * The solution is implemented using two realtime timeout:
-	 * 
-	 *   - one applied when there is some data received : 0.5ms.
-	 *   - a second applied when there is no data received: 50ms.
-	 *     this is second timeout is needed because we need to call the
-	 *     conntrack->analyze_packets_queue() with a max interval of 50 ms
-	 *     to permit internal schedules (like the ttl one) to go forward.
+	 * read, read, read and than re-read all comments hundred times
+	 * before thinking to change this :P
 	 * 
 	 */
 	 
@@ -223,20 +221,49 @@ void NetIO::network_io(void)
 	 
 	clock_gettime(CLOCK_REALTIME, &sj_clock);
 	
-	struct timespec maxcycletime_with_data_received = sj_clock;
-	updateSchedule(maxcycletime_with_data_received, 0, 500000);
-	
-	struct timespec maxcycletime_with_no_data_received = sj_clock;
-	updateSchedule(maxcycletime_with_no_data_received, 0, 5000000);
+	timespec deadline_on_data;
 
+	fds[0].events = POLLIN;
+	fds[1].events = POLLIN;
+	
 	while (1)
 	{
-		struct timespec polltimeout;
-		polltimeout.tv_sec = 0;
-		polltimeout.tv_nsec = 500000;
-		fds[0].events = POLLIN;
-		fds[1].events = POLLIN;
-		nfds = ppoll(fds, 2, &polltimeout, NULL);
+		timespec polltimeout;
+	
+		if(data_received) {
+			/* 
+			 * if there is data received we do poll with a timout of 0.01ms
+			 * and we check the deadline of 0.1ms
+			 */
+			if(isSchedulePassed(deadline_on_data))
+				break;
+			polltimeout = polltimeout_on_data; /* 0.01 ms */
+			nfds = ppoll(fds, 2, &polltimeout, NULL);
+		} else if((closest_schedule.tv_sec != 0) && (closest_schedule.tv_nsec != 0)) {
+			/*
+			 * with no data and an active ttl schedule we do a pool a timout
+			 * relative to the remaining time before the closest schedule
+			 */
+			polltimeout = remainTime(closest_schedule);
+			if((polltimeout.tv_sec != 0) && (polltimeout.tv_nsec != 0)) {
+				nfds = ppoll(fds, 2, &polltimeout, NULL);
+			} else {
+				/*
+				 * always do a minimum poll test;
+				 * this is particular important because without this
+				 * a full delayed queue and ttlbruteforce sessions could
+				 * deny packet acquisition.
+				 * Due to this possibility if there ar packets to be read
+				 * we also will scatter the previous "if(data_received)"
+				 * permitting also tu acquire a burst
+				 */
+				polltimeout = polltimeout_on_data; /* 0.01 ms */
+				nfds = ppoll(fds, 2, &polltimeout, NULL);
+			}
+		} else {
+			nfds = poll(fds, 2, 0);
+		}
+
 		if (nfds <= 0) {
 			if (nfds == -1) {
 	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in ppoll: %s", strerror(errno));
@@ -244,7 +271,11 @@ void NetIO::network_io(void)
 			}
 		} else {
 		
-			data_received = true;
+			if(data_received == false) {
+				data_received = true;
+				deadline_on_data = sj_clock;
+				updateSchedule(deadline_on_data, 0, 100000); /* 0.1 ms */
+			}
 
 			for(uint8_t i = 0; i < 2; ++i) { 
 
@@ -297,18 +328,9 @@ void NetIO::network_io(void)
 		}
 
 		clock_gettime(CLOCK_REALTIME, &sj_clock);
-
-		if(data_received) {
-			if(isSchedulePassed(maxcycletime_with_data_received))
-				break;
-		} else {
-			if(isSchedulePassed(maxcycletime_with_no_data_received))
-				break;
-		}
-			
 	}
-	
-	conntrack->analyze_packets_queue();
+
+	closest_schedule = conntrack->analyze_packets_queue();
 }
 
 /* this method send all the packets  "PRIORITY_SEND" or "SEND" */
