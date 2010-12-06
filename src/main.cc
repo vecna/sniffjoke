@@ -191,10 +191,9 @@ bool isSchedulePassed(const struct timespec& schedule)
     if(sj_clock.tv_sec > schedule.tv_sec)
         return true;
 
-    else if((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec)) {
+    if((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec))
         return true;
-    }
-        
+
     return false;
 }
 

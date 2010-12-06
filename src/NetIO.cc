@@ -216,7 +216,6 @@ void NetIO::network_io(void)
 	 * before thinking to change this :P
 	 * 
 	 */
-	 
 	bool data_received = false; 
 	 
 	clock_gettime(CLOCK_REALTIME, &sj_clock);
@@ -241,7 +240,7 @@ void NetIO::network_io(void)
 			nfds = ppoll(fds, 2, &polltimeout, NULL);
 		} else if((closest_schedule.tv_sec != 0) && (closest_schedule.tv_nsec != 0)) {
 			/*
-			 * with no data and an active ttl schedule we do a pool a timout
+			 * with no data and an active ttl schedule we do a pool with timeout
 			 * relative to the remaining time before the closest schedule
 			 */
 			polltimeout = remainTime(closest_schedule);
@@ -264,69 +263,79 @@ void NetIO::network_io(void)
 			nfds = poll(fds, 2, 0);
 		}
 
-		if (nfds <= 0) {
-			if (nfds == -1) {
-	                        debug.log(ALL_LEVEL, "network_io: strange and dangerous error in ppoll: %s", strerror(errno));
-				SJ_RUNTIME_EXCEPTION("");
-			}
-		} else {
-		
-			if(data_received == false) {
-				data_received = true;
-				deadline_on_data = sj_clock;
-				updateSchedule(deadline_on_data, 0, 100000); /* 0.1 ms */
-			}
+		/* in the three cases poll/ppoll is set, now we check the nfds return value */
+		if (nfds == -1) {
+			debug.log(ALL_LEVEL, "network_io: strange and dangerous error in ppoll: %s", strerror(errno));
+			SJ_RUNTIME_EXCEPTION("");
+		}
+	
+		if(!nfds)
+			goto time_refresh;
 
-			for(uint8_t i = 0; i < 2; ++i) { 
-
-				if (fds[i].revents) { /* POLLIN is the unique event managed */
-
-					ssize_t ret;
-
-					if(i == 0) {
-						/* it's possibile to read from tunfd */
-						ret = read(tunfd, pktbuf, MTU_FAKE);
-					} else {
-						/* it's possible to read from netfd */
-						ret = recv(netfd, pktbuf, MTU, 0);
-					}
-
-					if (ret == -1) {
-						/* 
-						 * on single thread applications after a poll a write returns
-						 * -1 only on error's case.
-						 */
-						debug.log(DEBUG_LEVEL, "network_io: read from %s: error: %s",
-							i == 0 ? "tunnel" : "network", strerror(errno));
-						SJ_RUNTIME_EXCEPTION(strerror(errno));
-					}
-
-					if(runconfig.active == true) {
-						conntrack->writepacket(i == 0 ? TUNNEL : NETWORK, pktbuf, ret);
-					} else {
-						/*
-						 * sniffjoke it's disabled? we make a blocking write.
-						 * this could be a drawback but this is not in our interest
-						 */
-						if(i == 0) {
-							int flags = fcntl(netfd, F_GETFL);
-							flags &= ~O_NONBLOCK;
-							fcntl(netfd, F_SETFL, flags);
-							sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
-							fcntl(netfd, F_SETFL, O_NONBLOCK);
-						} else {
-							int flags = fcntl(tunfd, F_GETFL);
-							flags &= ~O_NONBLOCK;
-							fcntl(tunfd, F_SETFL, flags);
-							ret = write(tunfd, pktbuf, ret);
-							fcntl(tunfd, F_SETFL, O_NONBLOCK);
-						}
-					}
-				}
-			}
-			
+		/* otherwise, some data has been received */
+		if(data_received == false) {
+			data_received = true;
+			deadline_on_data = sj_clock;
+			updateSchedule(deadline_on_data, 0, 100000); /* 0.1 ms */
 		}
 
+		/* handling the input fd: 
+		 * i == 0 mean TUNNEL input, i == 1 is the NETWORK input */
+		ssize_t ret;
+		int flags;
+
+		/* it's possibile to read from tunfd */
+		if (fds[0].revents) { 
+
+			ret = read(tunfd, pktbuf, MTU_FAKE);
+			if (ret == -1) {
+				debug.log(ALL_LEVEL, "%s: read from tunnel: %s", __func__, strerror(errno));
+				SJ_RUNTIME_EXCEPTION(strerror(errno));
+			}
+
+			if(runconfig.active == true) {
+				conntrack->writepacket(TUNNEL , pktbuf, ret);
+			} else {
+				/* sniffjoke it's disabled? we make a blocking write, because
+				 * an intensive traffic will return -1 on a non ready to write socket */
+				flags = fcntl(netfd, F_GETFL);
+				flags &= ~O_NONBLOCK;
+				fcntl(netfd, F_SETFL, flags);
+				if(sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll)) != ret) {
+					debug.log(ALL_LEVEL, "%s: send to network: %s", __func__, strerror(errno));
+					SJ_RUNTIME_EXCEPTION(strerror(errno));
+				}
+				fcntl(netfd, F_SETFL, O_NONBLOCK);
+			}
+		}
+
+		/* it's possible to read from netfd */
+		if (fds[1].revents) {
+
+			ret = recv(netfd, pktbuf, MTU, 0);
+			if (ret == -1) {
+				debug.log(ALL_LEVEL, "%s: read from network: %s", __func__, strerror(errno));
+				SJ_RUNTIME_EXCEPTION(strerror(errno));
+			}
+
+			if(runconfig.active == true) {
+				conntrack->writepacket(NETWORK, pktbuf, ret);
+			}
+			else {
+				/* sniffjoke it's disabled? we make a blocking write, because
+				 * an intensive traffic will return -1 on a non ready to write socket */
+				flags = fcntl(tunfd, F_GETFL);
+				flags &= ~O_NONBLOCK;
+				fcntl(tunfd, F_SETFL, flags);
+				if(write(tunfd, pktbuf, ret) != ret) {
+					debug.log(ALL_LEVEL, "%s: write in tunnel: %s", __func__, strerror(errno));
+					SJ_RUNTIME_EXCEPTION(strerror(errno));
+				}
+				fcntl(tunfd, F_SETFL, O_NONBLOCK);
+			}
+		}
+
+time_refresh:
 		clock_gettime(CLOCK_REALTIME, &sj_clock);
 	}
 
