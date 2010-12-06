@@ -260,7 +260,7 @@ void NetIO::network_io(void)
 				nfds = ppoll(fds, 2, &polltimeout, NULL);
 			}
 		} else {
-			nfds = poll(fds, 2, 0);
+			nfds = poll(fds, 2, -1);
 		}
 
 		/* in the three cases poll/ppoll is set, now we check the nfds return value */
@@ -365,42 +365,47 @@ void NetIO::queue_flush(void)
 			}
 		} else {
 		
-			for(uint8_t i = 0; i < 2; ++i) {
+			if (fds[0].revents) { /* POLLOUT is the unique event managed */
 				
-				if (fds[i].revents) { /* POLLOUT is the unique event managed */
+				ssize_t ret;
 				
-					ssize_t ret;
-				
-					if(i == 0) {
-						/* it's possibile to write in tunfd */
-						ret = write(tunfd, (void*)&(pkt_net->pbuf[0]), pkt_net->pbuf.size());
-					} else {
-						/* it's possibile to write in netfd */
-						ret = sendto(netfd, (void*)&(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
-					}
+				/* it's possibile to write in tunfd */
+				ret = write(tunfd, (void*)&(pkt_net->pbuf[0]), pkt_net->pbuf.size());
 					
-					if (ret == -1) {
-						/* 
-						 * on single thread applications after a poll a write returns
-						 * -1 only on error's case.
-						 */
-						debug.log(DEBUG_LEVEL, "network_io: write in %s: error: %s",
-							i == 0 ? "tunnel" : "network", strerror(errno));
-						SJ_RUNTIME_EXCEPTION(strerror(errno));
-					}
-					
-					if(i == 0) {
-						/* corretly written in tunfd */
-						delete pkt_net;
-						pkt_net = conntrack->readpacket(NETWORK);
-					} else {
-						/* correctly written in netfd */
-						delete pkt_tun;
-						pkt_tun = conntrack->readpacket(TUNNEL);
-					}
+				if (ret == -1) {
+					/* 
+					 * on single thread applications after a poll a write returns
+					 * -1 only on error's case.
+					 */
+					debug.log(DEBUG_LEVEL, "network_io: write in tunnel: error: %s", strerror(errno));
+					SJ_RUNTIME_EXCEPTION(strerror(errno));
 				}
+					
+				/* corretly written in tunfd */
+				delete pkt_net;
+				pkt_net = conntrack->readpacket(NETWORK);
 			}
-			
+
+			if (fds[1].revents) { /* POLLOUT is the unique event managed */
+				
+				ssize_t ret;
+				
+				/* it's possibile to write in netfd */
+				ret = sendto(netfd, (void*)&(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
+					
+				if (ret == -1) {
+					/* 
+					 * on single thread applications after a poll a write returns
+					 * -1 only on error's case.
+					 */
+					debug.log(DEBUG_LEVEL, "network_io: write in network: error: %s", strerror(errno));
+					SJ_RUNTIME_EXCEPTION(strerror(errno));
+				}
+					
+				/* correctly written in netfd */
+				delete pkt_tun;
+				pkt_tun = conntrack->readpacket(TUNNEL);
+			}
 		}
 	}
 }
