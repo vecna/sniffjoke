@@ -34,8 +34,8 @@
 #define SW_VERSION                      "0.4-beta1"
 
 /* Sniffjoke defaults config values */
-#define DROP_USER                       "sniffjoke"
-#define DROP_GROUP                      "sniffjoke"
+#define DROP_USER                       "nobody"
+#define DROP_GROUP                      "nogroup"
 #define MAGICVAL			0xADECADDE
 #define CHROOT_DIR			INSTALL_STATEDIR
 #define PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.txt"

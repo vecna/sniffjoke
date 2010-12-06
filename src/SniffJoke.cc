@@ -75,7 +75,7 @@ void SniffJoke::run()
 void SniffJoke::client() {
 	pid_t runconfig_service_pid = proc.readPidfile();
 	if (!runconfig_service_pid) {
-		debug.log(ALL_LEVEL, "warning: SniffJoke is not running, command [%s] ignored", opts.cmd_buffer);
+		debug.log(ALL_LEVEL, "SniffJoke is not running: must be started without command or with --options.\nCommand [%s] ignored, those command are used for manage a running sniffjoke service", opts.cmd_buffer);
 		return;
 	}
 

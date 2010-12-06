@@ -1,5 +1,16 @@
 Hi betatester, I'm glad you are reading this file:
 
+simple usage:
+
+# sniffjoke 
+(without options, or with --option, sniffjoke goes in background and start the service, listening
+in UDP port 8844 waiting for management commands)
+
+# sniffjoke command
+(the command without "--", are used for start, stop, set TCP port policy, view info and stats)
+
+test you could do:
+
 1) test sniffjoke in your system;
 2) try to run script/sniffjoke-testsuite and check the output in /tmp/sniffjoke-stats;
 3) try to edit your enabler file (default: /usr/local/etc/sniffjoke/plugins_enabled.txt)
@@ -9,7 +20,9 @@ Hi betatester, I'm glad you are reading this file:
 
 optional:
 
-- if you work as a distribution package mantainer, you could try to make a sniffjoke package;
+- if you work as a distribution package mantainer, you could try to make a sniffjoke package; the default
+  user used in privilege downgrade are nobody/nogroup. in your install script you will add the
+  sniffjoke user/group and modify the default in src/hardcoded-defines.h
 
 - if you seen a lot of english typos :P please fix them or suggest correction to us;
 
