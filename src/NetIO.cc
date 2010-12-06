@@ -170,7 +170,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	fds[1].fd = netfd;
 	
 	polltimeout_on_data.tv_sec = 0;
-	polltimeout_on_data.tv_nsec = 1000; /* 0.001 ms */
+	polltimeout_on_data.tv_nsec = 10000; /* 0.01 ms */
 	closest_schedule.tv_sec = 0;
 	closest_schedule.tv_nsec = 0;
 }
@@ -233,8 +233,8 @@ void NetIO::network_io(void)
 	
 		if(data_received) {
 			/* 
-			 * if there is data received we do poll with a timout of 0.001ms
-			 * and we check the deadline of 0.01ms
+			 * if there is data received we do poll with a timout of 0.01ms
+			 * and we check the deadline of 0.1ms
 			 */
 			if(isSchedulePassed(deadline_on_data))
 				break;
@@ -278,7 +278,7 @@ void NetIO::network_io(void)
 		if(data_received == false) {
 			data_received = true;
 			deadline_on_data = sj_clock;
-			updateSchedule(deadline_on_data, 0, 10000); /* 0.01 ms */
+			updateSchedule(deadline_on_data, 0, 100000); /* 0.1 ms */
 		}
 
 		/* handling the input fd: 
