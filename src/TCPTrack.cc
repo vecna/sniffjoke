@@ -233,9 +233,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 		 * to not permit an external packet to force us to activate a ttlbrouteforce session
 		 */ 
 		TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
-		debug.log(ALL_LEVEL, "antani1");
 		if(it != ttlfocus_map.end()) {
-			debug.log(ALL_LEVEL, "antani2");
 			TTLFocus *ttlfocus = it->second;
 			const uint8_t expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
