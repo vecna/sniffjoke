@@ -239,7 +239,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 			const uint8_t expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
-			if (ttlfocus->status != TTL_KNOWN && expired_ttl == exp_double_check) {
+			if (expired_ttl == exp_double_check) {
 				
 				snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED", ntohs(ttlfocus->puppet_port));
 				pkt.selflog(__func__, pkt.debug_buf);
@@ -320,7 +320,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 			++ttlfocus->received_probe;
 
-			if (ttlfocus->status == TTL_UNKNOWN || discern_ttl < ttlfocus->ttl_estimate) { 
+			if (discern_ttl < ttlfocus->ttl_estimate) { 
 				ttlfocus->ttl_estimate = discern_ttl;
 				ttlfocus->synack_ttl = pkt.ip->ttl;
 			}
@@ -784,10 +784,10 @@ timespec TCPTrack::analyze_packets_queue()
 bypass_queue_analysis:
 
 	/* 
-	 * we need to verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN
-	 * doing this there is a an optimization we can do: we can keep the closest schedule and
+	 * here we verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN
+	 * doing this there is an optimization we can do: we can keep the closest schedule and
 	 * we can return it to the caller.
-	 * infact with no incoming packets there is no need to call the analyze_packet_queue until
+	 * in fact with no incoming packets there is no need to call the analyze_packet_queue until
 	 * the next closest schedule.
 	 */
 	timespec min_schedule;
