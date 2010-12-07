@@ -13,8 +13,8 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			Hack.h \
 			HackPool.h \
 			HackPool.cc \
-			TTLfocus.h \
-			TTLfocus.cc \
+			TTLFocus.h \
+			TTLFocus.cc \
 			SessionTrack.h \
 			SessionTrack.cc \
 			TCPTrack.h \

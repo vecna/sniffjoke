@@ -102,7 +102,7 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
 {
 	stringstream stream;
 	stream << "[EXCEPTION] "<< file << "(" << line << ") function: " << func << "()";
-	if(msg != NULL)
+	if (msg != NULL)
 		stream << " : " << msg;
 	return std::runtime_error(stream.str());
 }
@@ -148,20 +148,20 @@ void* memset_random(void *s, size_t n)
 timespec remainTime(struct timespec &schedule)
 {
 	timespec remain;
-	if(sj_clock.tv_sec > schedule.tv_sec) {
+	if (sj_clock.tv_sec > schedule.tv_sec) {
 		remain.tv_sec = 0;
 		remain.tv_nsec = 0;
-	} else if(sj_clock.tv_sec == schedule.tv_sec) {
+	} else if (sj_clock.tv_sec == schedule.tv_sec) {
 		remain.tv_sec = 0;
-		if(sj_clock.tv_nsec >= schedule.tv_nsec) {
+		if (sj_clock.tv_nsec >= schedule.tv_nsec) {
 			remain.tv_nsec = 0;
 		} else {
 			remain.tv_nsec = schedule.tv_nsec - sj_clock.tv_nsec;
 		}
 	} else {
 		remain.tv_sec = schedule.tv_sec - sj_clock.tv_sec;
-		if(sj_clock.tv_nsec >= schedule.tv_nsec) {
-			if(remain.tv_sec > 1) {
+		if (sj_clock.tv_nsec >= schedule.tv_nsec) {
+			if (remain.tv_sec > 1) {
 				remain.tv_sec -= 1;
 				remain.tv_nsec = NSEC_PER_SEC - (sj_clock.tv_nsec - schedule.tv_nsec);
 			} else {
@@ -179,7 +179,7 @@ timespec remainTime(struct timespec &schedule)
 void updateSchedule(struct timespec &schedule, time_t sec, long ns)
 {
 	schedule.tv_sec += sec;
-	if(ns) {
+	if (ns) {
 		uint32_t temp = schedule.tv_nsec + ns;
 		schedule.tv_sec += temp / NSEC_PER_SEC;
 		schedule.tv_nsec = temp % NSEC_PER_SEC;
@@ -188,10 +188,10 @@ void updateSchedule(struct timespec &schedule, time_t sec, long ns)
 
 bool isSchedulePassed(const struct timespec& schedule)
 {
-    if(sj_clock.tv_sec > schedule.tv_sec)
+    if (sj_clock.tv_sec > schedule.tv_sec)
         return true;
 
-    if((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec))
+    if ((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec))
         return true;
 
     return false;
@@ -210,15 +210,15 @@ static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdli
 		struct command *ptr;
 		for(ptr = &sjcmdlist[0]; ptr->cmd != NULL; ++ptr) 
 		{
-			if(!strcmp(ptr->cmd, av[i])) 
+			if (!strcmp(ptr->cmd, av[i])) 
 			{
 				size_t usedlen = 0;
 				snprintf(retcmd, MEDIUMBUF, "%s", ptr->cmd);
-				if(ptr->related_args + i > ac) {
+				if (ptr->related_args + i > ac) {
 					sj_help(av[0], CHROOT_DIR, CHROOT_DIR);
 					exit(-1);
 				}
-				while(--(ptr->related_args)) {
+				while (--(ptr->related_args)) {
 					usedlen = strlen(retcmd);
 					snprintf(&retcmd[usedlen], MEDIUMBUF - usedlen, " %s", av[++i]);
 				}
@@ -276,7 +276,7 @@ int main(int argc, char **argv)
 	useropt.process_type = SJ_CLIENT_PROC;
 
 	/* check for client commands */
-	if(!client_command_found(argv, argc, sj_command, useropt.cmd_buffer))
+	if (!client_command_found(argv, argc, sj_command, useropt.cmd_buffer))
 		useropt.process_type = SJ_SERVER_PROC;
 
 	int charopt;
@@ -297,12 +297,12 @@ int main(int argc, char **argv)
 			case 'c':
 				snprintf(useropt.chroot_dir, sizeof(useropt.chroot_dir) -1, "%s", optarg);
 				/* this fix it's useful if the useropt path lacks the ending slash */
-				if(useropt.chroot_dir[strlen(useropt.chroot_dir) -1] != '/')
+				if (useropt.chroot_dir[strlen(useropt.chroot_dir) -1] != '/')
 					useropt.chroot_dir[strlen(useropt.chroot_dir)] = '/';
 				break;
 			case 'd':
 				useropt.debug_level = atoi(optarg);
-				if(useropt.debug_level < 1 || useropt.debug_level > 6)
+				if (useropt.debug_level < 1 || useropt.debug_level > 6)
 					goto sniffjoke_help;
 				break;
 			case 'l':
@@ -313,11 +313,11 @@ int main(int argc, char **argv)
 			case 'a':
 				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
 				char* port;
-				if((port = strchr(useropt.admin_address, ':')) != NULL) {
+				if ((port = strchr(useropt.admin_address, ':')) != NULL) {
 					*port = 0x00;
 					int checked_port = atoi(++port);
 
-					if(checked_port > PORTNUMBER || checked_port < 0)
+					if (checked_port > PORTNUMBER || checked_port < 0)
 						goto sniffjoke_help;
 
 					useropt.admin_port = (uint16_t)checked_port;
@@ -336,7 +336,7 @@ int main(int argc, char **argv)
 				snprintf(useropt.onlyplugin, sizeof(useropt.onlyplugin), "%s", optarg);
 				break;
 			case 's':
-				if((strlen(optarg) != 3)
+				if ((strlen(optarg) != 3)
 				|| YNcheck(optarg[0]) || YNcheck(optarg[1]) || YNcheck(optarg[2]))
 					goto sniffjoke_help;
 
@@ -354,7 +354,7 @@ sniffjoke_help:
 	}
 	
 	/* someone has made a "sniffjoke typo" */
-	if(useropt.process_type == SJ_SERVER_PROC && argc > 1 && argv[1][0] != '-') {
+	if (useropt.process_type == SJ_SERVER_PROC && argc > 1 && argv[1][0] != '-') {
 		sj_help(argv[0], useropt.chroot_dir, CHROOT_DIR);
 		return -1;
 	}

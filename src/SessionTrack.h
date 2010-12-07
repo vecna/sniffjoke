@@ -25,9 +25,9 @@
 
 #include "Utils.h"
 #include "Packet.h"
-#include "TTLfocus.h"
 
 #include <map>
+#include <memory>
 
 using namespace std;
 
@@ -60,8 +60,8 @@ class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*> {
 public:
 	SessionTrackMap();
         ~SessionTrackMap();
-	SessionTrack& get_sessiontrack(const Packet &);
-        void manage_expired();
+	SessionTrack& getSessionTrack(const Packet &);
+        void manage_expired();        
 };
 
 #endif /* SJ_SESSIONTRACK_H */

@@ -24,6 +24,7 @@
 #define SJ_HACKPOOL_H
 
 #include "Utils.h"
+#include "UserConf.h"
 #include "Hack.h"
 
 #include <vector>

@@ -52,10 +52,10 @@ uint8_t HDRoptions::m_IPOPT_NOOP(void)
 {
 #define IPOPT_NOOP_SIZE 1
 
-	if(corrupt) /* this option never corrupts the packet */
+	if (corrupt) /* this option never corrupts the packet */
 		return 0;
 
-	if(available_opts_len < IPOPT_NOOP_SIZE)
+	if (available_opts_len < IPOPT_NOOP_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_NOOP;
@@ -120,7 +120,7 @@ uint8_t HDRoptions::m_IPOPT_LSRR(void)
 	 *  first router.
 	 */
 
-	if(!corrupt) /* this option always corrupts the packet */
+	if (!corrupt) /* this option always corrupts the packet */
 		return 0;
 
 	const uint8_t routes_1 = 1 + random() % 3; /* 1 - 3 */
@@ -129,7 +129,7 @@ uint8_t HDRoptions::m_IPOPT_LSRR(void)
 	const uint8_t size_lsrr_2 = 3 + 4 * routes_2;
 	const uint8_t req_size = size_lsrr_1 + size_lsrr_2;
 
-	if(available_opts_len < req_size)
+	if (available_opts_len < req_size)
 		return 0;
 
 	optptr[0] = IPOPT_LSRR;
@@ -173,24 +173,24 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
 	const uint8_t routes = 1 + random() % 5; /* 1 - 5 */
 	const uint8_t size_rr = 3 + routes * 4;
 
-	if(!corrupt && opt_ip_rr) /* this option corrupts the packet if repeated */
+	if (!corrupt && opt_ip_rr) /* this option corrupts the packet if repeated */
 		return 0;
 
-	if(available_opts_len < size_rr)
+	if (available_opts_len < size_rr)
 		return 0;
 		
-	if(!corrupt)
+	if (!corrupt)
 		return 0;
 
 	optptr[0] = IPOPT_RR;
 	optptr[1] = size_rr;
 
-	if(!corrupt) { /* good option */
+	if (!corrupt) { /* good option */
 		optptr[2] = routes * 4;
 
 	} else { /* bad option */
 
-		if(RANDOMPERCENT(50)) {
+		if (RANDOMPERCENT(50)) {
 			/* reference code : if (optptr[2] < 5) { */
 			optptr[2] = random() % 4;
 		} else {
@@ -213,10 +213,10 @@ uint8_t HDRoptions::m_IPOPT_RA(void)
 {
 #define IPOPT_RA_SIZE 4
 
-	if(corrupt) /* this option never corrupts the packet */
+	if (corrupt) /* this option never corrupts the packet */
 		return 0;
 
-	if(available_opts_len < IPOPT_RA_SIZE)
+	if (available_opts_len < IPOPT_RA_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_RA;
@@ -256,10 +256,10 @@ uint8_t HDRoptions::m_IPOPT_CIPSO(void)
 #define IPOPT_CIPSO	(6 |IPOPT_CONTROL|IPOPT_COPY)
 #define IPOPT_CIPSO_SIZE 8
 
-	if(!corrupt) /* this option always corrupts the packet */
+	if (!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	if(available_opts_len < IPOPT_CIPSO_SIZE)
+	if (available_opts_len < IPOPT_CIPSO_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_CIPSO;
@@ -292,10 +292,10 @@ uint8_t HDRoptions::m_IPOPT_SEC(void)
 
 #define IPOPT_SEC_SIZE 11
 
-	if(!corrupt) /* this options always corrupts the packet */
+	if (!corrupt) /* this options always corrupts the packet */
 		return 0;
 
-	if(available_opts_len < IPOPT_SEC_SIZE)
+	if (available_opts_len < IPOPT_SEC_SIZE)
 		return 0;
 
 	/* TODO - cohorent data for security OPT */
@@ -314,10 +314,10 @@ uint8_t HDRoptions::m_IPOPT_SID(void)
 
 #define IPOPT_SID_SIZE 4
 
-	if(!corrupt) /* this option always corrupts the packet */
+	if (!corrupt) /* this option always corrupts the packet */
 		return 0;
 
-	if(available_opts_len < IPOPT_SID_SIZE)
+	if (available_opts_len < IPOPT_SID_SIZE)
 		return 0;
 
 	optptr[0] = IPOPT_SID;
@@ -356,16 +356,16 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
 	const uint8_t timestamps = 1 + random() % 5; /* 1 - 5 */
 	const uint8_t size_timestamp = 4 + timestamps * 8;
 
-	if(!corrupt && opt_ip_timestamp) /* this option corrupts the packet if repeated */
+	if (!corrupt && opt_ip_timestamp) /* this option corrupts the packet if repeated */
 		return 0;
 
-	if(available_opts_len < size_timestamp)
+	if (available_opts_len < size_timestamp)
 		return 0;
 
 	optptr[0] = IPOPT_TIMESTAMP;
 	optptr[1] = size_timestamp;
 	
-	if(!corrupt) {	/* good */
+	if (!corrupt) {	/* good */
 		
 		/* 
 		 * we set the same IPOPT_TS_TSANDADDR suboption we will
@@ -381,7 +381,7 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
 		
 	} else { /* corrupted */
 		
-		if(RANDOMPERCENT(50)) {
+		if (RANDOMPERCENT(50)) {
 			/* reference code : if (optptr[2] < 5) { */
 			optptr[2] = random() % 5;
 		} else {
@@ -439,7 +439,7 @@ bool HDRoptions::checkIPOPTINJPossibility(void) {
 
 		switch(*option) {
 			case IPOPT_END:
-				if(corrupt) /* on corrupt : end can be stripped off */
+				if (corrupt) /* on corrupt : end can be stripped off */
 					*option =  IPOPT_NOOP;
 				++i;
 				continue;
@@ -455,12 +455,12 @@ bool HDRoptions::checkIPOPTINJPossibility(void) {
 			case IPOPT_CIPSO:
 			case IPOPT_SEC:
 			case IPOPT_SID:
-				if(!corrupt) /* on !corrup : we always avoid to inject if this options ar present */
+				if (!corrupt) /* on !corrup : we always avoid to inject if this options ar present */
 					return false;
 				goto ip_opts_len_check;
 ip_opts_len_check:	default:
 				option_len = (uint8_t)optptr[i+1];
-				if(option_len > (actual_opts_len - i)) {
+				if (option_len > (actual_opts_len - i)) {
 					/* 
 					 * the packet contains invalid options
 					 * we avoid injection regardless of the corrupt value.
@@ -485,7 +485,7 @@ bool HDRoptions::checkTCPOPTINJPossibility(void) {
 
 		switch(*option) {
 			case TCPOPT_EOL:
-				if(corrupt) /* on corrupt : eol can be stripped off */
+				if (corrupt) /* on corrupt : eol can be stripped off */
 					*option = TCPOPT_NOP;
 				++i;
 				continue;
@@ -496,12 +496,12 @@ bool HDRoptions::checkTCPOPTINJPossibility(void) {
 			case TCPOPT_WINDOW:
 			case TCPOPT_SACK_PERMITTED:
 			case TCPOPT_SACK:
-				if(!corrupt) /* on !corrupt : we always avoid to inject if this options ar present */
+				if (!corrupt) /* on !corrupt : we always avoid to inject if this options ar present */
 					return false;
 				goto tcp_opts_len_check;
 tcp_opts_len_check:	default:
 				option_len = (uint8_t)optptr[i+1];
-				if(option_len > (actual_opts_len - i)) {
+				if (option_len > (actual_opts_len - i)) {
 					/* 
 					 * the packet contains invalid options
 					 * we avoid injection regardless of the corrupt value.
@@ -530,11 +530,11 @@ HDRoptions::HDRoptions(injector_t t, bool corrupt, unsigned char *optptr, uint8_
 {
 	switch(type) {
 		case IPOPTS_INJECTOR:
-			if(!checkIPOPTINJPossibility())
+			if (!checkIPOPTINJPossibility())
 				throw exception();
 			break;
 		case TCPOPTS_INJECTOR:
-			if(!checkTCPOPTINJPossibility())
+			if (!checkTCPOPTINJPossibility())
 				throw exception();
 			break;
 	}
@@ -558,7 +558,7 @@ bool HDRoptions::randomInjector(void)
 	 * the next one, for mayhem reason or for coherence
 	 */
 	 
-	if(type == IPOPTS_INJECTOR) {
+	if (type == IPOPTS_INJECTOR) {
 		/* random value between 0 and SJ_IPOPT_SID (last option) */
 		switch(random() % (SJ_IPOPT_SID + 1)) {
 			case SJ_IPOPT_NOOP:
@@ -622,7 +622,7 @@ bool HDRoptions::randomInjector(void)
 		}
 	}	
 
-	if(injectetdopt_size) {
+	if (injectetdopt_size) {
 		optptr += injectetdopt_size;
 		actual_opts_len += injectetdopt_size;
 		available_opts_len = (target_opts_len - actual_opts_len);

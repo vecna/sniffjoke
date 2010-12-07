@@ -24,11 +24,10 @@
 #define SJ_TTLFOCUS_H
 
 #include "Utils.h"
-#include "UserConf.h"
 #include "Packet.h"
 
 #include <map>
-#include <vector>
+#include <memory>
 
 using namespace std;
 
@@ -73,10 +72,12 @@ public:
 };
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*> {
+private:
+	char dumpfile[MEDIUMBUF];
 public:
-        TTLFocusMap();
+        TTLFocusMap(const char* dumpfile);
         ~TTLFocusMap();
-	TTLFocus& get_ttlfocus(const Packet &);
+	TTLFocus& getTTLFocus(const Packet &);
         void manage_expired();
         void load(const char *);
         void dump(const char *);

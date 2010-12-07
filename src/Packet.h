@@ -24,7 +24,6 @@
 #define SJ_PACKET_H
 
 #include "Utils.h"
-#include "UserConf.h"
 
 #include <cstdio>
 #include <cstdlib>

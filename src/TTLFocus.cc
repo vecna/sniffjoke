@@ -20,7 +20,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "TTLfocus.h"
+#include "TTLFocus.h"
 
 #include <cerrno>
 #include <cstdlib>
@@ -86,14 +86,14 @@ void TTLFocus::selectPuppetPort()
 {
 	uint16_t realport = probe_dummy.tcp->source;
 	puppet_port = (realport + random()) % 32767 + 1;
-        if(puppet_port > realport - PUPPET_MARGIN
+        if (puppet_port > realport - PUPPET_MARGIN
 	&& puppet_port < realport + PUPPET_MARGIN)
 		puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
 }
 
 void TTLFocus::selflog(const char *func, const char *umsg) const
 {
-	if(debug.level() == SUPPRESS_LOG)
+	if (debug.level() == SUPPRESS_LOG)
 		return;
 		
 	const char *status_name;
@@ -113,12 +113,15 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
 	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
 }
 
-TTLFocusMap::TTLFocusMap() {
-	debug.log(VERBOSE_LEVEL, __func__);	
+TTLFocusMap::TTLFocusMap(const char* dumpfile) {
+	debug.log(VERBOSE_LEVEL, __func__);
+	snprintf(this->dumpfile, LARGEBUF, dumpfile);
+	load(dumpfile);
 }
 
 TTLFocusMap::~TTLFocusMap() {
 	debug.log(VERBOSE_LEVEL, __func__);	
+	dump(dumpfile);
 	for(TTLFocusMap::iterator it = begin(); it != end();) {
 		delete &(*it->second);
 		erase(it++);
@@ -126,17 +129,16 @@ TTLFocusMap::~TTLFocusMap() {
 }
 
 /* return a ttlfocus given a packet; return a new ttlfocus if no one exists */
-TTLFocus& TTLFocusMap::get_ttlfocus(const Packet &pkt)
+TTLFocus& TTLFocusMap::getTTLFocus(const Packet &pkt)
 {
 	TTLFocus *ttlfocus;
 	
 	/* check if the key it's already present */
 	TTLFocusMap::iterator it = find(pkt.ip->daddr);
-	if(it != end()) /* on hit: return the ttlfocus object. */
+	if (it != end()) /* on hit: return the ttlfocus object. */
 		ttlfocus = it->second;
 	else { /* on miss: create a new ttlfocus and insert it into the map */
-		TTLFocus * const newttlfocus = new TTLFocus(pkt);
-		ttlfocus = insert(pair<const uint32_t, TTLFocus*>(pkt.ip->daddr, newttlfocus)).first->second;
+		ttlfocus = insert(pair<const uint32_t, TTLFocus*>(pkt.ip->daddr, new TTLFocus(pkt))).first->second;
 	}
 	
 	/* update access timestamp using global clock */
@@ -149,7 +151,7 @@ TTLFocus& TTLFocusMap::get_ttlfocus(const Packet &pkt)
 void TTLFocusMap::manage_expired()
 {
 	for(TTLFocusMap::iterator it = begin(); it != end();) {
-		if((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock.tv_sec) {
+		if ((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock.tv_sec) {
 			delete &(*it->second);
 			erase(it++);
 		} else {
@@ -167,12 +169,12 @@ void TTLFocusMap::load(const char* dumpfile)
 	debug.log(ALL_LEVEL, "loading ttlfocusmap from %s",  dumpfile);
 	
 	FILE *loadfd = fopen(dumpfile, "r");
-	if(loadfd == NULL) {
+	if (loadfd == NULL) {
 		debug.log(ALL_LEVEL, "unable to access %s: sniffjoke will start without a ttl cache", dumpfile);
         	return;
         }
 
-	while((ret = fread(&tmp, sizeof(struct ttlfocus_cache_record), 1, loadfd)) == 1) {
+	while ((ret = fread(&tmp, sizeof(struct ttlfocus_cache_record), 1, loadfd)) == 1) {
 		records_num++;
 		TTLFocus *ttlfocus = new TTLFocus(tmp);
 		insert(pair<const uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
@@ -180,13 +182,14 @@ void TTLFocusMap::load(const char* dumpfile)
 
 	fclose(loadfd);
 
-	if(ret != 0) {
+	if (ret != 0) {
 		unlink(TTLFOCUSCACHE_FILE);
 		debug.log(ALL_LEVEL, "unable to read ttlfocus from %s: %s",
 			dumpfile, strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
 	}
+
 	debug.log(ALL_LEVEL, "ttlfocusmap load completed: %u records loaded", records_num);
 }
 
@@ -199,7 +202,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 	debug.log(ALL_LEVEL, "dumping ttlfocusmap to %s",  dumpfile);
 
 	FILE *dumpfd = fopen(dumpfile, "w");
-        if(dumpfd == NULL) {
+        if (dumpfd == NULL) {
                 debug.log(ALL_LEVEL, "unable to access %s: sniffjoke will not dump ttl cache", dumpfile);
                 return;
         }
@@ -209,7 +212,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 		TTLFocus *tmp = it->second;
 
 		/* we saves only with TTL_KNOWN status */
-		if(tmp->status != TTL_KNOWN)
+		if (tmp->status != TTL_KNOWN)
 			continue;
 
 
@@ -226,7 +229,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 		 */
 		memcpy(cache_record.probe_dummy, &(tmp->probe_dummy.pbuf[0]), 40);
 		
-		if(fwrite(&cache_record, sizeof(struct ttlfocus_cache_record), 1, dumpfd) != 1)
+		if (fwrite(&cache_record, sizeof(struct ttlfocus_cache_record), 1, dumpfd) != 1)
 		{
 			fclose(dumpfd);
 			unlink(dumpfile);
@@ -238,6 +241,7 @@ void TTLFocusMap::dump(const char* dumpfile)
 		
 		++records_num;
 	}
+
 	fclose(dumpfd);
 
 	debug.log(ALL_LEVEL, "ttlfocusmap dump completed: %u records dumped", records_num);
