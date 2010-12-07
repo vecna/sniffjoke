@@ -108,7 +108,6 @@ struct sj_config {
 		char gw_mac_addr[ETH_ALEN];		/* default: autodetect, the conversion of _str */
 		unsigned char interface[SMALLBUF];	/* default: autodetect */
 		uint8_t tun_number;			/* default: autodetect */
-
 };
 
 class UserConf {
