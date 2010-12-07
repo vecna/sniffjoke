@@ -37,6 +37,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	struct ifreq ifr;
 	struct ifreq netifr;
 	int ret;
+	int flags;
 	int tmpfd;
 	char cmd[MEDIUMBUF];
 
@@ -64,8 +65,7 @@ NetIO::NetIO(sj_config& runcfg) :
 	memset(&ifr, 0x00, sizeof(ifr));
 	memset(&netifr, 0x00, sizeof(netifr));
 
-	ifr.ifr_flags = IFF_NO_PI;
-	ifr.ifr_flags |= IFF_TUN;
+	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
 
 	if ((ret = ioctl(tunfd, TUNSETIFF, (void *) &ifr)) != -1) {
 		debug.log(DEBUG_LEVEL, "NetIO: flags set successfully in tun socket");
@@ -85,14 +85,14 @@ NetIO::NetIO(sj_config& runcfg) :
 	}
 	close (tmpfd);
 		
-	if ((ret = fcntl(tunfd, F_SETFL, O_NONBLOCK)) != -1) {
+	if (((flags = fcntl(tunfd, F_GETFL)) != -1) && (fcntl(tunfd, F_SETFL, flags | O_NONBLOCK) != -1)) {
 		debug.log(DEBUG_LEVEL, "NetIO: flag O_NONBLOCK set successfully in tun socket");
 	} else {
 		debug.log(ALL_LEVEL, "NetIO: unable to set flag O_NONBLOCK in tun socket: %s", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	if ((ret = fcntl(tunfd, F_SETFD, FD_CLOEXEC)) != -1) {
+	if (((flags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, flags | FD_CLOEXEC) != -1)) {
 		debug.log(DEBUG_LEVEL, "NetIO: flag FD_CLOEXEC set successfully in tun socket");
 	} else {
 		debug.log(ALL_LEVEL, "NetIO: unable to set flag FD_CLOEXEC in tun socket: %s", strerror(errno));
@@ -157,7 +157,7 @@ NetIO::NetIO(sj_config& runcfg) :
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	if ((ret = fcntl (netfd, F_SETFL, O_NONBLOCK)) != -1) {
+	if (((flags = fcntl(netfd, F_GETFL)) != -1) && (fcntl(netfd, F_SETFL, flags | O_NONBLOCK) != -1)) {
 		debug.log(DEBUG_LEVEL, "NetIO: setting network socket to non blocking mode successfully");
 	} else {
 		debug.log(ALL_LEVEL, "NetIO: unable to set socket in non blocking mode: %s",
@@ -181,25 +181,23 @@ NetIO::~NetIO(void)
 
 	char cmd[MEDIUMBUF];
 
-	close(netfd);
-	memset(&send_ll, 0x00, sizeof(send_ll));
-	
 	if (getuid() || geteuid()) {
 		debug.log(ALL_LEVEL, "~NetIO: not root: unable to restore default gw");
-		return;
+	} else {
+		debug.log(VERBOSE_LEVEL, "~NetIO: deleting our default gw [route del default]");
+		system("route del default");
+
+		snprintf(cmd, sizeof(cmd), "ifconfig tun%d down", runconfig.tun_number);
+		debug.log(VERBOSE_LEVEL, "~NetIO: shutting down tun%d interface [%s]", runconfig.tun_number, cmd);
+		pclose(popen(cmd, "r"));
+
+		snprintf(cmd, sizeof(cmd), "route add default gw %s", runconfig.gw_ip_addr);
+		debug.log(VERBOSE_LEVEL, "~NetIO: restoring previous default gateway [%s]", cmd);
+		pclose(popen(cmd, "r"));
 	}
 
-	debug.log(VERBOSE_LEVEL, "~NetIO: deleting our default gw [route del default]");
-	system("route del default");
-
-	snprintf(cmd, sizeof(cmd), "ifconfig tun%d down", runconfig.tun_number);
-	debug.log(VERBOSE_LEVEL, "~NetIO: shutting down tun%d interface [%s]", runconfig.tun_number, cmd);
-	pclose(popen(cmd, "r"));
 	close(tunfd);
-
-	snprintf(cmd, sizeof(cmd), "route add default gw %s", runconfig.gw_ip_addr);
-	debug.log(VERBOSE_LEVEL, "~NetIO: restoring previous default gateway [%s]", cmd);
-	pclose(popen(cmd, "r"));
+	close(netfd);
 }
 
 void NetIO::prepare_conntrack(TCPTrack *ct)
@@ -220,8 +218,6 @@ void NetIO::network_io(void)
 	 */
 	bool data_received = false; 
 	 
-	clock_gettime(CLOCK_REALTIME, &sj_clock);
-	
 	timespec deadline_on_data;
 
 	fds[0].events = POLLIN;
@@ -229,17 +225,19 @@ void NetIO::network_io(void)
 	
 	while (1)
 	{
+		clock_gettime(CLOCK_REALTIME, &sj_clock);
+
 		timespec polltimeout;
 	
 		if(data_received) {
 			/* 
 			 * if there is data received we do poll with a timeout of 0.05ms
 			 * and we check the deadline of 0.1ms;
-			 * so after having received a packet we will analyze it in 0.5~1 msec
+			 * so after having received a packet we will analyze it in 0.05 ~ 0.1 msec
 			 */
 			if(isSchedulePassed(deadline_on_data))
 				break;
-			polltimeout = polltimeout_on_data; /* 0.1 ms */
+			polltimeout = polltimeout_on_data; /* 0.05 ms */
 			nfds = ppoll(fds, 2, &polltimeout, NULL);
 		} else if((closest_schedule.tv_sec != 0) && (closest_schedule.tv_nsec != 0)) {
 			/*
@@ -259,7 +257,7 @@ void NetIO::network_io(void)
 				 * we also will scatter the previous "if(data_received)"
 				 * permitting also tu acquire a burst
 				 */
-				polltimeout = polltimeout_on_data; /* 0.1 ms */
+				polltimeout = polltimeout_on_data; /* 0.05 ms */
 				nfds = ppoll(fds, 2, &polltimeout, NULL);
 			}
 		} else {
@@ -273,7 +271,7 @@ void NetIO::network_io(void)
 		}
 	
 		if(!nfds)
-			goto time_refresh;
+			continue;
 
 		/* otherwise, some data has been received */
 		if(data_received == false) {
@@ -300,13 +298,12 @@ void NetIO::network_io(void)
 				/* sniffjoke it's disabled? we make a blocking write, because
 				 * an intensive traffic will return -1 on a non ready to write socket */
 				flags = fcntl(netfd, F_GETFL);
-				flags &= ~O_NONBLOCK;
-				fcntl(netfd, F_SETFL, flags);
+				fcntl(netfd, F_SETFL, flags & ~O_NONBLOCK);
 				if(sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll)) != ret) {
 					debug.log(ALL_LEVEL, "%s: send to network: %s", __func__, strerror(errno));
 					SJ_RUNTIME_EXCEPTION(strerror(errno));
 				}
-				fcntl(netfd, F_SETFL, O_NONBLOCK);
+				fcntl(netfd, F_SETFL, flags);
 			}
 		}
 
@@ -321,23 +318,18 @@ void NetIO::network_io(void)
 
 			if(runconfig.active == true) {
 				conntrack->writepacket(NETWORK, pktbuf, ret);
-			}
-			else {
+			} else {
 				/* sniffjoke it's disabled? we make a blocking write, because
 				 * an intensive traffic will return -1 on a non ready to write socket */
 				flags = fcntl(tunfd, F_GETFL);
-				flags &= ~O_NONBLOCK;
-				fcntl(tunfd, F_SETFL, flags);
+				fcntl(tunfd, F_SETFL, flags & ~O_NONBLOCK);
 				if(write(tunfd, pktbuf, ret) != ret) {
 					debug.log(ALL_LEVEL, "%s: write in tunnel: %s", __func__, strerror(errno));
 					SJ_RUNTIME_EXCEPTION(strerror(errno));
 				}
-				fcntl(tunfd, F_SETFL, O_NONBLOCK);
+				fcntl(tunfd, F_SETFL, flags);
 			}
 		}
-
-time_refresh:
-		clock_gettime(CLOCK_REALTIME, &sj_clock);
 	}
 
 	closest_schedule = conntrack->analyze_packets_queue();
@@ -366,10 +358,9 @@ void NetIO::queue_flush(void)
 			}
 		} else {
 		
+			ssize_t ret;
+
 			if (fds[0].revents) { /* POLLOUT is the unique event managed */
-				
-				ssize_t ret;
-				
 				/* it's possibile to write in tunfd */
 				ret = write(tunfd, (void*)&(pkt_net->pbuf[0]), pkt_net->pbuf.size());
 					
@@ -388,9 +379,6 @@ void NetIO::queue_flush(void)
 			}
 
 			if (fds[1].revents) { /* POLLOUT is the unique event managed */
-				
-				ssize_t ret;
-				
 				/* it's possibile to write in netfd */
 				ret = sendto(netfd, (void*)&(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 					
