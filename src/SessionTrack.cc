@@ -63,7 +63,7 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 
 void SessionTrack::selflog(const char *func, const char *lmsg) const
 {
-	if(debug.level() == SUPPRESS_LOG)
+	if (debug.level() == SUPPRESS_LOG)
 		return;
 
 	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: [%s]",
@@ -96,11 +96,10 @@ SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
 	
 	/* check if the key it's already present */
 	SessionTrackMap::iterator it = find(key);
-	if(it != end()) /* on hit: return the sessiontrack object. */
+	if (it != end()) /* on hit: return the sessiontrack object. */
 		sessiontrack = it->second;
 	else { /* on miss: create a new sessiontrack and insert it into the map */
-		SessionTrack * const newsession = new SessionTrack(pkt);
-		sessiontrack = insert(pair<const SessionTrackKey, SessionTrack*>(key, newsession)).first->second;
+		sessiontrack = insert(pair<const SessionTrackKey, SessionTrack*>(key, new SessionTrack(pkt))).first->second;
 	}
 		
 	/* update access timestamp using global clock */
@@ -114,7 +113,7 @@ SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
 void SessionTrackMap::manage_expired()
 {
 	for(SessionTrackMap::iterator it = begin(); it != end();) {
-		if((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock.tv_sec) {
+		if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock.tv_sec) {
 			delete &(*it->second);
 			erase(it++);
 		} else {

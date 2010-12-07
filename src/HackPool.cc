@@ -30,7 +30,7 @@ PluginTrack::PluginTrack(const char *plugabspath)
 	debug.log(VERBOSE_LEVEL, "%s: %s", __func__, plugabspath);
 	
 	pluginHandler = dlopen(plugabspath, RTLD_NOW);
-	if(pluginHandler == NULL) {
+	if (pluginHandler == NULL) {
 		debug.log(ALL_LEVEL, "PluginTrack: unable to load plugin %s: %s", plugabspath, dlerror());
 		SJ_RUNTIME_EXCEPTION("");
 	}
@@ -50,12 +50,12 @@ PluginTrack::PluginTrack(const char *plugabspath)
         fp_DeleteHackObj = (destructor_f *)dlsym(pluginHandler, "DeleteHackObject");
 	fp_versionValue = (version_f *)dlsym(pluginHandler, "versionValue");
 
-        if(fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL) {
+        if (fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of create/delete object", plugabspath);
 		SJ_RUNTIME_EXCEPTION("");
         }
 
-	if(strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION)) {
+	if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION)) {
 		debug.log(ALL_LEVEL, "PluginTrack: loading %s incorred version (%s) with SniffJoke %s",
 			plugabspath, fp_versionValue(), SW_VERSION);
 		SJ_RUNTIME_EXCEPTION("");
@@ -63,7 +63,7 @@ PluginTrack::PluginTrack(const char *plugabspath)
 
         selfObj = fp_CreateHackObj();
 
-        if(selfObj->hackName == NULL) {
+        if (selfObj->hackName == NULL) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of ->hackName member", plugabspath);
 		SJ_RUNTIME_EXCEPTION("");
         }
@@ -82,7 +82,7 @@ HackPool::HackPool(const sj_config &runcfg)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
-	if(runcfg.onlyplugin[0])  {
+	if (runcfg.onlyplugin[0])  {
 		char plugabspath[MEDIUMBUF];
 		memset(plugabspath, 0x00, sizeof(plugabspath));
 		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, runcfg.onlyplugin);
@@ -91,7 +91,7 @@ HackPool::HackPool(const sj_config &runcfg)
 		parseEnablerFile(const_cast<const char *>(runcfg.enabler));
 	}
 
-	if(!size()) {
+	if (!size()) {
 		debug.log(ALL_LEVEL, "HackPool: loaded correctly 0 plugins: FAILURE while loading detected");
 		SJ_RUNTIME_EXCEPTION("");
 	} else
@@ -135,7 +135,7 @@ void HackPool::parseEnablerFile(const char *enabler)
 	char plugabspath[MEDIUMBUF];
 	FILE *plugfile;
 
-	if((plugfile = fopen(enabler, "r")) == NULL) {
+	if ((plugfile = fopen(enabler, "r")) == NULL) {
 		debug.log(ALL_LEVEL, "HackPool: unable to open in reading %s: %s", enabler, strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	}
@@ -146,14 +146,14 @@ void HackPool::parseEnablerFile(const char *enabler)
 		fgets(plugrelpath, SMALLBUF, plugfile);
 		++line;
 
-		if(plugrelpath[0] == '#')
+		if (plugrelpath[0] == '#')
 			continue;
 
 		/* C's chop() */
 		plugrelpath[strlen(plugrelpath) -1] = 0x00; 
 
 		/* 4 is the minimum length of a ?.so plugin */
-		if(strlen(plugrelpath) < 4 || feof(plugfile)) {
+		if (strlen(plugrelpath) < 4 || feof(plugfile)) {
 			debug.log(ALL_LEVEL, "HackPool: reading %s: importend %d plugins, matched interruption at line %d",
 				PLUGINSENABLER, size(), line);
 			SJ_RUNTIME_EXCEPTION("");
@@ -163,7 +163,7 @@ void HackPool::parseEnablerFile(const char *enabler)
 		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, plugrelpath);
 		importPlugin(plugabspath, plugrelpath);
 
-	} while(!feof(plugfile));
+	} while (!feof(plugfile));
 
 	fclose(plugfile);
 }

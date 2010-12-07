@@ -98,40 +98,40 @@ void Packet::updatePacketMetadata()
 	/* end initial metadata reset */
 
 	/* start ip update */
-	if(pktlen < sizeof(struct iphdr))
+	if (pktlen < sizeof(struct iphdr))
 		SJ_RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
 
 	ip = (struct iphdr *)&(pbuf[0]);
 	iphdrlen = ip->ihl * 4;
 
-	if(pktlen < iphdrlen)
+	if (pktlen < iphdrlen)
 		SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen");
 	
-	if(pktlen < ntohs(ip->tot_len))
+	if (pktlen < ntohs(ip->tot_len))
 		SJ_RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
 	/* end ip update */
 	
 	switch(ip->protocol) {
 		case IPPROTO_TCP:
 			/* start tcp update */
-			if(pktlen < iphdrlen + sizeof(struct tcphdr))
+			if (pktlen < iphdrlen + sizeof(struct tcphdr))
 				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
 			proto = TCP;
 			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
 			tcphdrlen = tcp->doff * 4;
 			
-			if(pktlen < iphdrlen + tcphdrlen)
+			if (pktlen < iphdrlen + tcphdrlen)
 				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
 
 			datalen = pktlen - iphdrlen - tcphdrlen;
-			if(datalen)
+			if (datalen)
 				payload = (unsigned char *)tcp + tcphdrlen;
 			/* end tcp update */
 			break;
 		case IPPROTO_ICMP: 
 			/* start icmp update */
-			if(pktlen < iphdrlen + sizeof(struct icmphdr))
+			if (pktlen < iphdrlen + sizeof(struct icmphdr))
 				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
 			proto = ICMP;
@@ -163,7 +163,7 @@ uint32_t Packet::half_cksum(const void* data, uint16_t len)
 
 uint16_t Packet::compute_sum(uint32_t sum)
 {
-	while(sum>>16)
+	while (sum>>16)
              sum = (sum & 0xFFFF) + (sum >> 16);
 
 	return ~sum;
@@ -186,21 +186,21 @@ void Packet::fixIpTcpSum(void)
 
 bool Packet::selfIntegrityCheck(const char *pluginName)
 {
-	if(source != SOURCEUNASSIGNED) {
+	if (source != SOURCEUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
 	}
 
-	if(wtf == JUDGEUNASSIGNED) {
+	if (wtf == JUDGEUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;
 	}
 
-	if(proto == PROTOUNASSIGNED) {
+	if (proto == PROTOUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
 		goto errorinfo;
 	}
 
-	if(position == POSITIONUNASSIGNED) {
+	if (position == POSITIONUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
 		goto errorinfo;
 	}
@@ -214,7 +214,7 @@ errorinfo:
 
 void Packet::IPHDR_resize(uint8_t size) 
 {
-	if(size == iphdrlen)
+	if (size == iphdrlen)
 		return;
 	
 	const uint16_t pktlen = pbuf.size();
@@ -232,7 +232,7 @@ void Packet::IPHDR_resize(uint8_t size)
 	
 	vector<unsigned char>::iterator it = pbuf.begin();
 
-	if(iphdrlen < size) {
+	if (iphdrlen < size) {
 		ip->tot_len = ntohs(pktlen + (size - iphdrlen));
 		pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
 
@@ -246,7 +246,7 @@ void Packet::IPHDR_resize(uint8_t size)
 
 void Packet::TCPHDR_resize(uint8_t size)
 {
-	if(size == tcphdrlen)
+	if (size == tcphdrlen)
 		return;
 	
 	const uint16_t pktlen = pbuf.size();
@@ -264,7 +264,7 @@ void Packet::TCPHDR_resize(uint8_t size)
 	
 	vector<unsigned char>::iterator it = pbuf.begin() + iphdrlen;
 
-	if(tcphdrlen < size) {
+	if (tcphdrlen < size) {
 		ip->tot_len = ntohs(pktlen + (size - tcphdrlen));
 		pbuf.insert(it + tcphdrlen, size - tcphdrlen, TCPOPT_NOP);
 	} else { /* tcphdrlen > size */
@@ -277,13 +277,13 @@ void Packet::TCPHDR_resize(uint8_t size)
 
 void Packet::TCPPAYLOAD_resize(uint16_t size)
 {
-	if(size == datalen)
+	if (size == datalen)
 		return;
 	
 	const uint16_t pktlen = pbuf.size();
 	
 	/* begin safety checks */
-	if(pktlen - datalen + size > MTU)
+	if (pktlen - datalen + size > MTU)
 		SJ_RUNTIME_EXCEPTION("");
 	/* end safety checks */
 
@@ -317,23 +317,23 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 
-	if(strip_previous && iphdrlen != sizeof(struct iphdr)) {
+	if (strip_previous && iphdrlen != sizeof(struct iphdr)) {
 		const uint16_t freespace = MTU - pktlen + iphdrlen - sizeof(struct iphdr);
 		actual_iphdrlen = sizeof(struct iphdr);
 		target_iphdrlen = sizeof(struct iphdr) + (random() % (MAXIPHEADER - sizeof(struct iphdr)));
-		if(freespace < target_iphdrlen)
+		if (freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
 	} else {
 		const uint16_t freespace = MTU - pktlen;
 		target_iphdrlen = iphdrlen + (random() % (MAXIPHEADER - iphdrlen));
-		if(freespace < target_iphdrlen)
+		if (freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
 	}
 
 	// iphdrlen must be a multiple of 4
 	target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
 	
-	if(target_iphdrlen != actual_iphdrlen)
+	if (target_iphdrlen != actual_iphdrlen)
 		IPHDR_resize(target_iphdrlen);
 
 	try {
@@ -343,12 +343,12 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 		do {
 			injected |= IPInjector.randomInjector();
 
-		} while(target_iphdrlen != actual_iphdrlen && MAXITERATION--);
+		} while (target_iphdrlen != actual_iphdrlen && MAXITERATION--);
 	} catch(exception &e) {
 		selflog(__func__, "ip injection is not possibile");
 	}
 
-	if(target_iphdrlen != actual_iphdrlen) {
+	if (target_iphdrlen != actual_iphdrlen) {
 		/* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
 		   to inject options not aligned to 4 */
 		actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
@@ -375,23 +375,23 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 	
-	if(strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
+	if (strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
 		uint16_t freespace = MTU - pktlen + tcphdrlen - sizeof(struct tcphdr);
 		actual_tcphdrlen = sizeof(struct tcphdr);
 		target_tcphdrlen = sizeof(struct tcphdr) + (random() % (MAXTCPHEADER - sizeof(struct tcphdr)));
-		if(freespace < target_tcphdrlen)
+		if (freespace < target_tcphdrlen)
 			target_tcphdrlen = freespace;
 	} else {
 		uint16_t freespace = MTU - pktlen;
 		target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
-		if(freespace < target_tcphdrlen)
+		if (freespace < target_tcphdrlen)
 			target_tcphdrlen = freespace;
 	}
 	
 	// tcphdrlen must be a multiple of 4
 	target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
 	
-	if(target_tcphdrlen != actual_tcphdrlen)
+	if (target_tcphdrlen != actual_tcphdrlen)
 		TCPHDR_resize(target_tcphdrlen);
 
 	try {
@@ -401,13 +401,13 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 		do {
 			injected |= TCPInjector.randomInjector();
 
-		} while(target_tcphdrlen != actual_tcphdrlen && MAXITERATION--); 
+		} while (target_tcphdrlen != actual_tcphdrlen && MAXITERATION--); 
 
 	} catch(exception &e) {
 		selflog(__func__, "tcp injection is not possibile");		
 	}
 
-	if(target_tcphdrlen != actual_tcphdrlen) {
+	if (target_tcphdrlen != actual_tcphdrlen) {
 		/* tcphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
 		   to inject options not aligned to 4 */
 		actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
@@ -422,7 +422,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
 void Packet::selflog(const char *func, const char *loginfo) const
 {
-	if(debug.level() == SUPPRESS_LOG)
+	if (debug.level() == SUPPRESS_LOG)
 		return;
 	
 	const char *evilstr, *wtfstr, *sourcestr, *p;

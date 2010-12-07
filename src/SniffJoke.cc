@@ -108,7 +108,7 @@ void SniffJoke::server() {
 		}
 	}
 
-	if(!old_service_pid && opts.force_restart)
+	if (!old_service_pid && opts.force_restart)
 		debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously runconfig SniffJoke");
 
 	/* runconfig the network setup before the background, for keep the software output visible on the console */
@@ -140,7 +140,7 @@ void SniffJoke::server() {
 
 	/* this is the root privileges thread, need to run for restore the network
 	 * environment in shutdown */
-	if(service_pid) {
+	if (service_pid) {
 		int deadtrace;
 		
 		proc.writePidfile();
@@ -178,8 +178,8 @@ void SniffJoke::server() {
 		while (alive) {
 
 			proc.sigtrapDisable();
+
 			mitm->network_io();
-			mitm->queue_flush();
 
 			handle_admin_socket(admin_socket);
 
@@ -190,7 +190,7 @@ void SniffJoke::server() {
 
 void SniffJoke::server_root_cleanup()
 {
-	if(service_pid) {
+	if (service_pid) {
 		debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
 		kill(service_pid, SIGTERM);
 		waitpid(service_pid, NULL, WUNTRACED);
@@ -219,7 +219,7 @@ int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], uint16_t bindport
 
 	memset(&in_service, 0x00, sizeof(in_service));
 	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
-	if(!inet_aton(admin_address, &in_service.sin_addr)) {
+	if (!inet_aton(admin_address, &in_service.sin_addr)) {
 		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", admin_address);
 		SJ_RUNTIME_EXCEPTION("");
 	}
@@ -263,7 +263,7 @@ void SniffJoke::handle_admin_socket(int srvsock)
 	output = userconf.handle_cmd(r_command);
 
 	/* send the answer message to the client */
-	if(output != NULL) 
+	if (output != NULL) 
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
 }
 
@@ -285,7 +285,7 @@ void SniffJoke::send_command(const char *cmdstring, char serveraddr[MEDIUMBUF], 
 	service_sin.sin_family = AF_INET;
 	service_sin.sin_port = htons(serverport);
 	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
-	if(!inet_aton(serveraddr, &service_sin.sin_addr)) {
+	if (!inet_aton(serveraddr, &service_sin.sin_addr)) {
 		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", serveraddr);
 		SJ_RUNTIME_EXCEPTION("");
 	}
@@ -332,7 +332,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 	debug.debuglevel = userconf.runconfig.debug_level;
 
 	/* when sniffjoke start force the output to be stdout */
-	if(forcedoutput != NULL) {
+	if (forcedoutput != NULL) {
 		debug.logstream = forcedoutput;
 		return;
 	}
@@ -365,7 +365,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", userconf.runconfig.logfname_sessions);
 			}
 		}
-	} else if(opts.process_type == SJ_CLIENT_PROC) {
+	} else if (opts.process_type == SJ_CLIENT_PROC) {
 		debug.logstream = stdout;
 		debug.log(DEBUG_LEVEL, "client write a verbose output on stdout, whenever a block happen, use ^c");
 	} else /* userconf.runconfig.go_foreground */ {
@@ -379,10 +379,10 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
  * and the descriptor are closed with the process, after. */
 void SniffJoke::debug_cleanup()
 {
-	if(debug.logstream != NULL && debug.logstream != stdout)
+	if (debug.logstream != NULL && debug.logstream != stdout)
 		fflush(debug.logstream);
-	if(debug.packet_logstream != NULL && debug.packet_logstream != stdout)
+	if (debug.packet_logstream != NULL && debug.packet_logstream != stdout)
 		fflush(debug.packet_logstream);
-	if(debug.session_logstream != NULL && debug.session_logstream != stdout)
+	if (debug.session_logstream != NULL && debug.session_logstream != stdout)
 		fflush(debug.session_logstream);
 }

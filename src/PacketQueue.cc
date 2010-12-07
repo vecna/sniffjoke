@@ -49,7 +49,7 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(Packet &pkt, queue_t queue)
 {
-	if(pkt.queue != QUEUEUNASSIGNED)
+	if (pkt.queue != QUEUEUNASSIGNED)
 		remove(pkt);
 	
 	pkt_count++;
@@ -69,7 +69,7 @@ void PacketQueue::insert(Packet &pkt, queue_t queue)
 
 void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
-	if(pkt.queue != QUEUEUNASSIGNED)
+	if (pkt.queue != QUEUEUNASSIGNED)
 		remove(pkt);	
 
 	pkt_count++;
@@ -95,7 +95,7 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 
 void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
-	if(pkt.queue != QUEUEUNASSIGNED)
+	if (pkt.queue != QUEUEUNASSIGNED)
 		remove(pkt);
 	
 	++pkt_count;

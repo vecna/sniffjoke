@@ -54,7 +54,7 @@ Process::Process(const struct sj_config &runcfg) :
 	userinfo_buf = calloc(1, userinfo_buf_len);
 	groupinfo_buf = calloc(1, groupinfo_buf_len);
 
-	if(userinfo_buf == NULL || groupinfo_buf == NULL) {
+	if (userinfo_buf == NULL || groupinfo_buf == NULL) {
                 debug.log(ALL_LEVEL, "Process: problem in memory allocation for userinfo or groupinfo");
                 SJ_RUNTIME_EXCEPTION("");
 	}
@@ -121,7 +121,7 @@ int Process::detach()
 
 void Process::jail() 
 {
-	if(runconfig.chroot_dir == NULL) {
+	if (runconfig.chroot_dir == NULL) {
                 debug.log(ALL_LEVEL, "jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
 		SJ_RUNTIME_EXCEPTION("");
 	}
@@ -198,7 +198,7 @@ pid_t Process::readPidfile(void)
 	int ret = 0;
 
         FILE *pidFile = fopen(SJ_PIDFILE, "r");
-        if(pidFile == NULL) {
+        if (pidFile == NULL) {
 		debug.log(DEBUG_LEVEL, "readPidfile: pidfile %s not present: %s", SJ_PIDFILE, strerror(errno));
 		return ret;
 	}
@@ -215,7 +215,7 @@ pid_t Process::readPidfile(void)
 void Process::writePidfile(void)
 {
         FILE *pidFile = fopen(SJ_PIDFILE, "w+");
-        if(pidFile == NULL) {
+        if (pidFile == NULL) {
                 debug.log(ALL_LEVEL, "writePidfile: unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
                 SJ_RUNTIME_EXCEPTION("");
         }
@@ -235,7 +235,7 @@ void Process::unlinkPidfile(void)
 	}
 
 	fclose(pidFile);
-	if(unlink(SJ_PIDFILE)) {
+	if (unlink(SJ_PIDFILE)) {
 		debug.log(VERBOSE_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
                 SJ_RUNTIME_EXCEPTION("");
 	}

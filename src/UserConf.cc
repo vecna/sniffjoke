@@ -37,15 +37,15 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	char configfile[LARGEBUF];
 	const char *realdir, *realfil;
 
-	if(cmdline_opts.chroot_dir[0]) 	realdir = cmdline_opts.chroot_dir;
+	if (cmdline_opts.chroot_dir[0]) 	realdir = cmdline_opts.chroot_dir;
 	else 				realdir = CHROOT_DIR;
-	if(cmdline_opts.cfgfname[0])	realfil = cmdline_opts.cfgfname;
+	if (cmdline_opts.cfgfname[0])	realfil = cmdline_opts.cfgfname;
 	else				realfil = CONF_FILE;
 
 	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil); 
 	memset(&runconfig, 0x00, sizeof(sj_config));
 	
-	if(!load(configfile)) {
+	if (!load(configfile)) {
 		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
 
 		/* set up defaults */	   
@@ -72,24 +72,24 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 
 	debug.log(DEBUG_LEVEL, "running variables: conf %s enabled %s user %s group %s chroot %s admin address %s logfile %s packets log %s session log %s", runconfig.cfgfname, runconfig.enabler, runconfig.user, runconfig.group, runconfig.chroot_dir, runconfig.admin_address, runconfig.logfname, runconfig.logfname_packets, runconfig.logfname_sessions);
 
-	if(cmdline_opts.admin_port != 0)
+	if (cmdline_opts.admin_port != 0)
 		runconfig.admin_port = cmdline_opts.admin_port;
 	else
 		runconfig.admin_port = DEFAULT_UDP_ADMIN_PORT;
 
-	if(cmdline_opts.debug_level != 0)
+	if (cmdline_opts.debug_level != 0)
 		runconfig.debug_level = cmdline_opts.debug_level;
 	else 
 		runconfig.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
-	if(cmdline_opts.onlyplugin[0])
+	if (cmdline_opts.onlyplugin[0])
 		snprintf(runconfig.onlyplugin, LARGEBUF, "%s", cmdline_opts.onlyplugin);
 
-	if(cmdline_opts.scramble[0]) {
+	if (cmdline_opts.scramble[0]) {
 		runconfig.scrambletech |= (cmdline_opts.scramble[0] == 'Y') ? SCRAMBLE_TTL : 0;
 		runconfig.scrambletech |= (cmdline_opts.scramble[1] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
 		runconfig.scrambletech |= (cmdline_opts.scramble[2] == 'Y') ? SCRAMBLE_MALFORMED : 0;
-		if(!runconfig.scrambletech) {
+		if (!runconfig.scrambletech) {
 			debug.log(ALL_LEVEL, "--scramble: at least one scramble technique is required");
 			SJ_RUNTIME_EXCEPTION("");
 		}
@@ -113,9 +113,9 @@ void UserConf::compare_check_copy(char *target, uint32_t tlen, const char *sjdef
 {
 	target[0] = 0x00;
 	
-	if(useropt[0] != 0x00) strncpy(target, useropt, tlen);
+	if (useropt[0] != 0x00) strncpy(target, useropt, tlen);
 	
-	if(target[0] == 0x00) strncpy(target, sjdefault, tlen);
+	if (target[0] == 0x00) strncpy(target, sjdefault, tlen);
 }
 
 /* private function useful for resolution of code/name */
@@ -290,7 +290,7 @@ bool UserConf::load(const char* configfile)
 	if ((loadfd = fopen(configfile, "r")) != NULL) {
 		memset(&runconfig, 0x00, sizeof(struct sj_config));
 
-		if(fread((void *)&runconfig, sizeof(struct sj_config), 1, loadfd) != 1) {
+		if (fread((void *)&runconfig, sizeof(struct sj_config), 1, loadfd) != 1) {
 			debug.log(ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
 				sizeof(runconfig), configfile, strerror(errno)
 			);
@@ -331,12 +331,12 @@ void UserConf::dump(void)
 	configcopy.MAGIC = MAGICVAL;
 	snprintf(configcopy.version, SMALLBUF, "%s", SW_VERSION);
 
-	if(!chroot_status)
+	if (!chroot_status)
 		snprintf(configfile, LARGEBUF, "%s%s", configcopy.chroot_dir, configcopy.cfgfname);
 	else
 		snprintf(configfile, LARGEBUF, "%s", configcopy.cfgfname);
 	
-	if((dumpfd = fopen(configfile, "w")) != NULL) {	
+	if ((dumpfd = fopen(configfile, "w")) != NULL) {	
 		debug.log(VERBOSE_LEVEL, "dumping configcopy configuration to %s",  configfile);
 				
 		/* resetting variables we do not want to save */
@@ -344,7 +344,7 @@ void UserConf::dump(void)
 		configcopy.scrambletech = 0;
 		memset(runconfig.ttlfocuscache_file, 0, sizeof(runconfig.ttlfocuscache_file));
 
-		if((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {
+		if ((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {
 			/* ret - 1 because fwrite return the number of written item */
 			debug.log(ALL_LEVEL, "unable to write configuration to %s: %s",	configfile, strerror(errno));
 		}
@@ -480,7 +480,7 @@ void UserConf::handle_cmd_stat(void)
 	runconfig.debug_level, runconfig.logfname, runconfig.chroot_dir
 	);
 
-	if(runconfig.onlyplugin[0]) {
+	if (runconfig.onlyplugin[0]) {
 		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
 			"selected plugin:\t\t\t%s\n", runconfig.onlyplugin);
 	} else {
@@ -541,7 +541,7 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 
 	snprintf(io_buf, sizeof(io_buf), "set TCP ports from %d to %d at [%s] level\n", start, end, what_weightness);
 
-	if(end == PORTNUMBER) {
+	if (end == PORTNUMBER) {
 		runconfig.portconf[PORTNUMBER -1] = what;
 		--end;
 	}
@@ -553,7 +553,7 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 
 void UserConf::handle_cmd_loglevel(int newloglevel)
 {
-	if(newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
+	if (newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
 		snprintf(io_buf, sizeof(io_buf), 
 			"error in the new loglevel requested: accepted >= %d and <= %d\n\n"\
 			"\t1\tsuppressed log\n"\
@@ -585,7 +585,7 @@ bool UserConf::parse_port_weight(char *weightstr, Strength *value)
 		{ "heavy", 	strlen("heavy"), 	HEAVY }
 	};
 	for(uint8_t i = 0; i < keywordToParse; ++i) {
-		if(!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
+		if (!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
 			*value = wParse[i].equiv;
 			return true;
 		}
