@@ -66,7 +66,7 @@ public:
 
 	void writepacket(source_t, const unsigned char *, int);
 	Packet* readpacket(source_t);
-	timespec analyze_packets_queue();
+	deadline analyze_packets_queue();
 	void force_send(void);
 };
 

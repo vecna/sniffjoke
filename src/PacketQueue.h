@@ -45,7 +45,7 @@ public:
 	void insert(Packet &, queue_t);
 	void insert_before(Packet &, Packet &);
 	void insert_after(Packet &, Packet &);
-	void remove(const Packet &);
+	void remove(Packet &);
 	void select(queue_t);
 	Packet* get();
 	uint32_t size(){ return pkt_count; };

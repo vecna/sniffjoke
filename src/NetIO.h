@@ -61,7 +61,7 @@ private:
 	int size;
 	
 	struct timespec polltimeout_on_data;
-	struct timespec closest_schedule;
+	deadline closest_schedule;
 
 public:
 

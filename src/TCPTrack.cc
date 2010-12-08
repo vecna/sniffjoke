@@ -168,7 +168,11 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			injpkt->ip->ttl = ttlfocus.sent_probe;
 			injpkt->tcp->source = ttlfocus.puppet_port;
 			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
-			p_queue.insert(*injpkt, PRIORITY_SEND);
+			
+			if(last_pkt_fix(*injpkt))
+				p_queue.insert(*injpkt, PRIORITY_SEND);
+			else
+				SJ_RUNTIME_EXCEPTION("");
 				
 			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
 				ttlfocus.sent_probe, ttlfocus.ttl_estimate
@@ -195,7 +199,12 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 				injpkt->ip->ttl = ttl;
 				injpkt->tcp->source = ttlfocus.puppet_port;
 				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
-				p_queue.insert(*injpkt, PRIORITY_SEND);
+
+				if(last_pkt_fix(*injpkt))
+					p_queue.insert(*injpkt, PRIORITY_SEND);
+				else
+					SJ_RUNTIME_EXCEPTION("");
+
 				ttl++;
 					
 				snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
@@ -365,6 +374,7 @@ bool TCPTrack::analyze_outgoing(Packet &pkt)
 	
 	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 	if (ttlfocus.status == TTL_BRUTEFORCE) {
+		p_queue.remove(pkt);
 		p_queue.insert(pkt, KEEP);
 		return false;
 	}
@@ -418,7 +428,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 
 	/* -- RANDOMIZE HACKS APPLICATION */
 	random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
-
+	
 	/* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
 	for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it) 
 	{
@@ -445,7 +455,12 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 				delete &injpkt;
 				continue;
 			}
-
+			
+			if(!last_pkt_fix(injpkt)) {
+				delete &injpkt;
+				continue;
+			}
+			
 			/* here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
 			 * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too */
 			injpkt.mark(LOCAL, EVIL);
@@ -516,7 +531,7 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 		/* NETWORK packet and !TCP packets can be send without modification */
 		return true;
 	} else if (pkt.source == TTLBFORCE) {
-		/* TTL probe packets need only the checksum to be fixed (IP + TCP)*/
+		/* TTL probe packets need only the checksum to be fixed (IP + TCP) */
 		pkt.fixIpTcpSum();
 		return true;
 	}
@@ -664,10 +679,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
 	while ((pkt = p_queue.get()) != NULL) {
 		if (pkt->source & mask) {
 			p_queue.remove(*pkt);
-			if (!last_pkt_fix(*pkt))
-				delete pkt;
-			else
-				return pkt;
+			return pkt;
 		}
 		
 	}
@@ -676,18 +688,13 @@ Packet* TCPTrack::readpacket(source_t destsource)
 	while ((pkt = p_queue.get()) != NULL) {
 		if (pkt->source & mask) {
 			p_queue.remove(*pkt);
-			if (!last_pkt_fix(*pkt))
-				delete pkt;
-			else
-				return pkt;
+			return pkt;
 		}
 		
 	}
 
 	return NULL;
 }
-
-
 
 /* 
  *
@@ -709,7 +716,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
  * SEND (packets marked as sendable)
  * 
  */
-timespec TCPTrack::analyze_packets_queue()
+deadline TCPTrack::analyze_packets_queue()
 {
 	/* manage expired sessions and ttlfocuses every APQ_MANAGMENT_ROUTINE_TIMER seconds */
 	if (!(sj_clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
@@ -761,16 +768,26 @@ timespec TCPTrack::analyze_packets_queue()
 			}
 		}
 			
-		if (send == true)
-			p_queue.insert(*pkt, SEND);
+		if (send == true) {
+			p_queue.remove(*pkt);
+			if(last_pkt_fix(*pkt))
+				p_queue.insert(*pkt, SEND);
+			else
+				SJ_RUNTIME_EXCEPTION("");
+		}
 	}
 
 	/* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
 	p_queue.select(KEEP);
 	while ((pkt = p_queue.get()) != NULL) {
 		bool send = analyze_keep(*pkt);
-		if (send == true)
-			p_queue.insert(*pkt, SEND);
+		if (send == true) {
+			p_queue.remove(*pkt);
+			if(last_pkt_fix(*pkt))
+				p_queue.insert(*pkt, SEND);
+			else
+				SJ_RUNTIME_EXCEPTION("");
+		}
 	}
 
 	/* for every packet in SEND queue we insert some random hacks */
@@ -789,22 +806,19 @@ bypass_queue_analysis:
 	 * in fact with no incoming packets there is no need to call the analyze_packet_queue until
 	 * the next closest schedule.
 	 */
-	timespec min_schedule;
-	if (ttlfocus_map.begin() != ttlfocus_map.end()) {
-		min_schedule = (*ttlfocus_map.begin()).second->next_probe_time;
-	} else {
-		min_schedule.tv_sec = 0;
-		min_schedule.tv_nsec = 0;
-	}
-
+	deadline min_schedule;
+	
 	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it) {
 		TTLFocus &ttlfocus = *((*it).second);
 		if (ttlfocus.status & (TTL_BRUTEFORCE | TTL_KNOWN)) {
 			if ((ttlfocus.access_timestamp > sj_clock.tv_sec - 30) && isSchedulePassed(ttlfocus.next_probe_time))
 				inject_ttlprobe_in_queue(*(*it).second);
 
-			if (ttlfocus.next_probe_time.tv_sec < min_schedule.tv_sec || ttlfocus.next_probe_time.tv_nsec < min_schedule.tv_nsec)
-				min_schedule = ttlfocus.next_probe_time;
+			if (ttlfocus.next_probe_time.tv_sec < min_schedule.timeline.tv_sec
+			|| ttlfocus.next_probe_time.tv_nsec < min_schedule.timeline.tv_nsec) {
+				min_schedule.valid = true;
+				min_schedule.timeline = ttlfocus.next_probe_time;
+			}
 		}	
 	}
 	

@@ -103,7 +103,7 @@ void Packet::updatePacketMetadata()
 
 	ip = (struct iphdr *)&(pbuf[0]);
 	iphdrlen = ip->ihl * 4;
-
+	
 	if (pktlen < iphdrlen)
 		SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen");
 	
@@ -233,11 +233,10 @@ void Packet::IPHDR_resize(uint8_t size)
 	vector<unsigned char>::iterator it = pbuf.begin();
 
 	if (iphdrlen < size) {
-		ip->tot_len = ntohs(pktlen + (size - iphdrlen));
+		ip->tot_len = htons(pktlen + (size - iphdrlen));
 		pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
-
 	} else { /* iphdrlen > size */
-		ip->tot_len = ntohs(pktlen - (iphdrlen - size));
+		ip->tot_len = htons(pktlen - (iphdrlen - size));
 		pbuf.erase(it + size, it + iphdrlen);
 	}
 	
@@ -265,10 +264,10 @@ void Packet::TCPHDR_resize(uint8_t size)
 	vector<unsigned char>::iterator it = pbuf.begin() + iphdrlen;
 
 	if (tcphdrlen < size) {
-		ip->tot_len = ntohs(pktlen + (size - tcphdrlen));
+		ip->tot_len = htons(pktlen + (size - tcphdrlen));
 		pbuf.insert(it + tcphdrlen, size - tcphdrlen, TCPOPT_NOP);
 	} else { /* tcphdrlen > size */
-		ip->tot_len = ntohs(pktlen - (tcphdrlen - size));
+		ip->tot_len = htons(pktlen - (tcphdrlen - size));
 		pbuf.erase(it + size, it + tcphdrlen);
 	}
 
@@ -290,7 +289,7 @@ void Packet::TCPPAYLOAD_resize(uint16_t size)
 	const uint16_t new_total_len = pktlen - datalen + size;
 
 	/* its important to update values into hdr before vector insert call because it can cause relocation */
-	ip->tot_len = ntohs(new_total_len);
+	ip->tot_len = htons(new_total_len);
 
 	pbuf.resize(new_total_len);
 	
@@ -317,23 +316,29 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 
-	if (strip_previous && iphdrlen != sizeof(struct iphdr)) {
-		const uint16_t freespace = MTU - pktlen + iphdrlen - sizeof(struct iphdr);
+	if (strip_previous) {
+		const uint16_t freespace = MTU - (pktlen - iphdrlen + sizeof(struct iphdr));
+		if(freespace == 0)
+			return false;
 		actual_iphdrlen = sizeof(struct iphdr);
 		target_iphdrlen = sizeof(struct iphdr) + (random() % (MAXIPHEADER - sizeof(struct iphdr)));
 		if (freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
-	} else {
+	} else if(iphdrlen <= (MAXIPHEADER - 4)) {
 		const uint16_t freespace = MTU - pktlen;
-		target_iphdrlen = iphdrlen + (random() % (MAXIPHEADER - iphdrlen));
+		if(freespace == 0)
+			return false;
+		target_iphdrlen = iphdrlen + 3 + (random() % (MAXIPHEADER - iphdrlen - 3));
 		if (freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
+	} else {
+		return false;
 	}
 
 	// iphdrlen must be a multiple of 4
 	target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
 	
-	if (target_iphdrlen != actual_iphdrlen)
+	if (target_iphdrlen != iphdrlen)
 		IPHDR_resize(target_iphdrlen);
 
 	try {
@@ -352,6 +357,7 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 		/* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
 		   to inject options not aligned to 4 */
 		actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
+		debug.log(ALL_LEVEL, "roba %u %u", target_iphdrlen, (actual_iphdrlen));
 		IPHDR_resize(actual_iphdrlen);
 	}
 
@@ -375,23 +381,29 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	snprintf(debug_buf, sizeof(debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int)pbuf.size());
 	selflog(__func__, debug_buf);
 	
-	if (strip_previous && tcphdrlen != sizeof(struct tcphdr)) {
-		uint16_t freespace = MTU - pktlen + tcphdrlen - sizeof(struct tcphdr);
+	if (strip_previous) {
+		uint16_t freespace = MTU - (pktlen - tcphdrlen + sizeof(struct tcphdr));
+		if(freespace == 0)
+			return false;
 		actual_tcphdrlen = sizeof(struct tcphdr);
 		target_tcphdrlen = sizeof(struct tcphdr) + (random() % (MAXTCPHEADER - sizeof(struct tcphdr)));
 		if (freespace < target_tcphdrlen)
 			target_tcphdrlen = freespace;
-	} else {
+	} else if(tcphdrlen <= (MAXTCPHEADER - 4)) {
 		uint16_t freespace = MTU - pktlen;
-		target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
+		if(freespace == 0)
+			return false;
+		target_tcphdrlen = tcphdrlen + 3 + (random() % (MAXTCPHEADER - tcphdrlen - 3));
 		if (freespace < target_tcphdrlen)
 			target_tcphdrlen = freespace;
+	} else {
+		return false;
 	}
 	
 	// tcphdrlen must be a multiple of 4
 	target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
 	
-	if (target_tcphdrlen != actual_tcphdrlen)
+	if (target_tcphdrlen != tcphdrlen)
 		TCPHDR_resize(target_tcphdrlen);
 
 	try {
@@ -461,7 +473,7 @@ void Packet::selflog(const char *func, const char *loginfo) const
 	memset(protoinfo, 0x0, sizeof(protoinfo));
 	switch(proto) {
 		case TCP:
-			snprintf(protoinfo, sizeof(protoinfo), "[TCP sp %u dp %u SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x]",
+			snprintf(protoinfo, sizeof(protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x",
 				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
 				tcp->rst, (int)pbuf.size(), (int)(pbuf.size() - iphdrlen - tcphdrlen), 
 				ntohl(tcp->seq), ntohl(tcp->ack_seq)
