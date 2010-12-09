@@ -26,9 +26,10 @@
 #include "UserConf.h"
 #include "SniffJoke.h"
 
-#include <stdexcept>
 #include <csignal>
 #include <memory>
+#include <stdexcept>
+
 #include <getopt.h>
 #include <sys/param.h>
 #include <sys/types.h>

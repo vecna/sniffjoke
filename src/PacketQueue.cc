@@ -92,8 +92,8 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 	 * so it always has prev that we cand dereference without checking != NULL
 	 */
 	pkt.prev = ref.prev;
-	ref.prev->next = &pkt;
 	pkt.next = &ref;
+	ref.prev->next = &pkt;
 	ref.prev = &pkt;
 }
 
@@ -171,7 +171,7 @@ remove_reset_pkt:
 void PacketQueue::select(queue_t queue) {
 	cur_queue = queue;
 	cur_pkt = NULL;
-	next_pkt = front[cur_queue];
+	next_pkt = front[queue];
 }
 
 Packet* PacketQueue::get()

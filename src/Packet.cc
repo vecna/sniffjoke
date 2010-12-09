@@ -341,12 +341,15 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	if (target_iphdrlen != iphdrlen)
 		IPHDR_resize(target_iphdrlen);
 
+	int antani;
 	try {
 		HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
-		int MAXITERATION = 5;
+		uint8_t MAXITERATION = 5;
 
 		do {
 			injected |= IPInjector.randomInjector();
+			debug.log(ALL_LEVEL, "%d", antani);	
+			
 
 		} while (target_iphdrlen != actual_iphdrlen && MAXITERATION--);
 	} catch(exception &e) {
@@ -407,7 +410,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
 	try {
 		HDRoptions TCPInjector(TCPOPTS_INJECTOR, corrupt, (unsigned char *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
-		int MAXITERATION = 5;
+		uint8_t MAXITERATION = 5;
 
 		do {
 			injected |= TCPInjector.randomInjector();

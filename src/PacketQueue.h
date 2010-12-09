@@ -27,7 +27,7 @@
 #include "Packet.h"
 
 #define FIRST_QUEUE	(YOUNG)
-#define LAST_QUEUE	(PRIORITY_SEND)
+#define LAST_QUEUE	(SEND)
 #define QUEUE_NUM	(LAST_QUEUE + 1)
 
 class PacketQueue {

@@ -148,7 +148,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		ttlfocus.sent_probe = 0;
 		ttlfocus.received_probe = 0;
 		ttlfocus.ttl_estimate = 0xff;
-		ttlfocus.synack_ttl = 0;
+		ttlfocus.ttl_synack = 0;
 		/* retry scheduled in 10 minutes */
 		updateSchedule(ttlfocus.next_probe_time, 600, 0);
 		return;
@@ -169,10 +169,8 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			injpkt->tcp->source = ttlfocus.puppet_port;
 			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 			
-			if(last_pkt_fix(*injpkt))
-				p_queue.insert(*injpkt, PRIORITY_SEND);
-			else
-				SJ_RUNTIME_EXCEPTION("");
+			injpkt->fixIpTcpSum();
+			p_queue.insert(*injpkt, SEND);
 				
 			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
 				ttlfocus.sent_probe, ttlfocus.ttl_estimate
@@ -200,10 +198,8 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 				injpkt->tcp->source = ttlfocus.puppet_port;
 				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
 
-				if(last_pkt_fix(*injpkt))
-					p_queue.insert(*injpkt, PRIORITY_SEND);
-				else
-					SJ_RUNTIME_EXCEPTION("");
+				injpkt->fixIpTcpSum();
+				p_queue.insert(*injpkt, SEND);
 
 				ttl++;
 					
@@ -290,11 +286,11 @@ void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	if (it != ttlfocus_map.end()) {
 		TTLFocus *ttlfocus = it->second;
-		if (ttlfocus->status == TTL_KNOWN && ttlfocus->synack_ttl != pkt.ip->ttl) {
+		if (ttlfocus->status == TTL_KNOWN && ttlfocus->ttl_synack != pkt.ip->ttl) {
 			/* probably a topology change has happened - we need a solution wtf!!  */
 			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), 
 				"probable net topology change! #probe %u [ttl_estimate %u synack ttl %u]",
-				ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->synack_ttl
+				ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->ttl_synack
 			);
 			pkt.selflog(__func__, pkt.debug_buf);
 		}
@@ -330,7 +326,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 			if (discern_ttl < ttlfocus->ttl_estimate) { 
 				ttlfocus->ttl_estimate = discern_ttl;
-				ttlfocus->synack_ttl = pkt.ip->ttl;
+				ttlfocus->ttl_synack = pkt.ip->ttl;
 			}
 			
 			ttlfocus->status = TTL_KNOWN;
@@ -527,15 +523,6 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
  */
 bool TCPTrack::last_pkt_fix(Packet &pkt)
 {
-	if (pkt.source == NETWORK || pkt.proto != TCP) {
-		/* NETWORK packet and !TCP packets can be send without modification */
-		return true;
-	} else if (pkt.source == TTLBFORCE) {
-		/* TTL probe packets need only the checksum to be fixed (IP + TCP) */
-		pkt.fixIpTcpSum();
-		return true;
-	}
-	
 	/*
 	 * 1nd check: what kind of hacks will be apply ?
 	 * here we verify if that the random selected hacks are really
@@ -643,13 +630,6 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
 		Packet* const pkt = new Packet(buff, nbyte);
 		pkt->mark(source, INNOCENT, GOOD);
 	
-		/* 
-		* the packet from the tunnel are put with lower priority and the
-		* hack-packet, injected from sniffjoke, are put in the higher one.
-		* when the software loop for in p_queue.get(status, source, proto) the 
-		* forged packet are sent before the originals one.
-		*/
-		
 		p_queue.insert(*pkt, YOUNG);	
 		
 	} catch (exception &e) {
@@ -659,11 +639,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
 }
 
 /* 
- * this functions return a packet from queues PRIORITY_SEND and SEND
- * before return the packet the last_pkt_function is called,
- * and if that function decretee packet drop, packet it's dropped.
- * This is possibile for example for hack packet thtat for some reasons
- * fails in application.
+ * this functions return a packet a packet given a specific source from SEND queue
  */
 Packet* TCPTrack::readpacket(source_t destsource)
 {
@@ -675,14 +651,6 @@ Packet* TCPTrack::readpacket(source_t destsource)
 		
 	
 	Packet *pkt;
-	p_queue.select(PRIORITY_SEND);
-	while ((pkt = p_queue.get()) != NULL) {
-		if (pkt->source & mask) {
-			p_queue.remove(*pkt);
-			return pkt;
-		}
-		
-	}
 
 	p_queue.select(SEND);
 	while ((pkt = p_queue.get()) != NULL) {
@@ -718,15 +686,9 @@ Packet* TCPTrack::readpacket(source_t destsource)
  */
 deadline TCPTrack::analyze_packets_queue()
 {
-	/* manage expired sessions and ttlfocuses every APQ_MANAGMENT_ROUTINE_TIMER seconds */
-	if (!(sj_clock.tv_sec % APQ_MANAGMENT_ROUTINE_TIMER)) {
-		sessiontrack_map.manage_expired();
-		ttlfocus_map.manage_expired();
-	}
-	
 	/* if all queues are empy we have nothing to do */
 	if (!p_queue.size())
-		goto bypass_queue_analysis;	
+		goto bypass_queue_analysis;
 
 	Packet *pkt;
 
@@ -770,7 +732,7 @@ deadline TCPTrack::analyze_packets_queue()
 			
 		if (send == true) {
 			p_queue.remove(*pkt);
-			if(last_pkt_fix(*pkt))
+			if(pkt->source == NETWORK || pkt->proto != TCP || last_pkt_fix(*pkt))
 				p_queue.insert(*pkt, SEND);
 			else
 				SJ_RUNTIME_EXCEPTION("");
@@ -793,11 +755,26 @@ deadline TCPTrack::analyze_packets_queue()
 	/* for every packet in SEND queue we insert some random hacks */
 	p_queue.select(SEND);	
 	while ((pkt = p_queue.get()) != NULL) {
-		if (pkt->proto == TCP && pkt->source == TUNNEL)
+		if (pkt->source == TUNNEL && pkt->proto == TCP)
 			inject_hack_in_queue(*pkt);
 	}
 
 bypass_queue_analysis:
+
+
+	/*
+	 * Call sessiontrack_map and ttlfocus_map manage routine.
+	 * It's fundamental to do this here, after SEND packet fix and before
+	 * forging ttl probes.
+	 * In fact the two routine in case that their respective memory threshold
+	 * limits are passed will delete the oldest records.
+	 * This is completely safe because send packets are just fixed and there
+	 * is no problem if we does not schedule a ttlprobe for a cycle.
+	 * KEEP packets will scatter a new ttlfocus at the next cycle.
+	 */
+
+	sessiontrack_map.manage();
+	ttlfocus_map.manage();
 
 	/* 
 	 * here we verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN
@@ -814,8 +791,10 @@ bypass_queue_analysis:
 			if ((ttlfocus.access_timestamp > sj_clock.tv_sec - 30) && isSchedulePassed(ttlfocus.next_probe_time))
 				inject_ttlprobe_in_queue(*(*it).second);
 
-			if (ttlfocus.next_probe_time.tv_sec < min_schedule.timeline.tv_sec
-			|| ttlfocus.next_probe_time.tv_nsec < min_schedule.timeline.tv_nsec) {
+			if (min_schedule.valid == false)
+				if(ttlfocus.next_probe_time.tv_sec < min_schedule.timeline.tv_sec
+				|| ttlfocus.next_probe_time.tv_nsec < min_schedule.timeline.tv_nsec) 
+			{
 				min_schedule.valid = true;
 				min_schedule.timeline = ttlfocus.next_probe_time;
 			}

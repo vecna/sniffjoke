@@ -61,7 +61,7 @@ public:
 	SessionTrackMap();
         ~SessionTrackMap();
 	SessionTrack& getSessionTrack(const Packet &);
-        void manage_expired();        
+        void manage();        
 };
 
 #endif /* SJ_SESSIONTRACK_H */
