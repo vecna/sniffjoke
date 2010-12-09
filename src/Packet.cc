@@ -357,7 +357,6 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 		/* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
 		   to inject options not aligned to 4 */
 		actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
-		debug.log(ALL_LEVEL, "roba %u %u", target_iphdrlen, (actual_iphdrlen));
 		IPHDR_resize(actual_iphdrlen);
 	}
 
