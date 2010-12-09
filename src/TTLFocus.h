@@ -55,7 +55,7 @@ public:
 	uint8_t ttl_estimate;			/* hop count estimate found during ttlbruteforce;
 						     on status KNOWN   : represents the min working ttl found
 						     on status UNKNOWN : represents the max expired ttl found */
-	uint8_t synack_ttl;			/* the value of the ttl read in the synack packet */
+	uint8_t ttl_synack;			/* the value of the ttl read in the synack packet */
 
 
 	Packet probe_dummy;			/* dummy ttlprobe packet generated from the packet
@@ -65,6 +65,7 @@ public:
 	TTLFocus(const struct ttlfocus_cache_record &);
 	~TTLFocus();
 	void selectPuppetPort();
+        static bool timestampComparison(TTLFocus &i, TTLFocus &j);
 
 	/* utilities */
 	void selflog(const char *, const char *) const;
@@ -78,7 +79,7 @@ public:
         TTLFocusMap(const char* dumpfile);
         ~TTLFocusMap();
 	TTLFocus& getTTLFocus(const Packet &);
-        void manage_expired();
+        void manage();
         void load(const char *);
         void dump(const char *);
 };
@@ -86,9 +87,10 @@ public:
 struct ttlfocus_cache_record {
 	time_t access_timestamp;		/* access timestamp used to decretee expiry */
 	uint32_t daddr;				/* destination of the traceroute */
-	uint8_t expiring_ttl;			/* the min exiping_ttl found during analysis */
-	uint8_t ttl_estimate;			/* the min working ttl found during analysis */
-	uint8_t synack_ttl;			/* the value of the ttl read in the synack packet */
+	uint8_t ttl_estimate;			/* hop count estimate found during ttlbruteforce;
+						     on status KNOWN   : represents the min working ttl found
+						     on status UNKNOWN : represents the max expired ttl found */
+	uint8_t ttl_synack;			/* the value of the ttl read in the synack packet */
 	
 	unsigned char probe_dummy[40];		/* dummy ttlprobe packet generated from the packet
 						   that scattered the ttlfocus creation.

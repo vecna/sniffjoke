@@ -144,14 +144,17 @@ void SniffJoke::server() {
 		int deadtrace;
 		
 		proc.writePidfile();
-		waitpid(service_pid, &deadtrace, WUNTRACED);
+		if(waitpid(service_pid, &deadtrace, WUNTRACED) > 0) {
 		
-		if (WIFEXITED(deadtrace))
-			debug.log(VERBOSE_LEVEL, "child %d WIFEXITED", service_pid);
-		if (WIFSIGNALED(deadtrace))
-			debug.log(VERBOSE_LEVEL, "child %d WIFSIGNALED", service_pid);
-		if (WIFSTOPPED(deadtrace))
-			debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
+			if (WIFEXITED(deadtrace))
+				debug.log(VERBOSE_LEVEL, "child %d WIFEXITED", service_pid);
+			if (WIFSIGNALED(deadtrace))
+				debug.log(VERBOSE_LEVEL, "child %d WIFSIGNALED", service_pid);
+			if (WIFSTOPPED(deadtrace))
+				debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
+		} else {
+			debug.log(VERBOSE_LEVEL, "child waitpid failed with: %s", strerror(errno));
+		}
 
 		debug.log(DEBUG_LEVEL, "child %d died, going to shutdown", service_pid);
 

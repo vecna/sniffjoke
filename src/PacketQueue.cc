@@ -49,14 +49,15 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(Packet &pkt, queue_t queue)
 {
-	if (pkt.queue != QUEUEUNASSIGNED)
-		remove(pkt);
-	
+	/*
+	  pkt is not in any queue so:
+		pkt.prev == NULL;
+		pkt.next == NULL;
+	*/
+
 	pkt_count++;
 	pkt.queue = queue;
 	if (front[queue] == NULL) {
-		pkt.prev = NULL;
-		pkt.next = NULL;
 		front[queue] = &pkt;
 		back[queue] = &pkt;
 	} else {
@@ -69,8 +70,11 @@ void PacketQueue::insert(Packet &pkt, queue_t queue)
 
 void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 {
-	if (pkt.queue != QUEUEUNASSIGNED)
-		remove(pkt);	
+	/*
+	  pkt is not in any queue so:
+		pkt.prev == NULL;
+		pkt.next == NULL;
+	*/
 
 	pkt_count++;
 	pkt.queue = ref.queue;
@@ -88,22 +92,24 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
 	 * so it always has prev that we cand dereference without checking != NULL
 	 */
 	pkt.prev = ref.prev;
-	ref.prev->next = &pkt;
 	pkt.next = &ref;
+	ref.prev->next = &pkt;
 	ref.prev = &pkt;
 }
 
 void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 {
-	if (pkt.queue != QUEUEUNASSIGNED)
-		remove(pkt);
-	
+	/*
+	  pkt is not in any queue so:
+		pkt.prev == NULL;
+		pkt.next == NULL;
+	*/
+
 	++pkt_count;
 	pkt.queue = ref.queue;
 
 	if (back[ref.queue] == &ref) {
 		pkt.prev = &ref;
-		pkt.next = NULL;
 		ref.next = &pkt;
 		back[ref.queue] = &pkt;
 		return;
@@ -113,36 +119,39 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 	 * ref is not back of the queue;
 	 * so it always has next that we can dereference without checking != NULL
 	 */
+	pkt.prev = &ref;
 	pkt.next = ref.next;
 	ref.next->prev = &pkt;
-	pkt.prev = &ref;
 	ref.next = &pkt;
 }
 
-void PacketQueue::remove(const Packet &pkt)
+void PacketQueue::remove(Packet &pkt)
 {
 	--pkt_count;
-	if (front[pkt.queue] == &pkt) {
-		if (back[pkt.queue] == &pkt) {
-			front[pkt.queue] = NULL;
-			back[pkt.queue] = NULL;
+
+	queue_t queue = pkt.queue;
+	
+	if (front[queue] == &pkt) {
+		if (back[queue] == &pkt) {
+			front[queue] = NULL;
+			back[queue] = NULL;
 		} else {
 			/*
 			 * in this case we have always a next;
 			 * so we can dereference it without checking != NULL
 			 */
-			front[pkt.queue] = front[pkt.queue]->next;
-			front[pkt.queue]->prev = NULL;
+			front[queue] = front[queue]->next;
+			front[queue]->prev = NULL;
 		}
-		return;
-	} else if (back[pkt.queue] == &pkt) {
+		goto remove_reset_pkt;
+	} else if (back[queue] == &pkt) {
 		/*
 		 * in this case we have always a prev;
 		 * so we can dereference it without checking != NULL
 		 */
-		back[pkt.queue] = back[pkt.queue]->prev;
-		back[pkt.queue]->next = NULL;
-		return;
+		back[queue] = back[queue]->prev;
+		back[queue]->next = NULL;
+		goto remove_reset_pkt;
 	}
 
 	/*
@@ -152,13 +161,17 @@ void PacketQueue::remove(const Packet &pkt)
 	pkt.prev->next = pkt.next;
 	pkt.next->prev = pkt.prev;
 
-	return;
+remove_reset_pkt:
+
+	pkt.queue = QUEUEUNASSIGNED;
+	pkt.prev = NULL;
+	pkt.next = NULL;
 }
 
 void PacketQueue::select(queue_t queue) {
 	cur_queue = queue;
 	cur_pkt = NULL;
-	next_pkt = front[cur_queue];
+	next_pkt = front[queue];
 }
 
 Packet* PacketQueue::get()

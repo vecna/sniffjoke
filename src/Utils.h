@@ -50,6 +50,12 @@ enum size_buf_t {
 	GARGANTUABUF = 4096 * 4
 };
 
+struct deadline {
+	bool valid;
+	timespec timeline;
+	deadline() : valid(false) {};
+};
+
 /* loglevels */
 #define SUPPRESS_LOG		1
 #define ALL_LEVEL		2

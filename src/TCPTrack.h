@@ -39,7 +39,6 @@ private:
 		
 #define APQ_MANAGMENT_ROUTINE_TIMER	60	/* manager routine time interval in seconds */
 
-	PacketQueue p_queue;
 	SessionTrackMap &sessiontrack_map;
 	TTLFocusMap &ttlfocus_map;
 	HackPool &hack_pool;
@@ -61,12 +60,15 @@ private:
 	bool last_pkt_fix(Packet &);
 
 public:
+
+	PacketQueue p_queue;
+
 	TCPTrack(const sj_config &, HackPool &, SessionTrackMap &, TTLFocusMap &);
 	~TCPTrack(void);
 
 	void writepacket(source_t, const unsigned char *, int);
 	Packet* readpacket(source_t);
-	timespec analyze_packets_queue();
+	deadline analyze_packets_queue();
 	void force_send(void);
 };
 

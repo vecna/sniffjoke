@@ -22,6 +22,7 @@
 
 #include "SessionTrack.h"
 
+#include <algorithm>
 #include <memory>
 
 using namespace std;
@@ -108,16 +109,48 @@ SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
 	return *sessiontrack;
 }
 
+struct sessiontrack_timestamp_comparison {
+	bool operator() (SessionTrack *i, SessionTrack *j)
+	{
+		return ( i->access_timestamp < j->access_timestamp );
+	}
+} sessiontrackTimestampComparison;
 
-/* cycles on map and delete expired records */
-void SessionTrackMap::manage_expired()
+void SessionTrackMap::manage()
 {
-	for(SessionTrackMap::iterator it = begin(); it != end();) {
-		if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock.tv_sec) {
-			delete &(*it->second);
-			erase(it++);
-		} else {
-			it++;
+	if (!(sj_clock.tv_sec % SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)) {
+		for(SessionTrackMap::iterator it = begin(); it != end();) {
+			if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock.tv_sec) {
+				delete &(*it->second);
+				erase(it++);
+			} else {
+				it++;
+			}
 		}
+	}
+
+	uint32_t map_size = size();
+	if (map_size > SESSIONTRACKMAP_MEMORY_THRESHOLD) {
+		SessionTrack** tmp = new SessionTrack*[map_size];
+
+		uint32_t index = 0;
+ 		for(SessionTrackMap::iterator it = begin(); it != end(); ++it)
+			tmp[index++] = it->second;
+
+		clear();
+
+		sort(tmp, tmp+map_size, sessiontrackTimestampComparison);
+
+		index = 0;
+		do {
+			delete tmp[index];
+		} while( index++ != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2 );
+
+		do {
+			const SessionTrackKey key = { tmp[index]->daddr, tmp[index]->sport, tmp[index]->dport };
+			insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
+		} while( index++ != SESSIONTRACKMAP_MEMORY_THRESHOLD);
+
+		delete[] tmp;
 	}
 }
