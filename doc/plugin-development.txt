@@ -9,4 +9,8 @@ vim new-hack-name/Makefile.ac
 cp another_hack/another_hack.cc new-hack-name/new-hack-name.cc
 	edit and write your code
 cd ..
+edit configure.ac and add your entry in AC_CONFIG_FILES
+
 ./autogen.sh
+
+hacks FREQUENCY vs hacks PROBABILITY
