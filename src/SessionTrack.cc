@@ -100,7 +100,7 @@ SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
 	if (it != end()) /* on hit: return the sessiontrack object. */
 		sessiontrack = it->second;
 	else { /* on miss: create a new sessiontrack and insert it into the map */
-		sessiontrack = insert(pair<const SessionTrackKey, SessionTrack*>(key, new SessionTrack(pkt))).first->second;
+		sessiontrack = insert(pair<SessionTrackKey, SessionTrack*>(key, new SessionTrack(pkt))).first->second;
 	}
 		
 	/* update access timestamp using global clock */
@@ -131,7 +131,7 @@ void SessionTrackMap::manage()
 
 	uint32_t map_size = size();
 	if (map_size > SESSIONTRACKMAP_MEMORY_THRESHOLD) {
-		SessionTrack** tmp = new SessionTrack*[map_size];
+		SessionTrack** tmp = new SessionTrack*[SESSIONTRACKMAP_MEMORY_THRESHOLD / 2];
 
 		uint32_t index = 0;
  		for(SessionTrackMap::iterator it = begin(); it != end(); ++it)
@@ -143,6 +143,8 @@ void SessionTrackMap::manage()
 
 		index = 0;
 		do {
+			const SessionTrackKey key = { tmp[index]->daddr, tmp[index]->sport, tmp[index]->dport };
+			insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
 			delete tmp[index];
 		} while( index++ != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2 );
 

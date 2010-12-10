@@ -105,7 +105,7 @@ AC_CONFIG_FILES( Makefile
                  hacks/valid_rst_fake_seq/Makefile)
 
 
-CFLAGS="-g -O3 -ansi -pedantic -Wall"
+CFLAGS="-O3 -ansi -pedantic -Wall"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

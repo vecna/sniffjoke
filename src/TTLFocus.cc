@@ -142,7 +142,7 @@ TTLFocus& TTLFocusMap::getTTLFocus(const Packet &pkt)
 	if (it != end()) /* on hit: return the ttlfocus object. */
 		ttlfocus = &(*it->second);
 	else { /* on miss: create a new ttlfocus and insert it into the map */
-		ttlfocus = &(*insert(pair<const uint32_t, TTLFocus*>(pkt.ip->daddr, new TTLFocus(pkt))).first->second);
+		ttlfocus = &(*insert(pair<uint32_t, TTLFocus*>(pkt.ip->daddr, new TTLFocus(pkt))).first->second);
 	}
 	
 	/* update access timestamp using global clock */
@@ -170,7 +170,7 @@ void TTLFocusMap::manage()
 	
 	uint32_t map_size = size();
 	if (map_size > TTLFOCUSMAP_MEMORY_THRESHOLD) {
-		TTLFocus** tmp = new TTLFocus*[map_size];
+		TTLFocus** tmp = new TTLFocus*[TTLFOCUSMAP_MEMORY_THRESHOLD / 2];
 
 		uint32_t index = 0;
  		for(TTLFocusMap::iterator it = begin(); it != end(); ++it)
@@ -182,11 +182,11 @@ void TTLFocusMap::manage()
 
 		index = 0;
 		do {
-			delete tmp[index];
+			insert(pair<uint32_t, TTLFocus*>((tmp[index])->daddr, tmp[index]));
 		} while(index++ != TTLFOCUSMAP_MEMORY_THRESHOLD / 2);
 
 		do {
-			insert(pair<const uint32_t, TTLFocus*>((tmp[index])->daddr, tmp[index]));
+			delete tmp[index];
 		} while( index++ != TTLFOCUSMAP_MEMORY_THRESHOLD);
 			
 		delete[] tmp;
@@ -210,7 +210,7 @@ void TTLFocusMap::load(const char* dumpfile)
 	while ((ret = fread(&tmp, sizeof(struct ttlfocus_cache_record), 1, loadfd)) == 1) {
 		records_num++;
 		TTLFocus *ttlfocus = new TTLFocus(tmp);
-		insert(pair<const uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
+		insert(pair<uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
 	}
 
 	fclose(loadfd);

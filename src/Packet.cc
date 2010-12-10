@@ -318,17 +318,22 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
 	if (strip_previous) {
 		const uint16_t freespace = MTU - (pktlen - iphdrlen + sizeof(struct iphdr));
+
 		if(freespace == 0)
 			return false;
+
 		actual_iphdrlen = sizeof(struct iphdr);
 		target_iphdrlen = sizeof(struct iphdr) + (random() % (MAXIPHEADER - sizeof(struct iphdr)));
+
 		if (freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
 	} else if(iphdrlen <= (MAXIPHEADER - 4)) {
 		const uint16_t freespace = MTU - pktlen;
+
 		if(freespace == 0)
 			return false;
 		target_iphdrlen = iphdrlen + 3 + (random() % (MAXIPHEADER - iphdrlen - 3));
+
 		if (freespace < target_iphdrlen)
 			target_iphdrlen = freespace;
 	} else {
@@ -341,15 +346,12 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	if (target_iphdrlen != iphdrlen)
 		IPHDR_resize(target_iphdrlen);
 
-	int antani;
 	try {
 		HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
 		uint8_t MAXITERATION = 5;
 
 		do {
 			injected |= IPInjector.randomInjector();
-			debug.log(ALL_LEVEL, "%d", antani);	
-			
 
 		} while (target_iphdrlen != actual_iphdrlen && MAXITERATION--);
 	} catch(exception &e) {
@@ -385,17 +387,24 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 	
 	if (strip_previous) {
 		uint16_t freespace = MTU - (pktlen - tcphdrlen + sizeof(struct tcphdr));
+
 		if(freespace == 0)
 			return false;
+
 		actual_tcphdrlen = sizeof(struct tcphdr);
 		target_tcphdrlen = sizeof(struct tcphdr) + (random() % (MAXTCPHEADER - sizeof(struct tcphdr)));
+
 		if (freespace < target_tcphdrlen)
 			target_tcphdrlen = freespace;
+
 	} else if(tcphdrlen <= (MAXTCPHEADER - 4)) {
 		uint16_t freespace = MTU - pktlen;
+
 		if(freespace == 0)
 			return false;
+
 		target_tcphdrlen = tcphdrlen + 3 + (random() % (MAXTCPHEADER - tcphdrlen - 3));
+
 		if (freespace < target_tcphdrlen)
 			target_tcphdrlen = freespace;
 	} else {

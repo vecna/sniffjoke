@@ -233,7 +233,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 
 	if (badiph->protocol == IPPROTO_TCP) {
 		/* 
-		 * Here we call the find() mathod of std::map because
+		 * Here we call the find() method of std::map because
 		 * we want to test the ttl existence and NEVER NEVER NEVER create a new one
 		 * to not permit an external packet to force us to activate a ttlbrouteforce session
 		 */ 
