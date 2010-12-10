@@ -106,7 +106,7 @@ AC_CONFIG_FILES( Makefile
                  hacks/fragmentation/Makefile)
 
 
-CFLAGS="-g -O3 -ansi -pedantic -Wall"
+CFLAGS="-O3 -ansi -pedantic -Wall"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

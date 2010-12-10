@@ -41,7 +41,7 @@ using namespace std;
 
 Debug debug;
 
-timespec sj_clock;
+time_t sj_clock;
 
 static struct sj_cmdline_opts useropt;
 static auto_ptr<SniffJoke> sniffjoke;
@@ -146,58 +146,6 @@ void* memset_random(void *s, size_t n)
 	return s;
 }
 
-timespec remainTime(struct timespec &schedule)
-{
-	timespec remain;
-	if (sj_clock.tv_sec > schedule.tv_sec) {
-		remain.tv_sec = 0;
-		remain.tv_nsec = 0;
-	} else if (sj_clock.tv_sec == schedule.tv_sec) {
-		remain.tv_sec = 0;
-		if (sj_clock.tv_nsec >= schedule.tv_nsec) {
-			remain.tv_nsec = 0;
-		} else {
-			remain.tv_nsec = schedule.tv_nsec - sj_clock.tv_nsec;
-		}
-	} else {
-		remain.tv_sec = schedule.tv_sec - sj_clock.tv_sec;
-		if (sj_clock.tv_nsec >= schedule.tv_nsec) {
-			if (remain.tv_sec > 1) {
-				remain.tv_sec -= 1;
-				remain.tv_nsec = NSEC_PER_SEC - (sj_clock.tv_nsec - schedule.tv_nsec);
-			} else {
-				remain.tv_sec = 0;
-				remain.tv_nsec = 0;
-			}
-		} else {
-			remain.tv_nsec = schedule.tv_nsec - sj_clock.tv_nsec;
-		}
-	}
-	
-	return remain;
-}
-
-void updateSchedule(struct timespec &schedule, time_t sec, long ns)
-{
-	schedule.tv_sec += sec;
-	if (ns) {
-		uint32_t temp = schedule.tv_nsec + ns;
-		schedule.tv_sec += temp / NSEC_PER_SEC;
-		schedule.tv_nsec = temp % NSEC_PER_SEC;
-	}
-}
-
-bool isSchedulePassed(const struct timespec& schedule)
-{
-    if (sj_clock.tv_sec > schedule.tv_sec)
-        return true;
-
-    if ((sj_clock.tv_sec == schedule.tv_sec) && (sj_clock.tv_nsec > schedule.tv_nsec))
-        return true;
-
-    return false;
-}
-
 void sigtrap(int signal)
 {
 	sniffjoke->alive = false;
@@ -232,8 +180,6 @@ static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdli
 
 int main(int argc, char **argv)
 {
-	clock_gettime(CLOCK_REALTIME, &sj_clock);
-	
 	/* 
 	 * set the default values in the configuration struct
 	 * we have only constant length char[] and booleans

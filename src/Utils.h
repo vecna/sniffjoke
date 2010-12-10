@@ -50,12 +50,6 @@ enum size_buf_t {
 	GARGANTUABUF = 4096 * 4
 };
 
-struct deadline {
-	bool valid;
-	timespec timeline;
-	deadline() : valid(false) {};
-};
-
 /* loglevels */
 #define SUPPRESS_LOG		1
 #define ALL_LEVEL		2
@@ -73,15 +67,12 @@ struct deadline {
  * there is a single clock in sniffjoke, global and
  * manteined by the NetIO module (network_io)
  */
-extern timespec sj_clock;
+extern time_t sj_clock;
 
 #define SJ_RUNTIME_EXCEPTION(msg) throw sj_runtime_exception(__func__, __FILE__, __LINE__, msg)
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
 std::runtime_error sj_runtime_exception(const char *, const char *, long, const char *);
 void* memset_random(void *, size_t);
-timespec remainTime(struct timespec &);
-void updateSchedule(struct timespec &, time_t, long);
-bool isSchedulePassed(const struct timespec &);
 void sigtrap(int);
 
 #endif /* SJ_UTILS_H */

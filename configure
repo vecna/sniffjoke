@@ -28389,7 +28389,7 @@ ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fak
 
 
 
-CFLAGS="-g -O3 -ansi -pedantic -Wall"
+CFLAGS="-O3 -ansi -pedantic -Wall"
 CXXFLAGS="$CFLAGS"
 
 cat >confcache <<\_ACEOF

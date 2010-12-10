@@ -39,7 +39,7 @@ class TTLFocus {
 public:
 	/* timing variables */
 	time_t access_timestamp;		/* access timestamp used to decretee expiry */
-	struct timespec next_probe_time;	/* timeout value used for ttlprobe schedule */
+	time_t next_probe_time;			/* timeout value used for ttlprobe schedule */
 
 	/* status variables */
 	ttlsearch_t status;			/* status of the traceroute */

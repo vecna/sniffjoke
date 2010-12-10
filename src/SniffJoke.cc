@@ -23,6 +23,7 @@
 #include "SniffJoke.h"
 
 #include <fcntl.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -179,6 +180,8 @@ void SniffJoke::server() {
 
 		/* main block */
 		while (alive) {
+
+			sj_clock = time(NULL);
 
 			proc.sigtrapDisable();
 

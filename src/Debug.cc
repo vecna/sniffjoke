@@ -32,7 +32,6 @@ Debug::Debug() :
 void Debug::log(uint8_t errorlevel, const char *msg, ...) 
 {
 	if (errorlevel <= debuglevel) { 
-	
 		va_list arguments;
 		time_t now = time(NULL);
 		FILE *output_flow;
