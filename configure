@@ -25261,7 +25261,6 @@ fi
 done
 
 
-<<<<<<< HEAD:configure
 for ac_header in getopt.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -25280,29 +25279,6 @@ else
 echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6; }
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
-=======
-ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile"
-
-
-
-CFLAGS="-g -O3 -ansi -pedantic -Wall"
-CXXFLAGS="$CFLAGS"
-
-cat >confcache <<\_ACEOF
-# This file is a shell script that caches the results of configure
-# tests run on this system so they can be shared between configure
-# scripts and configure runs, see configure's option --config-cache.
-# It is not useful on other systems.  If it contains results you don't
-# want to keep, you may remove or edit it.
-#
-# config.status only pays attention to the cache file if you give it
-# the --recheck option to rerun configure.
-#
-# `ac_cv_env_foo' variables (set or unset) will be overridden when
-# loading this file, other *unset* `ac_cv_foo' will be assigned the
-# following values.
-
->>>>>>> evil/master:configure
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
@@ -28413,7 +28389,7 @@ ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fak
 
 
 
-CFLAGS="-O3 -ansi -pedantic -Wall"
+CFLAGS="-g -O3 -ansi -pedantic -Wall"
 CXXFLAGS="$CFLAGS"
 
 cat >confcache <<\_ACEOF

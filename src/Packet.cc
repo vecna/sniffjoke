@@ -341,15 +341,12 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 	if (target_iphdrlen != iphdrlen)
 		IPHDR_resize(target_iphdrlen);
 
-	int antani;
 	try {
 		HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (unsigned char *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
 		uint8_t MAXITERATION = 5;
 
 		do {
 			injected |= IPInjector.randomInjector();
-			debug.log(ALL_LEVEL, "%d", antani);	
-			
 
 		} while (target_iphdrlen != actual_iphdrlen && MAXITERATION--);
 	} catch(exception &e) {

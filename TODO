@@ -8,3 +8,4 @@ WISHLIST for SniffJoke 0.4 - 1.0
 . verify gateway usage, implement ip source selection
 . implement server side support and port listening protection
 . use a whitelist/blacklist of ip address with a different injection policy
+. Frequency must change for tcp destination port selection

@@ -44,6 +44,7 @@ private:
 	HackPool &hack_pool;
 
 	bool percentage(uint32_t, Frequency, Strength);
+	Frequency betterProtocolFrequency(uint16_t, Frequency);
 
 	void inject_ttlprobe_in_queue(TTLFocus &);
 
@@ -70,6 +71,11 @@ public:
 	Packet* readpacket(source_t);
 	deadline analyze_packets_queue();
 	void force_send(void);
+};
+
+struct FrequencyMap {
+	uint16_t port;
+	Frequency preferred;
 };
 
 #endif /* SJ_TCPTRACK_H */
