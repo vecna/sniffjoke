@@ -75,13 +75,13 @@ bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength w
 				freqret = 1;
 			break;
 		case TIMEBASED5S:
-			if (!((uint8_t)sj_clock.tv_sec % 5))
+			if (!((uint8_t)sj_clock % 5))
 				freqret = 12;
 			else
 				freqret = 1;
 			break;
 		case TIMEBASED20S:
-			if (!((uint8_t)sj_clock.tv_sec % 20))
+			if (!((uint8_t)sj_clock % 20))
 				freqret = 12;
 			else
 				freqret = 1;
@@ -150,7 +150,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		ttlfocus.ttl_estimate = 0xff;
 		ttlfocus.ttl_synack = 0;
 		/* retry scheduled in 10 minutes */
-		updateSchedule(ttlfocus.next_probe_time, 600, 0);
+		ttlfocus.next_probe_time = sj_clock + 600;
 		return;
 	}
 	
@@ -176,10 +176,12 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 				ttlfocus.sent_probe, ttlfocus.ttl_estimate
 			);
 			
+			
+			/* the next ttl probe schedule is forced in the next cycle */
+			ttlfocus.next_probe_time = sj_clock;
+			
 			injpkt->selflog(__func__, injpkt->debug_buf);
 			
-			/* the bruteforce is scheduled with 50ms interval */
-			updateSchedule(ttlfocus.next_probe_time, 0, 50000000);
 			break;
 		case TTL_KNOWN:
 			ttlfocus.selectPuppetPort();
@@ -212,7 +214,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			}
 				
 			/* the ttl verification of a known status is scheduled with 2mins interval */
-			updateSchedule(ttlfocus.next_probe_time, 120, 0);
+			ttlfocus.next_probe_time = sj_clock + 120;
 			break;
 	}
 }
@@ -684,12 +686,12 @@ Packet* TCPTrack::readpacket(source_t destsource)
  * SEND (packets marked as sendable)
  * 
  */
-deadline TCPTrack::analyze_packets_queue()
+void TCPTrack::analyze_packets_queue()
 {
 	/* if all queues are empy we have nothing to do */
 	if (!p_queue.size())
 		goto bypass_queue_analysis;
-
+		
 	Packet *pkt;
 
 	/*
@@ -761,7 +763,6 @@ deadline TCPTrack::analyze_packets_queue()
 
 bypass_queue_analysis:
 
-
 	/*
 	 * Call sessiontrack_map and ttlfocus_map manage routine.
 	 * It's fundamental to do this here, after SEND packet fix and before
@@ -777,29 +778,13 @@ bypass_queue_analysis:
 	ttlfocus_map.manage();
 
 	/* 
-	 * here we verify the need of ttl probes for cached ttlfocus with status BRUTEFORCE and KNOWN
-	 * doing this there is an optimization we can do: we can keep the closest schedule and
-	 * we can return it to the caller.
-	 * in fact with no incoming packets there is no need to call the analyze_packet_queue until
-	 * the next closest schedule.
+	 * here we verify the need of ttl probes for active destinations
 	 */
-	deadline min_schedule;
-	
 	for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it) {
 		TTLFocus &ttlfocus = *((*it).second);
-		if (ttlfocus.status & (TTL_BRUTEFORCE | TTL_KNOWN)) {
-			if ((ttlfocus.access_timestamp > sj_clock.tv_sec - 30) && isSchedulePassed(ttlfocus.next_probe_time))
-				inject_ttlprobe_in_queue(*(*it).second);
-
-			if (min_schedule.valid == false)
-				if(ttlfocus.next_probe_time.tv_sec < min_schedule.timeline.tv_sec
-				|| ttlfocus.next_probe_time.tv_nsec < min_schedule.timeline.tv_nsec) 
-			{
-				min_schedule.valid = true;
-				min_schedule.timeline = ttlfocus.next_probe_time;
-			}
-		}	
+		if ((ttlfocus.access_timestamp > sj_clock - 30) && ttlfocus.next_probe_time <= sj_clock) {
+			inject_ttlprobe_in_queue(*(*it).second);
+		}
 	}
-	
-	return min_schedule;
 }
+

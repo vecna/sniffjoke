@@ -104,7 +104,7 @@ SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
 	}
 		
 	/* update access timestamp using global clock */
-	sessiontrack->access_timestamp = sj_clock.tv_sec;
+	sessiontrack->access_timestamp = sj_clock;
 
 	return *sessiontrack;
 }
@@ -118,9 +118,9 @@ struct sessiontrack_timestamp_comparison {
 
 void SessionTrackMap::manage()
 {
-	if (!(sj_clock.tv_sec % SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)) {
+	if (!(sj_clock % SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)) {
 		for(SessionTrackMap::iterator it = begin(); it != end();) {
-			if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock.tv_sec) {
+			if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock) {
 				delete &(*it->second);
 				erase(it++);
 			} else {
@@ -130,10 +130,11 @@ void SessionTrackMap::manage()
 	}
 
 	uint32_t map_size = size();
+	uint32_t index;
 	if (map_size > SESSIONTRACKMAP_MEMORY_THRESHOLD) {
-		SessionTrack** tmp = new SessionTrack*[SESSIONTRACKMAP_MEMORY_THRESHOLD / 2];
+		SessionTrack** tmp = new SessionTrack*[map_size];
 
-		uint32_t index = 0;
+		index = 0;
  		for(SessionTrackMap::iterator it = begin(); it != end(); ++it)
 			tmp[index++] = it->second;
 
@@ -145,13 +146,12 @@ void SessionTrackMap::manage()
 		do {
 			const SessionTrackKey key = { tmp[index]->daddr, tmp[index]->sport, tmp[index]->dport };
 			insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
-			delete tmp[index];
-		} while( index++ != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2 );
+		} while( ++index != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2 );
+		
 
 		do {
-			const SessionTrackKey key = { tmp[index]->daddr, tmp[index]->sport, tmp[index]->dport };
-			insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
-		} while( index++ != SESSIONTRACKMAP_MEMORY_THRESHOLD);
+			delete tmp[index];
+		} while( ++index != map_size);
 
 		delete[] tmp;
 	}

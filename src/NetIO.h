@@ -64,8 +64,6 @@ private:
 	struct timespec timeout_with_incoming_data_received;
 	struct timespec maximum_timeout;
 
-	deadline closest_schedule;
-
 public:
 
 	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 

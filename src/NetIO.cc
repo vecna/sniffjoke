@@ -223,42 +223,40 @@ void NetIO::network_io(void)
 	/* 
 	 * This is a critical function for sniffjoke operativity.
 	 *
-	 * this function implements a min acquisition step of 1msec
-	 * and a max waiting step of 50ms
-	 * 
+	 * this function implements a variable poll step
+
 	 * if there is some data to send out the poll timout is set to
 	 * infinite because it's important to force data flush.
+	 * 
+	 * if there is no data to send out the poll timeout is always
+	 * set to 1 ms;
+	 * 
+	 * with a max cycle count of 10 and a poll timeout of 1ms
+	 * we will exit if:
+	 *    - a burst of 20 pkts (10 network + 10 tunnel) has been received;
+	 *    - a delay of 10ms has passed.
 	 * 
 	 * read, read, read and than re-read all comments hundred times
 	 * before thinking to change this :P
 	 * 
 	 */
-
-	ssize_t ret;
-
-	clock_gettime(CLOCK_REALTIME, &sj_clock);
-
-	timespec polltimeout;
-	timespec deadline_with_data;
+	uint32_t max_cycle = 10;
 	
-	timespec deadline_with_no_data = sj_clock;
-	updateSchedule(deadline_with_no_data, 0, 50000000); /* 50 ms */
-
-	bool data_received = false;
+	ssize_t ret;
 
 	Packet *pkt_tun = conntrack->readpacket(TUNNEL);
 	Packet *pkt_net = conntrack->readpacket(NETWORK);
 	
-	while (1)
+	while (pkt_tun != NULL || pkt_net != NULL || max_cycle)
 	{
-		clock_gettime(CLOCK_REALTIME, &sj_clock);
-		
+		if(max_cycle != 0) max_cycle--;
+
 		if(conntrack->p_queue.size() < TCPTRACK_QUEUE_MAX_LEN ) {
-			fds[0].events = (pkt_net != NULL) ? POLLIN | POLLOUT : POLLIN;
-			fds[1].events = (pkt_tun != NULL) ? POLLIN | POLLOUT : POLLIN;
+			fds[0].events = POLLIN;
+			fds[1].events = POLLIN;
 		} else {
-			fds[0].events = (pkt_net != NULL) ? POLLOUT : 0;
-			fds[1].events = (pkt_tun != NULL) ? POLLOUT : 0;
+			fds[0].events = 0;
+			fds[1].events = 0;
 		}
 
 		if (pkt_tun != NULL || pkt_net != NULL) {
@@ -266,60 +264,33 @@ void NetIO::network_io(void)
 			/*
 			 * if there is some data to flush out the poll
 			 * timeout is set to infinite
-			 */
-			polltimeout = timeout_with_outgoing_data_to_flush; /* infinite */
+			 */ 
 
-		} else if (data_received) {
-			/* 
-			 * if there is data received we do poll with a timeout of 0.1ms
-			 * and we check the deadline of 0.1ms;
-			 * so after having received a packet we will analyze it in 0.1 ~ 0.2 msec
-			 */
+			fds[0].events |= (pkt_net != NULL) ? POLLOUT : 0;
+			fds[1].events |= (pkt_tun != NULL) ? POLLOUT : 0;
 
-			if (isSchedulePassed(deadline_with_data))
-				break; /* there is the need to analyze packet queue */
-
-			polltimeout = timeout_with_incoming_data_received; /* 0.1 ms */
-
-		} else if (isSchedulePassed(deadline_with_no_data)) {
-			/*
-			 * with no data to send and no data received we check the
-			 * max timout interval of 1sec because we want to return
-			 * to the caller that can do useful things like handle
-			 * admin socket.
-			 */
-			return; /* there is no need to analyze packet queue */
-
-		} else if (closest_schedule.valid == true) {
-
-			/*
-			 * with no data and an active ttl schedule we do a pool with timeout
-			 * relative to the remaining time before the closest schedule
-			 */
-			polltimeout = remainTime(closest_schedule.timeline);
-			
-			if ((polltimeout.tv_sec == 0) && (polltimeout.tv_nsec == 0))
-				break; /* there is the need to analyze packet queue */
+			nfds = poll(fds, 2, -1);
 		} else {
 			
 			/*
-			 * if there is no internal schedule (ttlfocus probes),
-			 * we always have a poll timeout set to in
-			 */  
-			polltimeout = maximum_timeout; /* 50 ms */
+			 * if there is some data to flush out the poll
+			 * timeout is set to 1ms
+			 */
+			 
+			timespec timeout;
+			timeout.tv_sec = 0;
+			timeout.tv_nsec = 40000;
+			nfds = ppoll(fds, 2, &timeout, NULL);
 		}
-		
-		nfds = ppoll(fds, 2, &polltimeout, NULL);
 
+		if (!nfds)
+			continue;
+			
 		/* in the three cases poll/ppoll is set, now we check the nfds return value */
 		if (nfds == -1) {
 			debug.log(ALL_LEVEL, "network_io: strange and dangerous error in ppoll: %s", strerror(errno));
 			SJ_RUNTIME_EXCEPTION("");
 		}
-	
-		if (!nfds)
-			continue;
-
 
 		if (fds[0].revents & POLLIN) {
 			/* it's possibile to read from tunfd */
@@ -341,13 +312,6 @@ void NetIO::network_io(void)
 					SJ_RUNTIME_EXCEPTION(strerror(errno));
 				}
 				fcntl(netfd, F_SETFL, netfd_flags_nonblocking);
-			}
-
-			/* some data has been received */
-			if (data_received == false) {
-				data_received = true;
-				deadline_with_data = sj_clock;
-				updateSchedule(deadline_with_data, 0, 100000); /* 0.1 ms */
 			}
 		}
 
@@ -390,16 +354,9 @@ void NetIO::network_io(void)
 				}
 				fcntl(tunfd, F_SETFL, tunfd_flags_nonblocking);
 			}
-
-			/* some data has been received */
-			if (data_received == false) {
-				data_received = true;
-				deadline_with_data = sj_clock;
-				updateSchedule(deadline_with_data, 0, 100000); /* 0.1 ms */
-			}
 		}
 
-		if (fds[1].revents & POLLOUT ) {
+		if (fds[1].revents & POLLOUT) {
 			/* it's possibile to write in netfd */
 			ret = sendto(netfd, (void*)&(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll));
 
@@ -420,13 +377,9 @@ void NetIO::network_io(void)
 
 	/*
 	 * If the flow control arrives here:
-	 * 	- output data has been flushed entirely
-	 * 	- input data had been received or there is an internal schedule to scatter (ttl probes)
-         *
-         * There are three reasons for the flow to be here:
-         *   1) there is data received to handle;
-         *   2) there is an internal schedule to handle;
+	 *   - output data has been flushed entirely
+	 *   - there is some input data to handle (maximum 20 pkts i/o) or
+	 *     a max delay of 10ms it's passed.
 	 */
-
-	closest_schedule = conntrack->analyze_packets_queue();
+	conntrack->analyze_packets_queue();
 }

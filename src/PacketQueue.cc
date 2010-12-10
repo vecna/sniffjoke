@@ -128,7 +128,6 @@ void PacketQueue::insert_after(Packet &pkt, Packet &ref)
 void PacketQueue::remove(Packet &pkt)
 {
 	--pkt_count;
-
 	queue_t queue = pkt.queue;
 	
 	if (front[queue] == &pkt) {
