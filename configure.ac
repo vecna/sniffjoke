@@ -102,7 +102,8 @@ AC_CONFIG_FILES( Makefile
                  hacks/fake_syn/Makefile
                  hacks/fake_zero_window/Makefile
                  hacks/shift_ack/Makefile
-                 hacks/valid_rst_fake_seq/Makefile)
+                 hacks/valid_rst_fake_seq/Makefile
+                 hacks/fragmentation/Makefile)
 
 
 CFLAGS="-O3 -ansi -pedantic -Wall"

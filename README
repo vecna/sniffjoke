@@ -1,8 +1,6 @@
-==================================================================
-
 SniffJoke 0.4 beta 1
 
-Yes, thanks FSF, now is 2010, and SniffJoke will be used for the most
+Release time: December 2010, SniffJoke will be used for the most
 in the 2011/2012, after the 2012 the world will be destroyed by the
 maya-curse, and sniffing will became the second problem in the list.
 
@@ -26,10 +24,14 @@ and this will obviously be our answer:
 
 ==================================================================
 REQUIREMENTS:
-==================================================================
 
  - Linux OS (>=2.6.19) with tun kernel module;
  - wifi/eth as default gateway (no other interface supported).
+
+By default SniffJoke uses 'sniffjoke' as user/group pair (to
+downgrade privileges). You may need to create them, before
+running it, or you can provide another user/group pair passing
+appropriate options.
 
 ==================================================================
 INSTALLATION FILES (paths may vary in your system)
@@ -50,15 +52,15 @@ INSTALLATION FILES (paths may vary in your system)
 
 ==================================================================
 REFERENCE LINKS:
-==================================================================
 
- the file:
+ the files:
     README-REALLY-NOW
+    doc/*
 
- official 0.3 page:
+ official sniffjoke page:
     http://www.delirandom.net/sniffjoke
 
- academic researchs:
+ (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
  hacker's bread:
@@ -71,10 +73,8 @@ REFERENCE LINKS:
     http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
 
 ==================================================================
-REFERENCE MUSIC: ( sniffjoke it's a product also of this :P )
-==================================================================
+music compāniōn-, Italian text only:
 
-Italian text only:
 http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
 http://www.youtube.com/watch?v=Hv4PchuPrGc Uochi Toki - i gesti di cattiveria
 http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica

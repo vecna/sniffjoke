@@ -63,6 +63,9 @@ bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength w
 		case COMMON:
 			freqret = 7;
 			break;
+		case ALWAYS:
+			freqret = 25;
+			break;
 		case PACKETS10PEEK:
 			if (!(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10))
 				freqret = 10;
@@ -128,6 +131,29 @@ bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength w
 	return (((uint8_t)(random() % 100) + 1 <= this_percentage));
 }
 
+Frequency TCPTrack::betterProtocolFrequency(uint16_t dport, Frequency hackDefault) 
+{
+	uint32_t i;
+	uint16_t hshort = ntohs(dport);
+	/* need adding and/or a specific file instead and hardcoded struct */
+	struct FrequencyMap Fm[] = 
+	{
+		{ 22, RARE },
+		{ 23, COMMON },
+		{ 25, ALWAYS },
+		{ 80, STARTPEEK },
+		{ 8080, STARTPEEK},
+		{ 6667, ALWAYS}
+	};
+
+	for(i =0; i < sizeof(Fm); i++) 
+	{
+		if(Fm[i].port == hshort)
+			return Fm[i].preferred;
+	}
+
+	return hackDefault;
+}
 
 /* 
  * This function is responsible of the ttl bruteforce stage used
@@ -426,7 +452,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 		applicable &= hppe->selfObj->Condition(origpkt);
 		applicable &= percentage(
 					sessiontrack.packet_number,
-					hppe->selfObj->hackFrequency,
+					betterProtocolFrequency(sessiontrack.dport, hppe->selfObj->hackFrequency),
 					runconfig.portconf[ntohs(origpkt.tcp->dest)]
 		);
 		if (applicable)
