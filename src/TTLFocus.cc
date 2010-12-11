@@ -170,7 +170,16 @@ void TTLFocusMap::manage()
 	
 	uint32_t map_size = size();
 	uint32_t index;
-	if (map_size >= TTLFOCUSMAP_MEMORY_THRESHOLD) {
+	if (map_size > TTLFOCUSMAP_MEMORY_THRESHOLD) {
+		/*
+		 * We are forced to make a map cleanup.
+		 * In solve this critical condition we decide to reset half
+		 * of the map, and to do the best selection we reorder
+		 * the map by the access timestamp.
+		 * The complexity cost of this operation is O(NLogN)
+		 * due to the sort algorithm.
+		 * This is the worst case; (others operations are linear
+		 */
 		TTLFocus** tmp = new TTLFocus*[map_size];
 
 		index = 0;
