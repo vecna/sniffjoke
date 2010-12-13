@@ -124,7 +124,7 @@ void HackPool::importPlugin(const char *plugabspath, const char *plugrelpath)
 		push_back(plugin);
 		debug.log(DEBUG_LEVEL, "HackPool: plugin %s implementation accepted", plugin->selfObj->hackName);
 	} catch (runtime_error &e) {
-		debug.log(ALL_LEVEL, "HackPool: unable to load plugin %s", plugrelpath);
+		debug.log(ALL_LEVEL, "HackPool: unable to load plugin a%sa", plugrelpath);
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
@@ -142,8 +142,8 @@ void HackPool::parseEnablerFile(const char *enabler)
 
 	uint8_t line = 0;
 	do {
-		char plugrelpath[SMALLBUF];
-		fgets(plugrelpath, SMALLBUF, plugfile);
+		char plugrelpath[LARGEBUF];
+		fgets(plugrelpath, LARGEBUF, plugfile);
 		++line;
 
 		if (plugrelpath[0] == '#')
@@ -153,7 +153,7 @@ void HackPool::parseEnablerFile(const char *enabler)
 		plugrelpath[strlen(plugrelpath) -1] = 0x00; 
 
 		/* 4 is the minimum length of a ?.so plugin */
-		if (strlen(plugrelpath) < 4 || feof(plugfile)) {
+		if (strlen(plugrelpath) < 4 || strlen(plugrelpath) > 40 || feof(plugfile)) {
 			debug.log(ALL_LEVEL, "HackPool: reading %s: importend %d plugins, matched interruption at line %d",
 				PLUGINSENABLER, size(), line);
 			SJ_RUNTIME_EXCEPTION("");

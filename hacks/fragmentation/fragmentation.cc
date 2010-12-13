@@ -26,6 +26,8 @@
  *
  * fake close is used because a sniffer could read a FIN like a session closing
  * tcp-flag, and stop the session monitoring/reassembly.
+ * 
+ * http://en.wikipedia.org/wiki/IPv4#Fragmentation
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
  * VERIFIED IN:
@@ -40,28 +42,84 @@ class fragmentation: public Hack
 public:
 	virtual void createHack(const Packet &origpkt)
 	{
+		
 		origpkt.selflog(HACK_NAME, "Original packet");
 
-		Packet* const frag1 = new Packet(origpkt);
-		Packet* const frag2 = new Packet(origpkt);
+		uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
+		
+		/* fragment's payload must be multiple of 8 (last fragment excluded of course) */
+		uint16_t fraglen_first = (((uint16_t)((ip_payload_len / 2) + (ip_payload_len % 2))/8)*8);
+		uint16_t fraglen_second = ip_payload_len - fraglen_first;
+		
+		vector<unsigned char> pbufcpy(origpkt.pbuf);
+		vector<unsigned char>::iterator it = pbufcpy.begin();
+		
+		/* pkts's header initialization as origpkt's header copy */
+		vector<unsigned char> pktbuf1(it, it + origpkt.iphdrlen);
+		vector<unsigned char> pktbuf2(it, it + origpkt.iphdrlen);
 
-		/* TODO: https://secure.wikimedia.org/wikipedia/en/wiki/IPv4#Fragmentation_and_reassembly */
+		it += origpkt.iphdrlen;
+		
+		/* 
+		 * pkts's:
+		 *   - header fixation with correct fraglen and fragoffset
+		 *   - payload fragmentation
+		 */
+		struct iphdr *ip1 = (struct iphdr *)&(pktbuf1[0]);
+		ip1->tot_len = htons(origpkt.iphdrlen + fraglen_first);
+		ip1->frag_off &= ~htons(IP_DF);	/* force unset don't fragment bit */
+		ip1->frag_off |= htons(IP_MF);	/* set more fragment bit */
+		pktbuf1.insert(pktbuf1.end(), it, it + fraglen_first);
+		
+		it += fraglen_first;
+
+		struct iphdr *ip2 = (struct iphdr *)&pktbuf2[0];
+		ip2->tot_len = htons(origpkt.iphdrlen + fraglen_second);
+		ip2->frag_off &= ~htons(IP_DF);	/* force unset don't fragment bit */
+		ip2->frag_off += htons(fraglen_first / 8);
+		pktbuf2.insert(pktbuf2.end(), it, it + fraglen_second);
+
+		Packet* const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
+		Packet* const frag2 = new Packet(&pktbuf2[0], pktbuf2.size());
+
+		Packet* frag3_fake_overlapped = new Packet(*frag2);
+		struct iphdr *ip3 = (struct iphdr *)&frag3_fake_overlapped->pbuf[0];
+		uint16_t max_slide = (fraglen_first - 68) / 8;
+		if(max_slide)
+			ip3->frag_off = htons(ntohs(ip3->frag_off) - random() % max_slide);
+		
+		memset_random((void*)((unsigned char *)ip3 + origpkt.iphdrlen), fraglen_second);
+		
+		
+		frag1->wtf = INNOCENT;
+		frag2->wtf = INNOCENT;
+		frag3_fake_overlapped->wtf = PRESCRIPTION;
+
+		frag1->position = POSTICIPATION;
+		frag2->position = POSTICIPATION;
+		frag3_fake_overlapped->position = ANTICIPATION;
 
 		pktVector.push_back(frag1);
 		pktVector.push_back(frag2);
+		pktVector.push_back(frag3_fake_overlapped);
 
-		/* remove the original packet! only the two fragments will be shooted */
-		/* p_queue.remove(&origpkt); */
-		/* TODO: p_queue.remove will not be called from Hack, how will be solved ? 
-		 * a boolean return value in createHack (delete or not original packet in TCPTrack.cc ?) */
+		removeOrigPkt = true;
 	}
 
 	virtual bool Condition(const Packet &origpkt)
 	{
-		return (origpkt.datalen > 512);
+		/*
+		 *  RFC 791 states:
+		 * 
+		 * "Every internet module must be able to forward a datagram of 68
+		 *  octets without further fragmentation.  This is because an internet
+		 *  header may be up to 60 octets, and the minimum fragment is 8 octets."
+		 * 
+		 */
+		return (origpkt.iphdrlen + ((origpkt.ip->tot_len - origpkt.iphdrlen) / 2) >= 68);
 	}
 
-	fragmentation() : Hack(HACK_NAME, PACKETS30PEEK) {}
+	fragmentation() : Hack(HACK_NAME, ALWAYS) {}
 };
 
 extern "C"  Hack* CreateHackObject() {

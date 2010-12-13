@@ -79,6 +79,8 @@ public:
 
 	struct iphdr *ip;
 	uint8_t iphdrlen;	/* [20 - 60] bytes */
+	
+	bool ipfragment;
 
 	struct tcphdr *tcp;
 	uint8_t tcphdrlen;	/* [20 - 60] bytes */
@@ -100,6 +102,7 @@ public:
 	/* IP/TCP checksum functions */
 	uint32_t half_cksum(const void *, uint16_t);
 	uint16_t compute_sum(uint32_t);
+	void fixIpSum(void);
 	void fixIpTcpSum(void);
 
 	/* autochecking */

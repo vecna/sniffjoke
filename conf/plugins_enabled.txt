@@ -4,16 +4,17 @@
 #
 # write uncomment the name of the plugin you want to enable
 #
-fake_close_fin.so	
-fake_data.so		
+fake_close_fin.so
+fake_data.so
 fake_seq.so
 valid_rst_fake_seq.so
-
-
+fragmentation.so
+#
+#
 #fake_close_rst.so
 # fake_close with RESET is disabled because some middlething close the session
 # where is used
-
+#
 #fake_syn.so
 # the same reason, when a device making session tracking, like some DSL router (also 
 # without NAT), a fake SYN cause the closing of the previous session
@@ -23,7 +24,7 @@ valid_rst_fake_seq.so
 #
 #shift_ack.so
 # Need analysis of impact and effective sniffer defeating
-
-
+#
+#
 # regards
 # If someone want to write a manpage, will me we glad :)
