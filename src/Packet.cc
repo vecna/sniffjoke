@@ -38,6 +38,7 @@ Packet::Packet(const unsigned char* buff, uint16_t size) :
 	pbuf(size),
         ip(NULL),
         iphdrlen(0),
+        ipfragment(false),
         tcp(NULL),
         tcphdrlen(0),
         payload(NULL),
@@ -62,6 +63,7 @@ Packet::Packet(const Packet& pkt) :
         pbuf(pkt.pbuf),
         ip(NULL),
         iphdrlen(0),
+        ipfragment(false),
         tcp(NULL),
         tcphdrlen(0),
         payload(NULL),
@@ -103,21 +105,43 @@ void Packet::updatePacketMetadata()
 
 	ip = (struct iphdr *)&(pbuf[0]);
 	iphdrlen = ip->ihl * 4;
-	
+
 	if (pktlen < iphdrlen)
 		SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen");
+	
 	
 	if (pktlen < ntohs(ip->tot_len))
 		SJ_RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
 	/* end ip update */
-	
+
+	switch(ip->protocol) {
+		case IPPROTO_TCP:
+			proto = TCP;
+			break;
+		case IPPROTO_ICMP: 
+			proto = ICMP;
+			break;
+		default:
+			proto = OTHER_IP;
+			break;
+	}
+
+	/* 
+	 * at the time sniffjoke does not handle hacks on ip fragments.
+	 * so we use a fragment variable to deny hacks application.
+	 * there is also the need to bypass some checks in this function.
+	 */
+	if (ip->frag_off & htons(0x3FFF)) {
+		ipfragment = true;
+		return;
+	}
+
 	switch(ip->protocol) {
 		case IPPROTO_TCP:
 			/* start tcp update */
 			if (pktlen < iphdrlen + sizeof(struct tcphdr))
 				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
-			proto = TCP;
 			tcp = (struct tcphdr *)((unsigned char *)(ip) + iphdrlen);
 			tcphdrlen = tcp->doff * 4;
 			
@@ -134,13 +158,9 @@ void Packet::updatePacketMetadata()
 			if (pktlen < iphdrlen + sizeof(struct icmphdr))
 				SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
-			proto = ICMP;
 			icmp = (struct icmphdr *)((unsigned char *)(ip) + iphdrlen);
 			/* end icmp update */
 			
-			break;
-		default:
-			proto = OTHER_IP;
 			break;
 	}
 }
@@ -169,14 +189,22 @@ uint16_t Packet::compute_sum(uint32_t sum)
 	return ~sum;
 }
 
-void Packet::fixIpTcpSum(void)
+void Packet::fixIpSum(void)
 {
-	const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
 	uint32_t sum;
 
 	ip->check = 0;
 	sum = half_cksum((const void *)ip, iphdrlen);
 	ip->check = compute_sum(sum);
+}
+
+void Packet::fixIpTcpSum(void)
+{
+	fixIpSum();
+
+	uint32_t sum;
+	const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
+
 	tcp->check = 0;
 	sum = half_cksum((const void *) &ip->saddr, 8);
 	sum += htons (IPPROTO_TCP + l4len);
@@ -481,38 +509,46 @@ void Packet::selflog(const char *func, const char *loginfo) const
 		default: case SOURCEUNASSIGNED: sourcestr = "unassigned source"; break;
 	}
 
-	memset(protoinfo, 0x0, sizeof(protoinfo));
-	switch(proto) {
-		case TCP:
-			snprintf(protoinfo, sizeof(protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x",
-				ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
-				tcp->rst, (int)pbuf.size(), (int)(pbuf.size() - iphdrlen - tcphdrlen), 
-				ntohl(tcp->seq), ntohl(tcp->ack_seq)
-			);
-			break;
-		case ICMP:
-			snprintf(protoinfo, sizeof(protoinfo), "ICMP type %d code %d len %d(%d)",
-				icmp->type, icmp->code,
-				(int)pbuf.size(), (int)(pbuf.size() - iphdrlen - sizeof(struct icmphdr))
-			);
-			break;
-		case OTHER_IP:
-			snprintf(protoinfo, sizeof(protoinfo), "Other proto: %d", ip->protocol);
-			break;
-		case PROTOUNASSIGNED:
-			snprintf(protoinfo, sizeof(protoinfo), "protocol unassigned! value %d", ip->protocol);
-			break;
-		default:
-			debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-			SJ_RUNTIME_EXCEPTION("");
-			break;
+	if(ipfragment) {
+		debug.log(PACKETS_DEBUG, "%s : E|%s WTF|%s src %s|%s->%s ttl %d %s FRAGMENT",
+			func, evilstr, wtfstr, sourcestr,
+			saddr, daddr,
+			ip->ttl, loginfo
+		);
+	} else {
+		memset(protoinfo, 0x0, sizeof(protoinfo));
+		switch(proto) {
+			case TCP:
+				snprintf(protoinfo, sizeof(protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x",
+					ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, 
+					tcp->rst, (int)pbuf.size(), (int)(pbuf.size() - iphdrlen - tcphdrlen), 
+					ntohl(tcp->seq), ntohl(tcp->ack_seq)
+				);
+				break;
+			case ICMP:
+				snprintf(protoinfo, sizeof(protoinfo), "ICMP type %d code %d len %d(%d)",
+					icmp->type, icmp->code,
+					(int)pbuf.size(), (int)(pbuf.size() - iphdrlen - sizeof(struct icmphdr))
+				);
+				break;
+			case OTHER_IP:
+				snprintf(protoinfo, sizeof(protoinfo), "Other proto: %d", ip->protocol);
+				break;
+			case PROTOUNASSIGNED:
+				snprintf(protoinfo, sizeof(protoinfo), "protocol unassigned! value %d", ip->protocol);
+				break;
+			default:
+				debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
+				SJ_RUNTIME_EXCEPTION("");
+				break;
+		}
+		
+		debug.log(PACKETS_DEBUG, "%s : E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+			func, evilstr, wtfstr, sourcestr,
+			saddr, daddr,
+			protoinfo, ip->ttl, loginfo
+		);
 	}
-
-	debug.log(PACKETS_DEBUG, "%s : E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-		func, evilstr, wtfstr, sourcestr,
-		saddr, daddr,
-		protoinfo, ip->ttl, loginfo
-       	);
 
 	memset((void*)debug_buf, 0x00, sizeof(debug_buf));
 }

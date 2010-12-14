@@ -61,6 +61,7 @@ public:
 	Packet probe_dummy;			/* dummy ttlprobe packet generated from the packet
 						   that scattered the ttlfocus creation. */
 
+	TTLFocus();
 	TTLFocus(const Packet &pkt);
 	TTLFocus(const struct ttlfocus_cache_record &);
 	~TTLFocus();

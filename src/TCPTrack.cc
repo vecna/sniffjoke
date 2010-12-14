@@ -441,6 +441,11 @@ bool TCPTrack::analyze_keep(Packet &pkt) {
  */
 void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 {
+	if(origpkt.ipfragment == true)
+		return;
+		
+	bool removeOrig = false;
+	
 	const SessionTrack &sessiontrack = sessiontrack_map.getSessionTrack(origpkt);
 
 	vector<PluginTrack *> applicable_hacks;
@@ -471,7 +476,6 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 		
 		for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it) {
 			Packet &injpkt = **hack_it;
-
 			/*
 			 * we trust in the external developer, but it's required a
 			 * simple safety check by sniffjoke :)
@@ -488,7 +492,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 				delete &injpkt;
 				continue;
 			}
-			
+
 			if(!last_pkt_fix(injpkt)) {
 				delete &injpkt;
 				continue;
@@ -521,14 +525,22 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 		                        SJ_RUNTIME_EXCEPTION("");
 			}
 		}
-
-		hppe->selfObj->pktVector.clear();
 		
-		if (hppe->selfObj->removeOrigPkt == true) {
-			p_queue.remove(origpkt);
-			delete &origpkt;
-		}
+
+		if(hppe->selfObj->removeOrigPkt == true)
+			removeOrig = true;
+
+		hppe->selfObj->pktVector.clear();		
 	}
+	
+	/*
+	 * If almost an hack has requested origpkt deletion we drop it.
+	 * This has to be done here, at the end, to maximize the effect.
+	 */
+	//if (removeOrig == true) {
+	//	p_queue.remove(origpkt);
+	//	delete &origpkt;
+	//}
 }
 
 /* 
@@ -610,46 +622,58 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	}
 
 	if (ISSET_MALFORMED(runconfig.scrambletech)) {
-		/* IP options, every packet subject if possible, and MALFORMED will be applied */
-		if (pkt.wtf == MALFORMED) {	
-			if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true)))
-				return false;
-		} else {
-			if (RANDOMPERCENT(20))
-				pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
+		if(pkt.ipfragment == false) {
+			/* IP options, every packet subject if possible, and MALFORMED will be applied */
+			if (pkt.wtf == MALFORMED) {	
+				if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true)))
+					return false;
+			} else {
+				if (RANDOMPERCENT(20))
+					pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
+			}
 		}
 
 		/* At the time we are not apart of TCP options that lead destination to drop the packet,
 		 * so for the moment no tcp options are injection.
-		if (RANDOMPERCENT(20)) {
-			if RANDOMPERCENT(50)
-				pkt.Inject_TCPOPT(/ * corrupt ? * / false, / * stript previous ? * / true);
-			else
-				pkt.Inject_TCPOPT(/ * corrupt ? * / true, / * stript previous ? * / true);		
+
+		if (pkt.proto == TCP && pkt.ipfragment == false) {
+			if (RANDOMPERCENT(20)) {
+				if RANDOMPERCENT(50)
+					pkt.Inject_TCPOPT(/ * corrupt ? * / false, / * stript previous ? * / true);
+				else
+					pkt.Inject_TCPOPT(/ * corrupt ? * / true, / * stript previous ? * / true);		
+			}
 		}
 		*/
 	}
-
+	
 	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */	
 	/* TTL modification - every packet subjected if possible */
-	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
-	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
-		/*
-		 * here we use the ttl_estimate value to set the ttl in the packet;
-		 * at the time, we use the precise estimate for testing our infrastructure, but probably
-		 * in real applications we will need a safe margin 1 or 2 hops.
-		 */
-		if (pkt.wtf == PRESCRIPTION) 
-			pkt.ip->ttl = ttlfocus.ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
-		else
-			pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); 		/* [+0, +4], 5 values */
+	if(pkt.ipfragment == false && pkt.proto == TCP) {
+		const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
+		if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
+			/*
+			* here we use the ttl_estimate value to set the ttl in the packet;
+			* at the time, we use the precise estimate for testing our infrastructure, but probably
+			* in real applications we will need a safe margin 1 or 2 hops.
+			*/
+			if (pkt.wtf == PRESCRIPTION) 
+				pkt.ip->ttl = ttlfocus.ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
+			else
+				pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); 		/* [+0, +4], 5 values */
+		} else {
+			pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
+		}
 	} else {
 		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
 	}
 	/* end 2st check */
 	
 	/* fixing the mangled packet */
-	pkt.fixIpTcpSum();
+	if(!pkt.ipfragment && pkt.proto == TCP)
+		pkt.fixIpTcpSum();
+	else
+		pkt.fixIpSum();
 
 	/* corrupted checksum application if required */
 	if (pkt.wtf == GUILTY)
