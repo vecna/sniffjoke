@@ -50,10 +50,7 @@ public:
 		pktVector.push_back(frag1);
 		pktVector.push_back(frag2);
 
-		/* remove the original packet! only the two fragments will be shooted */
-		/* p_queue.remove(&origpkt); */
-		/* TODO: p_queue.remove will not be called from Hack, how will be solved ? 
-		 * a boolean return value in createHack (delete or not original packet in TCPTrack.cc ?) */
+		removeOrigPkt = true;
 	}
 
 	virtual bool Condition(const Packet &origpkt)

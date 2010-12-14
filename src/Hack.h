@@ -50,7 +50,7 @@ class Hack {
 public:
 	const char *hackName;		/* hack name as const string */
 	const Frequency hackFrequency;	/* hack frequency */
-	const bool removeOrigPkt;	/* boolean to be set true if the hack
+	bool removeOrigPkt;		/* boolean to be set true if the hack
 					   needs to remove the original packet */
 
 	vector<Packet*> pktVector;	/* std vector of Packet* used for created hack packets */
