@@ -92,7 +92,8 @@ AC_CHECK_HEADERS(sys/stat.h,,exit 1)
 AC_CHECK_HEADERS(sys/types.h,,exit 1)
 AC_CHECK_HEADERS(sys/un.h,,exit 1)
 
-AC_CONFIG_FILES( Makefile
+AC_CONFIG_FILES(
+		 Makefile
                  src/Makefile
                  hacks/Makefile
                  hacks/fake_close_fin/Makefile
@@ -103,7 +104,9 @@ AC_CONFIG_FILES( Makefile
                  hacks/fake_zero_window/Makefile
                  hacks/shift_ack/Makefile
                  hacks/valid_rst_fake_seq/Makefile
-                 hacks/fragmentation/Makefile)
+                 hacks/fragmentation/Makefile
+                 hacks/fragmentation_with_fake_data/Makefile
+)
 
 
 CFLAGS="-g" #-O3 -ansi -pedantic -Wall"

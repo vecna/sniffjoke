@@ -16648,7 +16648,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile hacks/fragmentation/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile hacks/fragmentation/Makefile hacks/fragmentation_with_fake_data/Makefile"
 
 
 
@@ -17772,6 +17772,7 @@ do
     "hacks/shift_ack/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/shift_ack/Makefile" ;;
     "hacks/valid_rst_fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/valid_rst_fake_seq/Makefile" ;;
     "hacks/fragmentation/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fragmentation/Makefile" ;;
+    "hacks/fragmentation_with_fake_data/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fragmentation_with_fake_data/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5 ;;
   esac

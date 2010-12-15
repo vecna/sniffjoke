@@ -20,11 +20,15 @@ fragmentation.so
 # without NAT), a fake SYN cause the closing of the previous session
 #
 #fake_zero_window.so
-# Need testing
+# need testing
 #
 #shift_ack.so
-# Need analysis of impact and effective sniffer defeating
+# need analysis of impact and effective sniffer defeating
 #
+#fake_fragmentation_with_data
+# fails if between the communicating peers there is device that implements
+# reassembly (detected on Fastweb networks)
 #
 # regards
-# If someone want to write a manpage, will me we glad :)
+#
+# if someone want to write a manpage, will me we glad :)

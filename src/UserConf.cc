@@ -221,7 +221,7 @@ void UserConf::autodetect_gw_mac_address()
 	pclose(foca);
 	
 	memset(cmd, 0x00, sizeof(cmd));
-	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", runconfig.gw_ip_addr);
+	snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50", runconfig.gw_ip_addr);
 	debug.log(ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
 	foca = popen(cmd, "r");
 	fgets(imp_str, SMALLBUF, foca);

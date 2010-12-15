@@ -68,7 +68,7 @@ public:
 			else /* second packet */
 				pkt->position = POSTICIPATION;
 
-			pkt->wtf = RANDOMDAMAGE;
+			pkt->wtf = PRESCRIPTION;
 
 			pkt->selflog(HACK_NAME, "Hacked packet");
 

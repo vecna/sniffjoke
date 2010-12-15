@@ -133,7 +133,6 @@ bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, Strength w
 
 Frequency TCPTrack::betterProtocolFrequency(uint16_t dport, Frequency hackDefault) 
 {
-	uint32_t i;
 	uint16_t hshort = ntohs(dport);
 	/* need adding and/or a specific file instead and hardcoded struct */
 	struct FrequencyMap Fm[] = 
@@ -146,106 +145,13 @@ Frequency TCPTrack::betterProtocolFrequency(uint16_t dport, Frequency hackDefaul
 		{ 6667, ALWAYS}
 	};
 
-	for(i =0; i < sizeof(Fm); i++) 
+	for(uint16_t i = 0; i < sizeof(Fm); i++) 
 	{
 		if(Fm[i].port == hshort)
 			return Fm[i].preferred;
 	}
 
 	return hackDefault;
-}
-
-/* 
- * This function is responsible of the ttl bruteforce stage used
- * to detect the hop distance between us and the remote peer
- * 
- * Sniffjoke uses the first session packet seen as a starting point
- * for this stage.
- * 
- * Packets generated are a copy of the original (firt seen) packet
- * with some little modifications to:
- *  - ip->id
- *  - ip->ttl
- *  - tcp->source
- *  - tcp->seq
- * 
- */
-void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
-{
-	if (ttlfocus.sent_probe == runconfig.max_ttl_probe) {
-		ttlfocus.status = TTL_UNKNOWN;
-		ttlfocus.sent_probe = 0;
-		ttlfocus.received_probe = 0;
-		ttlfocus.ttl_estimate = 0xff;
-		ttlfocus.ttl_synack = 0;
-		/* retry scheduled in 10 minutes */
-		ttlfocus.next_probe_time = sj_clock + 600;
-		return;
-	}
-	
-	Packet *injpkt;
-
-	switch(ttlfocus.status) {
-		case TTL_UNKNOWN:
-			ttlfocus.status = TTL_BRUTEFORCE;
-			/* do not break, continue inside TTL_BRUTEFORCE */
-		case TTL_BRUTEFORCE:
-			++ttlfocus.sent_probe;
-			injpkt = new Packet(ttlfocus.probe_dummy);
-			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
-			injpkt->ip->ttl = ttlfocus.sent_probe;
-			injpkt->tcp->source = ttlfocus.puppet_port;
-			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
-			
-			injpkt->fixIpTcpSum();
-			p_queue.insert(*injpkt, SEND);
-				
-			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
-				ttlfocus.sent_probe, ttlfocus.ttl_estimate
-			);
-			
-			
-			/* the next ttl probe schedule is forced in the next cycle */
-			ttlfocus.next_probe_time = sj_clock;
-			
-			injpkt->selflog(__func__, injpkt->debug_buf);
-			
-			break;
-		case TTL_KNOWN:
-			ttlfocus.selectPuppetPort();
-		
-			ttlfocus.sent_probe = 0;
-			ttlfocus.received_probe = 0;
-			
-			uint8_t pkts = 5;
-			uint8_t ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
-			while (pkts--) {
-				++ttlfocus.sent_probe;
-				injpkt = new Packet(ttlfocus.probe_dummy);
-				injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-				injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
-				injpkt->ip->ttl = ttl;
-				injpkt->tcp->source = ttlfocus.puppet_port;
-				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
-
-				injpkt->fixIpTcpSum();
-				p_queue.insert(*injpkt, SEND);
-
-				ttl++;
-					
-				snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
-					ttlfocus.sent_probe, ttlfocus.ttl_estimate
-				);
-					
-				injpkt->selflog(__func__, injpkt->debug_buf);
-				
-			}
-				
-			/* the ttl verification of a known status is scheduled with 2mins interval */
-			ttlfocus.next_probe_time = sj_clock + 120;
-			break;
-	}
 }
 
 /*
@@ -424,6 +330,100 @@ bool TCPTrack::analyze_keep(Packet &pkt) {
 }
 
 /* 
+ * This function is responsible of the ttl bruteforce stage used
+ * to detect the hop distance between us and the remote peer
+ * 
+ * Sniffjoke uses the first session packet seen as a starting point
+ * for this stage.
+ * 
+ * Packets generated are a copy of the original (firt seen) packet
+ * with some little modifications to:
+ *  - ip->id
+ *  - ip->ttl
+ *  - tcp->source
+ *  - tcp->seq
+ * 
+ */
+void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
+{
+	if (ttlfocus.sent_probe == runconfig.max_ttl_probe) {
+		ttlfocus.status = TTL_UNKNOWN;
+		ttlfocus.sent_probe = 0;
+		ttlfocus.received_probe = 0;
+		ttlfocus.ttl_estimate = 0xff;
+		ttlfocus.ttl_synack = 0;
+		/* retry scheduled in 10 minutes */
+		ttlfocus.next_probe_time = sj_clock + 600;
+		return;
+	}
+	
+	Packet *injpkt;
+
+	switch(ttlfocus.status) {
+		case TTL_UNKNOWN:
+			ttlfocus.status = TTL_BRUTEFORCE;
+			/* do not break, continue inside TTL_BRUTEFORCE */
+		case TTL_BRUTEFORCE:
+			++ttlfocus.sent_probe;
+			injpkt = new Packet(ttlfocus.probe_dummy);
+			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
+			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
+			injpkt->ip->ttl = ttlfocus.sent_probe;
+			injpkt->tcp->source = ttlfocus.puppet_port;
+			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
+			
+			injpkt->fixIpTcpSum();
+			p_queue.insert(*injpkt, SEND);
+				
+			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
+				ttlfocus.sent_probe, ttlfocus.ttl_estimate
+			);
+			
+			
+			/* the next ttl probe schedule is forced in the next cycle */
+			ttlfocus.next_probe_time = sj_clock;
+			
+			injpkt->selflog(__func__, injpkt->debug_buf);
+			
+			break;
+		case TTL_KNOWN:
+			ttlfocus.selectPuppetPort();
+		
+			ttlfocus.sent_probe = 0;
+			ttlfocus.received_probe = 0;
+			
+			uint8_t pkts = 5;
+			uint8_t ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
+			while (pkts--) {
+				++ttlfocus.sent_probe;
+				injpkt = new Packet(ttlfocus.probe_dummy);
+				injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
+				injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
+				injpkt->ip->ttl = ttl;
+				injpkt->tcp->source = ttlfocus.puppet_port;
+				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
+
+				injpkt->fixIpTcpSum();
+				p_queue.insert(*injpkt, SEND);
+
+				ttl++;
+					
+				snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
+					ttlfocus.sent_probe, ttlfocus.ttl_estimate
+				);
+					
+				injpkt->selflog(__func__, injpkt->debug_buf);
+				
+			}
+				
+			/* the ttl verification of a known status is scheduled with 2mins interval */
+			ttlfocus.next_probe_time = sj_clock + 120;
+			break;
+	}
+}
+
+
+/* 
  * inject_hack_in_queue is one of the core function in sniffjoke:
  *
  * the hacks are, for the most, three kinds.
@@ -537,10 +537,10 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 	 * If almost an hack has requested origpkt deletion we drop it.
 	 * This has to be done here, at the end, to maximize the effect.
 	 */
-	//if (removeOrig == true) {
-	//	p_queue.remove(origpkt);
-	//	delete &origpkt;
-	//}
+	if (removeOrig == true) {
+		p_queue.remove(origpkt);
+		delete &origpkt;
+	}
 }
 
 /* 
@@ -565,10 +565,12 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
  *   INNOCENT:	   will BE ACCEPTED, so, INNOCENT but EVIL cause the same treatment of a
  *   			GOOD packet.
  *
- *   the non EVIL+INNOCENT and the GOOD packets will be sent with silly modification:
- *	- a non default TTL value, so to be more or less like the PRESCRIPTION pkts
- *	- some invalid TCP OPTIONS field
- *	- some weird but acceptable IP OPTIONS field
+ *
+ * Hacks application it's applied in this order: PRESCRIPTION, MALFORMED, GUILTY.
+ * A non applicable hack it's degraded to the next;
+ * At worst GUILTY it's always applied.
+ * 
+ *
  */
 bool TCPTrack::last_pkt_fix(Packet &pkt)
 {
@@ -621,35 +623,22 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 			break;
 	}
 
-	if (ISSET_MALFORMED(runconfig.scrambletech)) {
-		if(pkt.ipfragment == false) {
-			/* IP options, every packet subject if possible, and MALFORMED will be applied */
-			if (pkt.wtf == MALFORMED) {	
-				if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true)))
-					return false;
-			} else {
-				if (RANDOMPERCENT(20))
-					pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
-			}
-		}
+	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */
 
-		/* At the time we are not apart of TCP options that lead destination to drop the packet,
-		 * so for the moment no tcp options are injection.
-
-		if (pkt.proto == TCP && pkt.ipfragment == false) {
-			if (RANDOMPERCENT(20)) {
-				if RANDOMPERCENT(50)
-					pkt.Inject_TCPOPT(/ * corrupt ? * / false, / * stript previous ? * / true);
-				else
-					pkt.Inject_TCPOPT(/ * corrupt ? * / true, / * stript previous ? * / true);		
-			}
-		}
-		*/
-	}
-	
-	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */	
-	/* TTL modification - every packet subjected if possible */
+	/*
+	 * TTL modification - every packet subjected if possible.
+	 *
+	 * if wtf == PRESCRIPTION and the hack it's not possible wtf,
+	 * wtf it's degraded to MALFORMED.
+	 */
 	if(pkt.ipfragment == false && pkt.proto == TCP) {
+		/* 
+		 * if the packet it's not a fragmet we call the getTTLFocus()
+		 * the function returns always a ttlfocus at the most empty.
+		 * if it returns an empty struct a ttlfoucs session it's also started.
+		 * on UNKWNON or BRUTEFOCE status and PRESCRIPTION hacks selected
+		 * the packet hack it's degraded to MALFORMED
+		 */ 
 		const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 		if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
 			/*
@@ -660,24 +649,78 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 			if (pkt.wtf == PRESCRIPTION) 
 				pkt.ip->ttl = ttlfocus.ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
 			else
-				pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); 		/* [+0, +4], 5 values */
+				pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4);		/* [+0, +4], 5 values */
 		} else {
-			pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
+			if (pkt.wtf == PRESCRIPTION) 
+				pkt.wtf = MALFORMED;
+			else {
+				/* randomize the ttl without causing trashed traffic */
+				if(pkt.ip->ttl < 235)
+					pkt.ip->ttl += random() % 20;
+			}
 		}
 	} else {
-		pkt.ip->ttl = STARTING_ARB_TTL + (random() % 100);
+		/* 
+		 * if the packet it's a fragmet we call the map find()
+		 * the function returns end() if the ttlfocus it's not present.
+		 * In this situation and in situation where the focus status is
+		 * UNKNOWN or BRUTEFORCE the packet hack it's degraded to MALFORMED
+		 */ 
+		TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
+		if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
+			if (pkt.wtf == PRESCRIPTION) {
+				pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
+			}
+			else
+				pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4);	/* [+0, +4], 5 values */
+		} else {
+			if (pkt.wtf == PRESCRIPTION) {
+				pkt.wtf = MALFORMED;
+			} else {
+				/* randomize the ttl without causing trashed traffic */
+				if(pkt.ip->ttl < 235)
+					pkt.ip->ttl += random() % 20;
+			}
+		}
 	}
 	/* end 2st check */
+
+
+	/*
+	 * if wtf == MALFORMED and the hack it's not possible,
+	 * wtf it's degraded to GUILTY.	
+	 */
+	if (ISSET_MALFORMED(runconfig.scrambletech)) {
+		/* IP options, every packet subject if possible, and MALFORMED will be applied */
+		if (pkt.wtf == MALFORMED) {	
+			if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true)))
+				pkt.wtf = GUILTY;
+		} else {
+			if (RANDOMPERCENT(20))
+				pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
+		}
+	} else {
+		if (pkt.wtf == MALFORMED)
+			pkt.wtf = GUILTY;
+	}
 	
 	/* fixing the mangled packet */
-	if(!pkt.ipfragment && pkt.proto == TCP)
+	if(pkt.ipfragment == false && pkt.proto == TCP)
 		pkt.fixIpTcpSum();
 	else
 		pkt.fixIpSum();
 
-	/* corrupted checksum application if required */
-	if (pkt.wtf == GUILTY)
-		pkt.tcp->check += 0xd34d;
+	/*
+	 * corrupted checksum application if required;
+	 * this is the last resort for hacks packets if neither
+	 * PRESCRIPTION nor MALFORMED are applicable.
+	 */
+	if (pkt.wtf == GUILTY) {
+		if(pkt.ipfragment == false && pkt.proto == TCP)
+			pkt.tcp->check += 0xd34d;
+		else
+			pkt.ip->check += 0xd34d;
+	}
 
 	pkt.selflog(__func__, "Packet ready to be send");
 	
