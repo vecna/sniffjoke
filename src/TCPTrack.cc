@@ -651,9 +651,14 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 			else
 				pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4);		/* [+0, +4], 5 values */
 		} else {
-			if (pkt.wtf == PRESCRIPTION) 
-				pkt.wtf = MALFORMED;
-			else {
+			if (pkt.wtf == PRESCRIPTION) {
+				if (ISSET_MALFORMED(runconfig.scrambletech))
+					pkt.wtf = MALFORMED;
+				else if (ISSET_CHECKSUM(runconfig.scrambletech))
+					pkt.wtf = GUILTY;
+				else
+					return false;
+			} else {
 				/* randomize the ttl without causing trashed traffic */
 				if(pkt.ip->ttl < 235)
 					pkt.ip->ttl += random() % 20;
@@ -668,14 +673,18 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 		 */ 
 		TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
 		if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
-			if (pkt.wtf == PRESCRIPTION) {
+			if (pkt.wtf == PRESCRIPTION)
 				pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
-			}
 			else
 				pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4);	/* [+0, +4], 5 values */
 		} else {
 			if (pkt.wtf == PRESCRIPTION) {
-				pkt.wtf = MALFORMED;
+				if (ISSET_MALFORMED(runconfig.scrambletech))
+					pkt.wtf = MALFORMED;
+				else if (ISSET_CHECKSUM(runconfig.scrambletech))
+					pkt.wtf = GUILTY;
+				else
+					return false;
 			} else {
 				/* randomize the ttl without causing trashed traffic */
 				if(pkt.ip->ttl < 235)
@@ -685,23 +694,25 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	}
 	/* end 2st check */
 
-
 	/*
 	 * if wtf == MALFORMED and the hack it's not possible,
 	 * wtf it's degraded to GUILTY.	
 	 */
-	if (ISSET_MALFORMED(runconfig.scrambletech)) {
-		/* IP options, every packet subject if possible, and MALFORMED will be applied */
-		if (pkt.wtf == MALFORMED) {	
-			if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true)))
-				pkt.wtf = GUILTY;
-		} else {
+	if (pkt.wtf == MALFORMED) {
+		if (ISSET_MALFORMED(runconfig.scrambletech)) {
+			/* IP options, every packet subject if possible, and MALFORMED will be applied */
+			if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true))) {
+				if (ISSET_CHECKSUM(runconfig.scrambletech))
+					pkt.wtf = GUILTY;
+				else
+					return false;
+			}
+		}
+	} else {
+		if (ISSET_MALFORMED(runconfig.scrambletech)) {
 			if (RANDOMPERCENT(20))
 				pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
 		}
-	} else {
-		if (pkt.wtf == MALFORMED)
-			pkt.wtf = GUILTY;
 	}
 	
 	/* fixing the mangled packet */
@@ -716,10 +727,14 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	 * PRESCRIPTION nor MALFORMED are applicable.
 	 */
 	if (pkt.wtf == GUILTY) {
-		if(pkt.ipfragment == false && pkt.proto == TCP)
-			pkt.tcp->check += 0xd34d;
-		else
-			pkt.ip->check += 0xd34d;
+		if (ISSET_CHECKSUM(runconfig.scrambletech)) {
+			if(pkt.ipfragment == false && pkt.proto == TCP)
+				pkt.tcp->check += 0xd34d;
+			else
+				pkt.ip->check += 0xd34d;
+		} else {
+			return false;
+		}
 	}
 
 	pkt.selflog(__func__, "Packet ready to be send");
