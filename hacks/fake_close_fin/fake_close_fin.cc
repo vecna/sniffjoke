@@ -44,13 +44,14 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
 
 		pkt->tcp->psh = 0;
 		pkt->tcp->fin = 1;
+
+		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->position = ANTICIPATION;
 		pkt->wtf = RANDOMDAMAGE;

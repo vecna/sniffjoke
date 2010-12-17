@@ -45,10 +45,12 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
 		pkt->tcp->psh = pkt->tcp->ack = 0;
 		pkt->tcp->window = 0;
+
+		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = RANDOMDAMAGE;

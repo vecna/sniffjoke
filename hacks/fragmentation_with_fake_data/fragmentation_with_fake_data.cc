@@ -25,6 +25,10 @@
  * malfunction, or KILL THE INTERNET :)
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
+ * 
+ * this hack is something like the fragmentation.cc;
+ * the little difference is that it does not simply split a ip packet (or a fragment itself)
+ * into two fragments but it also inject a fake fragment overlapped between the original ones.
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
  * VERIFIED IN:
@@ -45,7 +49,7 @@ public:
 		uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
 		
 		/* fragment's payload must be multiple of 8 (last fragment excluded of course) */
-		uint16_t fraglen_first = ((uint16_t)((uint16_t)(ip_payload_len / 2) + (uint16_t)(ip_payload_len % 2)) / 8) * 8;
+		uint16_t fraglen_first = ((uint16_t)((uint16_t)(ip_payload_len / 2) + (uint16_t)(ip_payload_len % 2)) >> 3) << 3;
 		uint16_t fraglen_second = ip_payload_len - fraglen_first;
 		
 		vector<unsigned char> pbufcpy(origpkt.pbuf);
@@ -64,16 +68,14 @@ public:
 		 */
 		struct iphdr *ip1 = (struct iphdr *)&(pktbuf1[0]);
 		ip1->tot_len = htons(origpkt.iphdrlen + fraglen_first);
-		ip1->frag_off = htons(ntohs(ip1->frag_off) & ~IP_DF);	/* force unset don't fragment bit */
-		ip1->frag_off = htons(ntohs(ip1->frag_off) | IP_MF);	/* set more fragment bit */
-		pktbuf1.insert(pktbuf1.end(), it, it + fraglen_first);
-		
-		it += fraglen_first;
+		ip1->frag_off |= htons(IP_MF);	/* set more fragment bit */
 
 		struct iphdr *ip2 = (struct iphdr *)&pktbuf2[0];
 		ip2->tot_len = htons(origpkt.iphdrlen + fraglen_second);
-		ip2->frag_off = htons(ntohs(ip2->frag_off) & ~IP_DF);	/* force unset don't fragment bit */
-		ip2->frag_off = htons(ntohs(ip2->frag_off) + (fraglen_first / 8));
+		ip2->frag_off += htons(fraglen_first >> 3);
+
+		pktbuf1.insert(pktbuf1.end(), it, it + fraglen_first);
+		it += fraglen_first;
 		pktbuf2.insert(pktbuf2.end(), it, it + fraglen_second);
 
 		Packet* const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
@@ -81,21 +83,28 @@ public:
 
 		Packet* frag3_fake_overlapped = new Packet(*frag2);
 		struct iphdr *ip3 = (struct iphdr *)&frag3_fake_overlapped->pbuf[0];
-		if(fraglen_first / 8 > 68) {
-			uint16_t max_slide = fraglen_first / 8 - 68;
+		if((fraglen_first >> 3) > 68) {
+			uint16_t max_slide = (fraglen_first >> 3) - 68;
 			ip3->frag_off = htons(ntohs(ip3->frag_off) - random() % max_slide);
 		}
 		
-		memset_random((void*)((unsigned char *)ip3 + origpkt.iphdrlen), fraglen_second);
+		frag1->ip->id = htons(ntohs(frag1->ip->id) - 20 + (random() % 10));
+		frag2->ip->id = htons(ntohs(frag2->ip->id) - 20 + (random() % 10));
+		frag3_fake_overlapped->ip->id = htons(ntohs(frag3_fake_overlapped->ip->id) - 20 + (random() % 10));
 		
+		memset_random((void*)((unsigned char *)ip3 + origpkt.iphdrlen), fraglen_second);
 		
 		frag1->wtf = INNOCENT;
 		frag2->wtf = INNOCENT;
 		frag3_fake_overlapped->wtf = PRESCRIPTION;
 
-		frag1->position = POSTICIPATION;
-		frag2->position = POSTICIPATION;
-		frag3_fake_overlapped->position = ANTICIPATION;
+		/*
+		 * randomizing the relative between the three fragments;
+		 * the orig packet is than removed.
+		 */
+		frag1->position = POSITIONUNASSIGNED;
+		frag2->position = POSITIONUNASSIGNED;
+		frag3_fake_overlapped->position = POSITIONUNASSIGNED;
 		
 		frag1->selflog(HACK_NAME, "Hacked packet");
 		frag2->selflog(HACK_NAME, "Hacked packet");
@@ -118,7 +127,8 @@ public:
 		 *  header may be up to 60 octets, and the minimum fragment is 8 octets."
 		 * 
 		 */
-		return (origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68);
+		return 	(!(origpkt.ip->frag_off & htons(IP_DF))
+			&& origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68);
 	}
 
 	fragmentation_with_fake_data() : Hack(HACK_NAME, ALWAYS) {}

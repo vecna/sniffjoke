@@ -53,7 +53,7 @@ public:
 		while(pkts--) {
 			Packet* const pkt = new Packet(origpkt);
 
-			pkt->TCPPAYLOAD_fillrandom();
+			pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
 			pkt->tcp->rst = 0;
 			pkt->tcp->fin = 0;
@@ -62,6 +62,8 @@ public:
 				pkt->tcp->psh = 1;
 			else
 				pkt->tcp->psh = 0;
+
+			pkt->TCPPAYLOAD_fillrandom();
 			
 			if(pkts == 2) /* first packet */
 				pkt->position = ANTICIPATION;

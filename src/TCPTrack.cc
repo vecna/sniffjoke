@@ -473,8 +473,10 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 		PluginTrack *hppe = *it;
 
 		hppe->selfObj->createHack(origpkt);
-		
+
+		unsigned int i = 0;		
 		for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it) {
+			debug.log(ALL_LEVEL, "%u", ++i);
 			Packet &injpkt = **hack_it;
 			/*
 			 * we trust in the external developer, but it's required a
@@ -525,7 +527,6 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 		                        SJ_RUNTIME_EXCEPTION("");
 			}
 		}
-		
 
 		if(hppe->selfObj->removeOrigPkt == true)
 			removeOrig = true;
@@ -904,4 +905,3 @@ bypass_queue_analysis:
 		}
 	}
 }
-

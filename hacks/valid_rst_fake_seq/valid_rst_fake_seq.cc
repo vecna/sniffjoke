@@ -48,13 +48,14 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
 		pkt->tcp->window = htons((uint16_t)(-1));
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
 		pkt->tcp->psh = 0;
+		
+		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = INNOCENT;

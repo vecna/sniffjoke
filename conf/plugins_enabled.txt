@@ -9,6 +9,7 @@ fake_data.so
 fake_seq.so
 valid_rst_fake_seq.so
 fragmentation.so
+fragmentation_with_fake_data.so
 #
 #
 #fake_close_rst.so
@@ -25,9 +26,7 @@ fragmentation.so
 #shift_ack.so
 # need analysis of impact and effective sniffer defeating
 #
-#fake_fragmentation_with_data
-# fails if between the communicating peers there is device that implements
-# reassembly (detected on Fastweb networks)
+#
 #
 # regards
 #
