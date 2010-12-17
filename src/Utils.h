@@ -74,5 +74,6 @@ extern time_t sj_clock;
 std::runtime_error sj_runtime_exception(const char *, const char *, long, const char *);
 void* memset_random(void *, size_t);
 void sigtrap(int);
+FILE *sj_fopen(const char *, const char *, const char *);
 
 #endif /* SJ_UTILS_H */

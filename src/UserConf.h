@@ -45,8 +45,8 @@ struct sj_cmdline_opts {
 		uint16_t admin_port;
 		/* END OF COMMON PART WITH sj_config_opt */
 
+		char location[MEDIUMBUF];
 		char onlyplugin[MEDIUMBUF];
-		char scramble[4];   /* 3 options chars + \0 */
 		bool go_foreground;
 		bool force_restart;
 
@@ -64,9 +64,6 @@ struct command {
 /* those are the value used for track port strength of TCP coverage */
 #define PORTNUMBER  65535
 enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
-
-/* --only parsing facilities */
-#define YNcheck(byte) (byte != 'Y' && byte != 'N')
 
 #define SCRAMBLE_TTL		1
 #define SCRAMBLE_CHECKSUM	2
@@ -97,9 +94,9 @@ struct sj_config {
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
+		char location[MEDIUMBUF];		/* default: "default" */ 
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
-		uint8_t scrambletech;			/* default: idem */		
-		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + gw_mac_str */
+		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + location */
 
 		uint8_t max_ttl_probe;			/* default: idem */
 		Strength portconf[PORTNUMBER];
@@ -116,7 +113,7 @@ class UserConf {
 private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
-		bool load(const char *);
+		bool load(const char *, const char *);
 		void dump(void);
 		void compare_check_copy(char *target, uint32_t tlen, const char *sjdefault, const char *useropt);
 		void autodetect_local_interface(void);

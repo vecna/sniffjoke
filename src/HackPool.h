@@ -33,9 +33,12 @@ using namespace std;
 
 typedef Hack* constructor_f();
 typedef void destructor_f(Hack *);
+typedef void initialize_f(unsigned int);
 typedef const char* version_f();
 
 class PluginTrack {
+private:
+	initialize_f *fp_initHackObj;
 public:
 	void *pluginHandler;
 
@@ -45,13 +48,14 @@ public:
 	
 	Hack* selfObj;
 
-	PluginTrack(const char *);
+	PluginTrack(const char *, uint8_t);
 };
 
 class HackPool : public vector<PluginTrack *> {
 private:
-	void importPlugin(const char *, const char *);
-	void parseEnablerFile(const char *);
+	void importPlugin(const char *, const char *, uint8_t);
+	void parseEnablerFile(const char *, const char *);
+	uint8_t parseScrambleList(char *);
 public:
 	HackPool(const sj_config &);
 	~HackPool();
