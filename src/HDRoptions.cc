@@ -460,7 +460,7 @@ bool HDRoptions::checkIPOPTINJPossibility(void) {
 				goto ip_opts_len_check;
 ip_opts_len_check:	default:
 				option_len = (uint8_t)optptr[i+1];
-				if (option_len > (actual_opts_len - i)) {
+				if (option_len == 0 || option_len > (actual_opts_len - i)) {
 					/* 
 					 * the packet contains invalid options
 					 * we avoid injection regardless of the corrupt value.
@@ -501,7 +501,7 @@ bool HDRoptions::checkTCPOPTINJPossibility(void) {
 				goto tcp_opts_len_check;
 tcp_opts_len_check:	default:
 				option_len = (uint8_t)optptr[i+1];
-				if (option_len > (actual_opts_len - i)) {
+				if (option_len == 0 || option_len > (actual_opts_len - i)) {
 					/* 
 					 * the packet contains invalid options
 					 * we avoid injection regardless of the corrupt value.

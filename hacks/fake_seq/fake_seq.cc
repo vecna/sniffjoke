@@ -46,16 +46,9 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 
-		uint16_t diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
-		
-		if(diff > 200) {
-			diff = random() % 200;
-			pkt->TCPPAYLOAD_resize(diff);
-		}	
-		
-		uint8_t what = (random() % 3);
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+		uint8_t what = (random() % 3);
 
 		if (what == 0)
 			what = 2;
@@ -69,6 +62,13 @@ public:
 		pkt->tcp->window = htons((random() % 80) * 64);
 		pkt->tcp->ack = pkt->tcp->ack_seq = 0;
 
+		uint16_t diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
+		
+		if(diff > 200) {
+			diff = random() % 200;
+			pkt->TCPPAYLOAD_resize(diff);
+		}
+	
 		pkt->TCPPAYLOAD_fillrandom();
 
 		pkt->position = ANY_POSITION;

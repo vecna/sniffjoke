@@ -74,7 +74,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" \t\t\tthe values are: <heavy|normal|light|none>\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
-	" loglevel\t\t[1-6] change the loglevel\n\n"\
+	" debuglevel\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
@@ -163,7 +163,6 @@ void* memset_random(void *s, size_t n)
 void sigtrap(int signal)
 {
 	sniffjoke->alive = false;
-	
 }
 
 static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd) 
@@ -229,7 +228,7 @@ int main(int argc, char **argv)
 		{ "quit",     1 },
 		{ "info",     1 },
 		{ "saveconf", 1 },
-		{ "loglevel", 2 }, 	/* the loglevel */
+		{ "debuglevel", 2 }, 	/* the log debuglevel */
 		{ "set",      4 }, 	/* set start_port end_port value */
 		{ NULL,       0	}
 	};

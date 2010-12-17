@@ -46,8 +46,6 @@ private:
 	bool percentage(uint32_t, Frequency, Strength);
 	Frequency betterProtocolFrequency(uint16_t, Frequency);
 
-	void inject_ttlprobe_in_queue(TTLFocus &);
-
 	/* this functions are called inside analyze_packets_queue;
 	 * boolean functions return true if the packet must be sended */ 
 	bool analyze_incoming_icmp(Packet &);
@@ -57,6 +55,7 @@ private:
 	bool analyze_outgoing(Packet &);
 	bool analyze_keep(Packet &);
 
+	void inject_ttlprobe_in_queue(TTLFocus &);
 	void inject_hack_in_queue(Packet &);
 	bool last_pkt_fix(Packet &);
 

@@ -90,21 +90,11 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	else 
 		runconfig.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
-	if (cmdline_opts.onlyplugin[0])
+	if (cmdline_opts.onlyplugin[0]) {
 		snprintf(runconfig.onlyplugin, LARGEBUF, "%s", cmdline_opts.onlyplugin);
-
-	if (cmdline_opts.scramble[0]) {
-		runconfig.scrambletech |= (cmdline_opts.scramble[0] == 'Y') ? SCRAMBLE_TTL : 0;
-		runconfig.scrambletech |= (cmdline_opts.scramble[1] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
-		runconfig.scrambletech |= (cmdline_opts.scramble[2] == 'Y') ? SCRAMBLE_MALFORMED : 0;
-		if (!runconfig.scrambletech) {
-			debug.log(ALL_LEVEL, "--scramble: at least one scramble technique is required");
-			SJ_RUNTIME_EXCEPTION("");
-		}
-	} else {
-		runconfig.scrambletech = (SCRAMBLE_TTL | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED);
+		debug.log(DEBUG_LEVEL, "--onlyplugin variable: %s", runconfig.onlyplugin);
 	}
-	
+
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 	dump();
@@ -229,7 +219,7 @@ void UserConf::autodetect_gw_mac_address()
 	pclose(foca);
 	
 	memset(cmd, 0x00, sizeof(cmd));
-	snprintf(cmd, MEDIUMBUF, "arp -n | grep %s | cut -b 34-50", runconfig.gw_ip_addr);
+	snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50", runconfig.gw_ip_addr);
 	debug.log(ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
 	foca = popen(cmd, "r");
 	fgets(imp_str, SMALLBUF, foca);
@@ -358,7 +348,6 @@ void UserConf::dump(void)
 				
 		/* resetting variables we do not want to save */
 		memset(configcopy.onlyplugin, 0, sizeof(configcopy.onlyplugin));
-		configcopy.scrambletech = 0;
 		memset(runconfig.ttlfocuscache_file, 0, sizeof(runconfig.ttlfocuscache_file));
 
 		if ((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {

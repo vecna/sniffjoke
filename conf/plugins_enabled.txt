@@ -1,0 +1,33 @@
+# SniffJoke plugins enabler file, 
+# read documentation in http://www.delirandom.net/sniffjoke/plugin or, in the package
+# directory doc/*
+#
+# write uncomment the name of the plugin you want to enable
+#
+fake_close_fin.so
+fake_data.so
+fake_seq.so
+valid_rst_fake_seq.so
+fragmentation.so
+fragmentation_with_fake_data.so
+#
+#
+#fake_close_rst.so
+# fake_close with RESET is disabled because some middlething close the session
+# where is used
+#
+#fake_syn.so
+# the same reason, when a device making session tracking, like some DSL router (also 
+# without NAT), a fake SYN cause the closing of the previous session
+#
+#fake_zero_window.so
+# need testing
+#
+#shift_ack.so
+# need analysis of impact and effective sniffer defeating
+#
+#
+#
+# regards
+#
+# if someone want to write a manpage, will me we glad :)

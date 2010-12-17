@@ -24,9 +24,9 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  *
- * Some sniffer don't keep attenction to the sequence and the data, but to
+ * Some sniffer don't keep attention to the sequence and the data, but to
  * the acknowledge sequence number. a shift sequence hack work sending a fake
- * ACK-packet with a seq_ack totally wrong. this was one of the hacks I've try
+ * ACK-packet with a seq_ack totally wrong. this was one of the hacks I've tried
  * to use without GUILTY/PRESCRIPTION invalidation, but as INNOCENT, because 
  * if the ack is shifted more than the window value, the remote host must
  * invalidate them
@@ -48,8 +48,9 @@ public:
 		origpkt.selflog(HACK_NAME, "Original packet");
 
 		Packet* const pkt = new Packet(origpkt);
+		
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) + 65535);
 
 		pkt->position = ANY_POSITION;

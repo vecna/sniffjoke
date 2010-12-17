@@ -48,9 +48,7 @@ public:
 		while(pkts--) {
 			Packet* const pkt = new Packet(origpkt);
 
-			pkt->TCPPAYLOAD_resize(0);
-		  
-			pkt->ip->id = htons(ntohs(pkt->ip->id) + (random() % 10));
+			pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
 
 			pkt->tcp->psh = 0;
 			pkt->tcp->syn = 1;
@@ -71,6 +69,8 @@ public:
 				pkt->tcp->source = pkt->tcp->dest;
 				pkt->tcp->dest = swap;
 			}
+			
+			pkt->TCPPAYLOAD_resize(0);
 
 			if(pkts == 2) /* first packet */
 				pkt->position = ANTICIPATION;

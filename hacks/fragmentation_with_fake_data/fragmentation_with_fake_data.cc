@@ -26,8 +26,9 @@
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
  * 
- * this hack simply split a ip packet (or a fragment itself) into two fragments.
- * this could help to bypass some simple sniffers.
+ * this hack is something like the fragmentation.cc;
+ * the little difference is that it does not simply split a ip packet (or a fragment itself)
+ * into two fragments but it also inject a fake fragment overlapped between the original ones.
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
  * VERIFIED IN:
@@ -36,9 +37,9 @@
 
 #include "Hack.h"
 
-class fragmentation: public Hack
+class fragmentation_with_fake_data: public Hack
 {
-#define HACK_NAME	"Fragmentation"
+#define HACK_NAME	"Fragmentation With Fake Data"
 public:
 	virtual void createHack(const Packet &origpkt)
 	{
@@ -68,6 +69,7 @@ public:
 		struct iphdr *ip1 = (struct iphdr *)&(pktbuf1[0]);
 		ip1->tot_len = htons(origpkt.iphdrlen + fraglen_first);
 		ip1->frag_off |= htons(IP_MF);	/* set more fragment bit */
+
 		struct iphdr *ip2 = (struct iphdr *)&pktbuf2[0];
 		ip2->tot_len = htons(origpkt.iphdrlen + fraglen_second);
 		ip2->frag_off += htons(fraglen_first >> 3);
@@ -78,26 +80,40 @@ public:
 
 		Packet* const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
 		Packet* const frag2 = new Packet(&pktbuf2[0], pktbuf2.size());
+
+		Packet* frag3_fake_overlapped = new Packet(*frag2);
+		struct iphdr *ip3 = (struct iphdr *)&frag3_fake_overlapped->pbuf[0];
+		if((fraglen_first >> 3) > 68) {
+			uint16_t max_slide = (fraglen_first >> 3) - 68;
+			ip3->frag_off = htons(ntohs(ip3->frag_off) - random() % max_slide);
+		}
 		
 		frag1->ip->id = htons(ntohs(frag1->ip->id) - 20 + (random() % 10));
 		frag2->ip->id = htons(ntohs(frag2->ip->id) - 20 + (random() % 10));
-
+		frag3_fake_overlapped->ip->id = htons(ntohs(frag3_fake_overlapped->ip->id) - 20 + (random() % 10));
+		
+		memset_random((void*)((unsigned char *)ip3 + origpkt.iphdrlen), fraglen_second);
+		
 		frag1->wtf = INNOCENT;
 		frag2->wtf = INNOCENT;
+		frag3_fake_overlapped->wtf = PRESCRIPTION;
 
 		/*
-		 * randomizing the relative between the two fragments;
+		 * randomizing the relative between the three fragments;
 		 * the orig packet is than removed.
 		 */
 		frag1->position = POSITIONUNASSIGNED;
 		frag2->position = POSITIONUNASSIGNED;
-
+		frag3_fake_overlapped->position = POSITIONUNASSIGNED;
+		
 		frag1->selflog(HACK_NAME, "Hacked packet");
 		frag2->selflog(HACK_NAME, "Hacked packet");
+		frag3_fake_overlapped->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(frag1);
 		pktVector.push_back(frag2);
-		
+		pktVector.push_back(frag3_fake_overlapped);
+
 		removeOrigPkt = true;
 	}
 
@@ -115,11 +131,11 @@ public:
 			&& origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68);
 	}
 
-	fragmentation() : Hack(HACK_NAME, ALWAYS) {}
+	fragmentation_with_fake_data() : Hack(HACK_NAME, ALWAYS) {}
 };
 
 extern "C"  Hack* CreateHackObject() {
-	return new fragmentation();
+	return new fragmentation_with_fake_data();
 }
 
 extern "C" void DeleteHackObject(Hack *who) {
