@@ -49,12 +49,12 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 		
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) + 65535);
+		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2*MTU);
 
 		pkt->position = ANY_POSITION;
-		pkt->wtf = INNOCENT;
+		pkt->wtf = PRESCRIPTION;
 
 		pkt->selflog(HACK_NAME, "Hacked packet");
 

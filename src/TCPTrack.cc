@@ -184,7 +184,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 		TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
 		if (it != ttlfocus_map.end()) {
 			TTLFocus *ttlfocus = it->second;
-			const uint8_t expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
+			const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
 			if (expired_ttl == exp_double_check) {
@@ -274,7 +274,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 			if (discern_ttl < ttlfocus->ttl_estimate) { 
 				ttlfocus->ttl_estimate = discern_ttl;
-				ttlfocus->ttl_synack = pkt.ip->ttl;
+				ttlfocus->ttl_synack = ntohs(pkt.ip->ttl);
 			}
 			
 			ttlfocus->status = TTL_KNOWN;
@@ -350,7 +350,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		ttlfocus.status = TTL_UNKNOWN;
 		ttlfocus.sent_probe = 0;
 		ttlfocus.received_probe = 0;
-		ttlfocus.ttl_estimate = 0xff;
+		ttlfocus.ttl_estimate = 0xFF;
 		ttlfocus.ttl_synack = 0;
 		/* retry scheduled in 10 minutes */
 		ttlfocus.next_probe_time = sj_clock + 600;
@@ -367,9 +367,9 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			++ttlfocus.sent_probe;
 			injpkt = new Packet(ttlfocus.probe_dummy);
 			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
-			injpkt->ip->ttl = ttlfocus.sent_probe;
-			injpkt->tcp->source = ttlfocus.puppet_port;
+			injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
+			injpkt->ip->ttl = htons(ttlfocus.sent_probe);
+			injpkt->tcp->source = htons(ttlfocus.puppet_port);
 			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 			
 			injpkt->fixIpTcpSum();
@@ -398,9 +398,9 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 				++ttlfocus.sent_probe;
 				injpkt = new Packet(ttlfocus.probe_dummy);
 				injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-				injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
-				injpkt->ip->ttl = ttl;
-				injpkt->tcp->source = ttlfocus.puppet_port;
+				injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttl);
+				injpkt->ip->ttl = htons(ttl);
+				injpkt->tcp->source = htons(ttlfocus.puppet_port);
 				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
 
 				injpkt->fixIpTcpSum();
@@ -476,7 +476,6 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 
 		unsigned int i = 0;		
 		for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it) {
-			debug.log(ALL_LEVEL, "%u", ++i);
 			Packet &injpkt = **hack_it;
 			/*
 			 * we trust in the external developer, but it's required a
@@ -648,9 +647,9 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 			* in real applications we will need a safe margin 1 or 2 hops.
 			*/
 			if (pkt.wtf == PRESCRIPTION) 
-				pkt.ip->ttl = ttlfocus.ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
+				pkt.ip->ttl = htons(ttlfocus.ttl_estimate - (random() % 4) - 1) >> 8;		/* [-1, -5], 5 values */
 			else
-				pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4);		/* [+0, +4], 5 values */
+				pkt.ip->ttl = htons(ttlfocus.ttl_estimate + (random() % 4)) >> 8;		/* [+0, +4], 5 values */
 		} else {
 			if (pkt.wtf == PRESCRIPTION) {
 				if (ISSET_MALFORMED(runconfig.scrambletech))
@@ -661,8 +660,8 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 					return false;
 			} else {
 				/* randomize the ttl without causing trashed traffic */
-				if(pkt.ip->ttl < 235)
-					pkt.ip->ttl += random() % 20;
+				if(ntohs(pkt.ip->ttl) < 235)
+					pkt.ip->ttl = htons(ntohs(pkt.ip->ttl) + random() % 20) >> 8;
 			}
 		}
 	} else {
@@ -675,9 +674,9 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 		TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
 		if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
 			if (pkt.wtf == PRESCRIPTION)
-				pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
+				pkt.ip->ttl = htons((*it->second).ttl_estimate - (random() % 4) - 1) >> 8;	/* [-1, -5], 5 values */
 			else
-				pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4);	/* [+0, +4], 5 values */
+				pkt.ip->ttl = htons((*it->second).ttl_estimate + (random() % 4)) >> 8;		/* [+0, +4], 5 values */
 		} else {
 			if (pkt.wtf == PRESCRIPTION) {
 				if (ISSET_MALFORMED(runconfig.scrambletech))
@@ -688,8 +687,8 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 					return false;
 			} else {
 				/* randomize the ttl without causing trashed traffic */
-				if(pkt.ip->ttl < 235)
-					pkt.ip->ttl += random() % 20;
+				if(ntohs(pkt.ip->ttl) < 235)
+					pkt.ip->ttl = htons(ntohs(pkt.ip->ttl) + random() % 20) >> 8;
 			}
 		}
 	}

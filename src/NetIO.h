@@ -59,10 +59,6 @@ private:
 
 	unsigned char pktbuf[MTU];
 	int size;
-	
-	struct timespec timeout_with_outgoing_data_to_flush;
-	struct timespec timeout_with_incoming_data_received;
-	struct timespec maximum_timeout;
 
 public:
 
