@@ -42,7 +42,7 @@ class valid_rst_fake_seq : public Hack
 {
 #define HACK_NAME	"true RST w/ invalid SEQ"
 public:
-	virtual void createHack(const Packet &origpkt)
+	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		origpkt.selflog(HACK_NAME, "Original packet");
 
@@ -59,13 +59,15 @@ public:
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = INNOCENT;
+		/* useless because is never downgraded in last_pkt_fix */
+		pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
 		pkt->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &origpkt)
+	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
 		return (
 			!origpkt.tcp->syn &&
@@ -73,6 +75,19 @@ public:
 			!origpkt.tcp->fin &&
 			origpkt.tcp->ack
 		);
+	}
+
+	virtual bool initializeHack(uint8_t configuredScramble)
+	{
+
+		if(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
+			supportedScramble = configuredScramble;
+			return true;
+		}
+		else {
+			debug.log(ALL_LEVEL, "%s hack supports only INNOCENT scramble type", HACK_NAME);
+			return false;
+		}
 	}
 
 	valid_rst_fake_seq() : Hack(HACK_NAME, STARTPEEK) {}

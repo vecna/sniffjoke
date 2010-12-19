@@ -27,18 +27,13 @@
 
 PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble)
 {
-	debug.log(VERBOSE_LEVEL, "%s: %s scramble: %s %s %s", 
-		__func__, plugabspath
-		
-	);
+	debug.log(VERBOSE_LEVEL, "%s: %s ", __func__, plugabspath);
 	
 	pluginHandler = dlopen(plugabspath, RTLD_NOW);
 	if (pluginHandler == NULL) {
 		debug.log(ALL_LEVEL, "PluginTrack: unable to load plugin %s: %s", plugabspath, dlerror());
 		SJ_RUNTIME_EXCEPTION("");
 	}
-
-	debug.log(DEBUG_LEVEL, "PluginTrack: opened %s plugin", plugabspath);
 
         /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
         
@@ -73,12 +68,16 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble)
 
 	/* in future release some other information will be passed here. this function
 	 * is called only at plugin initialization and will be used for plugins setup */
-	fp_initHackObj = (initialize_f *)dlsym(pluginHandler, "initializeHack");
-	if (fp_initHackObj == NULL) {
-		debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of initalizeHack function", plugabspath);
-		SJ_RUNTIME_EXCEPTION("");
-	}
-	fp_initHackObj(supportedScramble); 
+	failInit = !selfObj->initializeHack(supportedScramble);
+
+	debug.log(ALL_LEVEL, "PluginTrack: import of %s: %s with %s%s%s%s %s", 
+		plugabspath, selfObj->hackName, 
+		(ISSET_INNOCENT(supportedScramble) ? "INNOCENT,": ""),
+		(ISSET_TTL(supportedScramble) ? "PRESCRIPTION,": ""),
+		(ISSET_CHECKSUM(supportedScramble) ? "GUILTY,": ""),
+		(ISSET_MALFORMED(supportedScramble) ? "MALFORMED": ""),
+		failInit ? "fail" : "success"
+	);
 }
 
 /*
@@ -150,8 +149,16 @@ void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, u
 {
 	try {
 		PluginTrack *plugin = new PluginTrack(plugabspath, supportedScramble);
-		push_back(plugin);
-		debug.log(DEBUG_LEVEL, "HackPool: plugin %s implementation accepted", plugin->selfObj->hackName);
+		if(plugin->failInit) {
+			debug.log(DEBUG_LEVEL, 
+				"HackPool: Failed initialization of %s: require scramble unsupported in the enabler file", 
+				plugin->selfObj->hackName);
+			delete plugin;
+		}
+		else {
+			push_back(plugin);
+			debug.log(DEBUG_LEVEL, "HackPool: plugin %s implementation accepted", plugin->selfObj->hackName);
+		}
 	} catch (runtime_error &e) {
 		debug.log(ALL_LEVEL, "HackPool: unable to load plugin %s", enablerentry);
 		SJ_RUNTIME_EXCEPTION("");
@@ -165,33 +172,32 @@ uint8_t HackPool::parseScrambleList(char *list_str)
 		const char *keyword;
 		uint8_t scramble;
 	};
-#define SCRAMBLE_SUPPORTED	3
+#define SCRAMBLE_SUPPORTED	4
 	const struct scrambleparm availablescramble[SCRAMBLE_SUPPORTED] = {
 		{ "PRESCRIPTION", SCRAMBLE_TTL },
 		{ "MALFORMED", SCRAMBLE_MALFORMED },
-		{ "GUILTY", SCRAMBLE_CHECKSUM }
+		{ "GUILTY", SCRAMBLE_CHECKSUM },
+		{ "INNOCENT", SCRAMBLE_INNOCENT }
 	};
 
 	char *p;
-	int retval = 0;
+	int i, retval = 0;
+	bool foundScramble = false;
 
 	/*   the plugin_enable.conf.$LOCATION file has this format:
 	 *   plugin.so,SCRAMBLE1[,SCRAMBLE2][,SCRAMBLE3] 		*/
-	do {
-		if((p = strchr(list_str, ',')) != NULL) 
-		{
-			int i, foundscramble = 0;
-
-			*p = 0x00;
-
-			for(i = 0; i < SCRAMBLE_SUPPORTED; i++) {
-				if(!strcmp(list_str, availablescramble[i].keyword))
-					retval |= availablescramble[i].scramble;
-			}
-
-			list_str = p + 1;
+	for(i = 0; i < SCRAMBLE_SUPPORTED; i++) 
+	{
+		if(strstr(list_str, availablescramble[i].keyword)) {
+			foundScramble = true;
+			retval |= availablescramble[i].scramble;
 		}
-	} while(p != NULL);
+	}
+
+	if(!foundScramble) {
+		debug.log(ALL_LEVEL, "in parser file, error@ [%s]", list_str);
+		return 0;
+	}
 
 	return retval;
 }
@@ -221,8 +227,8 @@ void HackPool::parseEnablerFile(const char *enabler, const char *location)
 		enablerentry[strlen(enablerentry) -1] = 0x00; 
 
 		/* 11 is the minimum length of a ?.so plugin, comma and strlen("GUILTY") the shortest keyword */
-		if (strlen(enablerentry) < 11 || strlen(enablerentry) > 40 || feof(plugfile)) {
-			debug.log(ALL_LEVEL, "HackPool: reading %s.%s: importend %d plugins, matched interruption at line %d",
+		if (strlen(enablerentry) < 11 || feof(plugfile)) {
+			debug.log(ALL_LEVEL, "HackPool: reading %s.%s: imported %d plugins, matched interruption at line %d",
 				enabler, location, size(), line);
 			SJ_RUNTIME_EXCEPTION("");
 		}

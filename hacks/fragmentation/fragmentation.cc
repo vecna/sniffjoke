@@ -40,7 +40,7 @@ class fragmentation: public Hack
 {
 #define HACK_NAME	"Fragmentation"
 public:
-	virtual void createHack(const Packet &origpkt)
+	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		
 		origpkt.selflog(HACK_NAME, "Original packet");
@@ -84,6 +84,9 @@ public:
 
 		frag1->wtf = INNOCENT;
 		frag2->wtf = INNOCENT;
+		/* useless, INNOCENT is never downgraded in last_pkt_fix */
+		frag1->choosableScramble = supportedScramble;
+		frag2->choosableScramble = supportedScramble;
 
 		/*
 		 * randomizing the relative between the two fragments;
@@ -101,7 +104,7 @@ public:
 		removeOrigPkt = true;
 	}
 
-	virtual bool Condition(const Packet &origpkt)
+	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
 		/*
 		 *  RFC 791 states:
@@ -113,6 +116,18 @@ public:
 		 */
 		return 	(!(origpkt.ip->frag_off & htons(IP_DF))
 			&& origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68);
+	}
+
+	virtual bool initializeHack(uint8_t configuredScramble) 
+	{
+		if(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
+			supportedScramble = configuredScramble;
+			return true;
+		}
+		else {
+			debug.log(ALL_LEVEL, "%s plugin supports only INNOCENT scramble type", HACK_NAME);
+			return false;
+		}
 	}
 
 	fragmentation() : Hack(HACK_NAME, ALWAYS) {}

@@ -33,12 +33,9 @@ using namespace std;
 
 typedef Hack* constructor_f();
 typedef void destructor_f(Hack *);
-typedef void initialize_f(unsigned int);
 typedef const char* version_f();
 
 class PluginTrack {
-private:
-	initialize_f *fp_initHackObj;
 public:
 	void *pluginHandler;
 
@@ -47,6 +44,7 @@ public:
 	version_f *fp_versionValue;
 	
 	Hack* selfObj;
+	bool failInit;
 
 	PluginTrack(const char *, uint8_t);
 };

@@ -422,6 +422,24 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 	}
 }
 
+uint8_t TCPTrack::descernAvailScramble(Packet &pkt)
+{
+	uint8_t retval = 0;
+
+	retval &= SCRAMBLE_CHECKSUM;
+
+	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
+	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
+		retval &= SCRAMBLE_TTL;
+	}
+
+	/* TODO - when we integrate passive os fingerprint and we do
+	 * a clever study about different OS answer about IP option,
+	 * for every OS we will have or not the related support */
+	retval &= SCRAMBLE_MALFORMED;
+
+	return retval;
+}
 
 /* 
  * inject_hack_in_queue is one of the core function in sniffjoke:
@@ -450,11 +468,19 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 
 	vector<PluginTrack *> applicable_hacks;
 
+	/* 
+	 * Not all time we have a scramble available, we tell to the plugin which of 
+ 	 * them are usable, and the packets is returned. the most of the time, all of
+ 	 * three scramble are availambe, and the plugins will use pktRandomDamage()
+ 	 * private method.
+ 	 */
+	uint8_t availableScramble = descernAvailScramble(origpkt);
+
 	/* SELECT APPLICABLE HACKS */
 	for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it) {
 		PluginTrack *hppe = *it;
 		bool applicable = true;
-		applicable &= hppe->selfObj->Condition(origpkt);
+		applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
 		applicable &= percentage(
 					sessiontrack.packet_number,
 					betterProtocolFrequency(sessiontrack.dport, hppe->selfObj->hackFrequency),
@@ -472,7 +498,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 	{
 		PluginTrack *hppe = *it;
 
-		hppe->selfObj->createHack(origpkt);
+		hppe->selfObj->createHack(origpkt, availableScramble);
 
 		unsigned int i = 0;		
 		for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it) {
@@ -576,144 +602,55 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 bool TCPTrack::last_pkt_fix(Packet &pkt)
 {
 	/*
-	 * 1nd check: what kind of hacks will be applied ?
+	 * 1nd check: what kind of scramble will be applied ?
 	 * here we verify if that the selected hacks are really
 	 * applicable in reference to configuration provided.
+	 *
+	 * REMOVED -- the scramble are now choosed by the hacks plugin
+	 * 	   -- will need again this test here ?
 	 */
-	switch(pkt.wtf) {
-		case PRESCRIPTION:
-			if (ISSET_TTL(runconfig.scrambletech))
-				break;
-			else
-				return false;
-		case MALFORMED:
-			if (ISSET_MALFORMED(runconfig.scrambletech))
-				break;
-			else
-				return false;
-		case GUILTY:
-			if (ISSET_CHECKSUM(runconfig.scrambletech))
-				break;
-			else
-				return false;
-		case INNOCENT:
-			break;
-		case RANDOMDAMAGE:
-			/* 
-			 * here we handle the specific case RANDOMDAMAGE.
-			 * If sniffjoke is running there is always a tecnique enabled;
-			 * so here it's assured that here we will select an enabled tecnique.
-			 */
-			
-			if (ISSET_CHECKSUM(runconfig.scrambletech))
-				pkt.wtf = GUILTY;
-			else if (ISSET_TTL(runconfig.scrambletech))
-				pkt.wtf = PRESCRIPTION;
-			else if (ISSET_MALFORMED(runconfig.scrambletech))
-				pkt.wtf = MALFORMED;
-
-			if (ISSET_TTL(runconfig.scrambletech) && RANDOMPERCENT(45))
-				pkt.wtf = PRESCRIPTION;
-
-			if (ISSET_MALFORMED(runconfig.scrambletech) && RANDOMPERCENT(80)) 
-				pkt.wtf = MALFORMED;
-			break;
-		case JUDGEUNASSIGNED:
-		default:
-			SJ_RUNTIME_EXCEPTION("");
-			break;
-	}
 
 	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */
-
-	/*
-	 * TTL modification - every packet subjected if possible.
-	 *
-	 * if wtf == PRESCRIPTION and the hack it's not possible wtf,
-	 * wtf it's degraded to MALFORMED.
-	 */
-	if(pkt.ipfragment == false && pkt.proto == TCP) {
-		/* 
-		 * if the packet it's not a fragmet we call the getTTLFocus()
-		 * the function returns always a ttlfocus at the most empty.
-		 * if it returns an empty struct a ttlfoucs session it's also started.
-		 * on UNKWNON or BRUTEFOCE status and PRESCRIPTION hacks selected
-		 * the packet hack it's degraded to MALFORMED
-		 */ 
-		const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
-		if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
-			/*
-			* here we use the ttl_estimate value to set the ttl in the packet;
-			* at the time, we use the precise estimate for testing our infrastructure, but probably
-			* in real applications we will need a safe margin 1 or 2 hops.
-			*/
-			if (pkt.wtf == PRESCRIPTION) 
-				pkt.ip->ttl = ttlfocus.ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
-			else
-				pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4);		/* [+0, +4], 5 values */
-		} else {
-			if (pkt.wtf == PRESCRIPTION) {
-				if (ISSET_MALFORMED(runconfig.scrambletech))
-					pkt.wtf = MALFORMED;
-				else if (ISSET_CHECKSUM(runconfig.scrambletech))
-					pkt.wtf = GUILTY;
-				else
-					return false;
-			} else {
-				/* randomize the ttl without causing trashed traffic */
-				if(pkt.ip->ttl < 235)
-					pkt.ip->ttl += random() % 20;
-			}
-		}
+	/* 
+	 * If the packet it's a fragmet we call the map find()
+	 * the function returns end() if the ttlfocus it's not present.
+	 * In this situation and in situation where the focus status is
+	 * UNKNOWN or BRUTEFORCE the packet has TTL randomized in order
+	 * to don't disclose him real hop distance.
+	 */ 
+	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
+	if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
+		if (pkt.wtf == PRESCRIPTION)
+			pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
+		else
+			pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4);	/* [+0, +4], 5 values */
 	} else {
-		/* 
-		 * if the packet it's a fragmet we call the map find()
-		 * the function returns end() if the ttlfocus it's not present.
-		 * In this situation and in situation where the focus status is
-		 * UNKNOWN or BRUTEFORCE the packet hack it's degraded to MALFORMED
-		 */ 
-		TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
-		if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
-			if (pkt.wtf == PRESCRIPTION)
-				pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 4) - 1;	/* [-1, -5], 5 values */
-			else
-				pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4);	/* [+0, +4], 5 values */
-		} else {
-			if (pkt.wtf == PRESCRIPTION) {
-				if (ISSET_MALFORMED(runconfig.scrambletech))
-					pkt.wtf = MALFORMED;
-				else if (ISSET_CHECKSUM(runconfig.scrambletech))
-					pkt.wtf = GUILTY;
-				else
-					return false;
-			} else {
-				/* randomize the ttl without causing trashed traffic */
-				if(pkt.ip->ttl < 235)
-					pkt.ip->ttl += random() % 20;
-			}
-		}
+		if(pkt.ip->ttl < 235)
+			pkt.ip->ttl += random() % 20;
 	}
 	/* end 2st check */
 
 	/*
-	 * if wtf == MALFORMED and the hack it's not possible,
-	 * wtf it's degraded to GUILTY.	
+	 * APPLY MALFORMATION OF IP/TCP OPTIONS, for good and evil packets is possible
+	 *
+	 * if wtf == MALFORMED and the scramble is not possible, wtf it's degraded to GUILTY.	
+	 *
+	 * dropping when GUILTY is not supported happen only in sniffjoke-autotest
 	 */
 	if (pkt.wtf == MALFORMED) {
-		if (ISSET_MALFORMED(runconfig.scrambletech)) {
-			/* IP options, every packet subject if possible, and MALFORMED will be applied */
-			if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true))) {
-				if (ISSET_CHECKSUM(runconfig.scrambletech))
-					pkt.wtf = GUILTY;
-				else
-					return false;
-			}
+		/* IP options, every packet subject if possible, and MALFORMED will be applied */
+		if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true))) {
+			if (ISSET_CHECKSUM(pkt.choosableScramble))
+				pkt.wtf = GUILTY;
+			else
+				goto drop_packet;
 		}
-	} else {
-		if (ISSET_MALFORMED(runconfig.scrambletech)) {
-			if (RANDOMPERCENT(20))
-				pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
-		}
+	}
+
+	/* this is used because algo good packet will have weird IP options */
+	if (ISSET_MALFORMED(pkt.choosableScramble) && pkt.evilbit == GOOD) {
+		if (RANDOMPERCENT(66))
+			pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
 	}
 	
 	/* fixing the mangled packet */
@@ -721,6 +658,11 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 		pkt.fixIpTcpSum();
 	else
 		pkt.fixIpSum();
+	/* TODO -- will be moved in Packet check related how to fix 
+ 	 * the checksum, because is better we call simple pkt.fixsum()
+ 	 * and if is a tcp/udp/icmp/fragment or whatever, is handled by
+ 	 * the packet. the function pkt.corruptsum() will be added for
+ 	 * support GUILTY below */
 
 	/*
 	 * corrupted checksum application if required;
@@ -728,19 +670,21 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	 * PRESCRIPTION nor MALFORMED are applicable.
 	 */
 	if (pkt.wtf == GUILTY) {
-		if (ISSET_CHECKSUM(runconfig.scrambletech)) {
+		if (ISSET_CHECKSUM(pkt.choosableScramble)) { // remember: TODO, all check ISSET_ will be cutted ?
 			if(pkt.ipfragment == false && pkt.proto == TCP)
 				pkt.tcp->check += 0xd34d;
 			else
 				pkt.ip->check += 0xd34d;
 		} else {
-			return false;
+			goto drop_packet;
 		}
 	}
 
 	pkt.selflog(__func__, "Packet ready to be send");
-	
 	return true;
+drop_packet:
+	pkt.selflog(__func__, "Packet dropped: unable to apply corret fix before sending");
+	return false;
 }
 
 /* the packet is added in the packet queue for be analyzed in a second time */

@@ -68,10 +68,12 @@ enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 #define SCRAMBLE_TTL		1
 #define SCRAMBLE_CHECKSUM	2
 #define SCRAMBLE_MALFORMED	4
+#define SCRAMBLE_INNOCENT	8
 
 #define ISSET_TTL(byte)		(byte & SCRAMBLE_TTL)
 #define ISSET_CHECKSUM(byte) 	(byte & SCRAMBLE_CHECKSUM)
 #define ISSET_MALFORMED(byte) 	(byte & SCRAMBLE_MALFORMED)
+#define ISSET_INNOCENT(byte)	(byte & SCRAMBLE_INNOCENT)
 
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */

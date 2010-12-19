@@ -25261,7 +25261,6 @@ fi
 done
 
 
-<<<<<<< HEAD:configure
 for ac_header in getopt.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -25280,29 +25279,6 @@ else
 echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6; }
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
-=======
-ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile hacks/fragmentation/Makefile hacks/fragmentation_with_fake_data/Makefile"
-
-
-
-CFLAGS="-g" #-O3 -ansi -pedantic -Wall"
-CXXFLAGS="$CFLAGS"
-
-cat >confcache <<\_ACEOF
-# This file is a shell script that caches the results of configure
-# tests run on this system so they can be shared between configure
-# scripts and configure runs, see configure's option --config-cache.
-# It is not useful on other systems.  If it contains results you don't
-# want to keep, you may remove or edit it.
-#
-# config.status only pays attention to the cache file if you give it
-# the --recheck option to rerun configure.
-#
-# `ac_cv_env_foo' variables (set or unset) will be overridden when
-# loading this file, other *unset* `ac_cv_foo' will be assigned the
-# following values.
-
->>>>>>> evil/master:configure
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
@@ -26613,32 +26589,9 @@ sed 's/^/| /' conftest.$ac_ext >&5
 	ac_header_compiler=no
 fi
 
-<<<<<<< HEAD:configure
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 { echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
 echo "${ECHO_T}$ac_header_compiler" >&6; }
-=======
-# Handling of arguments.
-for ac_config_target in $ac_config_targets
-do
-  case $ac_config_target in
-    "src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS src/config.h" ;;
-    "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
-    "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
-    "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
-    "hacks/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/Makefile" ;;
-    "hacks/fake_close_fin/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_close_fin/Makefile" ;;
-    "hacks/fake_close_rst/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_close_rst/Makefile" ;;
-    "hacks/fake_data/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_data/Makefile" ;;
-    "hacks/fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_seq/Makefile" ;;
-    "hacks/fake_syn/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_syn/Makefile" ;;
-    "hacks/fake_zero_window/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fake_zero_window/Makefile" ;;
-    "hacks/shift_ack/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/shift_ack/Makefile" ;;
-    "hacks/valid_rst_fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/valid_rst_fake_seq/Makefile" ;;
-    "hacks/fragmentation/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fragmentation/Makefile" ;;
-    "hacks/fragmentation_with_fake_data/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fragmentation_with_fake_data/Makefile" ;;
->>>>>>> evil/master:configure
 
 # Is the header present?
 { echo "$as_me:$LINENO: checking $ac_header presence" >&5
@@ -28432,7 +28385,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile hacks/fragmentation/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile hacks/Makefile hacks/fake_close_fin/Makefile hacks/fake_close_rst/Makefile hacks/fake_data/Makefile hacks/fake_seq/Makefile hacks/fake_syn/Makefile hacks/fake_zero_window/Makefile hacks/shift_ack/Makefile hacks/valid_rst_fake_seq/Makefile hacks/fragmentation/Makefile hacks/fragmentation_with_fake_data/Makefile"
 
 
 
@@ -29051,6 +29004,7 @@ do
     "hacks/shift_ack/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/shift_ack/Makefile" ;;
     "hacks/valid_rst_fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/valid_rst_fake_seq/Makefile" ;;
     "hacks/fragmentation/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fragmentation/Makefile" ;;
+    "hacks/fragmentation_with_fake_data/Makefile") CONFIG_FILES="$CONFIG_FILES hacks/fragmentation_with_fake_data/Makefile" ;;
 
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 echo "$as_me: error: invalid argument: $ac_config_target" >&2;}

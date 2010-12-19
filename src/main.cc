@@ -110,16 +110,29 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
 FILE *sj_fopen(const char *fname, const char *location, const char *mode) 
 {
 	char effectivename[LARGEBUF]; /* the two input buffer are MEDIUMBUF */
+	const char *nmode;
 
 	snprintf(effectivename, LARGEBUF, "%s.%s", fname, location);
 
-	if(!strcmp(location, LOCATION)) {
-		debug.log(ALL_LEVEL, 
-			"opening file %s as %s: No location specified, you may experience connections problems", 
-			fname, effectivename);
+	if(!strcmp(location, DEFAULTLOCATION)) {
+		debug.log(VERBOSE_LEVEL, "opening file %s as %s: No location specified", fname, effectivename);
 	}
 
-	return fopen(effectivename, mode);
+	/* 	communication intra sniffjoke: a "+" mean:
+	 -
+	 * if the file exist, open in read and write
+	 * if not, create it.
+	 * ...is late, maybe exist an easiest way 	*/
+	if(strlen(mode) == 1 && mode[0] == '+') {
+		if(access(effectivename, R_OK) == R_OK)
+			nmode = "r+";
+		else 
+			nmode = "w+";
+	} else {
+		nmode = const_cast <char *>(mode);
+	}
+
+	return fopen(effectivename, nmode);
 }
 
 void init_random()

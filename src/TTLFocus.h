@@ -75,7 +75,6 @@ public:
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*> {
 private:
-	char completedfile[MEDIUMBUF];
 	FILE *diskcache;
 public:
         TTLFocusMap(const char *, const char *);

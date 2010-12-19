@@ -45,6 +45,7 @@ private:
 
 	bool percentage(uint32_t, Frequency, Strength);
 	Frequency betterProtocolFrequency(uint16_t, Frequency);
+	uint8_t descernAvailScramble(Packet &);
 
 	/* this functions are called inside analyze_packets_queue;
 	 * boolean functions return true if the packet must be sended */ 

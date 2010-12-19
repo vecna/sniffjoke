@@ -120,10 +120,10 @@ TTLFocusMap::TTLFocusMap(const char* dumpfile, const char *location)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 	debug.log(ALL_LEVEL, "loading ttlfocusmap from %s location %s", dumpfile, location);
-	
-	if((diskcache = sj_fopen(dumpfile, location, "rw+")) == NULL) {
+
+	if((diskcache = sj_fopen(dumpfile, location, "+")) == NULL) {
 		debug.log(ALL_LEVEL, "keeping a network cache is required, link it to /dev/null if don't like it");
-		SJ_RUNTIME_EXCEPTION("");
+		SJ_RUNTIME_EXCEPTION(strerror(errno));
 	}
 	load();
 }

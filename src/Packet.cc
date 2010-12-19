@@ -493,7 +493,6 @@ void Packet::selflog(const char *func, const char *loginfo) const
 	}
 
 	switch(wtf) {
-		case RANDOMDAMAGE: wtfstr ="everybad"; break;
 		case PRESCRIPTION: wtfstr ="prescripted"; break;
 		case INNOCENT: wtfstr ="innocent"; break;
 		case GUILTY: wtfstr ="badchecksum"; break;

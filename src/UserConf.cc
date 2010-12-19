@@ -43,16 +43,16 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	else				realfil = CONF_FILE;
 
 	/* location is used for enabler and ttlfocuschache_file */
-	if (cmdline_opts.location[0]) {
+	if (!cmdline_opts.location[0]) {
 		debug.log(ALL_LEVEL, "is highly suggest to use sniffjoke with a specified --location");
-		dubug.log(ALL_LEVEL, "a defined location mean you have profiled your network for the best results");
+		debug.log(ALL_LEVEL, "a defined location mean you have profiled your network for the best results");
 		debug.log(ALL_LEVEL, "a brief explanation about is here: http://www.delirandom.net/sniffjoke/location");
 	}
 
 	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil); 
 	memset(&runconfig, 0x00, sizeof(sj_config));
 	
-	if (!load(configfile)) {
+	if (!load(configfile, cmdline_opts.location)) {
 		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
 
 		/* set up defaults */	   
@@ -93,6 +93,15 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	if (cmdline_opts.onlyplugin[0]) {
 		snprintf(runconfig.onlyplugin, LARGEBUF, "%s", cmdline_opts.onlyplugin);
 		debug.log(DEBUG_LEVEL, "--onlyplugin variable: %s", runconfig.onlyplugin);
+	}
+
+	/* SANITY CHECK BEFORE ACCEPT THE OPTIONS */
+	FILE *test = sj_fopen(runconfig.enabler, runconfig.location, "r");
+	if(test == NULL) {
+		debug.log(ALL_LEVEL, "Sanity check: is required the enabler file, and the default (%s.%s) is not present", 
+			runconfig.enabler, runconfig.location);
+		debug.log(ALL_LEVEL, "running sniffjoke-autotest will generate the appropriate enabler for different location");
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
@@ -306,7 +315,7 @@ bool UserConf::load(const char* configfile, const char* location)
 
 		if (strncmp(runconfig.location, location, strlen(location))) {
 			debug.log(ALL_LEVEL, "loading %s.%s related to %s location differ from your location specified %s",
-				configfile, location, runconfing.location, location
+				configfile, location, runconfig.location, location
 			);
 			SJ_RUNTIME_EXCEPTION("");
 		}
@@ -342,9 +351,9 @@ void UserConf::dump(void)
 	else
 		snprintf(configfile, LARGEBUF, "%s", configcopy.cfgfname);
 	
-	if ((dumpfd = sj_fopen(configfile, location, "w")) != NULL) 
+	if ((dumpfd = sj_fopen(configfile, configcopy.location, "w")) != NULL) 
 	{
-		debug.log(VERBOSE_LEVEL, "dumping configcopy configuration to %s.%s",  configfile, location);
+		debug.log(VERBOSE_LEVEL, "saving configuration to %s.%s",  configfile, configcopy.location);
 				
 		/* resetting variables we do not want to save */
 		memset(configcopy.onlyplugin, 0, sizeof(configcopy.onlyplugin));
@@ -353,13 +362,13 @@ void UserConf::dump(void)
 		if ((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {
 			/* ret - 1 because fwrite return the number of written item */
 			debug.log(ALL_LEVEL, "unable to write configuration to %s.%s: %s", 
-				configfile, location, strerror(errno));
+				configfile, configcopy.location, strerror(errno));
 		}
 
 		fclose(dumpfd);
 	} else {
 		debug.log(ALL_LEVEL, "unable to open configuration to %s.%s: %s", 
-			configfile, location, strerror(errno));
+			configfile, configcopy.location, strerror(errno));
 	}
 	
 }

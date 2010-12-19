@@ -40,7 +40,7 @@ class fake_syn : public Hack
 {
 #define HACK_NAME	"Fake SYN"
 public:
-	virtual	void createHack(const Packet &origpkt)
+	virtual	void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		origpkt.selflog(HACK_NAME, "Original packet");
 
@@ -77,7 +77,8 @@ public:
 			else /* second packet */
 				pkt->position = POSTICIPATION;
 			
-			pkt->wtf = RANDOMDAMAGE;
+			pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+			pkt->choosableScramble = (availableScramble & supportedScramble);
 
 			pkt->selflog(HACK_NAME, "Hacked packet");
 			
@@ -85,13 +86,18 @@ public:
 		}
 	}
 	
-	virtual bool Condition(const Packet &origpkt)
+	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
 		return (
 			origpkt.tcp->syn &&
 			!origpkt.tcp->rst &&
 			!origpkt.tcp->fin
 		);
+	}
+
+	virtual bool initializeHack(uint8_t configuredScramble) {
+		supportedScramble = configuredScramble;
+		return true;
 	}
 
 	fake_syn() : Hack(HACK_NAME, RARE) {};

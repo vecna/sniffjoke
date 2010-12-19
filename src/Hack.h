@@ -24,6 +24,7 @@
 #define SJ_HACK_H
 
 #include "Packet.h"
+#include "UserConf.h" /* for ISSET_* #defines */
 
 #include <vector>
 
@@ -48,6 +49,17 @@ enum Frequency { RARE = 1, COMMON = 2, ALWAYS = 3, PACKETS10PEEK = 4, PACKETS30P
 
 class Hack {
 public:
+	judge_t pktRandomDamage(uint8_t scrambles) 
+	{
+		if (ISSET_TTL(scrambles) && RANDOMPERCENT(75))
+			return PRESCRIPTION;
+		if (ISSET_MALFORMED(scrambles) && RANDOMPERCENT(80)) 
+			return MALFORMED;
+		return GUILTY;
+	}
+
+	uint8_t supportedScramble;	/* supported by the location, derived
+					   from plugin_enabler.conf.$location */
 	const char *hackName;		/* hack name as const string */
 	const Frequency hackFrequency;	/* hack frequency */
 	bool removeOrigPkt;		/* boolean to be set true if the hack
@@ -61,7 +73,8 @@ public:
 		hackFrequency(hackFrequency),
 		removeOrigPkt(removeOrigPkt)
 	{};
-	virtual bool Condition(const Packet &) { return true; };
-	virtual void createHack(const Packet &) = 0;
+	virtual bool Condition(const Packet &, uint8_t availableScramble) { return true; };
+	virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
+	virtual bool initializeHack(uint8_t configuredScramble) { return true; };
 };
 #endif /* SJ_HACK_H */
