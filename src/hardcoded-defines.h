@@ -31,14 +31,15 @@
 #include "config.h"
 
 #define SW_NAME                         "SniffJoke"
-#define SW_VERSION                      "0.4-beta1"
+#define SW_VERSION                      "0.4-beta2"
 
 /* Sniffjoke defaults config values */
 #define DROP_USER                       "nobody"
 #define DROP_GROUP                      "nogroup"
 #define MAGICVAL			0xADECADDE
 #define CHROOT_DIR			INSTALL_STATEDIR
-#define PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.txt"
+#define PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.conf"
+#define DEFAULTLOCATION			"default"
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     		//relative to chroot_dir
 #define LOGFILE                        	"sniffjoke.log"                 //relative to chroot_dir

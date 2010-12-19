@@ -37,8 +37,6 @@
 
 using namespace std;
 
-#define NSEC_PER_SEC 1000000000
-
 Debug debug;
 
 time_t sj_clock;
@@ -48,6 +46,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
+	" --location <name>\tspecify the network environment (suggested)\n"\
 	" --config <filename>\tconfig file [default: %s%s]\n"\
 	" --enabler <filename>\tplugins enabler file [default: %s]\n"\
 	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
@@ -61,9 +60,6 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help (special --help hacking)\n\n"\
-	"testing options (not saved in configuration file):\n"\
-	" --only-plugin <plugin.so>\tspecify the single plugin to use\n"\
-	" --scramble <Y|N><Y|N><Y|N>\tselect scrambling techniques (order: TTL, checksum, IPmalform)\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
@@ -76,7 +72,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" \t\t\tthe values are: <heavy|normal|light|none>\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
-	" debuglevel\t\t[1-6] change the log debug level\n\n"\
+	" debug\t\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
@@ -106,6 +102,35 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
 	if (msg != NULL)
 		stream << " : " << msg;
 	return std::runtime_error(stream.str());
+}
+
+/* this function is used for read/write configuration and cache files */
+FILE *sj_fopen(const char *fname, const char *location, const char *mode) 
+{
+	char effectivename[LARGEBUF]; /* the two input buffer are MEDIUMBUF */
+	const char *nmode;
+
+	snprintf(effectivename, LARGEBUF, "%s.%s", fname, location);
+
+	if(!strcmp(location, DEFAULTLOCATION)) {
+		debug.log(VERBOSE_LEVEL, "opening file %s as %s: No location specified", fname, effectivename);
+	}
+
+	/* 	communication intra sniffjoke: a "+" mean:
+	 -
+	 * if the file exist, open in read and write
+	 * if not, create it.
+	 * ...is late, maybe exist an easiest way 	*/
+	if(strlen(mode) == 1 && mode[0] == '+') {
+		if(access(effectivename, R_OK) == R_OK)
+			nmode = "r+";
+		else 
+			nmode = "w+";
+	} else {
+		nmode = const_cast <char *>(mode);
+	}
+
+	return fopen(effectivename, nmode);
 }
 
 void init_random()
@@ -149,7 +174,6 @@ void* memset_random(void *s, size_t n)
 void sigtrap(int signal)
 {
 	sniffjoke->alive = false;
-	
 }
 
 static bool client_command_found(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd) 
@@ -195,12 +219,12 @@ int main(int argc, char **argv)
 		{ "chroot-dir", required_argument, NULL, 'c' },
 		{ "debug", required_argument, NULL, 'd' },
 		{ "logfile", required_argument, NULL, 'l' },
+		{ "location", required_argument, NULL, 'o' },
 		{ "admin", required_argument, NULL, 'a' },		
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
 		{ "version", no_argument, NULL, 'v' },
 		{ "only-plugin", required_argument, NULL, 'p' },
-		{ "scramble", required_argument, NULL, 's' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, 0, NULL, 0 }
 	};
@@ -215,7 +239,7 @@ int main(int argc, char **argv)
 		{ "quit",     1 },
 		{ "info",     1 },
 		{ "saveconf", 1 },
-		{ "debuglevel", 2 }, 	/* the log debuglevel */
+		{ "debug",    2 }, 	/* the log debuglevel */
 		{ "set",      4 }, 	/* set start_port end_port value */
 		{ NULL,       0	}
 	};
@@ -227,8 +251,11 @@ int main(int argc, char **argv)
 		useropt.process_type = SJ_SERVER_PROC;
 
 	int charopt;
-	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:a:xrvp:s:h", sj_option, NULL)) != -1) {
+	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:o:a:xrvp:s:h", sj_option, NULL)) != -1) {
 		switch(charopt) {
+			case 'o':
+				snprintf(useropt.location, sizeof(useropt.location), "%s", optarg);
+				break;
 			case 'f':
 				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
 				break;
@@ -281,13 +308,6 @@ int main(int argc, char **argv)
 				return 0;
 			case 'p':
 				snprintf(useropt.onlyplugin, sizeof(useropt.onlyplugin), "%s", optarg);
-				break;
-			case 's':
-				if ((strlen(optarg) != 3)
-				|| YNcheck(optarg[0]) || YNcheck(optarg[1]) || YNcheck(optarg[2]))
-					goto sniffjoke_help;
-
-				snprintf(useropt.scramble, sizeof(useropt.scramble), "%s", optarg);
 				break;
 sniffjoke_help:
 			case 'h':

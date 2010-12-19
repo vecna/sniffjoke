@@ -32,7 +32,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = hacks/fake_syn
+subdir = hacks/fragmentation
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -50,12 +50,12 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 pkglibLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-fake_syn_la_LIBADD =
-am_fake_syn_la_OBJECTS = fake_syn.lo Packet.lo
-fake_syn_la_OBJECTS = $(am_fake_syn_la_OBJECTS)
-fake_syn_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+fragmentation_la_LIBADD =
+am_fragmentation_la_OBJECTS = fragmentation.lo
+fragmentation_la_OBJECTS = $(am_fragmentation_la_OBJECTS)
+fragmentation_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(fake_syn_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(CXXFLAGS) $(fragmentation_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -68,8 +68,8 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(fake_syn_la_SOURCES)
-DIST_SOURCES = $(fake_syn_la_SOURCES)
+SOURCES = $(fragmentation_la_SOURCES)
+DIST_SOURCES = $(fragmentation_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -186,9 +186,9 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CXXFLAGS = -I$(top_srcdir)/src
-pkglib_LTLIBRARIES = fake_syn.la
-fake_syn_la_SOURCES = fake_syn.cc ../../src/Packet.cc
-fake_syn_la_LDFLAGS = -module -avoid-version
+pkglib_LTLIBRARIES = fragmentation.la
+fragmentation_la_SOURCES = fragmentation.cc
+fragmentation_la_LDFLAGS = -module -avoid-version
 all: all-am
 
 .SUFFIXES:
@@ -202,9 +202,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  hacks/fake_syn/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  hacks/fragmentation/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu  hacks/fake_syn/Makefile
+	  $(AUTOMAKE) --gnu  hacks/fragmentation/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -249,8 +249,8 @@ clean-pkglibLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-fake_syn.la: $(fake_syn_la_OBJECTS) $(fake_syn_la_DEPENDENCIES) 
-	$(fake_syn_la_LINK) -rpath $(pkglibdir) $(fake_syn_la_OBJECTS) $(fake_syn_la_LIBADD) $(LIBS)
+fragmentation.la: $(fragmentation_la_OBJECTS) $(fragmentation_la_DEPENDENCIES) 
+	$(fragmentation_la_LINK) -rpath $(pkglibdir) $(fragmentation_la_OBJECTS) $(fragmentation_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -258,8 +258,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Packet.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fake_syn.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fragmentation.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -281,13 +280,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
-
-Packet.lo: ../../src/Packet.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Packet.lo -MD -MP -MF $(DEPDIR)/Packet.Tpo -c -o Packet.lo `test -f '../../src/Packet.cc' || echo '$(srcdir)/'`../../src/Packet.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Packet.Tpo $(DEPDIR)/Packet.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../../src/Packet.cc' object='Packet.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Packet.lo `test -f '../../src/Packet.cc' || echo '$(srcdir)/'`../../src/Packet.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo

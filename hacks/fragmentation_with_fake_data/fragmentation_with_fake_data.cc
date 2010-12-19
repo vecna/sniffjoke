@@ -41,10 +41,14 @@ class fragmentation_with_fake_data: public Hack
 {
 #define HACK_NAME	"Fragmentation With Fake Data"
 public:
-	virtual void createHack(const Packet &origpkt)
+	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
-		
 		origpkt.selflog(HACK_NAME, "Original packet");
+
+		if(!ISSET_TTL(availableScramble)) {
+			debug.log(VERBOSE_LEVEL, "TTL/prescription hack not available in %s: loss hack possibility", HACK_NAME);
+			return;
+		}
 
 		uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
 		
@@ -97,6 +101,7 @@ public:
 		frag1->wtf = INNOCENT;
 		frag2->wtf = INNOCENT;
 		frag3_fake_overlapped->wtf = PRESCRIPTION;
+		frag3_fake_overlapped->choosableScramble = PRESCRIPTION;
 
 		/*
 		 * randomizing the relative between the three fragments;
@@ -106,9 +111,9 @@ public:
 		frag2->position = POSITIONUNASSIGNED;
 		frag3_fake_overlapped->position = POSITIONUNASSIGNED;
 		
-		frag1->selflog(HACK_NAME, "Hacked packet");
-		frag2->selflog(HACK_NAME, "Hacked packet");
-		frag3_fake_overlapped->selflog(HACK_NAME, "Hacked packet");
+		frag1->selflog(HACK_NAME, "Fragment 1");
+		frag2->selflog(HACK_NAME, "Fragment 2");
+		frag3_fake_overlapped->selflog(HACK_NAME, "Overlapped BAD fragment");
 
 		pktVector.push_back(frag1);
 		pktVector.push_back(frag2);
@@ -117,7 +122,7 @@ public:
 		removeOrigPkt = true;
 	}
 
-	virtual bool Condition(const Packet &origpkt)
+	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
 		/*
 		 *  RFC 791 states:
@@ -128,20 +133,35 @@ public:
 		 * 
 		 */
 		return 	(!(origpkt.ip->frag_off & htons(IP_DF))
-			&& origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68);
+			&& origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68
+			&& (availableScramble & PRESCRIPTION) );
+	}
+
+	virtual bool initializeHack(uint8_t configuredScramble) 
+	{
+		if ( ISSET_TTL(configuredScramble) && ISSET_INNOCENT(configuredScramble) ) {
+			supportedScramble = configuredScramble;
+			return true;
+		} else {
+			debug.log(ALL_LEVEL, "Fragmentation with fake data require INNOCENT and PRESCRIPTION as option");
+			return false;
+		}
 	}
 
 	fragmentation_with_fake_data() : Hack(HACK_NAME, ALWAYS) {}
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new fragmentation_with_fake_data();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

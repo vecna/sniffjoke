@@ -44,14 +44,16 @@ public:
 	version_f *fp_versionValue;
 	
 	Hack* selfObj;
+	bool failInit;
 
-	PluginTrack(const char *);
+	PluginTrack(const char *, uint8_t);
 };
 
 class HackPool : public vector<PluginTrack *> {
 private:
-	void importPlugin(const char *, const char *);
-	void parseEnablerFile(const char *);
+	void importPlugin(const char *, const char *, uint8_t);
+	void parseEnablerFile(const char *, const char *);
+	uint8_t parseScrambleList(const char *);
 public:
 	HackPool(const sj_config &);
 	~HackPool();

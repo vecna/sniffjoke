@@ -38,7 +38,7 @@ class fake_close_fin : public Hack
 {
 #define HACK_NAME	"Fake FIN"
 public:
-	virtual void createHack(const Packet &origpkt)
+	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		origpkt.selflog(HACK_NAME, "Original packet");
 
@@ -54,7 +54,8 @@ public:
 		pkt->TCPPAYLOAD_resize(0);
 
 		pkt->position = ANTICIPATION;
-		pkt->wtf = RANDOMDAMAGE;
+		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+		pkt->choosableScramble = (availableScramble & supportedScramble);
 		pkt->proto = TCP;
 		
 		pkt->selflog(HACK_NAME, "Hacked packet");
@@ -62,27 +63,35 @@ public:
 		pktVector.push_back(pkt);
 	}
 
-	virtual bool Condition(const Packet &origpkt)
+	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
 		return (
 			!origpkt.tcp->syn &&
 			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin &&
-			origpkt.tcp->ack
+			!origpkt.tcp->fin
 		);
+	}
+
+	virtual bool initializeHack(uint8_t configuredScramble)
+	{
+		supportedScramble = configuredScramble;
+		return true;
 	}
 
 	fake_close_fin() : Hack(HACK_NAME, PACKETS30PEEK) {}
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new fake_close_fin();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

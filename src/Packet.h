@@ -53,12 +53,12 @@ enum source_t { SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 4, TTLBFO
  * packet need to be plain and correct (INNOCENT) to expire prematurely (PRESCRIPTION) to be 
  * consider bad and discarged (GUILTY, corrupt the TCP checksum), MALFORMED (weird ip options)
  * or a random choose of those */
-enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8, RANDOMDAMAGE = 16 };
+enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
 enum proto_t { PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 4 };
 
-/* a sniffjoke packet should be send before the oroginal packet or after the original packet */
+/* a sniffjoke packet should be send before the original packet or after the original packet */
 enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 4 };
 
 class Packet {
@@ -71,9 +71,15 @@ private:
 public:
 	evilbit_t evilbit;
 	source_t source;
-	judge_t wtf;
 	proto_t proto;
 	position_t position;
+
+	/* this is what the hack has decided to do, 
+	 * had choosed between the Hack.avaialableScramble */
+	judge_t wtf;
+	/* this is what's the packet will accept if the 'wtf' 
+	 * will not be used, (rarely will happen) */
+	uint8_t choosableScramble;
 
 	vector<unsigned char> pbuf;
 
@@ -104,6 +110,8 @@ public:
 	uint16_t compute_sum(uint32_t);
 	void fixIpSum(void);
 	void fixIpTcpSum(void);
+	void fixSum(void);
+	void corruptSum(void);
 
 	/* autochecking */
 	bool selfIntegrityCheck(const char *);

@@ -41,7 +41,7 @@ SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
 
 SniffJoke::~SniffJoke()
 {
-	switch (opts.process_type) 
+	switch (opts.process_type)
 	{
 		case SJ_SERVER_PROC:
 			if (getuid() || geteuid()) {
@@ -171,7 +171,7 @@ void SniffJoke::server() {
 		proc.privilegesDowngrade();
 
 		sessiontrack_map = auto_ptr<SessionTrackMap> (new SessionTrackMap);
-		ttlfocus_map = auto_ptr<TTLFocusMap> (new TTLFocusMap(userconf.runconfig.ttlfocuscache_file));
+		ttlfocus_map = auto_ptr<TTLFocusMap> (new TTLFocusMap(userconf.runconfig.ttlfocuscache_file, userconf.runconfig.location));
 		conntrack = auto_ptr<TCPTrack> (new TCPTrack(userconf.runconfig, *hack_pool, *sessiontrack_map, *ttlfocus_map));
 
 		mitm->prepare_conntrack(conntrack.get());

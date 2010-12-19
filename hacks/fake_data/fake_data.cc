@@ -45,11 +45,22 @@ class fake_data : public Hack
 {
 #define HACK_NAME "Fake DATA"
 public:
-	virtual void createHack(const Packet &origpkt)
+	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		origpkt.selflog(HACK_NAME, "Original packet");	
 
 		uint8_t pkts = 2;
+		judge_t selectedScramble;
+
+		/* in fake data I don't use pktRandomDamage because I want the
+		 * same hack for both packets */
+		if(ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+			selectedScramble = PRESCRIPTION;
+		else if(ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90)) 
+			selectedScramble = MALFORMED;
+		else /* the 99% of the times */
+			selectedScramble = GUILTY;
+
 		while(pkts--) {
 			Packet* const pkt = new Packet(origpkt);
 
@@ -70,7 +81,8 @@ public:
 			else /* second packet */
 				pkt->position = POSTICIPATION;
 
-			pkt->wtf = PRESCRIPTION;
+			pkt->wtf = selectedScramble;
+			pkt->choosableScramble = availableScramble;
 
 			pkt->selflog(HACK_NAME, "Hacked packet");
 
@@ -78,25 +90,31 @@ public:
 		}
 	}
 
-	virtual bool Condition(const Packet &origpkt)
+	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
-		return (
-			!origpkt.tcp->syn &&
-			origpkt.payload != NULL
-		);
+		return (origpkt.payload != NULL);
+	}
+
+	virtual bool initializeHack(uint8_t configuredScramble)
+	{
+		supportedScramble = configuredScramble;
+		return true;
 	}
 
 	fake_data() : Hack(HACK_NAME, COMMON) {};
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new fake_data();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

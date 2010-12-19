@@ -37,15 +37,22 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	char configfile[LARGEBUF];
 	const char *realdir, *realfil;
 
-	if (cmdline_opts.chroot_dir[0]) 	realdir = cmdline_opts.chroot_dir;
+	if (cmdline_opts.chroot_dir[0])	realdir = cmdline_opts.chroot_dir;
 	else 				realdir = CHROOT_DIR;
 	if (cmdline_opts.cfgfname[0])	realfil = cmdline_opts.cfgfname;
 	else				realfil = CONF_FILE;
 
+	/* location is used for enabler and ttlfocuschache_file */
+	if (cmdline_opts.process_type == SJ_SERVER_PROC && !cmdline_opts.location[0]) {
+		debug.log(ALL_LEVEL, "is highly suggestes to use sniffjoke with a specifying a location (--location option)");
+		debug.log(ALL_LEVEL, "a defined location mean you have profiled your network for the best results");
+		debug.log(ALL_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
+	}
+
 	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil); 
 	memset(&runconfig, 0x00, sizeof(sj_config));
 	
-	if (!load(configfile)) {
+	if (!load(configfile, cmdline_opts.location)) {
 		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
 
 		/* set up defaults */	   
@@ -62,6 +69,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	 * we need only to check if the previous value was different from the default */
 	compare_check_copy(runconfig.cfgfname, sizeof(runconfig.cfgfname), CONF_FILE, cmdline_opts.cfgfname);
 	compare_check_copy(runconfig.enabler, sizeof(runconfig.enabler), PLUGINSENABLER, cmdline_opts.enabler);
+	compare_check_copy(runconfig.location, sizeof(runconfig.location), DEFAULTLOCATION, cmdline_opts.location);
 	compare_check_copy(runconfig.user, sizeof(runconfig.user), DROP_USER, cmdline_opts.user);
 	compare_check_copy(runconfig.group, sizeof(runconfig.group), DROP_GROUP, cmdline_opts.group);
 	compare_check_copy(runconfig.chroot_dir, sizeof(runconfig.chroot_dir), CHROOT_DIR, cmdline_opts.chroot_dir);
@@ -70,7 +78,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	compare_check_copy(runconfig.logfname_packets, sizeof(runconfig.logfname_packets), CHROOT_DIR""LOGFILE""SUFFIX_LF_PACKETS, cmdline_opts.logfname_packets);
 	compare_check_copy(runconfig.logfname_sessions, sizeof(runconfig.logfname_sessions), CHROOT_DIR""LOGFILE""SUFFIX_LF_SESSIONS, cmdline_opts.logfname_sessions);
 
-	debug.log(DEBUG_LEVEL, "running variables: conf %s enabled %s user %s group %s chroot %s admin address %s logfile %s packets log %s session log %s", runconfig.cfgfname, runconfig.enabler, runconfig.user, runconfig.group, runconfig.chroot_dir, runconfig.admin_address, runconfig.logfname, runconfig.logfname_packets, runconfig.logfname_sessions);
+	debug.log(DEBUG_LEVEL, "running variables: location %s conf %s enabled %s user %s group %s chroot %s admin address %s logfile %s packets log %s session log %s", runconfig.cfgfname, runconfig.enabler, runconfig.user, runconfig.group, runconfig.chroot_dir, runconfig.admin_address, runconfig.logfname, runconfig.logfname_packets, runconfig.logfname_sessions);
 
 	if (cmdline_opts.admin_port != 0)
 		runconfig.admin_port = cmdline_opts.admin_port;
@@ -82,21 +90,20 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	else 
 		runconfig.debug_level = DEFAULT_DEBUG_LEVEL; // equal to ALL_LEVEL
 
-	if (cmdline_opts.onlyplugin[0])
+	if (cmdline_opts.onlyplugin[0]) {
 		snprintf(runconfig.onlyplugin, LARGEBUF, "%s", cmdline_opts.onlyplugin);
-
-	if (cmdline_opts.scramble[0]) {
-		runconfig.scrambletech |= (cmdline_opts.scramble[0] == 'Y') ? SCRAMBLE_TTL : 0;
-		runconfig.scrambletech |= (cmdline_opts.scramble[1] == 'Y') ? SCRAMBLE_CHECKSUM : 0;
-		runconfig.scrambletech |= (cmdline_opts.scramble[2] == 'Y') ? SCRAMBLE_MALFORMED : 0;
-		if (!runconfig.scrambletech) {
-			debug.log(ALL_LEVEL, "--scramble: at least one scramble technique is required");
-			SJ_RUNTIME_EXCEPTION("");
-		}
-	} else {
-		runconfig.scrambletech = (SCRAMBLE_TTL | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED);
+		debug.log(DEBUG_LEVEL, "--onlyplugin variable: %s", runconfig.onlyplugin);
 	}
-	
+
+	/* SANITY CHECK BEFORE ACCEPT THE OPTIONS */
+	FILE *test = sj_fopen(runconfig.enabler, runconfig.location, "r");
+	if(test == NULL) {
+		debug.log(ALL_LEVEL, "Sanity check: is required the enabler file, and the default (%s.%s) is not present", 
+			runconfig.enabler, runconfig.location);
+		debug.log(ALL_LEVEL, "running sniffjoke-autotest will generate the appropriate enabler for different location");
+		SJ_RUNTIME_EXCEPTION("");
+	}
+
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 	dump();
@@ -282,33 +289,41 @@ void UserConf::network_setup(void)
 	snprintf(runconfig.ttlfocuscache_file, MEDIUMBUF, "%s_%s", TTLFOCUSCACHE_FILE, runconfig.gw_mac_str);
 }
 
-bool UserConf::load(const char* configfile)
+bool UserConf::load(const char* configfile, const char* location)
 {
 	FILE *loadfd;	
-	debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
+	debug.log(DEBUG_LEVEL, "opening configuration file: %s.%s", configfile, location);
 
-	if ((loadfd = fopen(configfile, "r")) != NULL) {
+	if ((loadfd = sj_fopen(configfile, location, "r")) != NULL) {
 		memset(&runconfig, 0x00, sizeof(struct sj_config));
 
 		if (fread((void *)&runconfig, sizeof(struct sj_config), 1, loadfd) != 1) {
-			debug.log(ALL_LEVEL, "unable to read %d bytes from %s, maybe the wrong file ?",
-				sizeof(runconfig), configfile, strerror(errno)
+			debug.log(ALL_LEVEL, "unable to read %d bytes from %s.%s, maybe the wrong file ?",
+				sizeof(runconfig), configfile, location, strerror(errno)
 			);
 			SJ_RUNTIME_EXCEPTION("");
 		}
 
-		debug.log(DEBUG_LEVEL, "reading of %s: %d byte readed", configfile, sizeof(struct sj_config));
+		debug.log(DEBUG_LEVEL, "reading of %s.%s: %d byte readed", configfile, location, sizeof(struct sj_config));
 
 		if (runconfig.MAGIC != MAGICVAL) {
-			debug.log(ALL_LEVEL, "sniffjoke config: %s seems to be corrupted - delete or check the argument",
-				configfile
+			debug.log(ALL_LEVEL, "sniffjoke config: %s.%s seems to be corrupted - delete or check the argument",
+				configfile, location
+			);
+			SJ_RUNTIME_EXCEPTION("");
+		}
+
+		if (strncmp(runconfig.location, location, strlen(location))) {
+			debug.log(ALL_LEVEL, "loading %s.%s related to %s location differ from your location specified %s",
+				configfile, location, runconfig.location, location
 			);
 			SJ_RUNTIME_EXCEPTION("");
 		}
 
 		if (memcmp(runconfig.version, SW_VERSION, strlen(SW_VERSION))) {
-			debug.log(ALL_LEVEL, "sniffjoke config: (%s) is the config version, sniffjoke (%s): delete the old configuration: %s",
-				runconfig.version, SW_VERSION, configfile
+			debug.log(ALL_LEVEL, 
+				"sniffjoke config: (%s) is the config version, sniffjoke (%s): delete the old configuration: %s.%s",
+				runconfig.version, SW_VERSION, configfile, location
 			);
 			SJ_RUNTIME_EXCEPTION("");
 		}
@@ -336,22 +351,24 @@ void UserConf::dump(void)
 	else
 		snprintf(configfile, LARGEBUF, "%s", configcopy.cfgfname);
 	
-	if ((dumpfd = fopen(configfile, "w")) != NULL) {	
-		debug.log(VERBOSE_LEVEL, "dumping configcopy configuration to %s",  configfile);
+	if ((dumpfd = sj_fopen(configfile, configcopy.location, "w")) != NULL) 
+	{
+		debug.log(VERBOSE_LEVEL, "saving configuration to %s.%s",  configfile, configcopy.location);
 				
 		/* resetting variables we do not want to save */
 		memset(configcopy.onlyplugin, 0, sizeof(configcopy.onlyplugin));
-		configcopy.scrambletech = 0;
 		memset(runconfig.ttlfocuscache_file, 0, sizeof(runconfig.ttlfocuscache_file));
 
 		if ((fwrite(&configcopy, sizeof(struct sj_config), 1, dumpfd)) != 1) {
 			/* ret - 1 because fwrite return the number of written item */
-			debug.log(ALL_LEVEL, "unable to write configuration to %s: %s",	configfile, strerror(errno));
+			debug.log(ALL_LEVEL, "unable to write configuration to %s.%s: %s", 
+				configfile, configcopy.location, strerror(errno));
 		}
 
 		fclose(dumpfd);
 	} else {
-		debug.log(ALL_LEVEL, "unable to open configuration to %s: %s", configfile, strerror(errno));
+		debug.log(ALL_LEVEL, "unable to open configuration to %s.%s: %s", 
+			configfile, configcopy.location, strerror(errno));
 	}
 	
 }
@@ -405,15 +422,15 @@ char* UserConf::handle_cmd(const char *cmd)
 	} else if (!memcmp(cmd, "clear", strlen("clear"))) {
 		Strength clearValue = NONE;
 		handle_cmd_set(0, PORTNUMBER, clearValue);
-	} else if (!memcmp(cmd, "loglevel", strlen("loglevel")))  {
-		int loglevel;
+	} else if (!memcmp(cmd, "debuglevel", strlen("debuglevel")))  {
+		int debuglevel;
 
-		sscanf(cmd, "loglevel %d", &loglevel);
-		if (loglevel < 0 || loglevel > PACKETS_DEBUG) {
-			snprintf(io_buf, sizeof(io_buf), "invalid log value: %d, must be > 0 and < than %d", loglevel, PACKETS_DEBUG);
+		sscanf(cmd, "debuglevel %d", &debuglevel);
+		if (debuglevel < 0 || debuglevel > PACKETS_DEBUG) {
+			snprintf(io_buf, sizeof(io_buf), "invalid log value: %d, must be > 0 and < than %d", debuglevel, PACKETS_DEBUG);
 			debug.log(ALL_LEVEL, "%s", io_buf);
 		} else {
-			handle_cmd_loglevel(loglevel);
+			handle_cmd_debuglevel(debuglevel);
 		}
 	} else {
 		debug.log(ALL_LEVEL, "wrong command %s", cmd);
@@ -551,11 +568,11 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 	} while (start <= end);
 }
 
-void UserConf::handle_cmd_loglevel(int newloglevel)
+void UserConf::handle_cmd_debuglevel(int newdebuglevel)
 {
-	if (newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
+	if (newdebuglevel < ALL_LEVEL || newdebuglevel > PACKETS_DEBUG) {
 		snprintf(io_buf, sizeof(io_buf), 
-			"error in the new loglevel requested: accepted >= %d and <= %d\n\n"\
+			"error in the new debuglevel requested: accepted >= %d and <= %d\n\n"\
 			"\t1\tsuppressed log\n"\
 			"\t2\tdefault, common log\n"\
 			"\t3\tverbose\n"\
@@ -565,8 +582,8 @@ void UserConf::handle_cmd_loglevel(int newloglevel)
 			ALL_LEVEL, PACKETS_DEBUG
 		);
 	} else {
-		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newloglevel);
-		runconfig.debug_level = newloglevel;
+		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newdebuglevel);
+		runconfig.debug_level = newdebuglevel;
 	}
 }
 

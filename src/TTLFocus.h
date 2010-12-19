@@ -75,14 +75,14 @@ public:
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*> {
 private:
-	char dumpfile[MEDIUMBUF];
+	FILE *diskcache;
 public:
-        TTLFocusMap(const char* dumpfile);
+        TTLFocusMap(const char *, const char *);
         ~TTLFocusMap();
 	TTLFocus& getTTLFocus(const Packet &);
         void manage();
-        void load(const char *);
-        void dump(const char *);
+        void load();
+        void dump();
 };
 
 struct ttlfocus_cache_record {
