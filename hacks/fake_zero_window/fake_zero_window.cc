@@ -45,7 +45,7 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
 		pkt->tcp->psh = pkt->tcp->ack = 0;
 		pkt->tcp->window = 0;

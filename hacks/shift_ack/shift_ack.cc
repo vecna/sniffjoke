@@ -49,14 +49,13 @@ public:
 
 		Packet* const pkt = new Packet(origpkt);
 		
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 20 + (random() % 10));
+		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) + 65535);
+		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2*MTU);
 
 		pkt->position = ANY_POSITION;
-		pkt->wtf = INNOCENT;
-		/* useless, INNOCENT will never be downgraded in last_pkt_fix */
-		pkt->choosableScramble = SCRAMBLE_INNOCENT;
+		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+		pkt->choosableScramble = (availableScramble & supportedScramble);
 
 		pkt->selflog(HACK_NAME, "Hacked packet");
 
@@ -75,25 +74,24 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble)
 	{
-		if(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) )
-			return true;
-		else {
-			debug.log(ALL_LEVEL, "%s support only INNOCENT scramble type in plugins enabler", HACK_NAME);
-			return false;
-		}
+		supportedScramble = configuredScramble;
+		return true;
 	}
 
 	shift_ack() : Hack(HACK_NAME, RARE) {}
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new shift_ack();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

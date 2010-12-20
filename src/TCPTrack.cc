@@ -184,7 +184,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 		TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
 		if (it != ttlfocus_map.end()) {
 			TTLFocus *ttlfocus = it->second;
-			const uint8_t expired_ttl = badiph->id - (ttlfocus->rand_key % 64);
+			const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
 			const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
 			if (expired_ttl == exp_double_check) {
@@ -274,7 +274,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 
 			if (discern_ttl < ttlfocus->ttl_estimate) { 
 				ttlfocus->ttl_estimate = discern_ttl;
-				ttlfocus->ttl_synack = pkt.ip->ttl;
+				ttlfocus->ttl_synack = ntohs(pkt.ip->ttl);
 			}
 			
 			ttlfocus->status = TTL_KNOWN;
@@ -350,7 +350,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 		ttlfocus.status = TTL_UNKNOWN;
 		ttlfocus.sent_probe = 0;
 		ttlfocus.received_probe = 0;
-		ttlfocus.ttl_estimate = 0xff;
+		ttlfocus.ttl_estimate = 0xFF;
 		ttlfocus.ttl_synack = 0;
 		/* retry scheduled in 10 minutes */
 		ttlfocus.next_probe_time = sj_clock + 600;
@@ -367,9 +367,9 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			++ttlfocus.sent_probe;
 			injpkt = new Packet(ttlfocus.probe_dummy);
 			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
-			injpkt->ip->ttl = ttlfocus.sent_probe;
-			injpkt->tcp->source = ttlfocus.puppet_port;
+			injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
+			injpkt->ip->ttl = htons(ttlfocus.sent_probe);
+			injpkt->tcp->source = htons(ttlfocus.puppet_port);
 			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 			
 			injpkt->fixIpTcpSum();
@@ -398,9 +398,9 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 				++ttlfocus.sent_probe;
 				injpkt = new Packet(ttlfocus.probe_dummy);
 				injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-				injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
-				injpkt->ip->ttl = ttl;
-				injpkt->tcp->source = ttlfocus.puppet_port;
+				injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttl);
+				injpkt->ip->ttl = htons(ttl);
+				injpkt->tcp->source = htons(ttlfocus.puppet_port);
 				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
 
 				injpkt->fixIpTcpSum();
@@ -422,21 +422,23 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 	}
 }
 
-uint8_t TCPTrack::descernAvailScramble(Packet &pkt)
+uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 {
 	uint8_t retval = 0;
 
-	retval &= SCRAMBLE_CHECKSUM;
+	retval |= SCRAMBLE_CHECKSUM;
 
 	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
-		retval &= SCRAMBLE_TTL;
+		retval |= SCRAMBLE_TTL;
 	}
 
-	/* TODO - when we integrate passive os fingerprint and we do
-	 * a clever study about different OS answer about IP option,
-	 * for every OS we will have or not the related support */
-	retval &= SCRAMBLE_MALFORMED;
+	/*
+	 * TODO - when we will integrate passive os fingerprint and
+	 * we will do a a clever study about different OS answer about
+	 * IP option, for every OS we will have or not the related support
+	 */	 
+	retval |= SCRAMBLE_MALFORMED;
 
 	return retval;
 }
@@ -471,10 +473,10 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 	/* 
 	 * Not all time we have a scramble available, we tell to the plugin which of 
  	 * them are usable, and the packets is returned. the most of the time, all of
- 	 * three scramble are availambe, and the plugins will use pktRandomDamage()
+ 	 * three scramble are available, and the plugins will use pktRandomDamage()
  	 * private method.
  	 */
-	uint8_t availableScramble = descernAvailScramble(origpkt);
+	uint8_t availableScramble = discernAvailScramble(origpkt);
 
 	/* SELECT APPLICABLE HACKS */
 	for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it) {
@@ -502,7 +504,6 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 
 		unsigned int i = 0;		
 		for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it) {
-			debug.log(ALL_LEVEL, "%u", ++i);
 			Packet &injpkt = **hack_it;
 			/*
 			 * we trust in the external developer, but it's required a
@@ -601,18 +602,9 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
  */
 bool TCPTrack::last_pkt_fix(Packet &pkt)
 {
-	/*
-	 * 1nd check: what kind of scramble will be applied ?
-	 * here we verify if that the selected hacks are really
-	 * applicable in reference to configuration provided.
-	 *
-	 * REMOVED -- the scramble are now choosed by the hacks plugin
-	 * 	   -- will need again this test here ?
-	 */
-
-	/* begin 2st check: WHAT VALUE OF TTL GIVE TO THE PACKET ? */
+	/* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
 	/* 
-	 * If the packet it's a fragmet we call the map find()
+	 * here we call the map find();
 	 * the function returns end() if the ttlfocus it's not present.
 	 * In this situation and in situation where the focus status is
 	 * UNKNOWN or BRUTEFORCE the packet has TTL randomized in order
@@ -628,7 +620,6 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 		if(pkt.ip->ttl < 235)
 			pkt.ip->ttl += random() % 20;
 	}
-	/* end 2st check */
 
 	/*
 	 * APPLY MALFORMATION OF IP/TCP OPTIONS, for good and evil packets is possible
@@ -647,22 +638,14 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 		}
 	}
 
-	/* this is used because algo good packet will have weird IP options */
+	/* this is used because also good packet will have weird IP options */
 	if (ISSET_MALFORMED(pkt.choosableScramble) && pkt.evilbit == GOOD) {
 		if (RANDOMPERCENT(66))
 			pkt.Inject_IPOPT(/* corrupt ? */ false, /* strip previous options ? */ false);
 	}
 	
 	/* fixing the mangled packet */
-	if(pkt.ipfragment == false && pkt.proto == TCP)
-		pkt.fixIpTcpSum();
-	else
-		pkt.fixIpSum();
-	/* TODO -- will be moved in Packet check related how to fix 
- 	 * the checksum, because is better we call simple pkt.fixsum()
- 	 * and if is a tcp/udp/icmp/fragment or whatever, is handled by
- 	 * the packet. the function pkt.corruptsum() will be added for
- 	 * support GUILTY below */
+	pkt.fixSum();
 
 	/*
 	 * corrupted checksum application if required;
@@ -670,11 +653,8 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	 * PRESCRIPTION nor MALFORMED are applicable.
 	 */
 	if (pkt.wtf == GUILTY) {
-		if (ISSET_CHECKSUM(pkt.choosableScramble)) { // remember: TODO, all check ISSET_ will be cutted ?
-			if(pkt.ipfragment == false && pkt.proto == TCP)
-				pkt.tcp->check += 0xd34d;
-			else
-				pkt.ip->check += 0xd34d;
+		if (ISSET_CHECKSUM(pkt.choosableScramble)) {
+			pkt.corruptSum();
 		} else {
 			goto drop_packet;
 		}

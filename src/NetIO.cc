@@ -178,14 +178,6 @@ NetIO::NetIO(sj_config& runcfg) :
 
 	fds[0].fd = tunfd;
 	fds[1].fd = netfd;
-	
-	timeout_with_outgoing_data_to_flush.tv_sec = 0;
-	timeout_with_outgoing_data_to_flush.tv_nsec = 0;
-	timeout_with_incoming_data_received.tv_sec = 0;
-	timeout_with_incoming_data_received.tv_nsec = 10000;
-	maximum_timeout.tv_sec = 0;
-	maximum_timeout.tv_nsec = 50000000;
-
 }
 
 NetIO::~NetIO(void) 

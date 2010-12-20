@@ -168,14 +168,13 @@ void Packet::updatePacketMetadata()
 uint32_t Packet::half_cksum(const void* data, uint16_t len)
 {
 	const uint16_t *usdata = (uint16_t *)data;
+	const uint16_t *end = (uint16_t *)data + (len / sizeof(uint16_t));
 	uint32_t sum = 0;
 
-	while (len > 1) {
+	while (usdata != end)
 		sum += *usdata++;
-		len -= 2;
-	}
 
-	if (len == 1)
+	if (len % 2)
 		sum += *(uint8_t *)usdata;
 
 	return sum;
@@ -183,8 +182,8 @@ uint32_t Packet::half_cksum(const void* data, uint16_t len)
 
 uint16_t Packet::compute_sum(uint32_t sum)
 {
-	while (sum>>16)
-             sum = (sum & 0xFFFF) + (sum >> 16);
+	sum = (sum >> 16) + (sum & 0xFFFF);
+	sum += (sum >> 16);
 
 	return ~sum;
 }

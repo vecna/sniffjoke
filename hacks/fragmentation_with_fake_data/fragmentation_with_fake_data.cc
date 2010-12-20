@@ -92,9 +92,9 @@ public:
 			ip3->frag_off = htons(ntohs(ip3->frag_off) - random() % max_slide);
 		}
 		
-		frag1->ip->id = htons(ntohs(frag1->ip->id) - 20 + (random() % 10));
-		frag2->ip->id = htons(ntohs(frag2->ip->id) - 20 + (random() % 10));
-		frag3_fake_overlapped->ip->id = htons(ntohs(frag3_fake_overlapped->ip->id) - 20 + (random() % 10));
+		frag1->ip->id = htons(ntohs(frag1->ip->id) - 10 + (random() % 20));
+		frag2->ip->id = htons(ntohs(frag2->ip->id) - 10 + (random() % 20));
+		frag3_fake_overlapped->ip->id = htons(ntohs(frag3_fake_overlapped->ip->id) - 10 + (random() % 20));
 		
 		memset_random((void*)((unsigned char *)ip3 + origpkt.iphdrlen), fraglen_second);
 		

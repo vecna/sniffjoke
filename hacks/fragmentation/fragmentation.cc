@@ -79,8 +79,8 @@ public:
 		Packet* const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
 		Packet* const frag2 = new Packet(&pktbuf2[0], pktbuf2.size());
 		
-		frag1->ip->id = htons(ntohs(frag1->ip->id) - 20 + (random() % 10));
-		frag2->ip->id = htons(ntohs(frag2->ip->id) - 20 + (random() % 10));
+		frag1->ip->id = htons(ntohs(frag1->ip->id) - 10 + (random() % 20));
+		frag2->ip->id = htons(ntohs(frag2->ip->id) - 10 + (random() % 20));
 
 		frag1->wtf = INNOCENT;
 		frag2->wtf = INNOCENT;

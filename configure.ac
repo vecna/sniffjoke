@@ -109,7 +109,7 @@ AC_CONFIG_FILES(
 )
 
 
-CFLAGS="-g" #-O3 -ansi -pedantic -Wall"
+CFLAGS="-O3 -ansi -pedantic -Wall"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT
