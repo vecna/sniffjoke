@@ -43,10 +43,10 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	else				realfil = CONF_FILE;
 
 	/* location is used for enabler and ttlfocuschache_file */
-	if (!cmdline_opts.location[0]) {
-		debug.log(ALL_LEVEL, "is highly suggest to use sniffjoke with a specified --location");
+	if (cmdline_opts.process_type == SJ_SERVER_PROC && !cmdline_opts.location[0]) {
+		debug.log(ALL_LEVEL, "is highly suggestes to use sniffjoke with a specifying a location (--location option)");
 		debug.log(ALL_LEVEL, "a defined location mean you have profiled your network for the best results");
-		debug.log(ALL_LEVEL, "a brief explanation about is here: http://www.delirandom.net/sniffjoke/location");
+		debug.log(ALL_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
 	}
 
 	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil); 
@@ -422,15 +422,15 @@ char* UserConf::handle_cmd(const char *cmd)
 	} else if (!memcmp(cmd, "clear", strlen("clear"))) {
 		Strength clearValue = NONE;
 		handle_cmd_set(0, PORTNUMBER, clearValue);
-	} else if (!memcmp(cmd, "loglevel", strlen("loglevel")))  {
-		int loglevel;
+	} else if (!memcmp(cmd, "debuglevel", strlen("debuglevel")))  {
+		int debuglevel;
 
-		sscanf(cmd, "loglevel %d", &loglevel);
-		if (loglevel < 0 || loglevel > PACKETS_DEBUG) {
-			snprintf(io_buf, sizeof(io_buf), "invalid log value: %d, must be > 0 and < than %d", loglevel, PACKETS_DEBUG);
+		sscanf(cmd, "debuglevel %d", &debuglevel);
+		if (debuglevel < 0 || debuglevel > PACKETS_DEBUG) {
+			snprintf(io_buf, sizeof(io_buf), "invalid log value: %d, must be > 0 and < than %d", debuglevel, PACKETS_DEBUG);
 			debug.log(ALL_LEVEL, "%s", io_buf);
 		} else {
-			handle_cmd_loglevel(loglevel);
+			handle_cmd_debuglevel(debuglevel);
 		}
 	} else {
 		debug.log(ALL_LEVEL, "wrong command %s", cmd);
@@ -568,11 +568,11 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 	} while (start <= end);
 }
 
-void UserConf::handle_cmd_loglevel(int newloglevel)
+void UserConf::handle_cmd_debuglevel(int newdebuglevel)
 {
-	if (newloglevel < ALL_LEVEL || newloglevel > PACKETS_DEBUG) {
+	if (newdebuglevel < ALL_LEVEL || newdebuglevel > PACKETS_DEBUG) {
 		snprintf(io_buf, sizeof(io_buf), 
-			"error in the new loglevel requested: accepted >= %d and <= %d\n\n"\
+			"error in the new debuglevel requested: accepted >= %d and <= %d\n\n"\
 			"\t1\tsuppressed log\n"\
 			"\t2\tdefault, common log\n"\
 			"\t3\tverbose\n"\
@@ -582,8 +582,8 @@ void UserConf::handle_cmd_loglevel(int newloglevel)
 			ALL_LEVEL, PACKETS_DEBUG
 		);
 	} else {
-		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newloglevel);
-		runconfig.debug_level = newloglevel;
+		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newdebuglevel);
+		runconfig.debug_level = newdebuglevel;
 	}
 }
 

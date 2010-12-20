@@ -149,7 +149,7 @@ public:
 		void handle_cmd_info(void);
 		void handle_cmd_showport(void);
 		void handle_cmd_set(unsigned short, uint16_t, Strength);
-		void handle_cmd_loglevel(int);
+		void handle_cmd_debuglevel(int);
 		bool parse_port_weight(char *, Strength *);
 };
 

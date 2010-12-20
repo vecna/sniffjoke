@@ -41,7 +41,7 @@ SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
 
 SniffJoke::~SniffJoke()
 {
-	switch (opts.process_type) 
+	switch (opts.process_type)
 	{
 		case SJ_SERVER_PROC:
 			if (getuid() || geteuid()) {

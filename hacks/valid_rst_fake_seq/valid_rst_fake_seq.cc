@@ -40,7 +40,7 @@
 
 class valid_rst_fake_seq : public Hack
 {
-#define HACK_NAME	"true RST w/ invalid SEQ"
+#define HACK_NAME	"valid RST / fake SEQ"
 public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
@@ -59,7 +59,7 @@ public:
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = INNOCENT;
-		/* useless because is never downgraded in last_pkt_fix */
+		/* useless because INNOCENT is never downgraded in last_pkt_fix */
 		pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
 		pkt->selflog(HACK_NAME, "Hacked packet");
@@ -79,12 +79,10 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble)
 	{
-
-		if(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
+		if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
 			supportedScramble = configuredScramble;
 			return true;
-		}
-		else {
+		} else {
 			debug.log(ALL_LEVEL, "%s hack supports only INNOCENT scramble type", HACK_NAME);
 			return false;
 		}
@@ -93,14 +91,17 @@ public:
 	valid_rst_fake_seq() : Hack(HACK_NAME, STARTPEEK) {}
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new valid_rst_fake_seq();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

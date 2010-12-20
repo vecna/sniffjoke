@@ -139,12 +139,11 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble) 
 	{
-		supportedScramble = configuredScramble;
-
-		if(ISSET_TTL(configuredScramble) && ISSET_INNOCENT(configuredScramble) )
+		if ( ISSET_TTL(configuredScramble) && ISSET_INNOCENT(configuredScramble) ) {
+			supportedScramble = configuredScramble;
 			return true;
-		else {
-			debug.log(ALL_LEVEL, "Fragmentation with fake data require INNOCENT,PRESCRIPTION as option");
+		} else {
+			debug.log(ALL_LEVEL, "Fragmentation with fake data require INNOCENT and PRESCRIPTION as option");
 			return false;
 		}
 	}
@@ -152,14 +151,17 @@ public:
 	fragmentation_with_fake_data() : Hack(HACK_NAME, ALWAYS) {}
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new fragmentation_with_fake_data();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

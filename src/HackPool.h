@@ -53,7 +53,7 @@ class HackPool : public vector<PluginTrack *> {
 private:
 	void importPlugin(const char *, const char *, uint8_t);
 	void parseEnablerFile(const char *, const char *);
-	uint8_t parseScrambleList(char *);
+	uint8_t parseScrambleList(const char *);
 public:
 	HackPool(const sj_config &);
 	~HackPool();

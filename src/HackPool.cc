@@ -94,18 +94,24 @@ HackPool::HackPool(const sj_config &runcfg)
 	debug.log(VERBOSE_LEVEL, __func__);
 
 	if (runcfg.onlyplugin[0])  {
-		char *comma, plugabspath[MEDIUMBUF];
+		char *comma;
+		char onlyplugin_cpy[MEDIUMBUF];
+		char plugabspath[MEDIUMBUF];
 		uint8_t supportedScramble;
 
 		memset(plugabspath, 0x00, sizeof(plugabspath));
-		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, runcfg.onlyplugin);
+		snprintf(onlyplugin_cpy, sizeof(onlyplugin_cpy), runcfg.onlyplugin);
 
-		if((comma = strchr(runcfg.onlyplugin, ',')) == NULL) {
+		if((comma = strchr(onlyplugin_cpy, ',')) == NULL) {
 			debug.log(ALL_LEVEL, "invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 			debug.log(ALL_LEVEL, "--only-plugin is used by sniffjoke-autotest with a reason :P");
 			SJ_RUNTIME_EXCEPTION("");
 		}
+
 		*comma = 0x00;
+		
+		snprintf(plugabspath, sizeof(plugabspath), "%s%s", INSTALL_LIBDIR, onlyplugin_cpy);
+		
 		comma++;
 
 		if(!(supportedScramble = parseScrambleList(comma))) {
@@ -166,7 +172,7 @@ void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, u
 
 }
 
-uint8_t HackPool::parseScrambleList(char *list_str)
+uint8_t HackPool::parseScrambleList(const char *list_str)
 {
 	struct scrambleparm {
 		const char *keyword;
@@ -209,7 +215,7 @@ void HackPool::parseEnablerFile(const char *enabler, const char *location)
 
 	if ((plugfile = sj_fopen(enabler, location, "r")) == NULL) {
 		debug.log(ALL_LEVEL, "HackPool: unable to open in reading %s.%s: %s", enabler, location, strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");
+		SJ_RUNTIME_EXCEPTION("");'
 	}
 
 	uint8_t line = 0;

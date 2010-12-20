@@ -211,6 +211,22 @@ void Packet::fixIpTcpSum(void)
 	tcp->check = compute_sum(sum);
 }
 
+void Packet::fixSum(void)
+{
+	if (ipfragment == false && proto == TCP)
+		fixIpTcpSum();
+	else
+		fixIpSum();	
+}
+
+void Packet::corruptSum(void)
+{
+	if (ipfragment == false && proto == TCP)
+		tcp->check += 0xd34d;
+	else
+		ip->check += 0xd34d;	
+}
+
 bool Packet::selfIntegrityCheck(const char *pluginName)
 {
 	if (source != SOURCEUNASSIGNED) {

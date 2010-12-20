@@ -72,7 +72,8 @@ public:
 		);
 	}
 
-	virtual bool initializeHack(uint8_t configuredScramble) {
+	virtual bool initializeHack(uint8_t configuredScramble)
+	{
 		supportedScramble = configuredScramble;
 		return true;
 	}
@@ -80,14 +81,17 @@ public:
 	fake_close_rst() : Hack(HACK_NAME, TIMEBASED20S) {};
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new fake_close_rst();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

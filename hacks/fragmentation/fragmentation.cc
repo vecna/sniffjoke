@@ -85,8 +85,8 @@ public:
 		frag1->wtf = INNOCENT;
 		frag2->wtf = INNOCENT;
 		/* useless, INNOCENT is never downgraded in last_pkt_fix */
-		frag1->choosableScramble = supportedScramble;
-		frag2->choosableScramble = supportedScramble;
+		frag1->choosableScramble = (availableScramble & supportedScramble);
+		frag2->choosableScramble = (availableScramble & supportedScramble);
 
 		/*
 		 * randomizing the relative between the two fragments;
@@ -120,11 +120,10 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble) 
 	{
-		if(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
+		if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
 			supportedScramble = configuredScramble;
 			return true;
-		}
-		else {
+		} else {
 			debug.log(ALL_LEVEL, "%s plugin supports only INNOCENT scramble type", HACK_NAME);
 			return false;
 		}
@@ -133,14 +132,17 @@ public:
 	fragmentation() : Hack(HACK_NAME, ALWAYS) {}
 };
 
-extern "C"  Hack* CreateHackObject() {
+extern "C"  Hack* CreateHackObject()
+{
 	return new fragmentation();
 }
 
-extern "C" void DeleteHackObject(Hack *who) {
+extern "C" void DeleteHackObject(Hack *who)
+{
 	delete who;
 }
 
-extern "C" const char *versionValue() {
+extern "C" const char *versionValue()
+{
  	return SW_VERSION;
 }

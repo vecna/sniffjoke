@@ -110,6 +110,8 @@ public:
 	uint16_t compute_sum(uint32_t);
 	void fixIpSum(void);
 	void fixIpTcpSum(void);
+	void fixSum(void);
+	void corruptSum(void);
 
 	/* autochecking */
 	bool selfIntegrityCheck(const char *);

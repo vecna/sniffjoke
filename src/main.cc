@@ -37,8 +37,6 @@
 
 using namespace std;
 
-#define NSEC_PER_SEC 1000000000
-
 Debug debug;
 
 time_t sj_clock;
@@ -74,7 +72,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" \t\t\tthe values are: <heavy|normal|light|none>\n"\
 	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
 	" clear\t\t\talias to \"set 1 65535 none\"\n"\
-	" debuglevel\t\t[1-6] change the log debug level\n\n"\
+	" debug\t\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
@@ -241,7 +239,7 @@ int main(int argc, char **argv)
 		{ "quit",     1 },
 		{ "info",     1 },
 		{ "saveconf", 1 },
-		{ "debuglevel", 2 }, 	/* the log debuglevel */
+		{ "debug",    2 }, 	/* the log debuglevel */
 		{ "set",      4 }, 	/* set start_port end_port value */
 		{ NULL,       0	}
 	};
