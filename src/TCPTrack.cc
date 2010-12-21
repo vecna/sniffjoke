@@ -263,8 +263,8 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 	TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
 	if (it != ttlfocus_map.end()) {
 		TTLFocus* const ttlfocus = it->second;
-		
-		if (pkt.tcp->dest == ttlfocus->puppet_port) {
+
+		if (pkt.tcp->dest == htons(ttlfocus->puppet_port) ) {
 			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
 			pkt.selflog(__func__, pkt.debug_buf);
 
@@ -367,24 +367,22 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 			++ttlfocus.sent_probe;
 			injpkt = new Packet(ttlfocus.probe_dummy);
 			injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-			injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
-			injpkt->ip->ttl = htons(ttlfocus.sent_probe);
+			injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
+			injpkt->ip->ttl = ttlfocus.sent_probe;
 			injpkt->tcp->source = htons(ttlfocus.puppet_port);
 			injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 			
 			injpkt->fixIpTcpSum();
 			p_queue.insert(*injpkt, SEND);
 				
-			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
+			snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "TTL_BRUTEFORCE probe# %u [ttl_estimate %u]",
 				ttlfocus.sent_probe, ttlfocus.ttl_estimate
 			);
-			
-			
+
 			/* the next ttl probe schedule is forced in the next cycle */
 			ttlfocus.next_probe_time = sj_clock;
 			
 			injpkt->selflog(__func__, injpkt->debug_buf);
-			
 			break;
 		case TTL_KNOWN:
 			ttlfocus.selectPuppetPort();
@@ -398,8 +396,8 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 				++ttlfocus.sent_probe;
 				injpkt = new Packet(ttlfocus.probe_dummy);
 				injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-				injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttl);
-				injpkt->ip->ttl = htons(ttl);
+				injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
+				injpkt->ip->ttl = ttl;
 				injpkt->tcp->source = htons(ttlfocus.puppet_port);
 				injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
 
@@ -408,12 +406,10 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
 
 				ttl++;
 					
-				snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "Injecting probe %u [ttl_estimate %u]",
-					ttlfocus.sent_probe, ttlfocus.ttl_estimate
+				snprintf(injpkt->debug_buf, sizeof(injpkt->debug_buf), "TTL_KNOWN %u reprobe# %d [ttl_estimate %u]",
+					ttlfocus.sent_probe, ttl, ttlfocus.ttl_estimate
 				);
-					
 				injpkt->selflog(__func__, injpkt->debug_buf);
-				
 			}
 				
 			/* the ttl verification of a known status is scheduled with 2mins interval */
@@ -427,6 +423,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 	uint8_t retval = 0;
 
 	retval |= SCRAMBLE_CHECKSUM;
+	retval |= SCRAMBLE_INNOCENT;
 
 	const TTLFocus &ttlfocus = ttlfocus_map.getTTLFocus(pkt);
 	if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))) {
@@ -626,8 +623,6 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 			pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4);	/* [+0, +4], 5 values */
 	} else {
 		pkt.ip->ttl += (random() % 20) - 10;
-		/* DEBUG - FIXME the following line is used only for grep easily */
-		pkt.ip->ttl = 200;
 	}
 
 	/*

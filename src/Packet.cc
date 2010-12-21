@@ -55,11 +55,11 @@ Packet::Packet(const Packet& pkt) :
 	queue(QUEUEUNASSIGNED),
 	prev(NULL),
 	next(NULL),
-	evilbit(MORALITYUNASSIGNED),
-	source(SOURCEUNASSIGNED),
-	proto(PROTOUNASSIGNED),
-	position(POSITIONUNASSIGNED),
-	wtf(JUDGEUNASSIGNED),
+	evilbit(pkt.evilbit),
+	source(LOCAL),
+	proto(pkt.proto),
+	position(pkt.position),
+	wtf(pkt.wtf),
         pbuf(pkt.pbuf),
         ip(NULL),
         iphdrlen(0),
@@ -497,7 +497,7 @@ void Packet::selflog(const char *func, const char *loginfo) const
 {
 	if (debug.level() == SUPPRESS_LOG)
 		return;
-	
+
 	const char *evilstr, *wtfstr, *sourcestr, *p;
 	char protoinfo[MEDIUMBUF], saddr[MEDIUMBUF], daddr[MEDIUMBUF];
 
@@ -515,18 +515,18 @@ void Packet::selflog(const char *func, const char *loginfo) const
 	}
 
 	switch(wtf) {
-		case PRESCRIPTION: wtfstr ="prescripted"; break;
+		case PRESCRIPTION: wtfstr ="TTLexpire"; break;
 		case INNOCENT: wtfstr ="innocent"; break;
-		case GUILTY: wtfstr ="badchecksum"; break;
+		case GUILTY: wtfstr ="badcksum"; break;
 		case MALFORMED: wtfstr ="malformed"; break;
                 default: case JUDGEUNASSIGNED: wtfstr = "UNASSIGNED-wtf"; break;
 	}
 
 	switch(source) {
-		case TUNNEL: sourcestr = "tunnel"; break;
-		case LOCAL: sourcestr = "local"; break;
-		case NETWORK: sourcestr = "network"; break;
-		case TTLBFORCE: sourcestr = "ttl force"; break;
+		case TUNNEL: sourcestr = "Tunnel"; break;
+		case LOCAL: sourcestr = "Local"; break;
+		case NETWORK: sourcestr = "Network"; break;
+		case TTLBFORCE: sourcestr = "TTL Bforce"; break;
 		default: case SOURCEUNASSIGNED: sourcestr = "UNASSIGNED-src"; break;
 	}
 

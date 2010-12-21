@@ -78,6 +78,10 @@ public:
 
 	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
+		if(!(availableScramble & supportedScramble)) {
+			origpkt.selflog(__func__, "__FILE__");
+			return false;
+		}
 		return (
 			!origpkt.tcp->syn &&
 			!origpkt.tcp->rst &&

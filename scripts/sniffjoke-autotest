@@ -4,6 +4,7 @@
 # fake_zero_window.so is set INNOCENT and usually is disabled, I've keep
 # INNOCENT fake_zero_window.so to broke the session and use it as 
 # check of sured failure
+
 dump_plugin_file() {
 	cat >> $PLUGINLIST << __EOF__
 fake_close_fin.so,PRESCRIPTION
@@ -121,7 +122,7 @@ PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 
 # generate the SPAREDATA file to send
 GENERATEDFILE="/tmp/$LOCATION/SPAREDATA.generated"
-seq 1000 3000 | tr -d [:cntrl:] | strings > $GENERATEDFILE
+seq 1000 9000 | tr -d [:cntrl:] | strings > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 
