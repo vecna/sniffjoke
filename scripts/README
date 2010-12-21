@@ -1,6 +1,6 @@
 This directory contains the scripts for sniffjoke testing, analysis etc.
 
-1) sniffjoke-testsuite
+1) sniffjoke-autotest
 
 WHY IS IMPORTANT MAKE THOSE TEST
 
@@ -17,18 +17,18 @@ The hack a technique able to defeat the sniffer, but:
 for those reasons an intesive testing is useful, and after you have installed
 sniffjoke, run:
 
-# ./sniffjoke-testsuite
+# ./sniffjoke-autotest <LOCATION_NAME>
 
 if sniffjoke is not in the default path (/usr/local/bin/sniffjoke), put as first
 argument your real path:
 
-# ./sniffjoke-testsuite /sbin/sniffjoke
+# ./sniffjoke-autotest <LOCATION_NAME> /sbin/sniffjoke
 
 maybe some distribution use other path, found where sniffjoke is with:
 
 # whereis sniffjoke
 
-the "sniffjoke-testsuite" use a one time chroot environment under /tmp, and collect
+the "sniffjoke-autotest" use a one time chroot environment under /tmp, and collect
 information about witch kind of hacks your network permit to use. the test are done
 searching in www.delirandom.net/sniffjoke/testsuite.info, the address of the server 
 available for the test. are three server, with different remote operating system
@@ -37,18 +37,7 @@ an eccessive use of the tests (I don't know how much bandwidth will be consumed,
 I will assure that the server used are related to the sniffjoke developer, will not
 keep logs about sniffjoke users and if you want make those test by yourself, you will)
 
-
-# VERIFY what's changed:
-# VERIFY what's changed:
-# VERIFY what's changed:
-# VERIFY what's changed:
-
 1) require to be runned as root
-2) for each test is created a subdir 1/ 2/ 3/ ... 12/
-3) set sniffjoke to run only to the port 80
-4) set, for each time, a different hack (using the --hacking option)
-5) generate 5 files, formed with 1024 line, each line appear like:
-	sniffjoke test N: [1-5]: [1-1024]
-6) generate the md5sum of each file
-7) connect to http://www.delirandom.net/sniffjoke_test/post_echo.php
-8) POST the files, records the answers, verify md5sum, records timings, records .pcap
+2) create a lot of dump in /tmp/ directory, that are not removed at the end of the test
+3) connect to http://www.delirandom.net/sniffjoke_test/post_echo.php
+4) POST the files, records the answers, verify md5sum, records timings, records .pcap

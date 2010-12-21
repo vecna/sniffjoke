@@ -41,13 +41,14 @@ class fake_zero_window : public Hack
 public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
-		origpkt.selflog(HACK_NAME, "Original packet");		
-
 		Packet* const pkt = new Packet(origpkt);
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
 		pkt->tcp->psh = pkt->tcp->ack = 0;
+		/* this hacks is not used ATM, only for cause an assured failure in 
+		 * sniffjoke-autotest (using this hack with INNOCENT scramble) */
+		pkt->tcp->rst = pkt->tcp->fin = 1;
 		pkt->tcp->window = 0;
 
 		pkt->TCPPAYLOAD_resize(0);
@@ -55,8 +56,6 @@ public:
 		pkt->position = ANY_POSITION;
 		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
 		pkt->choosableScramble = (availableScramble & supportedScramble);
-
-		pkt->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(pkt);
 	}
@@ -76,7 +75,7 @@ public:
 		return true;
 	}
 
-	fake_zero_window() : Hack(HACK_NAME, TIMEBASED20S) {};
+	fake_zero_window() : Hack(HACK_NAME, ALWAYS) {};
 };
 
 extern "C"  Hack* CreateHackObject()

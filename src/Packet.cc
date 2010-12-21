@@ -32,9 +32,9 @@ Packet::Packet(const unsigned char* buff, uint16_t size) :
 	next(NULL),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
-	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+	wtf(JUDGEUNASSIGNED),
 	pbuf(size),
         ip(NULL),
         iphdrlen(0),
@@ -57,9 +57,9 @@ Packet::Packet(const Packet& pkt) :
 	next(NULL),
 	evilbit(MORALITYUNASSIGNED),
 	source(SOURCEUNASSIGNED),
-	wtf(JUDGEUNASSIGNED),
 	proto(PROTOUNASSIGNED),
 	position(POSITIONUNASSIGNED),
+	wtf(JUDGEUNASSIGNED),
         pbuf(pkt.pbuf),
         ip(NULL),
         iphdrlen(0),
@@ -259,6 +259,9 @@ void Packet::IPHDR_resize(uint8_t size)
 {
 	if (size == iphdrlen)
 		return;
+
+	if (ipfragment == true)
+		debug.log(PACKETS_DEBUG, "WARNING: calling %s in a fragment is not supported", __func__);
 	
 	const uint16_t pktlen = pbuf.size();
 	
@@ -291,6 +294,10 @@ void Packet::TCPHDR_resize(uint8_t size)
 	if (size == tcphdrlen)
 		return;
 	
+	if (ipfragment == true) {
+		debug.log(PACKETS_DEBUG, "ERROR: calling %s in a fragment is not possibile!", __func__);
+	}
+
 	const uint16_t pktlen = pbuf.size();
 
 	/* 
@@ -503,7 +510,7 @@ void Packet::selflog(const char *func, const char *loginfo) const
 	switch(evilbit) {
 		case GOOD: evilstr = "good"; break;
 		case EVIL: evilstr = "evil"; break;
-                default: case MORALITYUNASSIGNED: evilstr = "unassigned evilbit"; break;
+                default: case MORALITYUNASSIGNED: evilstr = "UNASSIGNED-e"; break;
 
 	}
 
@@ -512,7 +519,7 @@ void Packet::selflog(const char *func, const char *loginfo) const
 		case INNOCENT: wtfstr ="innocent"; break;
 		case GUILTY: wtfstr ="badchecksum"; break;
 		case MALFORMED: wtfstr ="malformed"; break;
-                default: case JUDGEUNASSIGNED: wtfstr = "unassigned wtf"; break;
+                default: case JUDGEUNASSIGNED: wtfstr = "UNASSIGNED-wtf"; break;
 	}
 
 	switch(source) {
@@ -520,13 +527,13 @@ void Packet::selflog(const char *func, const char *loginfo) const
 		case LOCAL: sourcestr = "local"; break;
 		case NETWORK: sourcestr = "network"; break;
 		case TTLBFORCE: sourcestr = "ttl force"; break;
-		default: case SOURCEUNASSIGNED: sourcestr = "unassigned source"; break;
+		default: case SOURCEUNASSIGNED: sourcestr = "UNASSIGNED-src"; break;
 	}
 
 	if(ipfragment) {
-		debug.log(PACKETS_DEBUG, "%s : E|%s WTF|%s src %s|%s->%s ttl %d %s FRAGMENT",
+		debug.log(PACKETS_DEBUG, "%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %d [%s]",
 			func, evilstr, wtfstr, sourcestr,
-			saddr, daddr,
+			saddr, daddr, ntohs(ip->frag_off),
 			ip->ttl, loginfo
 		);
 	} else {
@@ -557,8 +564,8 @@ void Packet::selflog(const char *func, const char *loginfo) const
 				break;
 		}
 		
-		debug.log(PACKETS_DEBUG, "%s : E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-			func, evilstr, wtfstr, sourcestr,
+		debug.log(PACKETS_DEBUG, "%s %s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+			func, debug_buf, evilstr, wtfstr, sourcestr,
 			saddr, daddr,
 			protoinfo, ip->ttl, loginfo
 		);

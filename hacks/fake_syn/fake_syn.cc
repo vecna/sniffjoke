@@ -42,8 +42,6 @@ class fake_syn : public Hack
 public:
 	virtual	void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
-		origpkt.selflog(HACK_NAME, "Original packet");
-
 		uint8_t pkts = 2;
 		while(pkts--) {
 			Packet* const pkt = new Packet(origpkt);
@@ -80,8 +78,6 @@ public:
 			pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
 			pkt->choosableScramble = (availableScramble & supportedScramble);
 
-			pkt->selflog(HACK_NAME, "Hacked packet");
-			
 			pktVector.push_back(pkt);
 		}
 	}

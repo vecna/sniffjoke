@@ -45,8 +45,6 @@ class shift_ack : public Hack
 public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
-		origpkt.selflog(HACK_NAME, "Original packet");
-
 		Packet* const pkt = new Packet(origpkt);
 		
 		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
@@ -56,8 +54,6 @@ public:
 		pkt->position = ANY_POSITION;
 		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
 		pkt->choosableScramble = (availableScramble & supportedScramble);
-
-		pkt->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(pkt);
 	}

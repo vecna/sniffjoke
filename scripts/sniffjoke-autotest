@@ -1,0 +1,149 @@
+#!/bin/sh
+
+# if you want modify the test, simply create those file by hands
+# fake_zero_window.so is set INNOCENT and usually is disabled, I've keep
+# INNOCENT fake_zero_window.so to broke the session and use it as 
+# check of sured failure
+dump_plugin_file() {
+	cat >> $PLUGINLIST << __EOF__
+fake_close_fin.so,PRESCRIPTION
+fake_close_fin.so,MALFORMED
+fake_close_fin.so,GUILTY
+fake_data.so,PRESCRIPTION
+fake_data.so,MALFORMED
+fake_data.so,GUILTY
+fake_seq.so,PRESCRIPTION
+fake_seq.so,MALFORMED
+fake_seq.so,GUILTY
+valid_rst_fake_seq.so,INNOCENT
+fragmentation.so,INNOCENT
+fragmentation_with_fake_data.so,PRESCRIPTION,INNOCENT
+fake_close_rst.so,PRESCRIPTION
+fake_close_rst.so,MALFORMED
+fake_close_rst.so,GUILTY
+fake_syn.so,PRESCRIPTION
+fake_syn.so,MALFORMED
+fake_syn.so,GUILTY
+fake_zero_window.so,INNOCENT
+shift_ack.so,PRESCRIPTION
+shift_ack.so,MALFORMED
+shift_ack.so,GUILTY
+__EOF__
+}
+
+start_singletest() {
+	PNAME=`echo $PLUGIN | sed -es/\.so.*//`
+	SCRAMBLE=`echo $PLUGIN | sed -es/.*\.so,//`
+	TESTID=`echo $PLUGIN | tr "," "-"`
+	workingdir="/tmp/$LOCATION/$TESTID"
+	mkdir $workingdir
+	echo "+ Starting sniffjoke with $PLUGIN and $SCRAMBLE to [$SERVER] (test ID: $TESTID)"
+	$SNIFFJOKEBIN --debug 6 --logfile $workingdir/logtest --chroot-dir $workingdir --only-plugin $PLUGIN 
+	sleep 2
+	$SNIFFJOKEBIN set 80 80 heavy 
+	$SNIFFJOKEBIN start 
+	cd $workingdir
+	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
+	INTERFACE=`$SNIFFJOKEBIN stat | grep "local interface" | cut -b 19- | sed -es/\,.*//`
+	echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
+	(tcpdump -i $INTERFACE -w "$workingdir/$PNAME-$SCRAMBLE.pcap" -s 0 tcp port 80) &
+	sleep 1
+	curl -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
+	$SNIFFJOKEBIN quit
+	killall -9 tcpdump
+	CHECKSUM=`md5sum "$PNAME-$SCRAMBLE.received" | cut -b -32`
+	cd ..
+	echo "finished test in $TESTID"
+	echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
+	sleep 1
+	clear
+}
+
+echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
+
+USERID=`id -u`
+if [ $USERID != "0" ]; then
+	echo "- Error, only root should run $0"
+	exit;
+fi
+
+if [ -z $1 ]; then
+	echo "Is required as first argument the LOCATION name, eg: office, home, nickhome, starbucks..."
+	echo "sniffjoke-autotest will generate the best plugins_enabled.conf.<LOCATION NAME> usable in this environment"
+	exit;
+fi
+LOCATION=$1
+
+if [ -d "/tmp/$LOCATION" ]; then
+	echo "- remove your /tmp/$LOCATION directory: already present"
+	exit
+fi
+
+if [ -z $2 ]; then
+	echo "checking /usr/local/bin/sniffjoke as sniffjoke path"
+	SNIFFJOKEBIN="/usr/local/bin/sniffjoke"
+else
+	echo "checking $2 sniffjoke path"
+	SNIFFJOKEBIN=$2
+fi
+
+if [ ! -x $SNIFFJOKEBIN ]; then
+	echo "$SNIFFJOKEBIN is not a valid executable, try \"whereis sniffjoke\":"
+	whereis sniffjoke
+	echo "use the sniffjoke path as \"sniffjoke-autotest LOCATION sniffjoke-path\""
+	exit;
+fi
+
+echo "+ Starting SniffJoke hacks test"
+echo "* Stopping running sniffjoke ($SNIFFJOKEBIN quit)"
+$SNIFFJOKEBIN quit
+
+PPATH="/usr/local/lib/sniffjoke"
+echo "* using plugin path $PPATH"
+
+FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
+echo "retrivering multi-OS testing server list ($FILEURL)"
+SERVERFILE="/tmp/testsuite.info"
+rm -f $SERVERFILE
+wget -O $SERVERFILE $FILEURL
+
+if ! [ -e $SERVERFILE ]; then
+	echo "- unable to retriver $SERVERFILE with [$FILEURL]"
+	exit;
+fi
+
+PLUGINLIST="/tmp/$LOCATION/sniffjoke-testsuite-plugins"
+if ! [ -e $PLUGINLIST ]; then
+	mkdir /tmp/$LOCATION
+	dump_plugin_file
+fi
+PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
+
+# generate the SPAREDATA file to send
+GENERATEDFILE="/tmp/$LOCATION/SPAREDATA.generated"
+seq 1000 3000 | tr -d [:cntrl:] | strings > $GENERATEDFILE
+VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
+
+
+
+for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
+	PLUGIN=`tail -$PLUGNDX $PLUGINLIST | head -1`
+
+#	OS="WINDOWS"
+#	SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
+#	echo $SERVER
+#	start_singletest 
+
+	# those test need to be fixed or be used only where my test script will be hosted
+	OS="LINUX"
+	SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+	echo "$PLUGIN+$SERVER"
+	start_singletest 
+
+#	OS="OTHER"
+#	SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+#	echo $SERVER
+#	start_singletest 
+done
+
+# parse analysis output to build a plugins_enabler.conf

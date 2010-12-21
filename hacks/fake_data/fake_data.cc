@@ -47,8 +47,6 @@ class fake_data : public Hack
 public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
-		origpkt.selflog(HACK_NAME, "Original packet");	
-
 		uint8_t pkts = 2;
 		judge_t selectedScramble;
 
@@ -83,8 +81,6 @@ public:
 
 			pkt->wtf = selectedScramble;
 			pkt->choosableScramble = availableScramble;
-
-			pkt->selflog(HACK_NAME, "Hacked packet");
 
 			pktVector.push_back(pkt);
 		}

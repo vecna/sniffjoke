@@ -43,8 +43,6 @@ class fragmentation_with_fake_data: public Hack
 public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
-		origpkt.selflog(HACK_NAME, "Original packet");
-
 		if(!ISSET_TTL(availableScramble)) {
 			debug.log(VERBOSE_LEVEL, "TTL/prescription hack not available in %s: loss hack possibility", HACK_NAME);
 			return;
@@ -111,10 +109,6 @@ public:
 		frag2->position = POSITIONUNASSIGNED;
 		frag3_fake_overlapped->position = POSITIONUNASSIGNED;
 		
-		frag1->selflog(HACK_NAME, "Fragment 1");
-		frag2->selflog(HACK_NAME, "Fragment 2");
-		frag3_fake_overlapped->selflog(HACK_NAME, "Overlapped BAD fragment");
-
 		pktVector.push_back(frag1);
 		pktVector.push_back(frag2);
 		pktVector.push_back(frag3_fake_overlapped);

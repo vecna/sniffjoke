@@ -186,7 +186,6 @@ uint8_t HackPool::parseScrambleList(const char *list_str)
 		{ "INNOCENT", SCRAMBLE_INNOCENT }
 	};
 
-	char *p;
 	int i, retval = 0;
 	bool foundScramble = false;
 
@@ -215,13 +214,13 @@ void HackPool::parseEnablerFile(const char *enabler, const char *location)
 
 	if ((plugfile = sj_fopen(enabler, location, "r")) == NULL) {
 		debug.log(ALL_LEVEL, "HackPool: unable to open in reading %s.%s: %s", enabler, location, strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");'
+		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	uint8_t line = 0;
 	do {
 		char enablerentry[LARGEBUF], *comma;
-		uint8_t i, supportedScramble =0;
+		uint8_t supportedScramble =0;
 
 		fgets(enablerentry, LARGEBUF, plugfile);
 		++line;

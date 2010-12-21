@@ -43,8 +43,6 @@ public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		
-		origpkt.selflog(HACK_NAME, "Original packet");
-
 		uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
 		
 		/* fragment's payload must be multiple of 8 (last fragment excluded of course) */
@@ -94,9 +92,6 @@ public:
 		 */
 		frag1->position = POSITIONUNASSIGNED;
 		frag2->position = POSITIONUNASSIGNED;
-
-		frag1->selflog(HACK_NAME, "Hacked packet");
-		frag2->selflog(HACK_NAME, "Hacked packet");
 
 		pktVector.push_back(frag1);
 		pktVector.push_back(frag2);

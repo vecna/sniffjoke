@@ -59,7 +59,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --admin <IPv4>[:port]\tspecify administration IP address [default: 127.0.0.1:%d]\n"\
 	" --force\t\tforce restart if sniffjoke service\n"\
 	" --version\t\tshow sniffjoke version\n"\
-	" --help\t\t\tshow this help (special --help hacking)\n\n"\
+	" --help\t\t\tshow this help\n\n"\
 	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\

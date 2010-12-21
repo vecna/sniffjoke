@@ -342,7 +342,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 		debug.logstream = forcedoutput;
 		return;
 	}
-	
+
 	if (opts.process_type == SJ_SERVER_PROC && !opts.go_foreground) {
 		
 		/* Logfiles are used only by a Sniffjoke SERVER runnning in background */

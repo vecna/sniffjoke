@@ -499,10 +499,10 @@ void UserConf::handle_cmd_stat(void)
 
 	if (runconfig.onlyplugin[0]) {
 		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
-			"selected plugin:\t\t\t%s\n", runconfig.onlyplugin);
+			"selected plugin:\t\t%s\n", runconfig.onlyplugin);
 	} else {
 		snprintf(&io_buf[strlen(io_buf)], sizeof(io_buf) - strlen(io_buf),
-			"plugins file:\t\t\t%s\n", runconfig.enabler);
+			"plugins file:\t\t\t%s.%s\n", runconfig.enabler, runconfig.location);
 	}
 }
 
