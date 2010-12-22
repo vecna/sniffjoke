@@ -78,12 +78,12 @@ public:
 		return true;
 	}
 
-	fake_close_rst() : Hack(HACK_NAME, TIMEBASED20S) {};
+	fake_close_rst(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : TIMEBASED20S) {};
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_close_rst();
+	return new fake_close_rst(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

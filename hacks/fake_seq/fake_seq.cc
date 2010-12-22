@@ -96,12 +96,12 @@ public:
 		return true;
 	}
 
-	fake_seq() : Hack(HACK_NAME, TIMEBASED5S) {};
+	fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : TIMEBASED5S) {};
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_seq();
+	return new fake_seq(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

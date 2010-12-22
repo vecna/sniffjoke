@@ -78,12 +78,12 @@ public:
 		return true;
 	}
 
-	fake_close_fin() : Hack(HACK_NAME, PACKETS30PEEK) {}
+	fake_close_fin(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : PACKETS30PEEK) { };
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_close_fin();
+	return new fake_close_fin(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

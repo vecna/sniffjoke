@@ -25,7 +25,7 @@
 
 #include <dlfcn.h>
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble)
+PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, bool pluginOnly)
 {
 	debug.log(VERBOSE_LEVEL, "%s: %s ", __func__, plugabspath);
 	
@@ -59,7 +59,10 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble)
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-        selfObj = fp_CreateHackObj();
+	if(pluginOnly)
+		debug.log(DEBUG_LEVEL, "a single plugin is used and will be force to be apply ALWAYS a session permit");
+
+        selfObj = fp_CreateHackObj(pluginOnly);
 
         if (selfObj->hackName == NULL) {
                 debug.log(ALL_LEVEL, "PluginTrack: hack plugin %s lack of ->hackName member", plugabspath);
@@ -120,7 +123,7 @@ HackPool::HackPool(const sj_config &runcfg)
 			SJ_RUNTIME_EXCEPTION("");
 		}
 
-		importPlugin(plugabspath, runcfg.onlyplugin, supportedScramble);
+		importPlugin(plugabspath, runcfg.onlyplugin, supportedScramble, true);
 	} else {
 		parseEnablerFile(const_cast<const char *>(runcfg.enabler), const_cast<const char *>(runcfg.location));
 	}
@@ -151,10 +154,11 @@ HackPool::~HackPool()
 	}
 }
 
-void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, uint8_t supportedScramble)
+void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, uint8_t supportedScramble, bool onlyPlugin)
 {
 	try {
-		PluginTrack *plugin = new PluginTrack(plugabspath, supportedScramble);
+		/* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the hacks */
+		PluginTrack *plugin = new PluginTrack(plugabspath, supportedScramble, onlyPlugin);
 		if(plugin->failInit) {
 			debug.log(DEBUG_LEVEL, 
 				"HackPool: Failed initialization of %s: require scramble unsupported in the enabler file", 
@@ -268,7 +272,7 @@ void HackPool::parseEnablerFile(const char *enabler, const char *location)
 			SJ_RUNTIME_EXCEPTION("");
 		}
 
-		importPlugin(plugabspath, enablerentry, supportedScramble);
+		importPlugin(plugabspath, enablerentry, supportedScramble, false);
 
 	} while (!feof(plugfile));
 

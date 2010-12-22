@@ -128,12 +128,12 @@ public:
 		}
 	}
 
-	fragmentation() : Hack(HACK_NAME, ALWAYS) {}
+	fragmentation(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : ALWAYS) {}
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fragmentation();
+	return new fragmentation(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

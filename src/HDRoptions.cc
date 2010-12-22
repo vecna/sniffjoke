@@ -178,10 +178,10 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
 
 	if (available_opts_len < size_rr)
 		return 0;
-		
+#if 0
 	if (!corrupt)
 		return 0;
-
+#endif
 	optptr[0] = IPOPT_RR;
 	optptr[1] = size_rr;
 
@@ -626,7 +626,8 @@ bool HDRoptions::randomInjector(void)
 		optptr += injectetdopt_size;
 		actual_opts_len += injectetdopt_size;
 		available_opts_len = (target_opts_len - actual_opts_len);
-		debug.log(PACKETS_DEBUG, "Injected %sOPT %s size %u previous len %u actual %u", 
+		debug.log(PACKETS_DEBUG, "Injected %s %sOPT %s added %u previous len %u actual %u", 
+			corrupt ? "CORRUPT" : "VALID",
 			type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_opts_len);
 		
 		return true;

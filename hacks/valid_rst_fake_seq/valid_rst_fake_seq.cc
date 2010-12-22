@@ -88,12 +88,12 @@ public:
 		}
 	}
 
-	valid_rst_fake_seq() : Hack(HACK_NAME, STARTPEEK) {}
+	valid_rst_fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : STARTPEEK) {}
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new valid_rst_fake_seq();
+	return new valid_rst_fake_seq(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

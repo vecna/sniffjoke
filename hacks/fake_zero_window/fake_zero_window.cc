@@ -45,17 +45,22 @@ public:
 
 		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pkt->tcp->psh = pkt->tcp->ack = 0;
-		/* this hacks is not used ATM, only for cause an assured failure in 
+		pkt->tcp->ack = 0;
+		pkt->tcp->ack_seq = 0;
+
+		/* this hack must not used ATM, beside be an assured failure in 
 		 * sniffjoke-autotest (using this hack with INNOCENT scramble) */
-		pkt->tcp->rst = pkt->tcp->fin = 1;
+		pkt->tcp->rst = 1;
+		/* trivia: must be explored: using an INNOCENT and totally valid packet
+		 * with RST and FIN sets, is dropped by a remote Linux OS -- v */
 		pkt->tcp->window = 0;
 
 		pkt->TCPPAYLOAD_resize(0);
+		pkt->tcp->psh = 0;
 
 		pkt->position = ANY_POSITION;
-		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-		pkt->choosableScramble = (availableScramble & supportedScramble);
+		pkt->wtf = INNOCENT; 
+		pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
 		pktVector.push_back(pkt);
 	}
@@ -79,12 +84,12 @@ public:
 		return true;
 	}
 
-	fake_zero_window() : Hack(HACK_NAME, ALWAYS) {};
+	fake_zero_window(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : ALWAYS) {};
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_zero_window();
+	return new fake_zero_window(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

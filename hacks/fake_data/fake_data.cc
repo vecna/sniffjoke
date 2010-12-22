@@ -101,12 +101,12 @@ public:
 		return true;
 	}
 
-	fake_data() : Hack(HACK_NAME, COMMON) {};
+	fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : COMMON) {};
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_data();
+	return new fake_data(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

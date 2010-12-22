@@ -101,12 +101,12 @@ public:
 		return true;
 	}
 
-	fake_syn() : Hack(HACK_NAME, RARE) {};
+	fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : RARE) {};
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_syn();
+	return new fake_syn(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

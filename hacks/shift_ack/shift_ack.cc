@@ -78,12 +78,12 @@ public:
 		return true;
 	}
 
-	shift_ack() : Hack(HACK_NAME, RARE) {}
+	shift_ack(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : RARE) {}
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new shift_ack();
+	return new shift_ack(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

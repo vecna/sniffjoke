@@ -31,7 +31,7 @@
 
 using namespace std;
 
-typedef Hack* constructor_f();
+typedef Hack* constructor_f(bool);
 typedef void destructor_f(Hack *);
 typedef const char* version_f();
 
@@ -46,12 +46,12 @@ public:
 	Hack* selfObj;
 	bool failInit;
 
-	PluginTrack(const char *, uint8_t);
+	PluginTrack(const char *, uint8_t, bool);
 };
 
 class HackPool : public vector<PluginTrack *> {
 private:
-	void importPlugin(const char *, const char *, uint8_t);
+	void importPlugin(const char *, const char *, uint8_t, bool);
 	void parseEnablerFile(const char *, const char *);
 	uint8_t parseScrambleList(const char *);
 public:

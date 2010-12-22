@@ -189,21 +189,24 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
 
 			if (expired_ttl == exp_double_check) {
 				
-				snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED", ntohs(ttlfocus->puppet_port));
+				snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED, generated from %d", 
+					ttlfocus->puppet_port, expired_ttl);
 				pkt.selflog(__func__, pkt.debug_buf);
-				
-				++ttlfocus->received_probe;
+			
+				ttlfocus->received_probe++;
 
 				if (expired_ttl >= ttlfocus->ttl_estimate) {
 					/*
 					 * if we are changing our estimation due to an expired
 					 * we have to set status = TTL_UNKNOWN
-					 * this is particolar important to permit recalibration.
+					 * this is important to permit recalibration.
 					 */ 
 					ttlfocus->status = TTL_UNKNOWN;
 					ttlfocus->ttl_estimate = expired_ttl + 1;
 				}
 
+				snprintf(ttlfocus->debug_buf, sizeof(ttlfocus->debug_buf),
+					"expired_ttl from ICMP: %d, puppet %u", expired_ttl, ttlfocus->puppet_port);
 				ttlfocus->selflog(__func__, NULL);
 
 				/*
@@ -265,7 +268,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
 		TTLFocus* const ttlfocus = it->second;
 
 		if (pkt.tcp->dest == htons(ttlfocus->puppet_port) ) {
-			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming SYN/ACK", ntohs(ttlfocus->puppet_port));
+			snprintf(pkt.debug_buf, sizeof(pkt.debug_buf), "puppet %d Incoming SYN/ACK", ttlfocus->puppet_port);
 			pkt.selflog(__func__, pkt.debug_buf);
 
 			uint8_t discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
@@ -632,9 +635,13 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	 *
 	 * dropping when GUILTY is not supported happen only in sniffjoke-autotest
 	 */
-	if (pkt.wtf == MALFORMED) {
+	if (pkt.wtf == MALFORMED) 
+	{
 		/* IP options, every packet subject if possible, and MALFORMED will be applied */
-		if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true))) {
+		if (!(pkt.Inject_IPOPT(/* corrupt ? */ true, /* strip previous options */ true))) 
+		{
+			pkt.selflog(__func__, "IPOPT failed in corrupt header");
+
 			if (ISSET_CHECKSUM(pkt.choosableScramble))
 				pkt.wtf = GUILTY;
 			else
@@ -667,7 +674,7 @@ bool TCPTrack::last_pkt_fix(Packet &pkt)
 	pkt.selflog(__func__, "Packet ready to be send");
 	return true;
 drop_packet:
-	pkt.selflog(__func__, "Packet dropped: unable to apply corret fix before sending");
+	pkt.selflog(__func__, "Packet dropped: unable to apply fix before sending");
 	return false;
 }
 

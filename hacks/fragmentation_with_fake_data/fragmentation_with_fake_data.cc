@@ -146,12 +146,12 @@ public:
 		}
 	}
 
-	fragmentation_with_fake_data() : Hack(HACK_NAME, ALWAYS) {}
+	fragmentation_with_fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : ALWAYS) {}
 };
 
-extern "C"  Hack* CreateHackObject()
+extern "C"  Hack* CreateHackObject(bool forcedTest)
 {
-	return new fragmentation_with_fake_data();
+	return new fragmentation_with_fake_data(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
