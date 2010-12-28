@@ -35,25 +35,28 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	debug.log(VERBOSE_LEVEL, __func__);
 
 	char configfile[LARGEBUF];
-	const char *realdir, *realfil;
+	const char *realdir, *realfil, *location;
+
+	memset(&runconfig, 0x00, sizeof(sj_config));
 
 	if (cmdline_opts.chroot_dir[0])	realdir = cmdline_opts.chroot_dir;
 	else 				realdir = CHROOT_DIR;
 	if (cmdline_opts.cfgfname[0])	realfil = cmdline_opts.cfgfname;
 	else				realfil = CONF_FILE;
-
+	if (cmdline_opts.location[0])	location = cmdline_opts.location;
+	else				location = DEFAULTLOCATION;
+	
 	/* location is used for enabler and ttlfocuschache_file */
 	if (cmdline_opts.process_type == SJ_SERVER_PROC && !cmdline_opts.location[0]) {
-		debug.log(ALL_LEVEL, "is highly suggestes to use sniffjoke with a specifying a location (--location option)");
-		debug.log(ALL_LEVEL, "a defined location mean you have profiled your network for the best results");
+		debug.log(ALL_LEVEL, "is highly suggestes to use sniffjoke specifying a location (--location option)");
+		debug.log(ALL_LEVEL, "a defined location means that the network it's profiled for the best results");
 		debug.log(ALL_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
 	}
 
-	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil); 
-	memset(&runconfig, 0x00, sizeof(sj_config));
+	snprintf(configfile, LARGEBUF, "%s%s", realdir, realfil);
 	
-	if (!load(configfile, cmdline_opts.location)) {
-		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
+	if (!load(configfile, location)) {
+		debug.log(ALL_LEVEL, "configuration file: %s.%s not found: using defaults", configfile, location);
 
 		/* set up defaults */	   
 		runconfig.MAGIC = MAGICVAL;
@@ -68,8 +71,8 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
 	compare_check_copy(runconfig.cfgfname, sizeof(runconfig.cfgfname), CONF_FILE, cmdline_opts.cfgfname);
-	compare_check_copy(runconfig.enabler, sizeof(runconfig.enabler), PLUGINSENABLER, cmdline_opts.enabler);
 	compare_check_copy(runconfig.location, sizeof(runconfig.location), DEFAULTLOCATION, cmdline_opts.location);
+	compare_check_copy(runconfig.enabler, sizeof(runconfig.enabler), PLUGINSENABLER, cmdline_opts.enabler);
 	compare_check_copy(runconfig.user, sizeof(runconfig.user), DROP_USER, cmdline_opts.user);
 	compare_check_copy(runconfig.group, sizeof(runconfig.group), DROP_GROUP, cmdline_opts.group);
 	compare_check_copy(runconfig.chroot_dir, sizeof(runconfig.chroot_dir), CHROOT_DIR, cmdline_opts.chroot_dir);
@@ -106,7 +109,6 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-	dump();
 }
 
 UserConf::~UserConf()
@@ -271,7 +273,6 @@ void UserConf::autodetect_first_available_tunnel_interface()
 /* this method is used only in the ProcessType = SERVICE CHILD */
 void UserConf::network_setup(void)
 {
-
 	debug.log(DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
 
 	/* autodetect is always used, we should not trust the preloaded configuration */
@@ -314,7 +315,7 @@ bool UserConf::load(const char* configfile, const char* location)
 		}
 
 		if (strncmp(runconfig.location, location, strlen(location))) {
-			debug.log(ALL_LEVEL, "loading %s.%s related to %s location differ from your location specified %s",
+			debug.log(ALL_LEVEL, "loading %s.%s related to %s location differs from your location specified %s",
 				configfile, location, runconfig.location, location
 			);
 			SJ_RUNTIME_EXCEPTION("");
@@ -559,7 +560,7 @@ void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
 	snprintf(io_buf, sizeof(io_buf), "set TCP ports from %d to %d at [%s] level\n", start, end, what_weightness);
 
 	if (end == PORTNUMBER) {
-		runconfig.portconf[PORTNUMBER -1] = what;
+		runconfig.portconf[PORTNUMBER - 1] = what;
 		--end;
 	}
 

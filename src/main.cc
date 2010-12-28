@@ -244,11 +244,12 @@ int main(int argc, char **argv)
 		{ NULL,       0	}
 	};
 
-	useropt.process_type = SJ_CLIENT_PROC;
-
 	/* check for client commands */
-	if (!client_command_found(argv, argc, sj_command, useropt.cmd_buffer))
+	if (client_command_found(argv, argc, sj_command, useropt.cmd_buffer))
+		useropt.process_type = SJ_CLIENT_PROC;
+	else
 		useropt.process_type = SJ_SERVER_PROC;
+
 
 	int charopt;
 	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:o:a:xrvp:s:h", sj_option, NULL)) != -1) {
