@@ -83,18 +83,10 @@ if [ -d "/tmp/$LOCATION" ]; then
 	exit
 fi
 
-if [ -z $2 ]; then
-	echo "checking /usr/local/bin/sniffjoke as sniffjoke path"
-	SNIFFJOKEBIN="/usr/local/bin/sniffjoke"
-else
-	echo "checking $2 sniffjoke path"
-	SNIFFJOKEBIN=$2
-fi
-
-if [ ! -x $SNIFFJOKEBIN ]; then
-	echo "$SNIFFJOKEBIN is not a valid executable, try \"whereis sniffjoke\":"
-	whereis sniffjoke
-	echo "use the sniffjoke path as \"sniffjoke-autotest LOCATION sniffjoke-path\""
+SNIFFJOKEBIN=`which sniffjoke`
+if [ ! -z $SNIFFJOKEBIN || ! -x $SNIFFJOKEBIN ]; then
+	echo "\"which sniffjoke\" has not found a valid executable called sniffjoke in PATH"
+	echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
 	exit;
 fi
 

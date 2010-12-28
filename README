@@ -1,4 +1,4 @@
-SniffJoke 0.4 beta 1
+SniffJoke 0.4 beta 2, last update: Tue Dec 28 19:14:25 CET 2010
 
 Release time: December 2010, SniffJoke will be used for the most
 in the 2011/2012, after the 2012 the world will be destroyed by the
@@ -34,14 +34,17 @@ running it, or you can provide another user/group pair passing
 appropriate options.
 
 ==================================================================
-INSTALLATION FILES (paths may vary in your system)
+INSTALLATION FILES (paths may vary in your system), becuase 
+configure supports --prefix
 ==================================================================
 
  /usr/local/bin/sniffjoke
     The binary, service and client
 
- /usr/local/etc/sniffjoke/plugins_enabled.txt
+ /usr/local/etc/sniffjoke/plugins_enabled.txt.$LOCATION_NAME
     configuration file for plugins enable/disable
+    default location use the file:
+ /usr/local/etc/sniffjoke/plugins_enabled.txt.generic
 
  /usr/local/lib/sniffjoke/*
     SniffJoke plugins
