@@ -81,7 +81,10 @@ void SniffJoke::client() {
 	}
 
 	proc.jail();
+	userconf.chroot_status = true;
+
 	proc.privilegesDowngrade();
+
 	send_command(opts.cmd_buffer, userconf.runconfig.admin_address, userconf.runconfig.admin_port);
 
 	return;
@@ -207,6 +210,7 @@ void SniffJoke::server_root_cleanup()
 void SniffJoke::server_user_cleanup()
 {
 	debug.log(VERBOSE_LEVEL, "client_user_cleanup()");
+	userconf.dump();
 }
 
 void SniffJoke::client_cleanup() {

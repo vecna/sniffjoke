@@ -78,11 +78,13 @@ enum Strength { NONE = 0, LIGHT = 1, NORMAL = 2, HEAVY = 3 };
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		char version[SMALLBUF];			/* SW_VERSION from hardcoded-defines.h */
+		bool server;
 		bool active;				/* default: false = NOT ACTIVE */
 		bool chrooted;				/* defauit: false = NOT CHROOTED */
 	
 		/* START OF COMMON PART WITH sj_cmdline_opt */
 		char cfgfname[MEDIUMBUF];		/* default: check hardcoded-defines.h */
+		char location[MEDIUMBUF];		/* default: "default" */ 
 		char enabler[MEDIUMBUF];		/* default: idem */
 		char user[MEDIUMBUF];			/* default: idem */
 		char group[MEDIUMBUF];			/* default: idem */
@@ -96,7 +98,6 @@ struct sj_config {
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
-		char location[MEDIUMBUF];		/* default: "default" */ 
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
 		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + location */
 
@@ -115,8 +116,6 @@ class UserConf {
 private:
 		char io_buf[HUGEBUF];
 		const char *resolve_weight_name(int);
-		bool load(const char *, const char *);
-		void dump(void);
 		void compare_check_copy(char *target, uint32_t tlen, const char *sjdefault, const char *useropt);
 		void autodetect_local_interface(void);
 		void autodetect_local_interface_ip_address(void);
@@ -136,6 +135,8 @@ public:
 		UserConf(const struct sj_cmdline_opts &, bool &alive);
 		~UserConf();
 
+		bool load(const char *, const char *);
+		void dump(void);
 		void network_setup(void);
 		void attach_sessiontrackmap(SessionTrackMap *);
 		void attach_ttlfocusmap(TTLFocusMap *);

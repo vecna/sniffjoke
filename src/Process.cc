@@ -148,6 +148,11 @@ void Process::privilegesDowngrade()
 		debug.log(ALL_LEVEL, "privilegesDowngrade: error loosing root privileges");
 		SJ_RUNTIME_EXCEPTION("");
 	}
+	
+	if (!getuid() && !geteuid()) {
+		debug.log(ALL_LEVEL, "privilegesDowngrade: sniffjoke user process can't be runned with root privileges");
+		SJ_RUNTIME_EXCEPTION("");		
+	}
 
 	debug.log(VERBOSE_LEVEL, "privilegesDowngrade: process %d downgrade privileges to uid %d gid %d", 
 		getpid(), userinfo.pw_uid, groupinfo.gr_gid);
