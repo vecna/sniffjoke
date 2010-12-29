@@ -40,7 +40,6 @@
 #include <unistd.h>
 
 #include "hardcoded-defines.h"
-#include "Debug.h"
 
 enum size_buf_t {
 	SMALLBUF = 64,
@@ -50,7 +49,9 @@ enum size_buf_t {
 	GARGANTUABUF = 4096 * 4
 };
 
-/* loglevels */
+/* loglevels & log classess */
+#include "Debug.h"
+
 #define SUPPRESS_LOG		1
 #define ALL_LEVEL		2
 #define ALL_LEVEL_NAME		"default"

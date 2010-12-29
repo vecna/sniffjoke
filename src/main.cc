@@ -46,7 +46,7 @@ static auto_ptr<SniffJoke> sniffjoke;
 
 #define SNIFFJOKE_HELP_FORMAT \
 	"%s [command] or %s --options:\n"\
-	" --location <name>\tspecify the network environment (suggested)\n"\
+	" --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
 	" --config <filename>\tconfig file [default: %s%s]\n"\
 	" --enabler <filename>\tplugins enabler file [default: %s]\n"\
 	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
@@ -81,6 +81,7 @@ static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const ch
 
 	printf(SNIFFJOKE_HELP_FORMAT, 
 		pname, pname,
+		DEFAULTLOCATION,
 		basedir, CONF_FILE,
 		PLUGINSENABLER,
 		DROP_USER, DROP_GROUP, 

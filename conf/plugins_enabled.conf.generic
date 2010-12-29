@@ -22,11 +22,10 @@ fake_seq.so,PRESCRIPTION,MALFORMED,GUILTY
 valid_rst_fake_seq.so,INNOCENT
 fragmentation.so,PRESCRIPTION,INNOCENT
 
-
 # fake_close_rst.so,PRESCRIPTION,GUILTY
 # fake_close with RESET is disabled because some middlething close the session
 # where is used
-#
+
 fake_syn.so,PRESCRIPTION,MALFORMED
 # the same reason, when a device making session tracking, like some DSL router (also 
 # without NAT), a fake SYN cause the closing of the previous session
@@ -34,9 +33,7 @@ fake_syn.so,PRESCRIPTION,MALFORMED
 #fake_zero_window.so
 # Need testing
 #
-# shift_ack.so,PRESCRIPTION,MALFORMED,GUILTY
-# damage downlink reassembly -- I'll wait evilaliv3 fix for enable this 
-#
+shift_ack.so,PRESCRIPTION,MALFORMED,GUILTY
 #
 # regards
 # If someone want to write a manpage, will me we glad :)

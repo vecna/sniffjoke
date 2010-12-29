@@ -229,10 +229,6 @@ void Packet::corruptSum(void)
 
 bool Packet::selfIntegrityCheck(const char *pluginName)
 {
-	if (source != SOURCEUNASSIGNED) {
-		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s (source_t)source must not be set: ignored value", pluginName);
-	}
-
 	if (wtf == JUDGEUNASSIGNED) {
 		debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
 		goto errorinfo;

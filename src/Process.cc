@@ -144,6 +144,8 @@ void Process::jail()
 
 void Process::privilegesDowngrade()
 {
+	debug.downgradeOpenlog(userinfo.pw_uid, groupinfo.gr_gid);
+
 	if (setgid(groupinfo.gr_gid) || setuid(userinfo.pw_uid)) {
 		debug.log(ALL_LEVEL, "privilegesDowngrade: error loosing root privileges");
 		SJ_RUNTIME_EXCEPTION("");

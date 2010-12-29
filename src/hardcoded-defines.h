@@ -39,7 +39,7 @@
 #define MAGICVAL			0xADECADDE
 #define CHROOT_DIR			INSTALL_STATEDIR
 #define PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.conf"
-#define DEFAULTLOCATION			"default"
+#define DEFAULTLOCATION			"generic"
 #define MAXPLUGINS			32
 #define CONF_FILE 			"sjconf.bin"     		//relative to chroot_dir
 #define LOGFILE                        	"sniffjoke.log"                 //relative to chroot_dir

@@ -78,14 +78,28 @@ if [ -z $1 ]; then
 fi
 LOCATION=$1
 
+if [ -z $2 ]; then
+	echo "as second argument is required the PATH of the plugins_enabled.conf.generic"
+	exit;
+fi
+ETCPATH=$2
+
+if [ ! -d $ETCPATH ]; then
+	echo "the second argument: $ETCHPATH is not a directory"
+	echo "as second argument is required the PATH of the plugins_enabled.conf.generic"
+	exit;
+fi
+
+
 if [ -d "/tmp/$LOCATION" ]; then
 	echo "- remove your /tmp/$LOCATION directory: already present"
+	# call me old, but I don't put a blind rm -rf on a script run by root :P
 	exit
 fi
 
 SNIFFJOKEBIN=`which sniffjoke`
-if [ ! -z $SNIFFJOKEBIN || ! -x $SNIFFJOKEBIN ]; then
-	echo "\"which sniffjoke\" has not found a valid executable called sniffjoke in PATH"
+if [ -z $SNIFFJOKEBIN ]; then
+	echo "\"which sniffjoke\" has found nothing"
 	echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
 	exit;
 fi
@@ -169,5 +183,6 @@ now=`date`
 echo "\n\n# Generated in date: $now" >> $PeL
 
 echo "file /tmp/$LOCATION/plugins_enabled.conf.$LOCATION has been generated"
-echo "move it in the path where plugins_enabled.conf.default is present and "
-echo "run sniffjoke with the option --location $LOCATION when you are in this network environment."
+chmod 444 /tmp/$LOCATION/plugins_enabled.conf.$LOCATION
+mv /tmp/$LOCATION/plugins_enabled.conf.$LOCATION $ETCPATH
+echo "moved in $ETCPATH, now you could run sniffjoke with the option --location $LOCATION when you are in this network environment."

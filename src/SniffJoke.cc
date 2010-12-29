@@ -272,6 +272,20 @@ void SniffJoke::handle_admin_socket(int srvsock)
 
 	output = userconf.handle_cmd(r_command);
 
+	/* checking if the command require SniffJoke class interaction (loglevel change), this are the
+	 * command that could cause an interruption of the service - require to be modify the "char *output"
+	 * with the appropriate error - TODO ATM */
+	if(debug.debuglevel != userconf.runconfig.debug_level) 
+	{
+		debug.debuglevel = userconf.runconfig.debug_level;
+
+		if(!debug.resetLevel(	basename(userconf.runconfig.logfname),
+					basename(userconf.runconfig.logfname_sessions),
+					basename(userconf.runconfig.logfname_packets)
+		))
+			SJ_RUNTIME_EXCEPTION("Changing logfile settings");
+	}
+
 	/* send the answer message to the client */
 	if (output != NULL) 
 		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
@@ -348,37 +362,15 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
 	}
 
 	if (opts.process_type == SJ_SERVER_PROC && !opts.go_foreground) {
-		
 		/* Logfiles are used only by a Sniffjoke SERVER runnning in background */
-		
-		if ((debug.logstream = fopen(userconf.runconfig.logfname, "a+")) == NULL) {
-			debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", userconf.runconfig.logfname, strerror(errno));
-			SJ_RUNTIME_EXCEPTION("");
-		} else {
-			debug.log(DEBUG_LEVEL, "opened log file %s", userconf.runconfig.logfname);
-		}	
-	
-		if (debug.debuglevel >= PACKETS_DEBUG) {
-			if ((debug.packet_logstream = fopen(userconf.runconfig.logfname_packets, "a+")) == NULL) {
-				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", userconf.runconfig.logfname_packets, strerror(errno));
-				SJ_RUNTIME_EXCEPTION("");
-			} else {
-				debug.log(ALL_LEVEL, "opened for packets debug: %s successful", userconf.runconfig.logfname_packets);
-			}
-		}
-
-		if (debug.debuglevel >= SESSION_DEBUG) {
-			if ((debug.session_logstream = fopen(userconf.runconfig.logfname_sessions, "a+")) == NULL) {
-				debug.log(ALL_LEVEL, "FATAL ERROR: unable to open %s: %s", userconf.runconfig.logfname_sessions, strerror(errno));
-				SJ_RUNTIME_EXCEPTION("");
-			} else {
-				debug.log(ALL_LEVEL, "opened for hacks debug: %s successful", userconf.runconfig.logfname_sessions);
-			}
-		}
-	} else if (opts.process_type == SJ_CLIENT_PROC) {
+		if(!debug.resetLevel(userconf.runconfig.logfname, userconf.runconfig.logfname_sessions, userconf.runconfig.logfname_packets))
+			SJ_RUNTIME_EXCEPTION("Error in opening log files");
+	} 
+	else if (opts.process_type == SJ_CLIENT_PROC) {
 		debug.logstream = stdout;
 		debug.log(DEBUG_LEVEL, "client write a verbose output on stdout, whenever a block happen, use ^c");
-	} else /* userconf.runconfig.go_foreground */ {
+	} 
+	else /* userconf.runconfig.go_foreground */ {
 		debug.logstream = stdout;
 		debug.log(ALL_LEVEL, "forground logging enable, use ^c for quit SniffJoke");
 	}

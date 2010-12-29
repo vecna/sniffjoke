@@ -29,6 +29,39 @@ Debug::Debug() :
 	packet_logstream(NULL)
 {}
 
+bool Debug::appendOpen(uint8_t thislevel, const char fname[LARGEBUF], FILE **previously)
+{
+	if(*previously != NULL) {
+		log(thislevel, "requested close of logfile %s", fname);
+		fclose(*previously);
+	}
+
+	if(debuglevel >= thislevel) 
+	{
+		if((*previously = fopen(fname, "a+")) == NULL) {
+			return false;
+		}
+
+		log(thislevel, "opened file %s successful with debug level %d", fname, debuglevel);
+	}
+
+	return true;
+}
+
+bool Debug::resetLevel(const char logfname[LARGEBUF], const char sessionlog[LARGEBUF], const char packetlog[LARGEBUF]) 
+{
+	if(!appendOpen(ALL_LEVEL, logfname, &logstream))
+		return false;
+
+	if(!appendOpen(SESSION_DEBUG, sessionlog, &session_logstream))
+		return false;
+
+	if(!appendOpen(PACKETS_DEBUG, packetlog, &packet_logstream))
+		return false;
+
+	return true;
+}
+
 void Debug::log(uint8_t errorlevel, const char *msg, ...) 
 {
 	if (errorlevel <= debuglevel) { 
@@ -47,14 +80,31 @@ void Debug::log(uint8_t errorlevel, const char *msg, ...)
 		if (errorlevel == SESSION_DEBUG && session_logstream != NULL)
 			output_flow = session_logstream;
 
-			char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
-			strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+		char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
+		strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
-			va_start(arguments, msg);
-			fprintf(output_flow, "%s ", time_str);
-			vfprintf(output_flow, msg, arguments);
-			fprintf(output_flow, "\n");
-			fflush(output_flow);
-			va_end(arguments);
+		va_start(arguments, msg);
+		fprintf(output_flow, "%s ", time_str);
+		vfprintf(output_flow, msg, arguments);
+		fprintf(output_flow, "\n");
+		fflush(output_flow);
+		va_end(arguments);
 	}
 }
+
+void Debug::downgradeOpenlog(uint16_t uid, uint16_t gid) {
+
+	/* this should not be called when is not the root process to do */
+	if(getuid() && getgid())
+		return;
+
+	if(logstream != NULL)
+		fchown(fileno(logstream), uid, gid);
+
+	if(packet_logstream != NULL)
+		fchown(fileno(packet_logstream), uid, gid);
+
+	if(session_logstream != NULL)
+		fchown(fileno(session_logstream), uid, gid);
+}
+

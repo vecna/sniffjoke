@@ -103,7 +103,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	if(test == NULL) {
 		debug.log(ALL_LEVEL, "Sanity check: is required the enabler file, and the default (%s.%s) is not present", 
 			runconfig.enabler, runconfig.location);
-		debug.log(ALL_LEVEL, "running sniffjoke-autotest will generate the appropriate enabler for different location");
+		debug.log(ALL_LEVEL, "sniffjoke-autotest script will generate the appropriate enabler for your location");
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
@@ -423,10 +423,10 @@ char* UserConf::handle_cmd(const char *cmd)
 	} else if (!memcmp(cmd, "clear", strlen("clear"))) {
 		Strength clearValue = NONE;
 		handle_cmd_set(0, PORTNUMBER, clearValue);
-	} else if (!memcmp(cmd, "debuglevel", strlen("debuglevel")))  {
+	} else if (!memcmp(cmd, "debug", strlen("debug")))  {
 		int debuglevel;
 
-		sscanf(cmd, "debuglevel %d", &debuglevel);
+		sscanf(cmd, "debug %d", &debuglevel);
 		if (debuglevel < 0 || debuglevel > PACKETS_DEBUG) {
 			snprintf(io_buf, sizeof(io_buf), "invalid log value: %d, must be > 0 and < than %d", debuglevel, PACKETS_DEBUG);
 			debug.log(ALL_LEVEL, "%s", io_buf);
@@ -585,6 +585,8 @@ void UserConf::handle_cmd_debuglevel(int newdebuglevel)
 	} else {
 		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newdebuglevel);
 		runconfig.debug_level = newdebuglevel;
+		/* is not sufficent set this variable, require from SniffJoke object to call Debug::resetLevel */
+		/* and is checked/called in SniffJoke::handle_admin_socket */
 	}
 }
 

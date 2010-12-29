@@ -16,7 +16,7 @@ installconf:
 		echo "Creating config dir: $(sysconfdir)/sniffjoke"; \
 		install -d -m 755 $(sysconfdir)/sniffjoke; \
 	fi; \
-	cp conf/plugins_enabled.conf.default $(sysconfdir)/sniffjoke; \
+	cp conf/plugins_enabled.conf.generic $(sysconfdir)/sniffjoke; \
 	echo "Checking chroot directory" && \
 	if [ ! -d $(localstatedir)/sniffjoke ] ; then \
 		echo "Creating chroot dir: $(localstatedir)/sniffjoke"; \
