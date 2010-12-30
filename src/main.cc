@@ -48,7 +48,8 @@ static auto_ptr<SniffJoke> sniffjoke;
 	"%s [command] or %s --options:\n"\
 	" --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
 	" --config <filename>\tconfig file [default: %s%s]\n"\
-	" --enabler <filename>\tplugins enabler file [default: %s]\n"\
+	" --enabler <filename>\tplugins enabler file, modified by the location\n"\
+	"\t\t\t[default: %s.$LOCATION_NAME]\n"\
 	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
 	" --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
 	" --chroot-dir <dir>\truns chroted into the specified dir [default: %s]\n"\
@@ -56,11 +57,11 @@ static auto_ptr<SniffJoke> sniffjoke;
 	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
 	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --admin <IPv4>[:port]\tspecify administration IP address [default: 127.0.0.1:%d]\n"\
-	" --force\t\tforce restart if sniffjoke service\n"\
+	" --admin <IPv4>[:port]\tspecify administration IP address [default: %s:%d]\n"\
+	" --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --help\t\t\tshow this help\n\n"\
-	"while sniffjoke is running, you should send one of those commands as command line argument:\n"\
+	"when sniffjoke is running, you should send commands with a command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
@@ -87,7 +88,8 @@ static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const ch
 		DROP_USER, DROP_GROUP, 
 		basedir,
 		basedir, LOGFILE,
-		DEFAULT_DEBUG_LEVEL, DEFAULT_UDP_ADMIN_PORT
+		DEFAULT_DEBUG_LEVEL, 
+		DEFAULT_IP_ADMIN, DEFAULT_UDP_ADMIN_PORT
 	);
 }
 

@@ -171,7 +171,7 @@ for hack in $success; do
 	echo "$hackName,$scramble" | sed -es/,\$// >> $PeL
 done
 
-echo "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
+echo -e "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure=`ls /tmp/$LOCATION/*.failed_hacks`
 for hack in $failure ; do
 	hackName=`basename $hack | sed -es/failed_hacks/so/`
@@ -180,7 +180,7 @@ for hack in $failure ; do
 done
 
 now=`date`
-echo "\n\n# Generated in date: $now" >> $PeL
+echo -e "\n\n# Generated in date: $now" >> $PeL
 
 echo "file /tmp/$LOCATION/plugins_enabled.conf.$LOCATION has been generated"
 chmod 444 /tmp/$LOCATION/plugins_enabled.conf.$LOCATION

@@ -39,7 +39,7 @@ public:
 	uint8_t level() { return debuglevel; };
 	bool resetLevel(const char logfname[LARGEBUF], const char sessionlog[LARGEBUF], const char packetlog[LARGEBUF]);
 	void log(uint8_t errorlevel, const char *msg, ...);
-	void downgradeOpenlog(uint16_t uid, uint16_t gid);
+	void downgradeOpenlog(uid_t uid, gid_t gid);
 };
 
 extern Debug debug;

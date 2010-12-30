@@ -92,7 +92,7 @@ void Debug::log(uint8_t errorlevel, const char *msg, ...)
 	}
 }
 
-void Debug::downgradeOpenlog(uint16_t uid, uint16_t gid) {
+void Debug::downgradeOpenlog(uid_t uid, gid_t gid) {
 
 	/* this should not be called when is not the root process to do */
 	if(getuid() && getgid())

@@ -1,3 +1,7 @@
+30 Dec 2010:	Stabilized 0.4 release
+		- sniffjoke-autotest generate the location file
+		- plugin configuration
+
 20 Nov 2010:	In those months, when I and evilalv3 forget the ChangeLog...
 		- the hacks are supported in external plugin(s)
 		- the scrambling tech is became three
