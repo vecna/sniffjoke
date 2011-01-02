@@ -514,33 +514,60 @@ void UserConf::handle_cmd_info(void)
 
 void UserConf::handle_cmd_showport(void) 
 {
-	int i, acc_start = 0, kind, actual_io = 0;
+	int i, prev_port = 1, prev_kind, actual_io = 0, writedlen;
 	char *index = &io_buf[1];
 
 	io_buf[0] = '\n';
 
 	/* the first port work as initialization */
-	kind = runconfig.portconf[0];
+	prev_kind = runconfig.portconf[0];
 
+	/* I feel this code too much C and too less C++ */
 	for (i = 1; i < PORTNUMBER; ++i) 
 	{
-		/* the kind has changed, so we must print the previous port range */
-		if (runconfig.portconf[i] != kind) 
-		{
-			if (acc_start == (i - 1)) 
-				snprintf(index, sizeof(io_buf) - actual_io, " %d\t%s\n", acc_start, resolve_weight_name(kind));
-			else
-				snprintf(index, sizeof(io_buf) - actual_io, " %d:%d\t%s\n", acc_start, i - 1, resolve_weight_name(kind));
+		writedlen = 0;
+		/* fix pointer */
+		actual_io = strlen(io_buf);
+		index = &io_buf[actual_io];
 
+		/* the prev_kind has changed, so we must print the previous port range */
+		if (runconfig.portconf[i] != prev_kind) 
+		{
+			if (prev_port == (i - 1)) {
+				/* a single port configured */
+				snprintf(index, sizeof(io_buf) - actual_io, " %d", prev_port);
+			}
+			else {
+				/* a range of port */
+				snprintf(index, sizeof(io_buf) - actual_io, " %d:%d", prev_port, i - 1);
+			}
+			writedlen = strlen(io_buf) - actual_io;
+
+			/* add the some number of space for align the column */
+			while(writedlen != 15) {
+				// snprintf(index + writedlen, sizeof(io_buf) - actual_io - writedlen, " ");
+				index[writedlen] = ' ';
+				writedlen++;
+			}
+			snprintf(index + writedlen, sizeof(io_buf) - actual_io - writedlen, "%s\n", resolve_weight_name(prev_kind));
+
+			/* fix pointer */
 			actual_io = strlen(io_buf);
 			index = &io_buf[actual_io];
 
-			kind = runconfig.portconf[i];
-			acc_start = i;
+			prev_kind = runconfig.portconf[i];
+			prev_port = i;
 		}
 	}
 
-	snprintf(index, sizeof(io_buf) - actual_io, " %d:%d\t%s\n", acc_start, PORTNUMBER, resolve_weight_name(kind));
+	snprintf(index, sizeof(io_buf) - actual_io, " %d:%d", prev_port, PORTNUMBER);
+	writedlen = strlen(io_buf) - actual_io;
+	/* add the some number of space for align the column */
+	while(writedlen != 15) {
+		snprintf(index + writedlen, sizeof(io_buf) - actual_io - writedlen, " ");
+		writedlen++;
+	}
+	snprintf(index + writedlen, sizeof(io_buf) - actual_io - writedlen, "%s\n", resolve_weight_name(prev_kind));
 }
 
 void UserConf::handle_cmd_set(uint16_t start, uint16_t end, Strength what)
