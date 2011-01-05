@@ -141,7 +141,7 @@ void SniffJoke::run()
 
 		mitm->prepare_conntrack(conntrack.get());
 
-		admin_socket = udp_admin_socket(userconf.runconfig.admin_address, userconf.runconfig.admin_port);
+		admin_socket_setup();
 
 		/* main block */
 		while (alive) {
@@ -152,8 +152,8 @@ void SniffJoke::run()
 
 			mitm->network_io();
 
-			handle_admin_socket(admin_socket);
-
+			admin_socket_handle();
+			
 			proc.sigtrapEnable();
 		}
 	}
@@ -204,6 +204,7 @@ void SniffJoke::server_root_cleanup()
 		kill(service_pid, SIGTERM);
 		waitpid(service_pid, NULL, WUNTRACED);
 	}
+
 	proc.unlinkPidfile();
 }
 
@@ -213,45 +214,48 @@ void SniffJoke::server_user_cleanup()
 	userconf.dump();
 }
 
-int SniffJoke::udp_admin_socket(char admin_address[MEDIUMBUF], uint16_t bindport)
+void SniffJoke::admin_socket_setup()
 {
-	int ret;
+	int tmp;
 	struct sockaddr_in in_service;
 
-	if ((ret = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+	if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
 		debug.log(ALL_LEVEL, "FATAL: unable to open UDP socket: %s", strerror(errno));
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
 	memset(&in_service, 0x00, sizeof(in_service));
 	/* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
-	if (!inet_aton(admin_address, &in_service.sin_addr)) {
-		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", admin_address);
+	if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr)) {
+		debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", userconf.runconfig.admin_address);
 		SJ_RUNTIME_EXCEPTION("");
 	}
 	in_service.sin_family = AF_INET;
-	in_service.sin_port = htons(bindport);
+	in_service.sin_port = htons(userconf.runconfig.admin_port);
 
-	if (bind(ret, (struct sockaddr *)&in_service, sizeof(in_service)) == -1) {
-		close(ret);
+	if (bind(tmp, (struct sockaddr *)&in_service, sizeof(in_service)) == -1) {
+		close(tmp);
 		debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind UDP socket %s:%d: %s", 
-			 admin_address, ntohs(in_service.sin_port), strerror(errno)
+			 userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	if (fcntl(ret, F_SETFL, O_NONBLOCK) == -1) {
-		close(ret);
+	admin_socket_flags_blocking = fcntl(tmp, F_GETFL);
+	admin_socket_flags_nonblocking = admin_socket_flags_blocking | O_NONBLOCK;
+
+	if (fcntl(tmp, F_SETFL, admin_socket_flags_nonblocking) == -1) {
+		close(tmp);
 		debug.log(ALL_LEVEL, "FATAL ERROR: unable to set non blocking administration socket: %s",
 			strerror(errno)
 		);
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	return ret;
+	admin_socket = tmp;
 }
 
-void SniffJoke::handle_admin_socket(int srvsock)
+void SniffJoke::admin_socket_handle()
 {
 	char r_buf[MEDIUMBUF];
 	char* output = NULL;
@@ -259,7 +263,7 @@ void SniffJoke::handle_admin_socket(int srvsock)
 
 	memset(r_buf, 0x00, sizeof(r_buf));
 	int fromlen = sizeof(struct sockaddr_in);
-	if ((recvfrom(srvsock, r_buf, sizeof(r_buf), 0, (sockaddr*)&fromaddr, (socklen_t *)&fromlen)) == -1) {
+	if ((recvfrom(admin_socket, r_buf, sizeof(r_buf), 0, (sockaddr*)&fromaddr, (socklen_t *)&fromlen)) == -1) {
 		if (errno == EAGAIN || errno == EWOULDBLOCK) {
 			return;
 		}
@@ -286,8 +290,11 @@ void SniffJoke::handle_admin_socket(int srvsock)
 	}
 
 	/* send the answer message to the client */
-	if (output != NULL) 
-		sendto(srvsock, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
+	if (output != NULL) {
+		fcntl(admin_socket, F_SETFL, admin_socket_flags_blocking);
+		sendto(admin_socket, output, strlen(output), 0, (struct sockaddr *)&fromaddr, sizeof(fromaddr));
+		fcntl(admin_socket, F_SETFL, admin_socket_flags_nonblocking);
+	}
 }
 
 int SniffJoke::recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
@@ -296,11 +303,10 @@ int SniffJoke::recv_command(int sock, char *databuf, int bufsize, struct sockadd
 
 	int fromlen = sizeof(struct sockaddr_in), ret;
 
-	if ((ret = recvfrom(sock, databuf, bufsize, 0, from, (socklen_t *)&fromlen)) == -1) 
+	if ((ret = recvfrom(sock, databuf, bufsize, MSG_WAITALL, from, (socklen_t *)&fromlen)) == -1)
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return 0;
-		}
 
 		debug.log(ALL_LEVEL, "unable to receive local socket: %s: %s", usermsg, strerror(errno));
 	}

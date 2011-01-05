@@ -63,7 +63,7 @@ static void sjcli_help()
 	printf(SNIFFJOKECLI_HELP_FORMAT);
 }
 
-bool parse_command(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd)
+static bool parse_command(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd)
 {
 	for(uint32_t i = 0; i < ac; ++i) 
 	{

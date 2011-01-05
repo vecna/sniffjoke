@@ -45,12 +45,6 @@ private:
 	int tunfd;
 	int netfd;
 	
-	/* flags sets for the two file descriptors */
-	int tunfd_flags_blocking;
-	int tunfd_flags_nonblocking;
-	int netfd_flags_blocking;
-	int netfd_flags_nonblocking;
-
         /* poll variables, two file descriptors */
         struct pollfd fds[2];
         int nfds;

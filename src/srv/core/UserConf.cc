@@ -624,18 +624,22 @@ bool UserConf::parse_port_weight(char *weightstr, Strength *value)
 		const int keylen;
 		Strength equiv;
 	};
+
 #define keywordToParse	4
+
 	struct parsedata wParse[] = {
 		{ "none", 	strlen("none"), 	NONE },
 		{ "light", 	strlen("light"), 	LIGHT },
 		{ "normal", 	strlen("normal"), 	NORMAL },
 		{ "heavy", 	strlen("heavy"), 	HEAVY }
 	};
+
 	for(uint8_t i = 0; i < keywordToParse; ++i) {
 		if (!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
 			*value = wParse[i].equiv;
 			return true;
 		}
 	}
+
 	return false;
 }

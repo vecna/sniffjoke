@@ -96,16 +96,6 @@ NetIO::NetIO(sj_config& runcfg) :
 		SJ_RUNTIME_EXCEPTION("");
 	}
 	
-	tunfd_flags_blocking = fcntl(tunfd, F_GETFL);
-	tunfd_flags_nonblocking = tunfd_flags_blocking | O_NONBLOCK;
-
-	if (fcntl(tunfd, F_SETFL, tunfd_flags_nonblocking) != -1) {
-		debug.log(DEBUG_LEVEL, "NetIO: flag O_NONBLOCK set successfully in tun socket");
-	} else {
-		debug.log(ALL_LEVEL, "NetIO: unable to set flag O_NONBLOCK in tun socket: %s", strerror(errno));
-		SJ_RUNTIME_EXCEPTION("");
-	}
-
 	debug.log(VERBOSE_LEVEL, "NetIO: deleting default gateway in routing table...");
 	system("/sbin/route del default");
 
@@ -164,30 +154,18 @@ NetIO::NetIO(sj_config& runcfg) :
 		SJ_RUNTIME_EXCEPTION("");
 	}
 
-	netfd_flags_blocking = fcntl(netfd, F_GETFL);
-	netfd_flags_nonblocking = netfd_flags_blocking | O_NONBLOCK;
-
-	if (fcntl(netfd, F_SETFL, netfd_flags_nonblocking) != -1) {
-		debug.log(DEBUG_LEVEL, "NetIO: setting network socket to non blocking mode successfully");
-	} else {
-		debug.log(ALL_LEVEL, "NetIO: unable to set socket in non blocking mode: %s",
-			strerror(errno)
-		);
-		SJ_RUNTIME_EXCEPTION("");
-	}
-
 	fds[0].fd = tunfd;
 	fds[1].fd = netfd;
 }
 
-NetIO::~NetIO(void) 
+NetIO::~NetIO(void)
 {
 	debug.log(VERBOSE_LEVEL, __func__);
 
 	char cmd[MEDIUMBUF];
 
 	if (getuid() || geteuid()) {
-		debug.log(ALL_LEVEL, "~NetIO: not root: unable to restore default gw");
+		debug.log(VERBOSE_LEVEL, "~NetIO: not root: unable to restore default gw");
 	} else {
 		debug.log(VERBOSE_LEVEL, "~NetIO: deleting our default gw [route del default]");
 		system("route del default");
@@ -296,14 +274,10 @@ void NetIO::network_io(void)
 			if (runconfig.active == true) {
 				conntrack->writepacket(TUNNEL , pktbuf, ret);
 			} else {
-				/* sniffjoke it's disabled? we make a blocking write, because
-				 * an intensive traffic will return -1 on a non ready to write socket */
-				fcntl(netfd, F_SETFL, netfd_flags_blocking);
 				if (sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *)&send_ll, sizeof(send_ll)) != ret) {
 					debug.log(ALL_LEVEL, "%s: send to network: %s", __func__, strerror(errno));
 					SJ_RUNTIME_EXCEPTION(strerror(errno));
 				}
-				fcntl(netfd, F_SETFL, netfd_flags_nonblocking);
 			}
 		}
 
@@ -339,12 +313,10 @@ void NetIO::network_io(void)
 			} else {
 				/* sniffjoke it's disabled? we make a blocking write, because
 				 * an intensive traffic will return -1 on a non ready to write socket */
-				fcntl(tunfd, F_SETFL, tunfd_flags_blocking);
 				if (write(tunfd, pktbuf, ret) != ret) {
 					debug.log(ALL_LEVEL, "%s: write in tunnel: %s", __func__, strerror(errno));
 					SJ_RUNTIME_EXCEPTION(strerror(errno));
 				}
-				fcntl(tunfd, F_SETFL, tunfd_flags_nonblocking);
 			}
 		}
 

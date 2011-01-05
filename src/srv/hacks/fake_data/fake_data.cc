@@ -71,6 +71,13 @@ public:
 				pkt->tcp->psh = 1;
 			else
 				pkt->tcp->psh = 0;
+				
+			if(random() % 2) {
+				pkt->tcp->urg = 1;
+				pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
+			} else {
+				pkt->tcp->urg = 0;
+			}
 
 			pkt->TCPPAYLOAD_fillrandom();
 			

@@ -40,16 +40,18 @@ start_singletest() {
 	mkdir $workingdir
 	echo "+ Starting sniffjoke with $PLUGIN and $SCRAMBLE"
 	$SNIFFJOKEBIN --debug 6 --logfile $workingdir/logtest --chroot-dir $workingdir --only-plugin $PLUGIN 
-	sleep 2 && $SNIFFJOKEBIN start 
+	sleep 2
+	$SNIFFJOKECLIBIN start 
 	cd $workingdir
 	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
-	INTERFACE=`$SNIFFJOKEBIN stat | grep "local interface" | cut -b 19- | sed -es/\,.*//`
+	INTERFACE=`$SNIFFJOKECLIBIN stat | grep "local interface" | cut -b 19- | sed -es/\,.*//`
 	echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
 	(tcpdump -i $INTERFACE -w "$workingdir/$PNAME-$SCRAMBLE.pcap" -s 0 tcp port 80) &
 	sleep 1
 	curl -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
 	sleep 1 
-	$SNIFFJOKEBIN quit
+	$SNIFFJOKECLIBIN quit
+	sleep 1
 	killall -9 tcpdump
 	CHECKSUM=`md5sum "$PNAME-$SCRAMBLE.received" | cut -b -32`
 	cd ..
@@ -104,9 +106,16 @@ if [ -z $SNIFFJOKEBIN ]; then
 	exit;
 fi
 
+SNIFFJOKECLIBIN=`which sniffjoke_cli`
+if [ -z $SNIFFJOKECLIBIN ]; then
+        echo "\"which sniffjoke_cli\" has found nothing"
+        echo "Are sniffjoke installed with the name \"sniffjoke_cli\" ?"
+        exit;
+fi
+
 echo "+ Starting SniffJoke hacks test"
-echo "* Stopping running sniffjoke ($SNIFFJOKEBIN quit)"
-$SNIFFJOKEBIN quit
+echo "* Stopping running sniffjoke ($SNIFFJOKECLIBIN quit)"
+$SNIFFJOKECLIBIN quit
 
 PPATH="/usr/local/lib/sniffjoke"
 echo "* using plugin path $PPATH"

@@ -42,10 +42,6 @@ SniffJokeCli::SniffJokeCli(char* serveraddr, uint16_t serverport) :
 {
 }
 
-SniffJokeCli::~SniffJokeCli()
-{
-}
-
 void SniffJokeCli::send_command(const char *cmdstring)
 {
 	int sock;
@@ -54,10 +50,6 @@ void SniffJokeCli::send_command(const char *cmdstring)
 	struct sockaddr_in from;	/* address used for receiving data */
 	int rlen;
 	
-        /* poll variables, two file descriptors */
-        struct pollfd fd;
-        fd.events = POLLIN;
-        int nfds;
 	
 	/* Create a UNIX datagram socket for client */
 	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -79,24 +71,26 @@ void SniffJokeCli::send_command(const char *cmdstring)
 		return;
 	}
 	
-	fcntl(sock, F_SETFL, O_NONBLOCK);
-
-	nfds = poll(&fd, 1, 1000);
+        struct pollfd fd;
+        fd.events = POLLIN;
+        fd.fd = sock;
+        	
+	int nfds = poll(&fd, 1, 200);
 	
 	if(nfds == 1) {
 		memset(rcv_buf, 0x00, sizeof(rcv_buf));
 		int fromlen = sizeof(struct sockaddr_in);
-		if ((rlen = (recvfrom(sock, rcv_buf, sizeof(rcv_buf), 0, (sockaddr*)&from, (socklen_t *)&fromlen))) == -1) {
-			printf("unable to receive from local socket: %s", strerror(errno));
+		if ((rlen = (recvfrom(sock, rcv_buf, sizeof(rcv_buf), MSG_WAITALL, (sockaddr*)&from, (socklen_t *)&fromlen))) == -1) {
+			printf("unable to receive from local socket: %s\n", strerror(errno));
 			goto send_command_exit;
 		}
 	
 		if (rlen == 0)
-			printf("invalid command [%s] produces no answer. Verify with sniffjoke --help", cmdstring);
+			printf("invalid command [%s] produces no answer. Verify with sniffjoke --help\n", cmdstring);
 		else	/* the output */ 
-			printf("<SniffJoke service>: %s", rcv_buf);
+			printf("<SniffJoke service>: %s\n", rcv_buf);
 	} else {
-		printf("timeout: sniffJoke is probably not running");
+		printf("timeout: sniffJoke is probably not running\n");
 	}
 
 send_command_exit:

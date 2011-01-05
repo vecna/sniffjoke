@@ -44,7 +44,6 @@ class SniffJokeCli {
 public:
 	SniffJokeCli(char *, uint16_t);
 	void send_command(const char *cmdstring);
-	~SniffJokeCli();
 };
 
 #endif /* SJ_SNIFFJOKECLI_H */

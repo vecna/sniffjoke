@@ -58,26 +58,20 @@ private:
 	/* after detach:
 	 *     service_pid in the root process [the pid of the user process]
 	 *                 in the user process [0]
-	 * 
-	 * this is used as discriminator for the process controller of the pidfile
-	 * inside the distructor ~SniffJoke()
 	 */
 	pid_t service_pid;
 	
 	int admin_socket;
+	int admin_socket_flags_blocking;
+	int admin_socket_flags_nonblocking;
 
 	void debug_setup(FILE *) const;
 	void debug_cleanup();
-	void client();
-	void client_cleanup();
-	void server();
 	void server_root_cleanup();
 	void server_user_cleanup();
-	void kill_child();
-	int udp_admin_socket(char [MEDIUMBUF], uint16_t);
-	void handle_admin_socket(int admin_socket);
+	void admin_socket_setup();
+	void admin_socket_handle();
 	int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);	
-	void send_command(const char *cmdstring, char [MEDIUMBUF], uint16_t);
 	bool parse_port_weight(char *weightstr, Strength *Value);
 };
 

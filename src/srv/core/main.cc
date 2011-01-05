@@ -38,65 +38,9 @@
 using namespace std;
 
 Debug debug;
-
 time_t sj_clock;
 
-static struct sj_cmdline_opts useropt;
 static auto_ptr<SniffJoke> sniffjoke;
-
-static void sj_version(const char *pname)
-{
-	printf("%s %s\n", SW_NAME, SW_VERSION);
-}
-
-#define SNIFFJOKE_HELP_FORMAT \
-	"%s [command] or %s --options:\n"\
-	" --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
-	" --config <filename>\tconfig file [default: %s%s]\n"\
-	" --enabler <filename>\tplugins enabler file, modified by the location\n"\
-	"\t\t\t[default: %s.$LOCATION_NAME]\n"\
-	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
-	" --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
-	" --chroot-dir <dir>\truns chroted into the specified dir [default: %s]\n"\
-	" --logfile <file>\tset a logfile, [default: %s%s]\n"\
-	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
-	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
-	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
-	" --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
-	" --version\t\tshow sniffjoke version\n"\
-	" --help\t\t\tshow this help\n\n"\
-	"when sniffjoke is running, you should send commands with a command line argument:\n"\
-	" start\t\t\tstart sniffjoke hijacking/injection\n"\
-	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
-	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
-	" saveconf\t\tdump config file\n"\
-	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
-	" info\t\t\tget massive info about sniffjoke internet stats\n"\
-	" showport\t\tshow TCP ports strongness of injection\n"\
-	" set start end value\tset per tcp ports the strongness of injection\n"\
-	" \t\t\tthe values are: <heavy|normal|light|none>\n"\
-	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
-	" clear\t\t\talias to \"set 1 65535 none\"\n"\
-	" debug\t\t\t[1-6] change the log debug level\n\n"\
-	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
-
-static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
-{
-	const char *basedir = optchroot[0] ? &optchroot[0] : defaultbd;
-
-	printf(SNIFFJOKE_HELP_FORMAT, 
-		pname, pname,
-		DEFAULTLOCATION,
-		basedir, CONF_FILE,
-		PLUGINSENABLER,
-		DROP_USER, DROP_GROUP, 
-		basedir,
-		basedir, LOGFILE,
-		DEFAULT_DEBUG_LEVEL, 
-		DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
-	);
-}
 
 runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
@@ -121,9 +65,9 @@ FILE *sj_fopen(const char *fname, const char *location, const char *mode)
 
 	/* 	communication intra sniffjoke: a "+" mean:
 	 -
-	 * if the file exist, open in read and write
+	 * if the file exists, open in read and write
 	 * if not, create it.
-	 * ...is late, maybe exist an easiest way 	*/
+	 * ...it's late, maybe exists an easiest way 	*/
 	if(strlen(mode) == 1 && mode[0] == '+') {
 		if(access(effectivename, R_OK) == R_OK)
 			nmode = "r+";
@@ -179,12 +123,55 @@ void sigtrap(int signal)
 	sniffjoke->alive = false;
 }
 
+
+static void sj_version(const char *pname)
+{
+	printf("%s %s\n", SW_NAME, SW_VERSION);
+}
+
+#define SNIFFJOKE_HELP_FORMAT \
+	"%s [command] or %s --options:\n"\
+	" --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
+	" --config <filename>\tconfig file [default: %s%s]\n"\
+	" --enabler <filename>\tplugins enabler file, modified by the location\n"\
+	"\t\t\t[default: %s.$LOCATION_NAME]\n"\
+	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
+	" --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
+	" --chroot-dir <dir>\truns chroted into the specified dir [default: %s]\n"\
+	" --logfile <file>\tset a logfile, [default: %s%s]\n"\
+	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
+	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
+	" --foreground\t\trunning in foreground [default:background]\n"\
+	" --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
+	" --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
+	" --version\t\tshow sniffjoke version\n"\
+	" --help\t\t\tshow this help\n\n"
+
+static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
+{
+	const char *basedir = optchroot[0] ? &optchroot[0] : defaultbd;
+
+	printf(SNIFFJOKE_HELP_FORMAT, 
+		pname, pname,
+		DEFAULTLOCATION,
+		basedir, CONF_FILE,
+		PLUGINSENABLER,
+		DROP_USER, DROP_GROUP, 
+		basedir,
+		basedir, LOGFILE,
+		DEFAULT_DEBUG_LEVEL, 
+		DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
+	);
+}
+
 int main(int argc, char **argv)
 {
+	
 	/* 
 	 * set the default values in the configuration struct
 	 * we have only constant length char[] and booleans
 	 */
+	struct sj_cmdline_opts useropt;
 	memset(&useropt, 0x00, sizeof(useropt));
 	
 	struct option sj_option[] =
