@@ -95,17 +95,20 @@ AC_CHECK_HEADERS(sys/un.h,,exit 1)
 AC_CONFIG_FILES(
 		 Makefile
                  src/Makefile
-                 hacks/Makefile
-                 hacks/fake_close_fin/Makefile
-                 hacks/fake_close_rst/Makefile
-                 hacks/fake_data/Makefile
-                 hacks/fake_seq/Makefile
-                 hacks/fake_syn/Makefile
-                 hacks/fake_zero_window/Makefile
-                 hacks/shift_ack/Makefile
-                 hacks/valid_rst_fake_seq/Makefile
-                 hacks/fragmentation/Makefile
-                 hacks/fragmentation_with_fake_data/Makefile
+                 src/srv/Makefile
+                 src/cli/Makefile
+                 src/srv/core/Makefile
+                 src/srv/hacks/Makefile
+                 src/srv/hacks/fake_close_fin/Makefile
+                 src/srv/hacks/fake_close_rst/Makefile
+                 src/srv/hacks/fake_data/Makefile
+                 src/srv/hacks/fake_seq/Makefile
+                 src/srv/hacks/fake_syn/Makefile
+                 src/srv/hacks/fake_zero_window/Makefile
+                 src/srv/hacks/shift_ack/Makefile
+                 src/srv/hacks/valid_rst_fake_seq/Makefile
+                 src/srv/hacks/fragmentation/Makefile
+                 src/srv/hacks/fragmentation_with_fake_data/Makefile
 )
 
 
