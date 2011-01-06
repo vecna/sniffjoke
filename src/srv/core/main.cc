@@ -26,14 +26,10 @@
 #include "UserConf.h"
 #include "SniffJoke.h"
 
-#include <csignal>
-#include <memory>
 #include <stdexcept>
 
 #include <getopt.h>
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <stdint.h>
 
 using namespace std;
 

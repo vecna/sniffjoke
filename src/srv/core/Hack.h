@@ -44,8 +44,17 @@ using namespace std;
  */
 
 /* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
-enum Frequency { RARE = 1, COMMON = 2, ALWAYS = 3, PACKETS10PEEK = 4, PACKETS30PEEK = 5,
-		 TIMEBASED5S = 6, TIMEBASED20S = 7, STARTPEEK = 8, LONGPEEK = 9 };
+enum Frequency {
+	RARE = 1,
+	COMMON = 2,
+	ALWAYS = 3,
+	PACKETS10PEEK = 4,
+	PACKETS30PEEK = 5,
+	TIMEBASED5S = 6,
+	TIMEBASED20S = 7,
+	STARTPEEK = 8,
+	LONGPEEK = 9
+};
 
 class Hack {
 public:

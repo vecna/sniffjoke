@@ -56,7 +56,8 @@ private:
 
 public:
 
-	/* networkdown_condition express if the network is down and sniffjoke must be interrupted 
+	/*
+	 * networkdown_condition express if the network is down and sniffjoke must be interrupted 
 	 *	   --- but not killed!
 	 */
 

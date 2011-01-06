@@ -48,7 +48,7 @@ start_singletest() {
 	echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
 	(tcpdump -i $INTERFACE -w "$workingdir/$PNAME-$SCRAMBLE.pcap" -s 0 tcp port 80) &
 	sleep 1
-	curl -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
+	curl -m 10 -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
 	sleep 1 
 	$SNIFFJOKECLIBIN quit
 	sleep 1

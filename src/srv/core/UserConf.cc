@@ -612,8 +612,6 @@ void UserConf::handle_cmd_debuglevel(int newdebuglevel)
 	} else {
 		snprintf(io_buf, sizeof(io_buf), "changing log level since %d to %d\n", runconfig.debug_level, newdebuglevel);
 		runconfig.debug_level = newdebuglevel;
-		/* is not sufficent set this variable, require from SniffJoke object to call Debug::resetLevel */
-		/* and is checked/called in SniffJoke::handle_admin_socket */
 	}
 }
 
