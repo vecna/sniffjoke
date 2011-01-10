@@ -23,15 +23,20 @@ valid_rst_fake_seq.so,INNOCENT
 fragmentation.so,PRESCRIPTION,INNOCENT
 
 # fake_close_rst.so,PRESCRIPTION,GUILTY
-# fake_close with RESET is disabled because some middlething close the session
-# where is used
+# fake_close with RESET is disabled because some middlething close the session.
+# this happen with the italian network fastweb and for this selfish
+# reason is commentend on this file.
 
 fake_syn.so,PRESCRIPTION,MALFORMED
 # the same reason, when a device making session tracking, like some DSL router (also 
-# without NAT), a fake SYN cause the closing of the previous session
+# without NAT), a fake SYN cause the closing of the previous session. 
 #
 #fake_zero_window.so
-# Need testing
+# Need testing the concept of zero window, anyway this hack at the moment do 
+# make an INNOCENT resetting, and I've used this ad check for autotest working
+# is an assured failure. trivia: making this debug, I've see that an INNOCENT
+# RST+FIN packet will be ignored by the server (!!!) and a sniffer I don't know,
+# maybe will drink it.
 #
 shift_ack.so,PRESCRIPTION,MALFORMED,GUILTY
 #

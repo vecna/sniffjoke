@@ -4,14 +4,8 @@
 /* Define to 1 if you have the <algorithm> header file. */
 #define HAVE_ALGORITHM 1
 
-/* Define to 1 if you have the `argz_add' function. */
-#define HAVE_ARGZ_ADD 1
-
 /* Define to 1 if you have the `argz_append' function. */
 #define HAVE_ARGZ_APPEND 1
-
-/* Define to 1 if you have the `argz_count' function. */
-#define HAVE_ARGZ_COUNT 1
 
 /* Define to 1 if you have the `argz_create_sep' function. */
 #define HAVE_ARGZ_CREATE_SEP 1
@@ -30,6 +24,12 @@
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
+
+/* Define to 1 if you have the <assert.h> header file. */
+#define HAVE_ASSERT_H 1
+
+/* Define to 1 if you have the `bcopy' function. */
+/* #undef HAVE_BCOPY */
 
 /* Define to 1 if you have the <cctype> header file. */
 #define HAVE_CCTYPE 1
@@ -58,11 +58,11 @@
 /* Define to 1 if you have the <ctime> header file. */
 #define HAVE_CTIME 1
 
-/* Define to 1 if you have the declaration of `cygwin_conv_path', and to 0 if
-   you don't. */
-/* #undef HAVE_DECL_CYGWIN_CONV_PATH */
+/* Define to 1 if you have the <ctype.h> header file. */
+#define HAVE_CTYPE_H 1
 
-/* Define to 1 if you have the <dirent.h> header file. */
+/* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
+   */
 #define HAVE_DIRENT_H 1
 
 /* Define if you have the GNU dld library. */
@@ -83,6 +83,9 @@
 /* Define if you have the _dyld_func_lookup function. */
 /* #undef HAVE_DYLD */
 
+/* Define to 1 if you have the <errno.h> header file. */
+#define HAVE_ERRNO_H 1
+
 /* Define to 1 if the system has the type `error_t'. */
 #define HAVE_ERROR_T 1
 
@@ -95,32 +98,41 @@
 /* Define to 1 if you have the <grp.h> header file. */
 #define HAVE_GRP_H 1
 
+/* Define to 1 if you have the `index' function. */
+/* #undef HAVE_INDEX */
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
 /* Define if you have the libdl library or equivalent. */
 #define HAVE_LIBDL 1
 
-/* Define if libdlloader will be built on this platform */
-#define HAVE_LIBDLLOADER 1
-
 /* Define to 1 if you have the <linux/if_tun.h> header file. */
 #define HAVE_LINUX_IF_TUN_H 1
-
-/* Define this if a modern libltdl is already installed */
-#define HAVE_LTDL 1
 
 /* Define to 1 if you have the <mach-o/dyld.h> header file. */
 /* #undef HAVE_MACH_O_DYLD_H */
 
+/* Define to 1 if you have the <malloc.h> header file. */
+#define HAVE_MALLOC_H 1
+
 /* Define to 1 if you have the <map> header file. */
 #define HAVE_MAP 1
+
+/* Define to 1 if you have the `memcpy' function. */
+#define HAVE_MEMCPY 1
+
+/* Define to 1 if you have the `memmove' function. */
+#define HAVE_MEMMOVE 1
 
 /* Define to 1 if you have the <memory> header file. */
 #define HAVE_MEMORY 1
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
+
+/* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
+/* #undef HAVE_NDIR_H */
 
 /* Define to 1 if you have the <netinet/ip.h> header file. */
 #define HAVE_NETINET_IP_H 1
@@ -155,6 +167,9 @@
 /* Define to 1 if you have the `readdir' function. */
 #define HAVE_READDIR 1
 
+/* Define to 1 if you have the `rindex' function. */
+/* #undef HAVE_RINDEX */
+
 /* Define if you have the shl_load function. */
 /* #undef HAVE_SHL_LOAD */
 
@@ -167,8 +182,17 @@
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
+/* Define to 1 if you have the <stdio.h> header file. */
+#define HAVE_STDIO_H 1
+
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the `strchr' function. */
+#define HAVE_STRCHR 1
+
+/* Define to 1 if you have the `strcmp' function. */
+#define HAVE_STRCMP 1
 
 /* Define to 1 if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
@@ -176,17 +200,22 @@
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
-/* Define to 1 if you have the `strlcat' function. */
-/* #undef HAVE_STRLCAT */
+/* Define to 1 if you have the `strrchr' function. */
+#define HAVE_STRRCHR 1
 
-/* Define to 1 if you have the `strlcpy' function. */
-/* #undef HAVE_STRLCPY */
+/* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
+   */
+/* #undef HAVE_SYS_DIR_H */
 
 /* Define to 1 if you have the <sys/dl.h> header file. */
 /* #undef HAVE_SYS_DL_H */
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define HAVE_SYS_IOCTL_H 1
+
+/* Define to 1 if you have the <sys/ndir.h> header file, and it defines `DIR'.
+   */
+/* #undef HAVE_SYS_NDIR_H */
 
 /* Define to 1 if you have the <sys/param.h> header file. */
 #define HAVE_SYS_PARAM_H 1
@@ -212,9 +241,6 @@
 /* Define to 1 if you have the <wait.h> header file. */
 #define HAVE_WAIT_H 1
 
-/* This value is set to 1 to indicate that the system argz facility works */
-#define HAVE_WORKING_ARGZ 1
-
 /* where can I find the sniffjoke executable ? */
 #define INSTALL_BINDIR "/usr/local/bin"
 
@@ -236,22 +262,19 @@
 /* Define if the OS needs help to load dependent libraries for dlopen(). */
 /* #undef LTDL_DLOPEN_DEPLIBS */
 
-/* Define to the system default library search path. */
-#define LT_DLSEARCH_PATH "/lib:/usr/lib:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu"
-
-/* The archive extension */
-#define LT_LIBEXT "a"
-
-/* Define to the extension used for runtime loadable modules, say, ".so". */
-#define LT_MODULE_EXT ".so"
-
-/* Define to the name of the environment variable that determines the run-time
-   module search path. */
-#define LT_MODULE_PATH_VAR "LD_LIBRARY_PATH"
-
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
-#define LT_OBJDIR ".libs/"
+#define LTDL_OBJDIR ".libs/"
+
+/* Define to the name of the environment variable that determines the dynamic
+   library search path. */
+#define LTDL_SHLIBPATH_VAR "LD_LIBRARY_PATH"
+
+/* Define to the extension used for shared libraries, say, ".so". */
+#define LTDL_SHLIB_EXT ".so"
+
+/* Define to the system default library search path. */
+#define LTDL_SYSSEARCHPATH "/lib:/usr/lib:/lib/i486-linux-gnu:/usr/lib/i486-linux-gnu:/usr/local/lib"
 
 /* Define if dlsym() requires a leading underscore in symbol names. */
 /* #undef NEED_USCORE */
@@ -271,9 +294,6 @@
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME ""
 
-/* Define to the home page for this package. */
-#define PACKAGE_URL ""
-
 /* Define to the version of this package. */
 #define PACKAGE_VERSION ""
 
@@ -289,8 +309,8 @@
 /* Version number of package */
 #define VERSION ""
 
-/* Define so that glibc/gnulib argp.h does not typedef error_t. */
-/* #undef __error_t_defined */
+/* Define to empty if `const' does not conform to ANSI C. */
+/* #undef const */
 
 /* Define to a type to use for `error_t' if it is not otherwise available. */
 /* #undef error_t */

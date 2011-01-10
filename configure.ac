@@ -2,7 +2,7 @@ AC_INIT
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/service/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 AC_SUBST(PACKAGE_VERSION)
 
 AC_PREFIX_DEFAULT(/usr/local)
@@ -93,22 +93,21 @@ AC_CHECK_HEADERS(sys/types.h,,exit 1)
 AC_CHECK_HEADERS(sys/un.h,,exit 1)
 
 AC_CONFIG_FILES(
-		 Makefile
-                 src/Makefile
-                 src/srv/Makefile
-                 src/cli/Makefile
-                 src/srv/core/Makefile
-                 src/srv/hacks/Makefile
-                 src/srv/hacks/fake_close_fin/Makefile
-                 src/srv/hacks/fake_close_rst/Makefile
-                 src/srv/hacks/fake_data/Makefile
-                 src/srv/hacks/fake_seq/Makefile
-                 src/srv/hacks/fake_syn/Makefile
-                 src/srv/hacks/fake_zero_window/Makefile
-                 src/srv/hacks/shift_ack/Makefile
-                 src/srv/hacks/valid_rst_fake_seq/Makefile
-                 src/srv/hacks/fragmentation/Makefile
-                 src/srv/hacks/fragmentation_with_fake_data/Makefile
+		Makefile
+		src/Makefile
+		src/service/Makefile
+		src/client/Makefile
+		src/plugins/Makefile
+		src/plugins/fake_close_fin/Makefile
+		src/plugins/fake_close_rst/Makefile
+		src/plugins/fake_data/Makefile
+		src/plugins/fake_seq/Makefile
+		src/plugins/fake_syn/Makefile
+		src/plugins/fake_zero_window/Makefile
+		src/plugins/shift_ack/Makefile
+		src/plugins/valid_rst_fake_seq/Makefile
+		src/plugins/fragmentation/Makefile
+		src/plugins/fragmentation_with_fake_data/Makefile
 )
 
 

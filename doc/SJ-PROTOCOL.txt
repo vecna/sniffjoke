@@ -1,0 +1,84 @@
+SniffJoke management (pseudo) protocol:
+
+Sniffjoke service is listening in UDP, waiting for:
+
+TEXTUAL COMMAND (the command are parsed in the method UserConf::handle_cmd), for
+be accepted the first bytes of the sent buffer, needs to match:
+
+start
+stop
+stat
+quit
+saveconf
+info
+showport
+set
+	followed by a space, a 16bit digit, another space, another 16bit digit, 
+	and a keyword with the possible value of:
+		none
+		light
+		normal
+		heavy
+clear
+debug
+	followed by a space and a digit between 1 and 6
+
+FOR EVERY COMMAND SENT, AN OPERATION IN SNIFFJOKE SERVICE WILL HAPPEN, AND A BINARY
+ANSWER IS SENT.
+
+follow single analysis of commands, the struct and define described here are on 
+service/internalProtocol.h
+
+0. SJSTATUS 
+	SJStatus is a bulk of data describing the running status of snifjoke, is used as
+	answer whenever a command will not return a data, for give the status of sniffjoke.
+	len is one byte describing the length of the data, the 8 bit of len included.
+	who is one byte code used for define the kind of data is follow
+	data will be from 1 byte (boolean value) to N byte (dynamic string)
+
+		+--------+--------+---------+
+		|  len 1 | who 1  | data 1  |
+		+--------+--------+---------+
+		...
+		+--------+--------+---------+
+		|  len N | who N  | data N  |
+		+--------+--------+---------+
+
+1. START
+	sent data:
+		+--------+
+		| start  |
+		+--------+
+				5 byte 
+	received data: 
+		struct command_ret :
+		+--------+--------+------------------------ ...
+		| tot_len|  cmd   | follow the data: SJStatus
+		+--------+--------+------------------------ ...
+
+	the struct command_ret contains 4 byte with the length of the entire answer (tot_len
+	included) and the "cmd" is a code confirming the command executed. see section COMMAND CODES.
+	start code is 1.
+	
+2. STOP
+	sent data:
+		+--------+
+		| stop   |
+		+--------+
+				4 byte 
+	received data: 
+		struct command_ret
+		SJStatus
+
+	the received struct are the same explained in START section, the command type for
+	"stop" has value of 2.
+3) stat
+	TO BE CONTINUED
+4) quit
+5) saveconf
+6) info
+7) showport
+8) set
+		none light normal heavy
+9) clear
+10) debug

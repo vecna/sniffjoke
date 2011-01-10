@@ -1,1 +1,1 @@
-SUBDIRS =		srv cli
+SUBDIRS =		client service plugins
