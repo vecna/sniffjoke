@@ -155,6 +155,7 @@ static void sj_version(const char *pname)
 	" --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
 	" --chroot-dir <dir>\truns chroted into the specified dir [default: %s]\n"\
 	" --logfile <file>\tset a logfile, [default: %s%s]\n"\
+	" --start\t\tno options, if present active evasion immediatly [default: %s]\n"\
 	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
 	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
 	" --foreground\t\trunning in foreground [default:background]\n"\
@@ -175,6 +176,7 @@ static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const ch
 		DROP_USER, DROP_GROUP, 
 		basedir,
 		basedir, LOGFILE,
+		DEFAULT_START_STOPPED ? "start" : "off",
 		DEFAULT_DEBUG_LEVEL, 
 		DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
 	);
@@ -203,13 +205,15 @@ int main(int argc, char **argv)
 		{ "foreground", no_argument, NULL, 'x' },
 		{ "force", no_argument, NULL, 'r' },
 		{ "version", no_argument, NULL, 'v' },
-		{ "only-plugin", required_argument, NULL, 'p' },
+		{ "only-plugin", required_argument, NULL, 'p' },	/* not documented in --help */
 		{ "help", no_argument, NULL, 'h' },
+		{ "start", no_argument, NULL, 's' },
+		{ "max-ttl-probe", required_argument, NULL, 'm' },	/* not documented in --help */
 		{ NULL, 0, NULL, 0 }
 	};
 
 	int charopt;
-	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:o:a:xrp:vs:h", sj_option, NULL)) != -1) {
+	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:o:m:a:xrp:vsh", sj_option, NULL)) != -1) {
 		switch(charopt) {
 			case 'o':
 				snprintf(useropt.location, sizeof(useropt.location), "%s", optarg);
@@ -219,6 +223,12 @@ int main(int argc, char **argv)
 				break;
 			case 'e':
 				snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);
+				break;
+			case 'm':
+				useropt.max_ttl_probe = atoi(optarg);
+				break;
+			case 's':
+				useropt.active = true;
 				break;
 			case 'u':
 				snprintf(useropt.user, sizeof(useropt.user), "%s", optarg);

@@ -38,6 +38,10 @@
 /* configuration file */
 #define	PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.conf"
 #define CONF_FILE 			INSTALL_SYSCONFDIR"sniffjoke-service.conf"
+#define AGGRESSIVITY_FILE		INSTALL_SYSCONFDIR"port-aggressivity.conf"
+#define FREQUENCY_FILE			INSTALL_SYSCONFDIR"port-frequency.conf"
+
+/* the --location option in applied to all four defines in INSTALL_SYSCONFDIR */
 #define	DEFAULTLOCATION			"generic"
 
 /* process information */
@@ -55,6 +59,14 @@
 #define DEFAULT_ADMIN_ADDRESS		"127.0.0.1"
 #define	DEFAULT_ADMIN_PORT		8844
 #define SJ_PIDFILE			"/var/run/sniffjoke.pid"
+#define DEFAULT_START_STOPPED		false			// sorry, double negation:
+								// sniffjoke start stopped
+								// and is false to be true
+					// ....................... REMEMBER
+					// LIE IN THE COMMENTS:
+					// http://freeworld.thc.org/root/phun/unmaintain.html
+					// ;)
+
 
 /* TTL caching default basename, appended with gateway mac address and location name */
 #define TTLFOCUSCACHE_FILE		"ttlcache.bin"		// inside chroot_dir

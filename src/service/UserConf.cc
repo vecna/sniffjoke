@@ -65,28 +65,12 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		snprintf(configfile, LARGEBUF, "%s.%s", CONF_FILE, runconfig.location);
 	}
 
-	/* load does not memset to 0 the runconfig struct! */
-	if (!load(cmdline_opts)) {
-		debug.log(ALL_LEVEL, "configuration file: %s not found: using defaults", configfile);
-
-		/* unacceptable that don't exist the file you have request */
-		if(cmdline_opts.cfgfname[0]) 
-			SJ_RUNTIME_EXCEPTION("Requested configuration not loaded");
-
-		/* set up defaults */	   
-		runconfig.active = false;
-		runconfig.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
-
-		/* default is to set all TCP ports in "NORMAL" aggressivity level */
-		for(uint16_t i = 0; i < PORTNUMBER; ++i)
-			runconfig.portconf[i] = NORMAL;
-	}
+	/* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
+	load(cmdline_opts);
 
 	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
 	 * we need only to check if the previous value was different from the default */
 
-
-	/* TODO expand this with the infos below */
 	debug.log(DEBUG_LEVEL, "running variables: location %s enabled %s user %s group %s chroot %s admin address %s logfile %s packets log %s session log %s", runconfig.location, runconfig.enabler, runconfig.user, runconfig.group, runconfig.chroot_dir, runconfig.admin_address, runconfig.logfname, runconfig.logfname_packets, runconfig.logfname_sessions);
 
 
@@ -98,6 +82,7 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 		debug.log(ALL_LEVEL, "sniffjoke-autotest script will generate the appropriate enabler for your location");
 		SJ_RUNTIME_EXCEPTION("");
 	}
+	fclose(test);
 
 	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
 	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -276,6 +261,7 @@ void UserConf::network_setup(void)
 bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keyword) {
 	rewind(cf);
 	char line[MEDIUMBUF];
+
 	do {
 		fgets(line, MEDIUMBUF, cf);
 
@@ -296,50 +282,111 @@ bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keywor
 	return false;
 }
 
+/* start with the less used (only one time, for this reason differ) parseMatch overloaded name */
+bool UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, const bool difolt)
+{
+	char useropt[SMALLBUF];
+
+	/* command line priority always */
+	if(cmdopt != difolt)
+		return cmdopt;
+	else
+		dst = difolt;
+
+	if(cf == NULL)
+		return difolt;
+
+	memset(useropt, 0x00, SMALLBUF);
+
+	if(parseLine(cf, useropt, name)) 
+	{
+		debug.log(ALL_LEVEL, "%s/bool: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
+		/* dst is large MEDIUMBUF, and none useropt will overflow this size */
+		if(!memcmp(useropt, "true", strlen("true")))
+			dst = true;
+
+		if(!memcmp(useropt, "false", strlen("false")))
+			dst = false;
+
+		return true;
+	}
+	return false;
+}
+
 bool UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
 {
 	char useropt[SMALLBUF];
 	memset(useropt, 0x00, SMALLBUF);
 
-	if(parseLine(cf, useropt, name)) {
-		debug.log(ALL_LEVEL, "%s: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
-		/* dst is large MEDIUMBUF */
+	/* only-plugin will be empty, no other cases */
+	if(cf == NULL && difolt == NULL)
+		return false;
+
+	/* if the file is NULL, the default is used */
+	if(cf == NULL) {
+		memcpy(dst, difolt, strlen(difolt));
+		return true;
+	}
+
+	if(parseLine(cf, useropt, name)) 
+	{
+		debug.log(ALL_LEVEL, "%s/string: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
+		/* dst is large MEDIUMBUF, and none useropt will overflow this size */
 		memcpy(dst, useropt, strlen(useropt));
-		if(!memcmp(dst,cmdopt,strlen(dst)) && !memcmp(dst,difolt,strlen(difolt))) {
+
+		if(!memcmp(dst,cmdopt,strlen(dst)) && !memcmp(dst,difolt,strlen(difolt))) 
+		{
 			debug.log(ALL_LEVEL, "warning, config file specify '%s' as %s, command line as %s (default %s). used %s",
 				name, dst, cmdopt, difolt, cmdopt);
 			memcpy(dst, cmdopt, strlen(cmdopt));
 		}
 		return true;
 	}
+
+	if(difolt != NULL)
+		memcpy(dst, difolt, strlen(difolt));
+
 	return false;
 }
 
 bool UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, const uint16_t difolt)
 {
 	char useropt[SMALLBUF];
+	/* if the file is NULL, the default is used */
+	if(cf == NULL) {
+		memcpy( (void *)&dst, (void *)&difolt, sizeof(difolt));
+		return true;
+	}
 	memset(useropt, 0x00, SMALLBUF);
 
-	if(parseLine(cf, useropt, name)) {
-		debug.log(ALL_LEVEL, "%s: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
+	if(parseLine(cf, useropt, name)) 
+	{
+		debug.log(ALL_LEVEL, "%s/uint16: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
 		dst = atoi(useropt);
-		if(dst != cmdopt && dst != difolt) {
+
+		if(dst != cmdopt && dst != difolt) 
+		{
 			debug.log(ALL_LEVEL, "warning, config file specify '%s' as %d, command line as %d (default %d). used %d",
 				name, dst, cmdopt, difolt, cmdopt);
 			dst = cmdopt;
 		}
 		return true;
 	}
+
+	if(difolt)
+		dst = difolt;
+
 	return false;
 }
 
 bool UserConf::load(const struct sj_cmdline_opts &cmdline_opts)
 {
 	FILE *loadfd;	
-	debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
 
-	if ((loadfd = sj_fopen(configfile, "r")) == NULL) 
-		goto unabletoload;
+	if ((loadfd = sj_fopen(configfile, "r")) == NULL)
+		debug.log(ALL_LEVEL, "configuration file %s not accessible: %s, using default", configfile, strerror(errno));
+	else
+		debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
 
 	parseMatch(runconfig.enabler, "enabler", loadfd, cmdline_opts.enabler, PLUGINSENABLER);
 	parseMatch(runconfig.user, "user", loadfd, cmdline_opts.user, DROP_USER);
@@ -356,16 +403,27 @@ bool UserConf::load(const struct sj_cmdline_opts &cmdline_opts)
 	parseMatch(runconfig.admin_port, "management-port", loadfd, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
 	parseMatch(runconfig.debug_level, "debug", loadfd, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
 	parseMatch(runconfig.onlyplugin, "only-plugin", loadfd, cmdline_opts.onlyplugin, NULL);
+	if(runconfig.onlyplugin[0])
+		debug.log(VERBOSE_LEVEL, "single plugin %s will override plugins list in the enabler file", runconfig.onlyplugin);
 
-	fclose(loadfd);
+	parseMatch(runconfig.active, "active", loadfd, cmdline_opts.active, DEFAULT_START_STOPPED);
+	parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadfd, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
+
+	/* in main.cc not supporte ATM */
+	parseMatch(runconfig.aggressivity_file, "aggressivity-file", loadfd, cmdline_opts.aggressivity_file, NULL);
+	parseMatch(runconfig.frequency_file, "frequency-file", loadfd, cmdline_opts.frequency_file, NULL);
+
+	/* TODO BOTH OF THEM 						*/
+	/* loadAggressivity(runconfig.aggressivity_file); 		*/
+	/* loadFrequency(runconfig.frequency_file); 			*/
+	/* YES, XXX, TODO INSTEAD OF: 					*/
+	for(uint16_t i = 0; i < PORTNUMBER; ++i)
+		runconfig.portconf[i] = NORMAL;
+
+	if(loadfd)
+		fclose(loadfd);
+
 	return true;
-unabletoload:
-	return false;
-}
-
-void UserConf::dump(void)
-{
-	debug.log(ALL_LEVEL, "dump non implemented ATM");
 }
 
 void UserConf::attach_sessiontrackmap(SessionTrackMap* s)
@@ -396,8 +454,8 @@ uint8_t* UserConf::handle_cmd(const char *cmd)
 		handle_cmd_stop();
 	} else if (!memcmp(cmd, "quit", strlen("quit"))) {
 		handle_cmd_quit();
-	} else if (!memcmp(cmd, "saveconf", strlen("saveconf"))) {
-		handle_cmd_saveconf();
+	} else if (!memcmp(cmd, "dump", strlen("dump"))) {
+		handle_cmd_dump();
 	} else if (!memcmp(cmd, "stat", strlen("stat"))) {
 		handle_cmd_stat();
 	} else if (!memcmp(cmd, "info", strlen("info"))) {
@@ -475,11 +533,36 @@ void UserConf::handle_cmd_quit()
 	write_SJStatus(QUIT_COMMAND_TYPE);
 }
 
-void UserConf::handle_cmd_saveconf()
+/* simple utiliy for dumping */
+uint32_t UserConf::dumpIfPresent(uint8_t *p, uint32_t datal, const char *name, char *data) {
+	uint32_t written = 0;
+
+	if(data[0]) {
+		written = snprintf((char *)p, datal, "%s:%s\n", name, data);
+	}
+	return written;
+}
+
+uint32_t UserConf::dumpComment(uint8_t *p, uint32_t datal, const char *writedblock) {
+	return snprintf((char *)p, datal, writedblock);
+}
+
+void UserConf::handle_cmd_dump()
 {
-	dump();
-	debug.log(VERBOSE_LEVEL, "%s: configuration saved", __func__);
-	write_SJStatus(SAVE_COMMAND_TYPE);
+	struct command_ret retInfo;
+	uint32_t dumplen = sizeof(retInfo);
+	uint32_t avail = HUGEBUF - dumplen;
+
+	debug.log(VERBOSE_LEVEL, "%s: configuration dumped to the client", __func__);
+	avail -= dumpComment(io_buf, avail, "# this is a dumped file by SniffJoke version ");
+	avail -= dumpComment(io_buf, avail, SW_VERSION);
+	avail -= dumpComment(io_buf, avail, "\n");
+	avail -= dumpIfPresent(io_buf, avail, "enabler", runconfig.enabler);
+	avail -= dumpIfPresent(io_buf, avail, "chroot", runconfig.chroot_dir);
+
+	retInfo.command_type = DUMP_COMMAND_TYPE;
+	retInfo.len = HUGEBUF - avail;
+	memcpy(&io_buf[0], &retInfo, sizeof(retInfo));
 }
 
 void UserConf::handle_cmd_stat(void) 
@@ -531,7 +614,8 @@ void UserConf::handle_cmd_debuglevel(int32_t newdebuglevel)
 
 /*
  * follow the method used for compose the io_buf with the internalProtocol.h struct,
- * those methods are keep private in UserConf
+ * those methods are intetnal in UserConf, and are, exception noted for handle_cmd_dump,
+ * the only commands writing in io_buf and generating answer.
  */
 void UserConf::write_SJPortStat(uint8_t type)
 {

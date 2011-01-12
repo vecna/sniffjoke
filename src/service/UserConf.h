@@ -38,13 +38,17 @@ struct sj_cmdline_opts {
 		char user[MEDIUMBUF];
 		char group[MEDIUMBUF];
 		char chroot_dir[MEDIUMBUF];
-		char logfname[LARGEBUF];
-		char logfname_packets[LARGEBUF];
-		char logfname_sessions[LARGEBUF];
+		char logfname[MEDIUMBUF];
+		char logfname_packets[MEDIUMBUF];
+		char logfname_sessions[MEDIUMBUF];
 		uint16_t debug_level;
 		char admin_address[MEDIUMBUF];
 		uint16_t admin_port;
 		char onlyplugin[MEDIUMBUF];
+		bool active;
+		uint16_t max_ttl_probe;
+		char aggressivity_file[MEDIUMBUF];
+		char frequency_file[MEDIUMBUF];
 		/* END OF COMMON PART WITH sj_config */
 
 		bool go_foreground;
@@ -75,7 +79,6 @@ struct sj_cmdline_opts {
 struct sj_config {
 		float MAGIC;				/* integrity check for saved binary configuration */
 		char version[SMALLBUF];			/* SW_VERSION from hardcoded-defines.h */
-		bool active;				/* default: false = NOT ACTIVE */
 		bool chrooted;				/* defauit: false = NOT CHROOTED */
 	
 		/* START OF COMMON PART WITH sj_cmdline_opt */
@@ -84,19 +87,22 @@ struct sj_config {
 		char user[MEDIUMBUF];			/* default: idem */
 		char group[MEDIUMBUF];			/* default: idem */
 		char chroot_dir[MEDIUMBUF];		/* default: idem */
-		char logfname[LARGEBUF];		/* default: idem */
-		char logfname_packets[LARGEBUF];	/* default: idem */
-		char logfname_sessions[LARGEBUF];	/* default: idem */
+		char logfname[MEDIUMBUF];		/* default: idem */
+		char logfname_packets[MEDIUMBUF];	/* default: idem */
+		char logfname_sessions[MEDIUMBUF];	/* default: idem */
 		uint16_t debug_level;			/* default: idem */
 		char admin_address[MEDIUMBUF];		/* default: idem */
 		uint16_t admin_port;			/* default: idem */
 		char onlyplugin[MEDIUMBUF];		/* default: empty */
+		bool active;				/* default: false = NOT ACTIVE */
+		uint16_t max_ttl_probe;			/* default: idem */
+		char aggressivity_file[MEDIUMBUF];	/* default: idem */
+		char frequency_file[MEDIUMBUF];		/* default: idem */
 		/* END OF COMMON PART WITH sj_cmdline_opt */
 
 		/* those value are derived from sj_cmdline_opt but parsed in UserConf.cc */
 		char ttlfocuscache_file[MEDIUMBUF];	/* constructed with TTLFOCUSCACHE_FILE + location */
 
-		uint8_t max_ttl_probe;			/* default: idem */
 		uint8_t portconf[PORTNUMBER];
 	
 		char local_ip_addr[SMALLBUF];		/* default: autodetect */
@@ -142,7 +148,7 @@ public:
 		void handle_cmd_start(void);
 		void handle_cmd_stop(void);
 		void handle_cmd_quit(void);
-		void handle_cmd_saveconf(void);
+		void handle_cmd_dump(void);
 		void handle_cmd_stat(void);
 		void handle_cmd_info(void);
 		void handle_cmd_showport(void);
@@ -157,10 +163,13 @@ public:
 		uint8_t *appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
 		uint8_t *append_SJportBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
 		void write_SJProtoError(void);
+		uint32_t dumpComment(uint8_t *, uint32_t, const char *);
+		uint32_t dumpIfPresent(uint8_t *, uint32_t, const char *, char *);
 
 		/* file loading support */
 		bool parseMatch(char *, const char *, FILE *, const char *, const char *);
 		bool parseMatch(uint16_t &, const char *, FILE *, uint16_t, const uint16_t);
+		bool parseMatch(bool &, const char *, FILE *, bool, const bool);
 		bool parseLine(FILE *, char *, const char *);
 };
 
