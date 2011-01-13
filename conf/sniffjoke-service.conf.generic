@@ -1,0 +1,11 @@
+# hi, this is a test
+active
+# enabler
+user nobody
+management 0.0.0.0
+debug 6
+# bye
+
+# wow
+max-ttl-probe 30
+

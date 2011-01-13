@@ -52,7 +52,7 @@ public:
 
 	pid_t readPidfile();
 	void writePidfile();
-	void unlinkPidfile();
+	void unlinkPidfile(bool);
 
 
 	int detach();

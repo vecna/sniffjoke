@@ -232,21 +232,43 @@ void Process::writePidfile(void)
 	fclose(pidFile);
 }
 
-void Process::unlinkPidfile(void) 
+/* pidfile will be deleted if personal or derived from another process, the argument mean this */
+void Process::unlinkPidfile(bool killOther) 
 {
 	FILE *pidFile = fopen(SJ_PIDFILE, "r");
+	char line[SMALLBUF];
+	pid_t written;
 
 	if (pidFile == NULL) {
-		debug.log(DEBUG_LEVEL, "%s: unlink of %s: %s", __func__, SJ_PIDFILE, strerror(errno));
+		debug.log(DEBUG_LEVEL, "%s: error with file %s: %s", __func__, SJ_PIDFILE, strerror(errno));
 		return;
 	}
 
+	fgets(line, SMALLBUF, pidFile);
+	written = atoi(line);
 	fclose(pidFile);
+
+	if(!written) {
+		debug.log(DEBUG_LEVEL, "%s: unable to read of %s", __func__, SJ_PIDFILE);
+		goto __unlinkPidfile;
+	} 
+
+	if(written != getpid() && killOther) {
+		debug.log(DEBUG_LEVEL, "%s: ready to delete %s with %d pid (we are %d)", __func__, SJ_PIDFILE, written, getpid());
+		goto __unlinkPidfile;
+	}
+
+	if(written != getpid()) {
+		debug.log(DEBUG_LEVEL, "%s: ignored request (written %d we %d)", __func__, written, getpid());
+		return;
+	}
+
+__unlinkPidfile:
 	if (unlink(SJ_PIDFILE)) {
-		debug.log(VERBOSE_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
+		debug.log(ALL_LEVEL, "%s: weird, I'm able to open but not unlink %s: %s", __func__, SJ_PIDFILE, strerror(errno));
                 SJ_RUNTIME_EXCEPTION("");
 	}
-	debug.log(DEBUG_LEVEL, "%s: pid %d unlink pidfile %s", __func__, getpid(), SJ_PIDFILE);
+	debug.log(DEBUG_LEVEL, "%s: pid %d unlinked pidfile %s", __func__, getpid(), SJ_PIDFILE);
 }
 
 

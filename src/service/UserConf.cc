@@ -49,9 +49,9 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	memset(&runconfig, 0x00, sizeof(sj_config));
 
 	if (!cmdline_opts.location[0]) {
-		debug.log(ALL_LEVEL, "is highly suggestes to use sniffjoke specifying a location (--location option)");
-		debug.log(ALL_LEVEL, "a defined location means that the network it's profiled for the best results");
-		debug.log(ALL_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
+		debug.log(VERBOSE_LEVEL, "is highly suggestes to use sniffjoke specifying a location (--location option)");
+		debug.log(VERBOSE_LEVEL, "a defined location means that the network it's profiled for the best results");
+		debug.log(VERBOSE_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
 		memcpy(runconfig.location, DEFAULTLOCATION, strlen(DEFAULTLOCATION));
 	} else {
 		memcpy(runconfig.location, cmdline_opts.location, strlen(cmdline_opts.location));
@@ -68,30 +68,58 @@ UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts, bool &sj_alive) :
 	/* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
 	load(cmdline_opts);
 
-	/* the command line useopt is filled with the default in main.cc; if the user have overwritten with --options
-	 * we need only to check if the previous value was different from the default */
-
-	debug.log(DEBUG_LEVEL, "running variables: location %s enabled %s user %s group %s chroot %s admin address %s logfile %s packets log %s session log %s", runconfig.location, runconfig.enabler, runconfig.user, runconfig.group, runconfig.chroot_dir, runconfig.admin_address, runconfig.logfname, runconfig.logfname_packets, runconfig.logfname_sessions);
-
-
-	/* SANITY CHECK BEFORE ACCEPT THE OPTIONS */
-	FILE *test = sj_fopen(runconfig.enabler, runconfig.location, "r");
-	if(test == NULL) {
-		debug.log(ALL_LEVEL, "Sanity check: is required the enabler file, and the default (%s.%s) is not present", 
-			runconfig.enabler, runconfig.location);
-		debug.log(ALL_LEVEL, "sniffjoke-autotest script will generate the appropriate enabler for your location");
-		SJ_RUNTIME_EXCEPTION("");
-	}
-	fclose(test);
-
-	/* the configuration file must remain root:root 666 because the user should/must/can overwrite later */
-	chmod(configfile, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+	/* sanity check Checking filename + location specified and filename + default location */
+	if(runconfig.enabler[0])
+		fixLocation(runconfig.enabler, runconfig.location, "enabler file");
+/*	fixLocation(runconfig.aggressivity_file, runconfig.location, "port aggressivity file"); */
+/*	fixLocation(runconfig.frequency_file, runconfig.location, "port frequency file");	*/
 }
 
 UserConf::~UserConf()
 {
 	debug.log(DEBUG_LEVEL, "%s [process %d chroot %s], referred config file %s",
 		 __func__, getpid(), chroot_status ? "YES" : "NO", configfile);
+}
+
+/* three combination will be present: 1) the user has defined the filename complete with
+ * the location name, 2) the location has to be append 3) the file + location don't exist 
+ * and we need to use the file + default location.
+ *
+ * if none exist, an exception is shooted
+ */
+void UserConf::fixLocation(char file[MEDIUMBUF], char location[MEDIUMBUF], const char *userdef)
+{
+	char composedname[MEDIUMBUF];
+
+	/* 1) $file.$location */
+	snprintf(composedname, MEDIUMBUF, "%s.%s", file, location);
+	if(!access(composedname, R_OK)) {
+		debug.log(DEBUG_LEVEL, "file checking: %s using %s", userdef, composedname);
+		memcpy(file, composedname, MEDIUMBUF);
+		return;
+	}
+
+	/* 2) $file.$generic_location */
+	snprintf(composedname, MEDIUMBUF, "%s.%s", file, DEFAULTLOCATION);
+	if(!access(composedname, R_OK)) {
+		debug.log(DEBUG_LEVEL, "file checking: %s using %s", userdef, composedname);
+		memcpy(file, composedname, MEDIUMBUF);
+		return;
+	}
+
+	/* 3) will be wrong to be supported ?: file only */
+	if(!access(file, R_OK)) {
+		debug.log(DEBUG_LEVEL, "file checking: %s using %s (are not using location properly!)", userdef, file);
+		return;
+	}
+
+	debug.log(ALL_LEVEL, "%s not found: checked %s with location and without", userdef, file);
+	debug.log(ALL_LEVEL, "sniffjoke-autotest script will help you to generate the location files");
+	SJ_RUNTIME_EXCEPTION("");
+
+	/* the configuration should be 220 because is accessed only in reading by sniffjoke */
+	/* chmod(configfile, S_IRUSR|S_IWGRP); */
+	/* did this have sense ? verify */
 }
 
 /* private function useful for resolution of code/name */
@@ -283,24 +311,28 @@ bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keywor
 }
 
 /* start with the less used (only one time, for this reason differ) parseMatch overloaded name */
-bool UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, const bool difolt)
+void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, const bool difolt)
 {
 	char useropt[SMALLBUF];
+	const char *debugfmt = NULL;
 
 	/* command line priority always */
-	if(cmdopt != difolt)
-		return cmdopt;
-	else
-		dst = difolt;
+	if(cmdopt != difolt) {
+		dst = cmdopt;
+		debugfmt = "%s/bool: keyword %s used command line value: [%s]";
+		goto EndparseMatchBool;
+	}
 
-	if(cf == NULL)
-		return difolt;
+	if(cf == NULL) {
+		dst = difolt;
+		debugfmt = "%s/bool: keyword %s config file not present, used default: [%s]";
+		goto EndparseMatchBool;
+	}
 
 	memset(useropt, 0x00, SMALLBUF);
 
 	if(parseLine(cf, useropt, name)) 
 	{
-		debug.log(ALL_LEVEL, "%s/bool: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
 		/* dst is large MEDIUMBUF, and none useropt will overflow this size */
 		if(!memcmp(useropt, "true", strlen("true")))
 			dst = true;
@@ -308,75 +340,99 @@ bool UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
 		if(!memcmp(useropt, "false", strlen("false")))
 			dst = false;
 
-		return true;
+		debugfmt = "%s/bool: keyword %s read from config file: [%s]";
+	} else {
+		dst = difolt;
+		debugfmt = "%s/bool: not found %s option in conf file, using default: [%s]";
 	}
-	return false;
+
+EndparseMatchBool:
+	debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst ? "true" : "false");
 }
 
-bool UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
+void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
 {
 	char useropt[SMALLBUF];
+	const char *debugfmt = NULL;
+
 	memset(useropt, 0x00, SMALLBUF);
 
 	/* only-plugin will be empty, no other cases */
-	if(cf == NULL && difolt == NULL)
-		return false;
+	if(cf == NULL && difolt == NULL) {
+		debugfmt = "%s/string: conf file not found and option neither: used no value in %s";
+		memset(dst, 0x00, MEDIUMBUF);
+		goto EndparseMatchString;
+	}
 
 	/* if the file is NULL, the default is used */
 	if(cf == NULL) {
+		debugfmt = "%s/string: conf file not found, for %s used default %s";
 		memcpy(dst, difolt, strlen(difolt));
-		return true;
+		goto EndparseMatchString;
 	}
 
 	if(parseLine(cf, useropt, name)) 
 	{
-		debug.log(ALL_LEVEL, "%s/string: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
+		debugfmt = "%s/string: parsed keyword %s [%s] option in conf file";
 		/* dst is large MEDIUMBUF, and none useropt will overflow this size */
 		memcpy(dst, useropt, strlen(useropt));
 
-		if(!memcmp(dst,cmdopt,strlen(dst)) && !memcmp(dst,difolt,strlen(difolt))) 
+		if(!memcmp(dst, cmdopt, strlen(dst)) && !memcmp(dst, difolt, strlen(difolt))) 
 		{
-			debug.log(ALL_LEVEL, "warning, config file specify '%s' as %s, command line as %s (default %s). used %s",
+			debug.log(VERBOSE_LEVEL, "warning, config file specify '%s' as %s, command line as %s (default %s). used %s",
 				name, dst, cmdopt, difolt, cmdopt);
+			memset(dst, 0x00, MEDIUMBUF);
 			memcpy(dst, cmdopt, strlen(cmdopt));
+			debugfmt = "%s/string: keyword %s command line override, %s used";
 		}
-		return true;
+		goto EndparseMatchString;
 	}
 
-	if(difolt != NULL)
+	/* if was not found in the file, the default is used */
+	if(difolt != NULL) {
+		memset(dst, 0x00, MEDIUMBUF);
 		memcpy(dst, difolt, strlen(difolt));
+		debugfmt = "%s/string: %s not found in config file, used default %s";
+	}
 
-	return false;
+EndparseMatchString:
+	debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst);
 }
 
-bool UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, const uint16_t difolt)
+void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, const uint16_t difolt)
 {
 	char useropt[SMALLBUF];
+	const char *debugfmt = NULL;
+
 	/* if the file is NULL, the default is used */
 	if(cf == NULL) {
 		memcpy( (void *)&dst, (void *)&difolt, sizeof(difolt));
-		return true;
+		debugfmt = "%s/uint16: conf file not found, for %s used default %d";
+		goto EndparseMatchShort;
 	}
 	memset(useropt, 0x00, SMALLBUF);
 
 	if(parseLine(cf, useropt, name)) 
 	{
-		debug.log(ALL_LEVEL, "%s/uint16: parsed keyword %s [%s] option in conf file", __func__, name, useropt);
+		debugfmt = "%s/uint16: parsed keyword %s [%d] option in conf file";
 		dst = atoi(useropt);
 
 		if(dst != cmdopt && dst != difolt) 
 		{
-			debug.log(ALL_LEVEL, "warning, config file specify '%s' as %d, command line as %d (default %d). used %d",
+			debug.log(VERBOSE_LEVEL, "warning, config file specify '%s' as %d, command line as %d (default %d). used %d",
 				name, dst, cmdopt, difolt, cmdopt);
 			dst = cmdopt;
 		}
-		return true;
+		goto EndparseMatchShort;
 	}
 
-	if(difolt)
+	if(difolt) {
+		debugfmt = "%s/uint16: %s not found in config file, used default %d";
 		dst = difolt;
+	}
 
-	return false;
+EndparseMatchShort:
+	debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst);
 }
 
 bool UserConf::load(const struct sj_cmdline_opts &cmdline_opts)
@@ -403,8 +459,10 @@ bool UserConf::load(const struct sj_cmdline_opts &cmdline_opts)
 	parseMatch(runconfig.admin_port, "management-port", loadfd, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
 	parseMatch(runconfig.debug_level, "debug", loadfd, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
 	parseMatch(runconfig.onlyplugin, "only-plugin", loadfd, cmdline_opts.onlyplugin, NULL);
-	if(runconfig.onlyplugin[0])
+	if(runconfig.onlyplugin[0]) {
 		debug.log(VERBOSE_LEVEL, "single plugin %s will override plugins list in the enabler file", runconfig.onlyplugin);
+		memset(runconfig.enabler, 0x00, MEDIUMBUF);
+	}
 
 	parseMatch(runconfig.active, "active", loadfd, cmdline_opts.active, DEFAULT_START_STOPPED);
 	parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadfd, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);

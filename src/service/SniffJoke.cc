@@ -58,10 +58,10 @@ void SniffJoke::run()
 	if (old_service_pid != 0) {
 		if (!opts.force_restart) {
 			debug.log(ALL_LEVEL, "SniffJoke is already runconfig, use --force or check --help");
-			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently runconfig pid: %d", SJ_PIDFILE, old_service_pid);
+			debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, old_service_pid);
 			return;
 		} else {
-			debug.log(VERBOSE_LEVEL, "forcing exit of previous runconfig service %d ...", old_service_pid);
+			debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", old_service_pid);
 			
 			/* we have to do quite the same as in sniffjoke_server_cleanup,
 			 * but relative to the service_pid read with readPidfile;
@@ -69,13 +69,13 @@ void SniffJoke::run()
 			 * we can use a sleep(2) instead. */
 			kill(old_service_pid, SIGTERM);
 			sleep(2);
-			proc.unlinkPidfile();
-			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going runconfig in background");
+			proc.unlinkPidfile(true);
+			debug.log(ALL_LEVEL, "A new instance of SniffJoke is going background");
 		}
 	}
 
 	if (!old_service_pid && opts.force_restart)
-		debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously runconfig SniffJoke");
+		debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously running SniffJoke");
 
 	/* runconfig the network setup before the background, for keep the software output visible on the console */
 	userconf.network_setup();
@@ -201,7 +201,7 @@ void SniffJoke::server_root_cleanup()
 		waitpid(service_pid, NULL, WUNTRACED);
 	}
 
-	proc.unlinkPidfile();
+	proc.unlinkPidfile(false);
 }
 
 void SniffJoke::server_user_cleanup()

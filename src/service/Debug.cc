@@ -85,6 +85,13 @@ void Debug::log(uint8_t errorlevel, const char *msg, ...)
 
 		va_start(arguments, msg);
 		fprintf(output_flow, "%s ", time_str);
+
+		/* the debug level used in development require a pid/uid addictional block */
+		if(errorlevel == DEBUG_LEVEL)
+			fprintf(output_flow, "%d/%d ", getpid(), getuid());
+		/* yes, if you dig in the github, will discover that this line has been added 
+		 * after one year of developing */
+
 		vfprintf(output_flow, msg, arguments);
 		fprintf(output_flow, "\n");
 		fflush(output_flow);

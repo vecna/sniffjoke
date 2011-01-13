@@ -167,10 +167,12 @@ public:
 		uint32_t dumpIfPresent(uint8_t *, uint32_t, const char *, char *);
 
 		/* file loading support */
-		bool parseMatch(char *, const char *, FILE *, const char *, const char *);
-		bool parseMatch(uint16_t &, const char *, FILE *, uint16_t, const uint16_t);
-		bool parseMatch(bool &, const char *, FILE *, bool, const bool);
+		void parseMatch(char *, const char *, FILE *, const char *, const char *);
+		void parseMatch(uint16_t &, const char *, FILE *, uint16_t, const uint16_t);
+		void parseMatch(bool &, const char *, FILE *, bool, const bool);
 		bool parseLine(FILE *, char *, const char *);
+		void fixLocation(char *, char *, const char *);
+
 };
 
 #endif /* SJ_CONF_H */
