@@ -40,95 +40,117 @@ using namespace std;
 /* IT'S FUNDAMENTAL TO HAVE ALL ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
 /* queue_t is a a reflection variable used by packet to know in what queue it's inserted */
-enum queue_t { QUEUEUNASSIGNED = 0, YOUNG = 1,	KEEP = 2, SEND = 4 };
+enum queue_t
+{
+    QUEUEUNASSIGNED = 0, YOUNG = 1, KEEP = 2, SEND = 4
+};
 
 /* if the packet is inject from sniffjoke is marked with the evilbit */
-enum evilbit_t { MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2 };
+enum evilbit_t
+{
+    MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2
+};
 
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
-enum source_t { SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 4, TTLBFORCE = 8 };
+enum source_t
+{
+    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 4, TTLBFORCE = 8
+};
 
 /* Every sniffjoke packet is based on be discarged from the remote host and accepted from
  * the sniffer, in order to obtain the sniffer tracking poisoning, those marker mean if the
  * packet need to be plain and correct (INNOCENT) to expire prematurely (PRESCRIPTION) to be 
  * consider bad and discarged (GUILTY, corrupt the TCP checksum), MALFORMED (weird ip options)
  * or a random choose of those */
-enum judge_t { JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8 };
+enum judge_t
+{
+    JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8
+};
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
-enum proto_t { PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 4 };
+enum proto_t
+{
+    PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 4
+};
 
 /* a sniffjoke packet should be send before the original packet or after the original packet */
-enum position_t { POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 4 };
+enum position_t
+{
+    POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 4
+};
 
-class Packet {
+class Packet
+{
 private:
-	queue_t queue;
-	Packet *prev;
-	Packet *next;
-	friend class PacketQueue;
+    queue_t queue;
+    Packet *prev;
+    Packet *next;
+    friend class PacketQueue;
 
 public:
-	evilbit_t evilbit;
-	source_t source;
-	proto_t proto;
-	position_t position;
+    evilbit_t evilbit;
+    source_t source;
+    proto_t proto;
+    position_t position;
 
-	/* this is what the hack has decided to do, 
-	 * had choosed between the Hack.avaialableScramble */
-	judge_t wtf;
-	/* this is what's the packet will accept if the 'wtf' 
-	 * will not be used, (rarely will happen) */
-	uint8_t choosableScramble;
+    /* this is what the hack has decided to do,
+     * had choosed between the Hack.avaialableScramble */
+    judge_t wtf;
+    /* this is what's the packet will accept if the 'wtf'
+     * will not be used, (rarely will happen) */
+    uint8_t choosableScramble;
 
-	vector<unsigned char> pbuf;
+    vector<unsigned char> pbuf;
 
-	struct iphdr *ip;
-	uint8_t iphdrlen;	/* [20 - 60] bytes */
-	
-	bool ipfragment;
+    struct iphdr *ip;
+    uint8_t iphdrlen; /* [20 - 60] bytes */
 
-	struct tcphdr *tcp;
-	uint8_t tcphdrlen;	/* [20 - 60] bytes */
+    bool ipfragment;
 
-	unsigned char *payload;
-	uint16_t datalen;	/* [0 - 65515] bytes */
+    struct tcphdr *tcp;
+    uint8_t tcphdrlen; /* [20 - 60] bytes */
 
-	struct icmphdr *icmp;
-	
-	Packet(const unsigned char *, uint16_t);
-	Packet(const Packet &);
-	virtual ~Packet(void) {};
+    unsigned char *payload;
+    uint16_t datalen; /* [0 - 65515] bytes */
 
-	void updatePacketMetadata(void);
+    struct icmphdr *icmp;
 
-	void mark(source_t, evilbit_t);
-	void mark(source_t, judge_t, evilbit_t);
-	
-	/* IP/TCP checksum functions */
-	uint32_t half_cksum(const void *, uint16_t);
-	uint16_t compute_sum(uint32_t);
-	void fixIpSum(void);
-	void fixIpTcpSum(void);
-	void fixSum(void);
-	void corruptSum(void);
+    Packet(const unsigned char *, uint16_t);
+    Packet(const Packet &);
 
-	/* autochecking */
-	bool selfIntegrityCheck(const char *);
-	
-	/* functions required in TCP/IP packets forging */
-	void IPHDR_resize(uint8_t);
-	void TCPHDR_resize(uint8_t);
-	void TCPPAYLOAD_resize(uint16_t);
-	void TCPPAYLOAD_fillrandom(void);
+    virtual ~Packet(void)
+    {
+    };
 
-	/* MALFORMED hacks and distortion of INNOCENT packets */
-	bool Inject_IPOPT(bool, bool);
-	bool Inject_TCPOPT(bool, bool);
+    void updatePacketMetadata(void);
 
-	/* utilities */
-	void selflog(const char *, const char *) const;
-	char debug_buf[LARGEBUF];
+    void mark(source_t, evilbit_t);
+    void mark(source_t, judge_t, evilbit_t);
+
+    /* IP/TCP checksum functions */
+    uint32_t half_cksum(const void *, uint16_t);
+    uint16_t compute_sum(uint32_t);
+    void fixIpSum(void);
+    void fixIpTcpSum(void);
+    void fixSum(void);
+    void corruptSum(void);
+
+    /* autochecking */
+    bool selfIntegrityCheck(const char *);
+
+    /* functions required in TCP/IP packets forging */
+    void IPHDR_resize(uint8_t);
+    void TCPHDR_resize(uint8_t);
+    void TCPPAYLOAD_resize(uint16_t);
+    void TCPPAYLOAD_fillrandom(void);
+
+    /* MALFORMED hacks and distortion of INNOCENT packets */
+    bool Inject_IPOPT(bool, bool);
+    bool Inject_TCPOPT(bool, bool);
+
+    /* utilities */
+    void selflog(const char *, const char *) const;
+    char debug_buf[LARGEBUF];
 };
 
 #endif /* SJ_PACKET_H */

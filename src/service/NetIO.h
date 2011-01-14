@@ -32,39 +32,40 @@
 
 #define BURSTSIZE       10
 
-class NetIO {
+class NetIO
+{
 private:
-	/* 
-	 * these data are required for handle 
-	 * tunnel/ethernet man in the middle
-	 */
-	struct sockaddr_ll send_ll;
-	struct sj_config &runconfig;
+    /*
+     * these data are required for handle
+     * tunnel/ethernet man in the middle
+     */
+    struct sockaddr_ll send_ll;
+    struct sj_config &runconfig;
 
-	/* tunfd/netfd: file descriptor for I/O purpose */
-	int tunfd;
-	int netfd;
-	
-        /* poll variables, two file descriptors */
-        struct pollfd fds[2];
-        int nfds;
+    /* tunfd/netfd: file descriptor for I/O purpose */
+    int tunfd;
+    int netfd;
 
-	TCPTrack *conntrack;
+    /* poll variables, two file descriptors */
+    struct pollfd fds[2];
+    int nfds;
 
-	unsigned char pktbuf[MTU];
-	int size;
+    TCPTrack *conntrack;
+
+    unsigned char pktbuf[MTU];
+    int size;
 
 public:
 
-	/*
-	 * networkdown_condition express if the network is down and sniffjoke must be interrupted 
-	 *	   --- but not killed!
-	 */
+    /*
+     * networkdown_condition express if the network is down and sniffjoke must be interrupted
+     *       --- but not killed!
+     */
 
-	NetIO(sj_config &);
-	~NetIO(void);
-	void prepare_conntrack(TCPTrack *);
-	void network_io(void);
+    NetIO(sj_config &);
+    ~NetIO(void);
+    void prepare_conntrack(TCPTrack *);
+    void network_io(void);
 };
 
 #endif /* SJ_NETIO_H */

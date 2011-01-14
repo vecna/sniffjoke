@@ -26,29 +26,34 @@
 #include "Utils.h"
 #include "Packet.h"
 
-#define FIRST_QUEUE	(YOUNG)
-#define LAST_QUEUE	(SEND)
-#define QUEUE_NUM	(LAST_QUEUE + 1)
+#define FIRST_QUEUE    (YOUNG)
+#define LAST_QUEUE    (SEND)
+#define QUEUE_NUM    (LAST_QUEUE + 1)
 
-class PacketQueue {
+class PacketQueue
+{
 private:
-	uint32_t pkt_count;
-	Packet *front[QUEUE_NUM];
-	Packet *back[QUEUE_NUM];
-	queue_t cur_queue;
-	Packet *cur_pkt;
-	Packet *next_pkt;
+    uint32_t pkt_count;
+    Packet *front[QUEUE_NUM];
+    Packet *back[QUEUE_NUM];
+    queue_t cur_queue;
+    Packet *cur_pkt;
+    Packet *next_pkt;
 
 public:
-	PacketQueue();
-	~PacketQueue(void);
-	void insert(Packet &, queue_t);
-	void insert_before(Packet &, Packet &);
-	void insert_after(Packet &, Packet &);
-	void remove(Packet &);
-	void select(queue_t);
-	Packet* get();
-	uint32_t size(){ return pkt_count; };
+    PacketQueue();
+    ~PacketQueue(void);
+    void insert(Packet &, queue_t);
+    void insert_before(Packet &, Packet &);
+    void insert_after(Packet &, Packet &);
+    void remove(Packet &);
+    void select(queue_t);
+    Packet* get();
+
+    uint32_t size()
+    {
+        return pkt_count;
+    };
 };
 
 #endif /* SJ_PACKET_QUEUE_H */

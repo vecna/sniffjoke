@@ -28,140 +28,166 @@
 using namespace std;
 
 SessionTrack::SessionTrack(const Packet &pkt) :
-	access_timestamp(0),
-	daddr(pkt.ip->daddr),
-	sport(pkt.tcp->source),
-	dport(pkt.tcp->dest),
-	packet_number(0)
+access_timestamp(0),
+daddr(pkt.ip->daddr),
+sport(pkt.tcp->source),
+dport(pkt.tcp->dest),
+packet_number(0)
 {
-	selflog(__func__, NULL);
+    selflog(__func__, NULL);
 }
 
 SessionTrack::~SessionTrack()
 {
-	selflog(__func__, NULL);
+    selflog(__func__, NULL);
 }
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {
-	if (daddr < comp.daddr) {
-		return true;
-	} else if (daddr > comp.daddr) {
-		return false;
-	} else {
-		if (sport < comp.sport) {
-			return true;
-		} else if (sport > comp.sport) {
-			return false;
-		} else {
-			if (dport < comp.dport)
-				return true;
-			else
-				return false;
-		}
-	}
+    if (daddr < comp.daddr)
+    {
+        return true;
+    }
+    else if (daddr > comp.daddr)
+    {
+        return false;
+    }
+    else
+    {
+        if (sport < comp.sport)
+        {
+            return true;
+        }
+        else if (sport > comp.sport)
+        {
+            return false;
+        }
+        else
+        {
+            if (dport < comp.dport)
+                return true;
+            else
+                return false;
+        }
+    }
 }
 
 void SessionTrack::selflog(const char *func, const char *lmsg) const
 {
-	if (debug.level() == SUPPRESS_LOG)
-		return;
+    if (debug.level() == SUPPRESS_LOG)
+        return;
 
-	debug.log(SESSION_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: [%s]",
-		func, ntohs(sport), 
-		inet_ntoa(*((struct in_addr *)&daddr)),
-		ntohs(dport), 
-		packet_number, lmsg
-	);
+    debug.log(SESSIONS_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: [%s]",
+              func, ntohs(sport),
+              inet_ntoa(*((struct in_addr *) &daddr)),
+              ntohs(dport),
+              packet_number, lmsg
+              );
 }
 
-SessionTrackMap::SessionTrackMap() {
-	debug.log(VERBOSE_LEVEL, __func__);	
+SessionTrackMap::SessionTrackMap()
+{
+    debug.log(VERBOSE_LEVEL, __func__);
 }
 
-SessionTrackMap::~SessionTrackMap() {
-	debug.log(VERBOSE_LEVEL, __func__);
-	for(SessionTrackMap::iterator it = begin(); it != end();) {
-		delete &(*it->second);
-		erase(it++);
-	}
+SessionTrackMap::~SessionTrackMap()
+{
+    debug.log(VERBOSE_LEVEL, __func__);
+    for (SessionTrackMap::iterator it = begin(); it != end();)
+    {
+        delete &(*it->second);
+        erase(it++);
+    }
 }
 
 /* return a sessiontrack given a packet; return a new sessiontrack if no one exists */
-SessionTrack& SessionTrackMap::getSessionTrack(const Packet &pkt)
+SessionTrack& SessionTrackMap::get(const Packet &pkt)
 {
-	SessionTrack *sessiontrack;
-	
-	/* create map key */
-	const SessionTrackKey key = { pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest };
-	
-	/* check if the key it's already present */
-	SessionTrackMap::iterator it = find(key);
-	if (it != end()) /* on hit: return the sessiontrack object. */
-		sessiontrack = it->second;
-	else { /* on miss: create a new sessiontrack and insert it into the map */
-		sessiontrack = insert(pair<SessionTrackKey, SessionTrack*>(key, new SessionTrack(pkt))).first->second;
-	}
-		
-	/* update access timestamp using global clock */
-	sessiontrack->access_timestamp = sj_clock;
+    SessionTrack *sessiontrack;
 
-	return *sessiontrack;
+    /* create map key */
+    const SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
+
+    /* check if the key it's already present */
+    SessionTrackMap::iterator it = find(key);
+    if (it != end()) /* on hit: return the sessiontrack object. */
+        sessiontrack = it->second;
+    else
+    { /* on miss: create a new sessiontrack and insert it into the map */
+        sessiontrack = insert(pair<SessionTrackKey, SessionTrack*>(key, new SessionTrack(pkt))).first->second;
+    }
+
+    /* update access timestamp using global clock */
+    sessiontrack->access_timestamp = sj_clock;
+
+    return *sessiontrack;
 }
 
-struct sessiontrack_timestamp_comparison {
-	bool operator() (SessionTrack *i, SessionTrack *j)
-	{
-		return ( i->access_timestamp < j->access_timestamp );
-	}
+struct sessiontrack_timestamp_comparison
+{
+
+    bool operator() (SessionTrack *i, SessionTrack * j)
+    {
+        return ( i->access_timestamp < j->access_timestamp);
+    }
 } sessiontrackTimestampComparison;
 
 void SessionTrackMap::manage()
 {
-	if (!(sj_clock % SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)) {
-		for(SessionTrackMap::iterator it = begin(); it != end();) {
-			if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock) {
-				delete &(*it->second);
-				erase(it++);
-			} else {
-				it++;
-			}
-		}
-	}
+    if (!(sj_clock % SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER))
+    {
+        for (SessionTrackMap::iterator it = begin(); it != end();)
+        {
+            if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock)
+            {
+                delete &(*it->second);
+                erase(it++);
+            }
+            else
+            {
+                it++;
+            }
+        }
+    }
 
-	uint32_t map_size = size();
-	uint32_t index;
-	if (map_size > SESSIONTRACKMAP_MEMORY_THRESHOLD) {
-		/*
-		 * We are forced to make a map cleanup.
-		 * In solve this critical condition we decide to reset half
-		 * of the map, and to do the best selection we reorder
-		 * the map by the access timestamp.
-		 * The complexity cost of this operation is O(NLogN)
-		 * due to the sort algorithm.
-		 * This is the worst case; (others operations are linear
-		 */
-		SessionTrack** tmp = new SessionTrack*[map_size];
+    uint32_t map_size = size();
+    uint32_t index;
+    if (map_size > SESSIONTRACKMAP_MEMORY_THRESHOLD)
+    {
+        /*
+         * We are forced to make a map cleanup.
+         * In solve this critical condition we decide to reset half
+         * of the map, and to do the best selection we reorder
+         * the map by the access timestamp.
+         * The complexity cost of this operation is O(NLogN)
+         * due to the sort algorithm.
+         * This is the worst case; (others operations are linear
+         */
+        SessionTrack** tmp = new SessionTrack*[map_size];
 
-		index = 0;
- 		for(SessionTrackMap::iterator it = begin(); it != end(); ++it)
-			tmp[index++] = it->second;
+        index = 0;
+        for (SessionTrackMap::iterator it = begin(); it != end(); ++it)
+            tmp[index++] = it->second;
 
-		clear();
+        clear();
 
-		sort(tmp, tmp+map_size, sessiontrackTimestampComparison);
+        sort(tmp, tmp + map_size, sessiontrackTimestampComparison);
 
-		index = 0;
-		do {
-			const SessionTrackKey key = { tmp[index]->daddr, tmp[index]->sport, tmp[index]->dport };
-			insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
-		} while( ++index != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2 );
-		
+        index = 0;
+        do
+        {
+            const SessionTrackKey key = {tmp[index]->daddr, tmp[index]->sport, tmp[index]->dport};
+            insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
+        }
+        while (++index != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2);
 
-		do {
-			delete tmp[index];
-		} while( ++index != map_size);
 
-		delete[] tmp;
-	}
+        do
+        {
+            delete tmp[index];
+        }
+        while (++index != map_size);
+
+        delete[] tmp;
+    }
 }

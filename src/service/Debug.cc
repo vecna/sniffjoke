@@ -23,95 +23,100 @@
 #include <Debug.h>
 
 Debug::Debug() :
-	debuglevel(ALL_LEVEL),
-	logstream(NULL),
-	session_logstream(NULL),
-	packet_logstream(NULL)
-{}
+debuglevel(ALL_LEVEL),
+logstream(NULL),
+session_logstream(NULL),
+packet_logstream(NULL)
+{
+}
 
 bool Debug::appendOpen(uint8_t thislevel, const char fname[LARGEBUF], FILE **previously)
 {
-	if(*previously != NULL) {
-		log(thislevel, "requested close of logfile %s", fname);
-		fclose(*previously);
-	}
+    if (*previously != NULL)
+    {
+        log(thislevel, "requested close of logfile %s", fname);
+        fclose(*previously);
+    }
 
-	if(debuglevel >= thislevel) 
-	{
-		if((*previously = fopen(fname, "a+")) == NULL) {
-			return false;
-		}
+    if (debuglevel >= thislevel)
+    {
+        if ((*previously = fopen(fname, "a+")) == NULL)
+        {
+            return false;
+        }
 
-		log(thislevel, "opened file %s successful with debug level %d", fname, debuglevel);
-	}
+        log(thislevel, "opened file %s successful with debug level %d", fname, debuglevel);
+    }
 
-	return true;
+    return true;
 }
 
-bool Debug::resetLevel(const char logfname[LARGEBUF], const char sessionlog[LARGEBUF], const char packetlog[LARGEBUF]) 
+bool Debug::resetLevel()
 {
-	if(!appendOpen(ALL_LEVEL, logfname, &logstream))
-		return false;
+    if (!appendOpen(ALL_LEVEL, FILE_LOG, &logstream))
+        return false;
 
-	if(!appendOpen(SESSION_DEBUG, sessionlog, &session_logstream))
-		return false;
+    if (!appendOpen(PACKETS_DEBUG, FILE_LOG_PACKETS, &packet_logstream))
+        return false;
 
-	if(!appendOpen(PACKETS_DEBUG, packetlog, &packet_logstream))
-		return false;
+    if (!appendOpen(SESSIONS_DEBUG, FILE_LOG_SESSIONS, &session_logstream))
+        return false;
 
-	return true;
+    return true;
 }
 
-void Debug::log(uint8_t errorlevel, const char *msg, ...) 
+void Debug::log(uint8_t errorlevel, const char *msg, ...)
 {
-	if (errorlevel <= debuglevel) { 
-		va_list arguments;
-		time_t now = time(NULL);
-		FILE *output_flow;
+    if (errorlevel <= debuglevel)
+    {
+        va_list arguments;
+        time_t now = time(NULL);
+        FILE *output_flow;
 
-		if (logstream != NULL)
-			output_flow = logstream;
-		else
-			output_flow = stderr;
+        if (logstream != NULL)
+            output_flow = logstream;
+        else
+            output_flow = stderr;
 
-		if (errorlevel == PACKETS_DEBUG && packet_logstream != NULL)
-			output_flow = packet_logstream;
+        if (errorlevel == PACKETS_DEBUG && packet_logstream != NULL)
+            output_flow = packet_logstream;
 
-		if (errorlevel == SESSION_DEBUG && session_logstream != NULL)
-			output_flow = session_logstream;
+        if (errorlevel == SESSIONS_DEBUG && session_logstream != NULL)
+            output_flow = session_logstream;
 
-		char time_str[sizeof("YYYY-MM-GG HH:MM:SS")];
-		strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+        char time_str[sizeof ("YYYY-MM-GG HH:MM:SS")];
+        strftime(time_str, sizeof (time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
-		va_start(arguments, msg);
-		fprintf(output_flow, "%s ", time_str);
+        va_start(arguments, msg);
+        fprintf(output_flow, "%s ", time_str);
 
-		/* the debug level used in development require a pid/uid addictional block */
-		if(errorlevel == DEBUG_LEVEL)
-			fprintf(output_flow, "%d/%d ", getpid(), getuid());
-		/* yes, if you dig in the github, will discover that this line has been added 
-		 * after one year of developing */
+        /* the debug level used in development require a pid/uid addictional block */
+        if (errorlevel == DEBUG_LEVEL)
+            fprintf(output_flow, "%d/%d ", getpid(), getuid());
+        /* yes, if you dig in the github, will discover that this line has been added
+         * after one year of developing */
 
-		vfprintf(output_flow, msg, arguments);
-		fprintf(output_flow, "\n");
-		fflush(output_flow);
-		va_end(arguments);
-	}
+        vfprintf(output_flow, msg, arguments);
+        fprintf(output_flow, "\n");
+        fflush(output_flow);
+        va_end(arguments);
+    }
 }
 
-void Debug::downgradeOpenlog(uid_t uid, gid_t gid) {
+void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
+{
 
-	/* this should not be called when is not the root process to do */
-	if(getuid() && getgid())
-		return;
+    /* this should not be called when is not the root process to do */
+    if (getuid() && getgid())
+        return;
 
-	if(logstream != NULL)
-		fchown(fileno(logstream), uid, gid);
+    if (logstream != NULL)
+        fchown(fileno(logstream), uid, gid);
 
-	if(packet_logstream != NULL)
-		fchown(fileno(packet_logstream), uid, gid);
+    if (packet_logstream != NULL)
+        fchown(fileno(packet_logstream), uid, gid);
 
-	if(session_logstream != NULL)
-		fchown(fileno(session_logstream), uid, gid);
+    if (session_logstream != NULL)
+        fchown(fileno(session_logstream), uid, gid);
 }
 

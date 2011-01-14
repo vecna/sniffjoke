@@ -31,51 +31,53 @@
 #include "TTLFocus.h"
 #include "HackPool.h"
 
-class TCPTrack {
+class TCPTrack
+{
 private:
-	const struct sj_config &runconfig;
-	
-	struct timespec clock;			/* clock time updated by analyze_packet_queue */
-		
-#define APQ_MANAGMENT_ROUTINE_TIMER	60	/* manager routine time interval in seconds */
+    const struct sj_config &runconfig;
 
-	SessionTrackMap &sessiontrack_map;
-	TTLFocusMap &ttlfocus_map;
-	HackPool &hack_pool;
+    struct timespec clock; /* clock time updated by analyze_packet_queue */
 
-	bool percentage(uint32_t, Frequency, uint8_t Strenght);
-	Frequency betterProtocolFrequency(uint16_t, Frequency);
-	uint8_t discernAvailScramble(Packet &);
+#define APQ_MANAGMENT_ROUTINE_TIMER    60    /* manager routine time interval in seconds */
 
-	/* this functions are called inside analyze_packets_queue;
-	 * boolean functions return true if the packet must be sended */ 
-	bool analyze_incoming_icmp(Packet &);
-	void analyze_incoming_tcp_ttl(Packet &);
-	bool analyze_incoming_tcp_synack(Packet &);
-	bool analyze_incoming_tcp_rstfin(Packet &);
-	bool analyze_outgoing(Packet &);
-	bool analyze_keep(Packet &);
+    SessionTrackMap &sessiontrack_map;
+    TTLFocusMap &ttlfocus_map;
+    HackPool &hack_pool;
 
-	void inject_ttlprobe_in_queue(TTLFocus &);
-	void inject_hack_in_queue(Packet &);
-	bool last_pkt_fix(Packet &);
+    bool percentage(uint32_t, Frequency, uint8_t Strenght);
+    Frequency betterProtocolFrequency(uint16_t, Frequency);
+    uint8_t discernAvailScramble(Packet &);
+
+    /* this functions are called inside analyze_packets_queue;
+     * boolean functions return true if the packet must be sended */
+    bool analyze_incoming_icmp(Packet &);
+    void analyze_incoming_tcp_ttl(Packet &);
+    bool analyze_incoming_tcp_synack(Packet &);
+    bool analyze_incoming_tcp_rstfin(Packet &);
+    bool analyze_outgoing(Packet &);
+    bool analyze_keep(Packet &);
+
+    void inject_ttlprobe_in_queue(TTLFocus &);
+    void inject_hack_in_queue(Packet &);
+    bool last_pkt_fix(Packet &);
 
 public:
 
-	PacketQueue p_queue;
+    PacketQueue p_queue;
 
-	TCPTrack(const sj_config &, HackPool &, SessionTrackMap &, TTLFocusMap &);
-	~TCPTrack(void);
+    TCPTrack(const sj_config &, HackPool &, SessionTrackMap &, TTLFocusMap &);
+    ~TCPTrack(void);
 
-	void writepacket(source_t, const unsigned char *, int);
-	Packet* readpacket(source_t);
-	void analyze_packets_queue();
-	void force_send(void);
+    void writepacket(source_t, const unsigned char *, int);
+    Packet* readpacket(source_t);
+    void analyze_packets_queue();
+    void force_send(void);
 };
 
-struct FrequencyMap {
-	uint16_t port;
-	Frequency preferred;
+struct FrequencyMap
+{
+    uint16_t port;
+    Frequency preferred;
 };
 
 #endif /* SJ_TCPTRACK_H */
