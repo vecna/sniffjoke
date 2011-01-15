@@ -19,7 +19,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 /* 
  * This file include the headers commonly used in every .cc file
  */
@@ -41,27 +41,28 @@
 
 #include "hardcoded-defines.h"
 
-enum size_buf_t {
-	SMALLBUF = 64,
-	MEDIUMBUF = 256,
-	LARGEBUF = 1024,
-	HUGEBUF = 4096,
-	GARGANTUABUF = 4096 * 4
+enum size_buf_t
+{
+    SMALLBUF = 64,
+    MEDIUMBUF = 256,
+    LARGEBUF = 1024,
+    HUGEBUF = 4096,
+    GARGANTUABUF = 4096 * 4
 };
 
 /* loglevels & log classess */
 #include "Debug.h"
 
-#define SUPPRESS_LOG		1
-#define ALL_LEVEL		2
-#define ALL_LEVEL_NAME		"default"
-#define VERBOSE_LEVEL		3
-#define VERBOSE_LEVEL_NAME	"verbose"
-#define DEBUG_LEVEL		4
-#define DEBUG_LEVEL_NAME	"debug"
-#define SESSION_DEBUG		5
-#define SESSION_DEBUG_NAME	"sessions"
-#define PACKETS_DEBUG		6
+#define SUPPRESS_LOG        1
+#define ALL_LEVEL        2
+#define ALL_LEVEL_NAME        "default"
+#define VERBOSE_LEVEL        3
+#define VERBOSE_LEVEL_NAME    "verbose"
+#define DEBUG_LEVEL        4
+#define DEBUG_LEVEL_NAME    "debug"
+#define SESSIONS_DEBUG        5
+#define SESSION_DEBUG_NAME    "sessions"
+#define PACKETS_DEBUG        6
 #define PACKETS_DEBUG_NAME      "packets"
 
 /*
@@ -76,6 +77,5 @@ std::runtime_error sj_runtime_exception(const char *, const char *, long, const 
 void* memset_random(void *, size_t);
 void sigtrap(int);
 FILE *sj_fopen(const char *, const char *);
-FILE *sj_fopen(const char *, const char *, const char *);
 
 #endif /* SJ_UTILS_H */

@@ -34,35 +34,36 @@
 #include <pwd.h>
 #include <grp.h>
 
-class Process {
+class Process
+{
 private:
-	const struct sj_config &runconfig;
+    const struct sj_config &runconfig;
 
-        struct passwd userinfo;
-	void* userinfo_buf;
-        struct group groupinfo;
-	void* groupinfo_buf;
-	
-	sigset_t sig_nset;
-	sigset_t sig_oset;
-	struct sigaction action;
+    struct passwd userinfo;
+    void* userinfo_buf;
+    struct group groupinfo;
+    void* groupinfo_buf;
+
+    sigset_t sig_nset;
+    sigset_t sig_oset;
+    struct sigaction action;
 public:
-	Process(const struct sj_config &);
-	~Process();
+    Process(const struct sj_config &);
+    ~Process();
 
-	pid_t readPidfile();
-	void writePidfile();
-	void unlinkPidfile(bool);
+    pid_t readPidfile();
+    void writePidfile();
+    void unlinkPidfile(bool);
 
 
-	int detach();
-	void jail();
-	void privilegesDowngrade();
-	void sigtrapSetup(sig_t);
-	void sigtrapEnable();
-	void sigtrapDisable();
-	void background();
-	void isolation();
+    int detach();
+    void jail(const char *chroot_dir);
+    void privilegesDowngrade();
+    void sigtrapSetup(sig_t);
+    void sigtrapEnable();
+    void sigtrapDisable();
+    void background();
+    void isolation();
 };
 
 #endif /* SJ_PROCESS_H */

@@ -31,37 +31,40 @@
 
 using namespace std;
 
-class SessionTrack {
+class SessionTrack
+{
 public:
-	time_t access_timestamp; /* access timestamp used to decretee expiry */
+    time_t access_timestamp; /* access timestamp used to decretee expiry */
 
-	uint32_t daddr;
-	uint16_t sport;
-	uint16_t dport;
-	uint32_t packet_number;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
+    uint32_t packet_number;
 
-	SessionTrack(const Packet &);
-	~SessionTrack();
-	
-	/* utilities */
-	void selflog(const char *, const char *) const;
-	/* no personal buffer used in selflog, maybe in the future */
+    SessionTrack(const Packet &);
+    ~SessionTrack();
+
+    /* utilities */
+    void selflog(const char *, const char *) const;
+    /* no personal buffer used in selflog, maybe in the future */
 };
 
-class SessionTrackKey {
+class SessionTrackKey
+{
 public:
-	uint32_t daddr;
-	uint16_t sport;
-	uint16_t dport;
-	bool operator<(SessionTrackKey) const;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
+    bool operator<(SessionTrackKey) const;
 };
 
-class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*> {
+class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*>
+{
 public:
-	SessionTrackMap();
-        ~SessionTrackMap();
-	SessionTrack& getSessionTrack(const Packet &);
-        void manage();        
+    SessionTrackMap();
+    ~SessionTrackMap();
+    SessionTrack& get(const Packet &);
+    void manage();
 };
 
 #endif /* SJ_SESSIONTRACK_H */

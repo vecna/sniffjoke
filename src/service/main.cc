@@ -40,264 +40,227 @@ static auto_ptr<SniffJoke> sniffjoke;
 
 runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
-	stringstream stream;
-	stream << "[EXCEPTION] "<< file << "(" << line << ") function: " << func << "()";
-	if (msg != NULL)
-		stream << " : " << msg;
-	return std::runtime_error(stream.str());
-}
-
-FILE *sj_fopen(const char *fname, const char *location, const char *mode) 
-{
-	char effectivename[LARGEBUF]; /* the two input buffer are MEDIUMBUF */
-	const char *nmode;
-
-	snprintf(effectivename, LARGEBUF, "%s.%s", fname, location);
-
-	if(!strcmp(location, DEFAULTLOCATION)) {
-		debug.log(VERBOSE_LEVEL, "opening file %s as %s: No location specified", fname, effectivename);
-	}
-	 /* communication intra sniffjoke: a "+" mean:
-	  * 
-	  * if the file exist, open in read and write
-	  * if not, create it.
-	  * ...is late, maybe exist an easiest way */
-	if(strlen(mode) == 1 && mode[0] == '+') {
-		if(access(effectivename, R_OK) == R_OK)
-			nmode = "r+";
-		else
-			nmode = "w+";
-	} else {
-		nmode = const_cast <char *>(mode);
-	}
-
-	return fopen(effectivename, nmode);
+    stringstream stream;
+    stream << "[EXCEPTION] " << file << "(" << line << ") function: " << func << "()";
+    if (msg != NULL)
+        stream << " : " << msg;
+    return std::runtime_error(stream.str());
 }
 
 /* this function is used for read/write configuration and cache files, */
-FILE *sj_fopen(const char *fname, const char *mode) 
+FILE *sj_fopen(const char *fname, const char *mode)
 {
-	const char *nmode;
+    const char *nmode;
 
-	/* 	communication intra sniffjoke: a "+" mean:
-	 -
-	 * if the file exists, open in read and write
-	 * if not, create it.
-	 * ...it's late, maybe exists an easiest way 	*/
-	if(strlen(mode) == 1 && mode[0] == '+') {
-		if(access(fname, R_OK) == R_OK)
-			nmode = "r+";
-		else 
-			nmode = "w+";
-	} else {
-		nmode = const_cast <char *>(mode);
-	}
+    /*     communication intra sniffjoke: a "+" mean:
+     -
+     * if the file exists, open in read and write
+     * if not, create it.
+     * ...it's late, maybe exists an easiest way     */
+    if (strlen(mode) == 1 && mode[0] == '+')
+    {
+        if (access(fname, R_OK) == R_OK)
+            nmode = "r+";
+        else
+            nmode = "w+";
+    }
+    else
+    {
+        nmode = const_cast<char *> (mode);
+    }
 
-	return fopen(fname, nmode);
+    return fopen(fname, nmode);
 }
 
 void init_random()
 {
-	/* random pool initialization */
-	srandom(time(NULL));
-	for (uint8_t i = 0; i < ((uint8_t)random() % 10); ++i) 
-		srandom(random());
+    /* random pool initialization */
+    srandom(time(NULL));
+    for (uint8_t i = 0; i < ((uint8_t) random() % 10); ++i)
+        srandom(random());
 }
 
 void* memset_random(void *s, size_t n)
 {
-	/* 
-	 * highly optimized memset_random
-	 * 
-	 * long int random(void).
-	 * 
-	 * long int is variable on different architectures;
-	 * for example on linux 64 bit is 8 chars long,
-	 * so do a while using single chars its an inefficient choice.
-	 * 
-	 */
+    /*
+     * highly optimized memset_random
+     *
+     * long int random(void).
+     *
+     * long int is variable on different architectures;
+     * for example on linux 64 bit is 8 chars long,
+     * so do a while using single chars its an inefficient choice.
+     *
+     */
 
-	size_t longint = n / sizeof(long int);
-	size_t finalbytes = n % sizeof(long int);
-	unsigned char *cp = (unsigned char*)s;
+    size_t longint = n / sizeof (long int);
+    size_t finalbytes = n % sizeof (long int);
+    unsigned char *cp = (unsigned char*) s;
 
-	while (longint-- > 0) {
-		*((long int*)cp) = random();
-		cp += sizeof(long int);
-	}
-	
-	while (finalbytes-- > 0) {
-		*cp = (unsigned char)random();
-		++cp;
-	}
+    while (longint-- > 0)
+    {
+        *((long int*) cp) = random();
+        cp += sizeof (long int);
+    }
 
-	return s;
+    while (finalbytes-- > 0)
+    {
+        *cp = (unsigned char) random();
+        ++cp;
+    }
+
+    return s;
 }
 
 void sigtrap(int signal)
 {
-	sniffjoke->alive = false;
+    sniffjoke->alive = false;
 }
-
 
 static void sj_version(const char *pname)
 {
-	printf("%s %s\n", SW_NAME, SW_VERSION);
+    printf("%s %s\n", SW_NAME, SW_VERSION);
 }
 
 #define SNIFFJOKE_HELP_FORMAT \
-	"%s [command] or %s --options:\n"\
-	" --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
-	" --config <filename>\tconfig file [default: %s%s]\n"\
-	" --enabler <filename>\tplugins enabler file, modified by the location\n"\
-	"\t\t\t[default: %s.$LOCATION_NAME]\n"\
-	" --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
-	" --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
-	" --chroot-dir <dir>\truns chroted into the specified dir [default: %s]\n"\
-	" --logfile <file>\tset a logfile, [default: %s%s]\n"\
-	" --start\t\tno options, if present active evasion immediatly [default: %s]\n"\
-	" --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
-	"\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
-	" --foreground\t\trunning in foreground [default:background]\n"\
-	" --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
-	" --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
-	" --version\t\tshow sniffjoke version\n"\
-	" --help\t\t\tshow this help\n\n"
+    "%s [command] or %s --options:\n"\
+    " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
+    "\t\t\t[by default sniffjoke does work in ram with a readonly config]\n"\
+    " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
+    " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
+    " --mode <mode>\tset the sniffjoke operation mode [default: %s]\n"\
+    " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
+    " --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
+    "\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
+    " --foreground\t\trunning in foreground [default:background]\n"\
+    " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
+    " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
+    " --version\t\tshow sniffjoke version\n"\
+    " --help\t\t\tshow this help\n\n"
 
-static void sj_help(const char *pname, const char optchroot[MEDIUMBUF], const char *defaultbd)
+static void sj_help(const char *pname)
 {
-	const char *basedir = optchroot[0] ? &optchroot[0] : defaultbd;
-
-	printf(SNIFFJOKE_HELP_FORMAT, 
-		pname, pname,
-		DEFAULTLOCATION,
-		basedir, CONF_FILE,
-		PLUGINSENABLER,
-		DROP_USER, DROP_GROUP, 
-		basedir,
-		basedir, LOGFILE,
-		DEFAULT_START_STOPPED ? "start" : "off",
-		DEFAULT_DEBUG_LEVEL, 
-		DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
-	);
+    printf(SNIFFJOKE_HELP_FORMAT,
+           pname, pname,
+           DEFAULT_LOCATION,
+           DROP_USER, DROP_GROUP,
+           DEFAULT_MODE ? "whitelist" : "blacklist",
+           DEFAULT_START_STOPPED ? "start" : "off",
+           DEFAULT_DEBUG_LEVEL,
+           DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
+           );
 }
 
 int main(int argc, char **argv)
 {
-	/* 
-	 * set the default values in the configuration struct
-	 * we have only constant length char[] and booleans
-	 */
-	struct sj_cmdline_opts useropt;
-	memset(&useropt, 0x00, sizeof(useropt));
-	
-	struct option sj_option[] =
-	{
-		{ "config", required_argument, NULL, 'f' },
-		{ "enabler", required_argument, NULL, 'e' },
-		{ "user", required_argument, NULL, 'u' },
-		{ "group", required_argument, NULL, 'g' },
-		{ "chroot-dir", required_argument, NULL, 'c' },
-		{ "debug", required_argument, NULL, 'd' },
-		{ "logfile", required_argument, NULL, 'l' },
-		{ "location", required_argument, NULL, 'o' },
-		{ "admin", required_argument, NULL, 'a' },		
-		{ "foreground", no_argument, NULL, 'x' },
-		{ "force", no_argument, NULL, 'r' },
-		{ "version", no_argument, NULL, 'v' },
-		{ "only-plugin", required_argument, NULL, 'p' },	/* not documented in --help */
-		{ "help", no_argument, NULL, 'h' },
-		{ "start", no_argument, NULL, 's' },
-		{ "max-ttl-probe", required_argument, NULL, 'm' },	/* not documented in --help */
-		{ NULL, 0, NULL, 0 }
-	};
+    /*
+     * set the default values in the configuration struct
+     * we have only constant length char[] and booleans
+     */
+    struct sj_cmdline_opts useropt;
+    memset(&useropt, 0x00, sizeof (useropt));
 
-	int charopt;
-	while ((charopt = getopt_long(argc, argv, "f:e:u:g:c:d:l:o:m:a:xrp:vsh", sj_option, NULL)) != -1) {
-		switch(charopt) {
-			case 'o':
-				snprintf(useropt.location, sizeof(useropt.location), "%s", optarg);
-				break;
-			case 'f':
-				snprintf(useropt.cfgfname, sizeof(useropt.cfgfname), "%s", optarg);
-				break;
-			case 'e':
-				snprintf(useropt.enabler, sizeof(useropt.enabler), "%s", optarg);
-				break;
-			case 'm':
-				useropt.max_ttl_probe = atoi(optarg);
-				break;
-			case 's':
-				useropt.active = true;
-				break;
-			case 'u':
-				snprintf(useropt.user, sizeof(useropt.user), "%s", optarg);
-				break;
-			case 'g':
-				snprintf(useropt.group, sizeof(useropt.group), "%s", optarg);
-				break;
-			case 'c':
-				snprintf(useropt.chroot_dir, sizeof(useropt.chroot_dir) -1, "%s", optarg);
-				/* this fix it's useful if the useropt path lacks the ending slash */
-				if (useropt.chroot_dir[strlen(useropt.chroot_dir) -1] != '/')
-					useropt.chroot_dir[strlen(useropt.chroot_dir)] = '/';
-				break;
-			case 'd':
-				useropt.debug_level = atoi(optarg);
-				if (useropt.debug_level < 1 || useropt.debug_level > 6)
-					goto sniffjoke_help;
-				break;
-			case 'l':
-				snprintf(useropt.logfname, sizeof(useropt.logfname), "%s", optarg);
-				snprintf(useropt.logfname_packets, sizeof(useropt.logfname_packets), "%s%s", optarg, SUFFIX_LF_PACKETS);
-				snprintf(useropt.logfname_sessions, sizeof(useropt.logfname_sessions), "%s%s", optarg, SUFFIX_LF_SESSIONS);
-				break;
-			case 'a':
-				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
-				char* port;
-				if ((port = strchr(useropt.admin_address, ':')) != NULL) {
-					*port = 0x00;
-					int checked_port = atoi(++port);
+    struct option sj_option[] = {
+        { "workdir", required_argument, NULL, 'w'},
+        { "location", required_argument, NULL, 'o'},
+        { "user", required_argument, NULL, 'u'},
+        { "group", required_argument, NULL, 'g'},
+        { "mode", required_argument, NULL, 'm'},
+        { "start", no_argument, NULL, 's'},
+        { "foreground", no_argument, NULL, 'x'},
+        { "force", no_argument, NULL, 'r'},
+        { "admin", required_argument, NULL, 'a'},
+        { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
+        { "debug", required_argument, NULL, 'd'},
+        { "version", no_argument, NULL, 'v'},
+        { "help", no_argument, NULL, 'h'},
+        { NULL, 0, NULL, 0}
+    };
 
-					if (checked_port > PORTNUMBER || checked_port < 0)
-						goto sniffjoke_help;
+    int charopt;
+    while ((charopt = getopt_long(argc, argv, "w:o:u:g:m:sxra:p:d:vh", sj_option, NULL)) != -1)
+    {
+        switch (charopt)
+        {
+        case 'w':
+            snprintf(useropt.workdir, sizeof (useropt.workdir) - 1, "%s", optarg);
+            if (useropt.workdir[strlen(useropt.workdir) - 1] != '/')
+                useropt.workdir[strlen(useropt.workdir)] = '/';
+            break;
+        case 'o':
+            snprintf(useropt.location, sizeof (useropt.location), "%s", optarg);
+            break;
+        case 'u':
+            snprintf(useropt.user, sizeof (useropt.user), "%s", optarg);
+            break;
+        case 'g':
+            snprintf(useropt.group, sizeof (useropt.group), "%s", optarg);
+            break;
+        case 'm':
+            if (*(uint16_t*)optarg == 1)
+                useropt.mode = 1; /* whitelist */
+            else
+                useropt.mode = 0; /* blacklist, default */
+            break;
+            break;
+        case 's':
+            useropt.active = true;
+            break;
+        case 'x':
+            useropt.go_foreground = true;
+            break;
+        case 'r':
+            useropt.force_restart = true;
+            break;
+        case 'a':
+            snprintf(useropt.admin_address, sizeof (useropt.admin_address), "%s", optarg);
+            char* port;
+            if ((port = strchr(useropt.admin_address, ':')) != NULL)
+            {
+                *port = 0x00;
+                int checked_port = atoi(++port);
 
-					useropt.admin_port = (uint16_t)checked_port;
-				}
-				break;
-			case 'x':
-				useropt.go_foreground = true;
-				break;
-			case 'r':
-				useropt.force_restart = true;
-				break;
-			case 'p':
-				snprintf(useropt.onlyplugin, sizeof(useropt.onlyplugin), "%s", optarg);
-				break;
-			case 'v':
-				sj_version(argv[0]);
-				return 0;
+                if (checked_port > PORTNUMBER || checked_port < 0)
+                    goto sniffjoke_help;
+
+                useropt.admin_port = (uint16_t) checked_port;
+            }
+            break;
+        case 'p':
+            snprintf(useropt.onlyplugin, sizeof (useropt.onlyplugin), "%s", optarg);
+            break;
+        case 'd':
+            useropt.debug_level = atoi(optarg);
+            if (useropt.debug_level < 1 || useropt.debug_level > 6)
+                goto sniffjoke_help;
+            break;
+        case 'v':
+            sj_version(argv[0]);
+            return 0;
 sniffjoke_help:
-			case 'h':
-			default:
-				sj_help(argv[0], useropt.chroot_dir, CHROOT_DIR);
-				return -1;
+        case 'h':
+        default:
+            sj_help(argv[0]);
+            return -1;
 
-			argc -= optind;
-			argv += optind;
-		}
-	}
-	
-	init_random();
+            argc -= optind;
+            argv += optind;
+        }
+    }
 
-	try {
-		sniffjoke = auto_ptr<SniffJoke> (new SniffJoke(useropt));
-		sniffjoke->run();
+    init_random();
 
-	} catch (runtime_error &exception) {
-		debug.log(ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
-		
-		sniffjoke.reset();
-		return 0;
-	}
+    try
+    {
+        sniffjoke = auto_ptr<SniffJoke > (new SniffJoke(useropt));
+        sniffjoke->run();
+
+    }
+    catch (runtime_error &exception)
+    {
+        debug.log(ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
+
+        sniffjoke.reset();
+        return 0;
+    }
 }

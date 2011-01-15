@@ -21,7 +21,7 @@
  */
 
 #include <config.h>
- 
+
 /*
  * this is the define value used in sniffjoke. if you are making porting of sniffjoke
  * for a distribution, this is your file
@@ -30,49 +30,48 @@
 #ifndef SJ_DEFINES_H
 #define SJ_DEFINES_H
 
-#define SW_NAME				"SniffJoke"
-#define SW_VERSION			"0.4-beta3"
+#define SW_NAME                 "SniffJoke"
+#define SW_VERSION              "0.4-beta3"
 
 /* Sniffjoke defaults config values */
 
-/* configuration file */
-#define	PLUGINSENABLER			INSTALL_SYSCONFDIR"plugins_enabled.conf"
-#define CONF_FILE 			INSTALL_SYSCONFDIR"sniffjoke-service.conf"
-#define AGGRESSIVITY_FILE		INSTALL_SYSCONFDIR"port-aggressivity.conf"
-#define FREQUENCY_FILE			INSTALL_SYSCONFDIR"port-frequency.conf"
-
-/* the --location option in applied to all four defines in INSTALL_SYSCONFDIR */
-#define	DEFAULTLOCATION			"generic"
-
 /* process information */
-#define DROP_USER			"nobody"
-#define DROP_GROUP			"nogroup"
-#define CHROOT_DIR			INSTALL_STATEDIR
-#define LOGFILE				"sniffjoke.log"		// inside chroot_dir
+#define DROP_USER               "nobody"
+#define DROP_GROUP              "nogroup"
+#define WORK_DIR                INSTALL_STATEDIR
+#define DEFAULT_LOCATION        "generic"
+
+/* configuration file */
+#define FILE_CONF               "conf"
+#define FILE_PLUGINSENABLER     "pluginsenabler"
+#define FILE_TTLFOCUSMAP        "ttlfocusmap"
+#define FILE_IPWHITELIST        "ipwhitelist"
+#define FILE_IPBLACKLIST        "ipblacklist"
+#define FILE_AGGRESSIVITY       "port-aggressivity"
+#define FILE_FREQUENCY          "port-frequency"
+#define FILE_LOG                "log"
+#define FILE_LOG_PACKETS        "log.packets"
+#define FILE_LOG_SESSIONS       "log.sessions"
 
 /* fixed value */
-#define MAXPLUGINS			32
-#define SUFFIX_LF_PACKETS		".packets"
-#define SUFFIX_LF_SESSIONS		".sessions"
-#define DEFAULT_DEBUG_LEVEL		2
-#define DEFAULT_MAX_TTLPROBE		35
-#define DEFAULT_ADMIN_ADDRESS		"127.0.0.1"
-#define	DEFAULT_ADMIN_PORT		8844
-#define SJ_PIDFILE			"/var/run/sniffjoke.pid"
-#define DEFAULT_START_STOPPED		false			// sorry, double negation:
-								// sniffjoke start stopped
-								// and is false to be true
-					// ....................... REMEMBER
-					// LIE IN THE COMMENTS:
-					// http://freeworld.thc.org/root/phun/unmaintain.html
-					// ;)
+#define DEFAULT_MODE            0 /* blacklist */
+#define DEFAULT_DEBUG_LEVEL     2
+#define DEFAULT_ADMIN_ADDRESS   "127.0.0.1"
+#define DEFAULT_ADMIN_PORT      8844
+#define SJ_PIDFILE              "/var/run/sniffjoke.pid"
 
-
-/* TTL caching default basename, appended with gateway mac address and location name */
-#define TTLFOCUSCACHE_FILE		"ttlcache.bin"		// inside chroot_dir
+#define DEFAULT_START_STOPPED   false
+// sorry, double negation:
+// sniffjoke start stopped
+// and is false to be true
+// ....................... REMEMBER
+// LIE IN THE COMMENTS:
+// http://freeworld.thc.org/root/phun/unmaintain.html
+// ;)
 
 /* the maximum value of bruteforced TTL */
-#define STARTING_ARB_TTL		46
+#define MAX_TTLPROBE            35
+#define STARTING_ARB_TTL        46
 
 /*
   sniffoke make use of two MTU values, one real an one fake
@@ -84,17 +83,17 @@
   and a max value of 15(60bytes)  and so tcp data offset.
   So the difference between   min and max is 8(40bytes).
  */
-#define MTU				1500
-#define MTU_FAKE			1420
+#define MTU                     1500
+#define MTU_FAKE                1420
 
-#define MSGBUF				512
+#define MSGBUF                  512
 
-#define TCPTRACK_QUEUE_MAX_LEN			1024
-#define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER 	300	/* (5 MINUTES */
-#define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER	3600	/* (1 HOUR) */
-#define SESSIONTRACK_EXPIRYTIME			200	/* access expire time in seconds (5 MINUTES) */
-#define TTLFOCUS_EXPIRYTIME			604800	/* access expire time in seconds (1 WEEK) */
-#define TTLFOCUSMAP_MEMORY_THRESHOLD		1024	/* 1024 DESTINATIONS */
-#define SESSIONTRACKMAP_MEMORY_THRESHOLD	1024	/* 1024 TCP SESSIONS */
+#define TCPTRACK_QUEUE_MAX_LEN                  1024
+#define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
+#define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
+#define SESSIONTRACK_EXPIRYTIME                 200     /* access expire time in seconds (5 MINUTES) */
+#define TTLFOCUS_EXPIRYTIME                     604800  /* access expire time in seconds (1 WEEK) */
+#define TTLFOCUSMAP_MEMORY_THRESHOLD            1024    /* 1024 DESTINATIONS */
+#define SESSIONTRACKMAP_MEMORY_THRESHOLD        1024    /* 1024 TCP SESSIONS */
 
 #endif /* SJ_DEFINES_H */

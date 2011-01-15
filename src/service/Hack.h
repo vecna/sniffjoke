@@ -44,46 +44,57 @@ using namespace std;
  */
 
 /* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
-enum Frequency {
-	RARE = 1,
-	COMMON = 2,
-	ALWAYS = 3,
-	PACKETS10PEEK = 4,
-	PACKETS30PEEK = 5,
-	TIMEBASED5S = 6,
-	TIMEBASED20S = 7,
-	STARTPEEK = 8,
-	LONGPEEK = 9
+enum Frequency
+{
+    RARE = 1,
+    COMMON = 2,
+    ALWAYS = 3,
+    PACKETS10PEEK = 4,
+    PACKETS30PEEK = 5,
+    TIMEBASED5S = 6,
+    TIMEBASED20S = 7,
+    STARTPEEK = 8,
+    LONGPEEK = 9
 };
 
-class Hack {
+class Hack
+{
 public:
-	judge_t pktRandomDamage(uint8_t scrambles) 
-	{
-		if (ISSET_TTL(scrambles) && RANDOMPERCENT(75))
-			return PRESCRIPTION;
-		if (ISSET_MALFORMED(scrambles) && RANDOMPERCENT(80)) 
-			return MALFORMED;
-		return GUILTY;
-	}
 
-	uint8_t supportedScramble;	/* supported by the location, derived
-					   from plugin_enabler.conf.$location */
-	const char *hackName;		/* hack name as const string */
-	const Frequency hackFrequency;	/* hack frequency */
-	bool removeOrigPkt;		/* boolean to be set true if the hack
-					   needs to remove the original packet */
+    judge_t pktRandomDamage(uint8_t scrambles)
+    {
+        if (ISSET_TTL(scrambles) && RANDOMPERCENT(75))
+            return PRESCRIPTION;
+        if (ISSET_MALFORMED(scrambles) && RANDOMPERCENT(80))
+            return MALFORMED;
+        return GUILTY;
+    }
 
-	vector<Packet*> pktVector;	/* std vector of Packet* used for created hack packets */
+    uint8_t supportedScramble; /* supported by the location, derived
+                       from plugin_enabler.conf.$location */
+    const char *hackName; /* hack name as const string */
+    const Frequency hackFrequency; /* hack frequency */
+    bool removeOrigPkt; /* boolean to be set true if the hack
+                       needs to remove the original packet */
 
+    vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
 
-	Hack(const char* hackName, Frequency hackFrequency, bool removeOrigPkt = false) :
-		hackName(hackName),
-		hackFrequency(hackFrequency),
-		removeOrigPkt(removeOrigPkt)
-	{};
-	virtual bool Condition(const Packet &, uint8_t availableScramble) { return true; };
-	virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
-	virtual bool initializeHack(uint8_t configuredScramble) { return true; };
+    Hack(const char* hackName, Frequency hackFrequency, bool removeOrigPkt = false) :
+    hackName(hackName),
+    hackFrequency(hackFrequency),
+    removeOrigPkt(removeOrigPkt)
+    {
+    };
+
+    virtual bool Condition(const Packet &, uint8_t availableScramble)
+    {
+        return true;
+    };
+    virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        return true;
+    };
 };
 #endif /* SJ_HACK_H */

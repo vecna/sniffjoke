@@ -23,6 +23,8 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			NetIO.cc \
 			Process.h \
 			Process.cc \
+			IPList.h \
+			IPList.cc \
 			UserConf.h \
 			UserConf.cc \
 			SniffJoke.cc \

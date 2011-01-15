@@ -20,46 +20,42 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SJ_HACKPOOL_H
-#define SJ_HACKPOOL_H
+#ifndef SJ_IPLIST_H
+#define SJ_IPLIST_H
 
 #include "Utils.h"
-#include "UserConf.h"
-#include "Hack.h"
 
-#include <vector>
+#include <map>
+#include <memory>
 
 using namespace std;
 
-typedef Hack* constructor_f(bool);
-typedef void destructor_f(Hack *);
-typedef const char* version_f();
-
-class PluginTrack
+class IPList
 {
 public:
-    void *pluginHandler;
+    uint32_t ip;
+    char a;
+    char b;
+    char c;
 
-    constructor_f *fp_CreateHackObj;
-    destructor_f *fp_DeleteHackObj;
-    version_f *fp_versionValue;
+    IPList(uint32_t, char, char, char);
+    ~IPList();
 
-    Hack* selfObj;
-    bool failInit;
-
-    PluginTrack(const char *, uint8_t, bool);
+    /* utilities */
+    void selflog(const char *, const char *) const;
+    /* no personal buffer used in selflog, maybe in the future */
 };
 
-class HackPool : public vector<PluginTrack *>
+class IPListMap : public map<uint32_t, IPList*>
 {
 private:
-    const sj_config &runconfig;
-    void importPlugin(const char *, const char *, uint8_t, bool);
-    void parseEnablerFile();
-    uint8_t parseScrambleList(const char *);
+    FILE *diskcache;
 public:
-    HackPool(const sj_config &);
-    ~HackPool();
+    IPListMap(const char*);
+    ~IPListMap();
+    IPList& add(uint32_t, char, char, char);
+    void load();
+    void dump();
 };
 
-#endif /* SJ_HACKPOOL_H */
+#endif /* SJ_IPLIST_H */
