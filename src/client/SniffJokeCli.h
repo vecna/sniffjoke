@@ -48,8 +48,10 @@ private:
 	uint16_t serverport;
 	uint32_t ms_timeout;
 	const char *cmd_buffer;
-	char rcv_buffer[4096];
-	void parse_SjinternalProto(char *, uint32_t);
+	bool parse_SjinternalProto(uint8_t *, int32_t);
+	bool printSJStat(uint8_t *, int32_t);
+	bool printSJPort(uint8_t *, int32_t);
+	bool printSJError(uint8_t *, int32_t);
 public:
 	SniffJokeCli(char *, uint16_t, uint32_t);
 	void send_command(const char *cmdstring);

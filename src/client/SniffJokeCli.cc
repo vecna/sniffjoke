@@ -20,7 +20,9 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "service/Utils.h"
 #include "SniffJokeCli.h"
+#include "service/internalProtocol.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -46,11 +48,9 @@ SniffJokeCli::SniffJokeCli(char* serveraddr, uint16_t serverport, uint32_t ms_ti
 void SniffJokeCli::send_command(const char *cmdstring)
 {
 	int sock;
-	char rcv_buf[4096];
 	struct sockaddr_in service_sin;	/* address of service */
 	struct sockaddr_in from;	/* address used for receiving data */
 	int rlen;
-
 
 	/* Create a UNIX datagram socket for client */
 	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -83,9 +83,11 @@ void SniffJokeCli::send_command(const char *cmdstring)
 
 	if(nfds == 1) 
 	{
+		uint8_t rcv_buf[HUGEBUF];
 		memset(rcv_buf, 0x00, sizeof(rcv_buf));
 		int fromlen = sizeof(struct sockaddr_in);
 
+		/* TODO: make a loop until the size don't become -1 */
 		if ((rlen = (recvfrom(sock, rcv_buf, sizeof(rcv_buf), MSG_WAITALL, (sockaddr*)&from, (socklen_t *)&fromlen))) == -1) {
 			printf("unable to receive from local socket: %s\n", strerror(errno));
 		}
@@ -96,7 +98,9 @@ void SniffJokeCli::send_command(const char *cmdstring)
 				cmdstring);
 		}
 		else {
-			parse_SjinternalProto(rcv_buf, rlen);
+			if(!(parse_SjinternalProto(rcv_buf, rlen))) {
+				fprintf(stderr, "error in parsing received message\n");
+			}
 		}
 	} else {
 		printf("Connection timeout: SniffJoke is not running, or --timeout too low\n");
@@ -104,30 +108,158 @@ void SniffJokeCli::send_command(const char *cmdstring)
 
 	close(sock);
 }
-void SniffJokeCli::parse_SjinternalProto(char *rcv, uint32_t rlen)
+
+/* TODO in the stable release: implement a sort of cryptography, resolving issue of authentication */
+bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
 {
-	int i;
-	for(i = 0; i < rlen; i++)
-		printf("%02x ", rcv[i]);
+	struct command_ret blockInfo;
+
+	/* first sanity check */
+	if( (uint32_t)rcvdlen < sizeof(blockInfo) )
+		return false;
+
+	memcpy(&blockInfo, (void *)recvd, sizeof(blockInfo));
+
+	/* global transfert sanity check */
+	if(blockInfo.len !=  (uint32_t)rcvdlen)
+		return false;
+
+	switch(blockInfo.command_type) 
+	{
+		case START_COMMAND_TYPE:
+		case STOP_COMMAND_TYPE:
+		case QUIT_COMMAND_TYPE:
+		case STAT_COMMAND_TYPE:
+		case INFO_COMMAND_TYPE: /* tmp, INFO need to be other */
+		case LOGLEVEL_COMMAND_TYPE:
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
+		case DUMP_COMMAND_TYPE:
+			printf("not more supported! delete in the next repository sync");
+			return false;
+		case SETPORT_COMMAND_TYPE:
+		case SHOWPORT_COMMAND_TYPE:
+			return printSJPort(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
+		case COMMAND_ERROR_MSG:
+			return printSJError(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
+		default:
+			printf("invalid command type %d ?\n", blockInfo.command_type);
+	}
+	return false;
 }
 
-#if 0
-parse_SjinternalProto {
+/* this parse and print the data block exposed in SJ-PROTOCOL.txt:
+		+--------+--------+---------+
+		|  len 1 | who 1  | data 1  |
+		+--------+--------+---------+
+		...
+		+--------+--------+---------+
+		|  len N | who N  | data N  |
+		+--------+--------+---------+
+ */
+bool SniffJokeCli::printSJStat(uint8_t *statblock, int32_t blocklen)
+{
+	struct command_ret *cast_cmdr;
+	int32_t parsedlen = 0;
 
-     snprintf(io_buf, sizeof(io_buf), 
-                "\nsniffjoke status:\t\t%s\n" \
-                "gateway mac address:\t\t%s\n" \
-                "gateway ip address:\t\t%s\n" \
-                "local interface:\t\t%s\n" \
-                "local ip address:\t\t%s\n" \
-                "dynamic tunnel interface:\ttun%d\n" \
-                "log level:\t\t\t%d at file %s\n" \
-                "chroot directory:\t\t%s\n",
-        runconfig.active == true ? "ACTIVE" : "PASSIVE",
-        runconfig.gw_mac_str, runconfig.gw_ip_addr,
-        runconfig.interface, runconfig.local_ip_addr, runconfig.tun_number,
-        runconfig.debug_level, runconfig.logfname, runconfig.chroot_dir)
+	while( parsedlen < blocklen ) 
+	{
+		/* struct command_ret { uint32_t len; uint8_t command_type } */
+	 	cast_cmdr = (struct command_ret *)&statblock[parsedlen];
+		void *p = (void *)&statblock[parsedlen + 2];
 
+		/* init to 0 the buffer to use for I/O */
+		bool boolvar = false;
+		char charvar[MEDIUMBUF];
+		uint16_t intvar = 0;
+		memset(charvar, 0x00, MEDIUMBUF);
+
+		switch(cast_cmdr->command_type)
+		{
+			case STAT_ACTIVE:
+				boolvar = (bool)(*(uint8_t *)p);
+				printf("SniffJoke %s\n", boolvar ? "running" : "not running");
+				break;
+			case STAT_MACGW:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("gw mac address:\t%s\n", charvar);
+				break;
+			case STAT_GWADDR:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("gw IP address:\t%s\n", charvar);
+				break;
+			case STAT_IFACE:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("hijacked interface:\t%s\n", charvar);
+				break;
+			case STAT_LOIP:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("gw fake IP used:\t%s\n", charvar);
+				break;
+			case STAT_TUNN:
+				intvar = *(uint16_t *)p;
+				printf("tunnel interface number:\t%d\n", intvar);
+				break;
+			case STAT_DEBUGL:
+				intvar = *(uint16_t *)p;
+				printf("debug level:\t%d\n", intvar);
+				break;
+			case STAT_LOGFN:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("log filename:\t%s\n", charvar);
+				break;
+			case STAT_CHROOT:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("chroot dir:\t%s\n", charvar);
+				break;
+			case STAT_ENABLR:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("enabler file:\t%s\n", charvar);
+				break;
+			case STAT_LOCAT:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("location name:\t%s\n", charvar);
+				break;
+			case STAT_ONLYP:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("single plugin:\t%s\n", charvar);
+				break;
+			case STAT_BINDA:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("admin address:\t%s\n", charvar);
+				break;
+			case STAT_BINDP:
+				intvar = *(uint16_t *)p;
+				printf("admin UDP port:\t%d\n", intvar);
+				break;
+			case STAT_USER:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("dedicated user:\t%s\n", charvar);
+				break;
+			case STAT_GROUP:
+				memcpy(&charvar, p, cast_cmdr->len);
+				printf("dedicated group:\t%s\n", charvar);
+				break;
+			default:
+				break;
+		}
+		parsedlen += (cast_cmdr->len + 2);
+	}
+	return true;
+}
+
+bool SniffJokeCli::printSJPort(uint8_t *statblock, int32_t blocklen)
+{
+	printf("y\n");
+	return true;
+}
+
+bool SniffJokeCli::printSJError(uint8_t *statblock, int32_t blocklen)
+{
+	printf("x\n");
+	return true;
+}
+
+/*
       switch(what) {
                 case HEAVY: what_weightness = "heavy"; break;
                 case NORMAL: what_weightness = "normal"; break;
@@ -166,4 +298,4 @@ bool UserConf::parse_port_weight(char *weightstr, Strength *value)
 
         return false;
 }
-#endif
+*/
