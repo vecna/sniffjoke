@@ -15,14 +15,10 @@ EXTRA_DIST =		AUTHORS \
 install-data-hook:	installconf
 
 installconf:
-	@echo "Checking config dir and copying config files" && \
-	if [ ! -d $(sysconfdir)/sniffjoke ] ; then \
-		echo "Creating config dir: $(sysconfdir)/sniffjoke"; \
-		install -d -m 755 $(sysconfdir)/sniffjoke; \
-	fi; \
-	cp conf/plugins_enabled.conf.generic $(sysconfdir)/sniffjoke; \
-	echo "Checking chroot directory" && \
+	@echo "Checking chroot storage directory" && \
 	if [ ! -d $(localstatedir)/sniffjoke ] ; then \
-		echo "Creating chroot dir: $(localstatedir)/sniffjoke"; \
+		echo "Creating chroot storage directory: $(localstatedir)/sniffjoke"; \
 		install -d -m 700 $(localstatedir)/sniffjoke; \
-	fi;
+	fi; \
+	echo "Copying generic location installation" && \
+	cp -r conf/generic $(localstatedir)/sniffjoke;

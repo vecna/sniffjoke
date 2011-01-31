@@ -108,7 +108,7 @@ public:
 		return true;
 	}
 
-	fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : COMMON) {};
+	fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON) {};
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

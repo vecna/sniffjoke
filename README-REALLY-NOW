@@ -1,8 +1,8 @@
-SniffJoke 0.4 BETA 2 - 28 December 2010
+SniffJoke 0.4 BETA 4 - 25 January 2011
 
 developed by vecna and evilaliv3
 
-OLD homepage: http://www.delirandom.net/sniffjoke
+homepage: http://www.delirandom.net/sniffjoke
 developing 0.4 beta: http://github.com/vecna/sniffjoke
 developing 0.4 beta: http://github.com/evilaliv3/sniffjoke
 
@@ -34,14 +34,28 @@ HOW TO COMPILE/INSTALL:
 ./configure && make && make install
 (sniffjoke is installed in /usr/local/bin, check your path when you do):
 
+SniffJoke package is composed by three software:
+
+sniffjoke
+    the service, when started in background make the network coolnes 
+sniffjokectl
+    the client, manage the service configuration when sniffjoke is running
+    (at the star time, is better used the command line options or the various
+    configuration file)
+sniffjoke-autotest
+    script able to test your network environment and generate a "location", the
+    options used in sniffjoke to describe a network environment with a specific
+    configuration
+
 # sniffjoke --help
+# sniffjokectl --help
 
 FEW TECHNICAL INFO:
 
-1) If you start SniffJoke without the configuration parameter sniffjoke will initialize
-   a new one, 
-   If that file does not exist SniffJoke will initialize it with default setting
-   or settings provided as command line arguments.
+1) If you start SniffJoke without the --location parameter sniffjoke will use
+   the "generic" location. every location has a directory dedicated, the 
+   directory where the configuration files are stored, sniffjoke service chroot
+   himself and the logfile are written.
 2) SniffJoke is a software that mangles kernel traffic in userspace. To satisfy
    this condition it requires some weird hack, like creation of a
    fake-tunnel interface and use of the same local IP address. SniffJoke tries
@@ -54,6 +68,10 @@ FEW TECHNICAL INFO:
 5) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
    and keep track about your ports setting. restaring Sniffjoke resume previously 
    configuration.
-6) the TTL cache is tracked differenty for each network environment you use
+6) the TTL cache is tracked differenty for each network environment you use, and
+   in some location will neither work. for this reason, when sniffjoke is 
+   started in a new location, I suggest to run sniffjoke-autotest (a script
+   testing each plugin and each scrambling technology, to detect automatically
+   what kind of scrambling your network environment supports)
 
-DOCUMENTATION IN WRITING IN PROGRESS, will be found in doc/* directory
+DOCUMENTATION, will be found in doc/* directory

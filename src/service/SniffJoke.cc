@@ -143,8 +143,7 @@ void SniffJoke::run()
         /* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
         hack_pool = auto_ptr<HackPool > (new HackPool(userconf.runconfig));
 
-        /* proc.jail: chroot + userconf.runconfig.chrooted = true */
-        proc.jail(userconf.runconfig.chroot_dir);
+        proc.jail(userconf.runconfig.working_dir);
         userconf.chroot_status = true;
 
         proc.privilegesDowngrade();
@@ -170,8 +169,6 @@ void SniffJoke::run()
             admin_socket_handle();
 
             proc.sigtrapEnable();
-
-            userconf.dump();
         }
     }
 }
@@ -190,7 +187,7 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
     if (!opts.go_foreground)
     {
         /* Logfiles are used only by a Sniffjoke SERVER runnning in background */
-        if (!debug.resetLevel())
+        if (!debug.resetLevel(const_cast<const char *>(userconf.runconfig.working_dir)))
             SJ_RUNTIME_EXCEPTION("Error in opening log files");
     }
     else /* userconf.runconfig.go_foreground */
@@ -257,8 +254,10 @@ void SniffJoke::admin_socket_setup()
         debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind UDP socket %s:%d: %s",
                   userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno)
                   );
-        SJ_RUNTIME_EXCEPTION("");
+        SJ_RUNTIME_EXCEPTION("Binding administrative socket");
     }
+    debug.log(VERBOSE_LEVEL, "Bind %u UDP port in %s ip interface for administration", 
+        userconf.runconfig.admin_port, userconf.runconfig.admin_address);
 
     admin_socket_flags_blocking = fcntl(tmp, F_GETFL);
     admin_socket_flags_nonblocking = admin_socket_flags_blocking | O_NONBLOCK;
@@ -304,7 +303,7 @@ void SniffJoke::admin_socket_handle()
     {
         debug.debuglevel = userconf.runconfig.debug_level;
 
-        if (!debug.resetLevel())
+        if (!debug.resetLevel(const_cast<const char *>(userconf.runconfig.working_dir)))
             SJ_RUNTIME_EXCEPTION("Changing logfile settings");
     }
 
@@ -461,23 +460,21 @@ void SniffJoke::handle_cmd_quit(void)
     write_SJStatus(QUIT_COMMAND_TYPE);
 }
 
+/* this function like the debug level change, call some operations
+ * that may fail. But in this case, is possibile know the status 
+ * of the operation immediatly.
+ *
+ * this function is never autocalled, but only specifically request by the client
+ */
 void SniffJoke::handle_cmd_dump(void)
 {
-    userconf.dump();
-    /*struct command_ret retInfo;
-    uint32_t dumplen = sizeof (retInfo);
-    uint32_t avail = HUGEBUF - dumplen;*/
-
-    debug.log(VERBOSE_LEVEL, "%s: configuration dumped", __func__);
-    //avail -= dumpComment(io_buf, avail, "# this is a dumped file by SniffJoke version ");
-    //avail -= dumpComment(io_buf, avail, SW_VERSION);
-    //avail -= dumpComment(io_buf, avail, "\n");
-    //avail -= dumpIfPresent(io_buff, avail, "enabler", userconf.runconfig.enabler);
-    //avail -= dumpIfPresent(io_buf, avail, "chroot", userconf.runconfig.chroot_dir);
-
-    /*retInfo.command_type = DUMP_COMMAND_TYPE;
-    retInfo.len = HUGEBUF - avail;
-    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));*/
+    /* beside dump the FILE_CONF, sync_disk_configuration save the TCP port and list files */
+    if(!userconf.sync_disk_configuration())
+    {
+        /* TODO - handle the communication of the error in the client */
+    }
+    /* as generic rule, when a command has not an output, write the status */
+    write_SJStatus(DUMP_COMMAND_TYPE);
 }
 
 void SniffJoke::handle_cmd_stat(void)

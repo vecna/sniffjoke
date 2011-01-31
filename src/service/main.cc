@@ -125,10 +125,12 @@ static void sj_version(const char *pname)
 #define SNIFFJOKE_HELP_FORMAT \
     "%s [command] or %s --options:\n"\
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
-    "\t\t\t[by default sniffjoke does work in ram with a readonly config]\n"\
+    " --dir <name>\tspecify the base directory where the location reside [default: %s]\n"\
+    "\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
     " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
     " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
-    " --mode <mode>\tset the sniffjoke operation mode [default: %s]\n"\
+    " --whitelist\tinject evasion packets only in the specified ip addresses\n"\
+    " --blacklist\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
     " --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
     "\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
@@ -142,10 +144,10 @@ static void sj_help(const char *pname)
 {
     printf(SNIFFJOKE_HELP_FORMAT,
            pname, pname,
+           WORK_DIR,
            DEFAULT_LOCATION,
            DROP_USER, DROP_GROUP,
-           DEFAULT_MODE ? "whitelist" : "blacklist",
-           DEFAULT_START_STOPPED ? "start" : "off",
+           DEFAULT_START_STOPPED ? "present" : "not present",
            DEFAULT_DEBUG_LEVEL,
            DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
            );
@@ -161,16 +163,18 @@ int main(int argc, char **argv)
     memset(&useropt, 0x00, sizeof (useropt));
 
     struct option sj_option[] = {
-        { "workdir", required_argument, NULL, 'w'},
+        { "dir", required_argument, NULL, 'i'},
         { "location", required_argument, NULL, 'o'},
         { "user", required_argument, NULL, 'u'},
         { "group", required_argument, NULL, 'g'},
-        { "mode", required_argument, NULL, 'm'},
         { "start", no_argument, NULL, 's'},
         { "foreground", no_argument, NULL, 'x'},
         { "force", no_argument, NULL, 'r'},
+        { "whitelist", no_argument, NULL, 'w'},
+        { "blacklist", no_argument, NULL, 'b'},
         { "admin", required_argument, NULL, 'a'},
-        { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
+        { "only-plugin", required_argument, NULL, 'p'},     /* not documented in --help */
+        { "max-ttl-probe", required_argument, NULL, 'm' },  /* not documented too */
         { "debug", required_argument, NULL, 'd'},
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
@@ -178,14 +182,14 @@ int main(int argc, char **argv)
     };
 
     int charopt;
-    while ((charopt = getopt_long(argc, argv, "w:o:u:g:m:sxra:p:d:vh", sj_option, NULL)) != -1)
+    while ((charopt = getopt_long(argc, argv, "i:o:u:g:sxrwba:p:m:d:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
-        case 'w':
-            snprintf(useropt.workdir, sizeof (useropt.workdir) - 1, "%s", optarg);
-            if (useropt.workdir[strlen(useropt.workdir) - 1] != '/')
-                useropt.workdir[strlen(useropt.workdir)] = '/';
+        case 'i':
+            snprintf(useropt.basedir, sizeof (useropt.basedir) - 1, "%s", optarg);
+            if (useropt.basedir[strlen(useropt.basedir) - 1] != '/')
+                useropt.basedir[strlen(useropt.basedir)] = '/';
             break;
         case 'o':
             snprintf(useropt.location, sizeof (useropt.location), "%s", optarg);
@@ -193,15 +197,17 @@ int main(int argc, char **argv)
         case 'u':
             snprintf(useropt.user, sizeof (useropt.user), "%s", optarg);
             break;
+        case 'm':
+            useropt.max_ttl_probe = atoi(optarg);
+            break;
         case 'g':
             snprintf(useropt.group, sizeof (useropt.group), "%s", optarg);
             break;
-        case 'm':
-            if (*(uint16_t*)optarg == 1)
-                useropt.mode = 1; /* whitelist */
-            else
-                useropt.mode = 0; /* blacklist, default */
+        case 'w':
+            useropt.use_whitelist = true;
             break;
+        case 'b':
+            useropt.use_blacklist = true;
             break;
         case 's':
             useropt.active = true;

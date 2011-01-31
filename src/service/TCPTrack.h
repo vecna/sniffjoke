@@ -35,7 +35,6 @@ class TCPTrack
 {
 private:
     const struct sj_config &runconfig;
-
     struct timespec clock; /* clock time updated by analyze_packet_queue */
 
 #define APQ_MANAGMENT_ROUTINE_TIMER    60    /* manager routine time interval in seconds */
@@ -44,8 +43,9 @@ private:
     TTLFocusMap &ttlfocus_map;
     HackPool &hack_pool;
 
-    bool percentage(uint32_t, Frequency, uint8_t Strenght);
-    Frequency betterProtocolFrequency(uint16_t, Frequency);
+    uint32_t derivePercentage(uint32_t, uint16_t);
+    bool percentage(uint32_t, uint16_t, uint16_t);
+
     uint8_t discernAvailScramble(Packet &);
 
     /* this functions are called inside analyze_packets_queue;
@@ -72,12 +72,6 @@ public:
     Packet* readpacket(source_t);
     void analyze_packets_queue();
     void force_send(void);
-};
-
-struct FrequencyMap
-{
-    uint16_t port;
-    Frequency preferred;
 };
 
 #endif /* SJ_TCPTRACK_H */

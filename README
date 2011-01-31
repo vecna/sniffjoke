@@ -39,19 +39,17 @@ configure supports --prefix
 ==================================================================
 
  /usr/local/bin/sniffjoke
-    The binary, service and client
+    The service binary
 
- /usr/local/etc/sniffjoke/plugins_enabled.txt.$LOCATION_NAME
-    configuration file for plugins enable/disable
-    default location use the file:
- /usr/local/etc/sniffjoke/plugins_enabled.txt.generic
+ /usr/local/bin/sniffjokectl
+    The client, required for manage remotely the configuration of Sj
 
- /usr/local/lib/sniffjoke/*
+ /usr/local/var/sniffjoke/generic/
+    The "generic location" configuration, contains every default
+    configuration files
+
+ /usr/local/lib/sniffjoke/*.so
     SniffJoke plugins
-
- /usr/local/var/sniffjoke/
-    logfile, chroot directory, unix socket, binary conf & ttl cache
-
 
 ==================================================================
 REFERENCE LINKS:

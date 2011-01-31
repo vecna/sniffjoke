@@ -146,7 +146,7 @@ public:
 		}
 	}
 
-	fragmentation_with_fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : ALWAYS) {}
+	fragmentation_with_fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS) {}
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

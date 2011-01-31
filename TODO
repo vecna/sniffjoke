@@ -6,6 +6,5 @@ TODO list for SniffJoke 0.5 - 1.0
 . expand percentage and fake_data with layer 5 protocol guessing
 . verify gateway usage, implement ip source selection
 . implement server side support and port listening protection
-. use a whitelist/blacklist of ip address with a different injection policy
 . NetIO.cc and UserConf.cc need to became an extension of a generic superclass
   for supports easily different OSs

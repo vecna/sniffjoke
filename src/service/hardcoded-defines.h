@@ -42,16 +42,15 @@
 #define DEFAULT_LOCATION        "generic"
 
 /* configuration file */
-#define FILE_CONF               "conf"
-#define FILE_PLUGINSENABLER     "pluginsenabler"
-#define FILE_TTLFOCUSMAP        "ttlfocusmap"
-#define FILE_IPWHITELIST        "ipwhitelist"
-#define FILE_IPBLACKLIST        "ipblacklist"
-#define FILE_AGGRESSIVITY       "port-aggressivity"
-#define FILE_FREQUENCY          "port-frequency"
-#define FILE_LOG                "log"
-#define FILE_LOG_PACKETS        "log.packets"
-#define FILE_LOG_SESSIONS       "log.sessions"
+#define FILE_CONF               "sniffjoke-service.conf"
+#define FILE_PLUGINSENABLER     "plugins-enabled.conf"
+#define FILE_TTLFOCUSMAP        "ttlfocusmap.bin"
+#define FILE_IPWHITELIST        "ipwhitelist.conf"
+#define FILE_IPBLACKLIST        "ipblacklist.conf"
+#define FILE_AGGRESSIVITY       "port-aggressivity.conf"
+#define FILE_LOG                "sniffjoke.log"
+#define FILE_LOG_PACKETS        "sniffjoke.log.packets"
+#define FILE_LOG_SESSIONS       "sniffjoke.log.sessions"
 
 /* fixed value */
 #define DEFAULT_MODE            0 /* blacklist */
@@ -60,14 +59,11 @@
 #define DEFAULT_ADMIN_PORT      8844
 #define SJ_PIDFILE              "/var/run/sniffjoke.pid"
 
+// sorry, for double negation:
 #define DEFAULT_START_STOPPED   false
-// sorry, double negation:
 // sniffjoke start stopped
 // and is false to be true
-// ....................... REMEMBER
-// LIE IN THE COMMENTS:
-// http://freeworld.thc.org/root/phun/unmaintain.html
-// ;)
+// ( http://freeworld.thc.org/root/phun/unmaintain.html )
 
 /* the maximum value of bruteforced TTL */
 #define MAX_TTLPROBE            35

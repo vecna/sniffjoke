@@ -78,7 +78,7 @@ public:
 		return true;
 	}
 
-	fake_close_rst(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : TIMEBASED20S) {};
+	fake_close_rst(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED20S) {};
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

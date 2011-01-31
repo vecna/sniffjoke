@@ -128,7 +128,7 @@ public:
 		}
 	}
 
-	fragmentation(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : ALWAYS) {}
+	fragmentation(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS) {}
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

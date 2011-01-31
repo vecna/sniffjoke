@@ -88,7 +88,7 @@ public:
 		}
 	}
 
-	valid_rst_fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : STARTPEEK) {}
+	valid_rst_fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_STARTPEEK) {}
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

@@ -96,7 +96,7 @@ public:
 		return true;
 	}
 
-	fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : TIMEBASED5S) {};
+	fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED5S) {};
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

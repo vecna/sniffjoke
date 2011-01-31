@@ -17,6 +17,8 @@ sniffjoke_SOURCES =	hardcoded-defines.h \
 			TTLFocus.cc \
 			SessionTrack.h \
 			SessionTrack.cc \
+			portConfParsing.h \
+			portConfParsing.cc \
 			TCPTrack.h \
 			TCPTrack.cc \
 			NetIO.h \

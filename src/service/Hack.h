@@ -43,20 +43,6 @@ using namespace std;
  *
  */
 
-/* the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin */
-enum Frequency
-{
-    RARE = 1,
-    COMMON = 2,
-    ALWAYS = 3,
-    PACKETS10PEEK = 4,
-    PACKETS30PEEK = 5,
-    TIMEBASED5S = 6,
-    TIMEBASED20S = 7,
-    STARTPEEK = 8,
-    LONGPEEK = 9
-};
-
 class Hack
 {
 public:
@@ -73,13 +59,13 @@ public:
     uint8_t supportedScramble; /* supported by the location, derived
                        from plugin_enabler.conf.$location */
     const char *hackName; /* hack name as const string */
-    const Frequency hackFrequency; /* hack frequency */
+    const uint16_t hackFrequency; /* hack frequency, using the value  */
     bool removeOrigPkt; /* boolean to be set true if the hack
                        needs to remove the original packet */
 
     vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
 
-    Hack(const char* hackName, Frequency hackFrequency, bool removeOrigPkt = false) :
+    Hack(const char* hackName, uint16_t hackFrequency, bool removeOrigPkt = false) :
     hackName(hackName),
     hackFrequency(hackFrequency),
     removeOrigPkt(removeOrigPkt)

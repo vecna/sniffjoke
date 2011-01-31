@@ -234,11 +234,11 @@ uint8_t HackPool::parseScrambleList(const char *list_str)
 
 void HackPool::parseEnablerFile()
 {
-    char enablerabspath[MEDIUMBUF];
+    char enablerabspath[LARGEBUF];
     char plugabspath[MEDIUMBUF];
     FILE *plugfile;
 
-    snprintf(enablerabspath, sizeof(enablerabspath), "%s/%s", runconfig.chroot_dir, FILE_PLUGINSENABLER);
+    snprintf(enablerabspath, sizeof(enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
 
     if ((plugfile = sj_fopen(enablerabspath, "r")) == NULL)
     {

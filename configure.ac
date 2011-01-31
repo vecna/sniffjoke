@@ -9,8 +9,9 @@ AC_PREFIX_DEFAULT(/usr/local)
 
 AH_TEMPLATE(RUNUSER)
 AH_TEMPLATE(RUNGROUP)
-AC_DEFINE(RUNUSER, "sniffjoke")
-AC_DEFINE(RUNGROUP, "sniffjoke")
+# for distribution package, here will be better use dedicated user/group
+AC_DEFINE(RUNUSER, "nobody")
+AC_DEFINE(RUNGROUP, "nogroup")
 
 if test "$prefix" = "NONE"; then
    prefix="/usr/local"

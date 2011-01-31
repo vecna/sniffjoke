@@ -28,7 +28,7 @@
 class Debug
 {
 private:
-    bool appendOpen(uint8_t thislevel, const char fname[LARGEBUF], FILE **previously);
+    bool appendOpen(uint8_t thislevel, const char *, const char fname[LARGEBUF], FILE **previously);
     bool enabled;
     uint8_t debuglevel;
     FILE *logstream;
@@ -42,7 +42,7 @@ public:
     {
         return debuglevel;
     };
-    bool resetLevel();
+    bool resetLevel(const char *);
     void log(uint8_t errorlevel, const char *msg, ...);
     void downgradeOpenlog(uid_t uid, gid_t gid);
 };

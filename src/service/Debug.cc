@@ -30,7 +30,7 @@ packet_logstream(NULL)
 {
 }
 
-bool Debug::appendOpen(uint8_t thislevel, const char fname[LARGEBUF], FILE **previously)
+bool Debug::appendOpen(uint8_t thislevel, const char *rootdir, const char fname[LARGEBUF], FILE **previously)
 {
     if (*previously != NULL)
     {
@@ -40,26 +40,29 @@ bool Debug::appendOpen(uint8_t thislevel, const char fname[LARGEBUF], FILE **pre
 
     if (debuglevel >= thislevel)
     {
-        if ((*previously = fopen(fname, "a+")) == NULL)
+        char completefname[LARGEBUF];
+
+        snprintf(completefname, LARGEBUF, "%s/%s", rootdir, fname);
+        if ((*previously = fopen(completefname, "a+")) == NULL)
         {
             return false;
         }
 
-        log(thislevel, "opened file %s successful with debug level %d", fname, debuglevel);
+        log(thislevel, "opened logfile %s (logdir %s) successful with debug level %d", fname, rootdir, debuglevel);
     }
 
     return true;
 }
 
-bool Debug::resetLevel()
+bool Debug::resetLevel(const char *rootdir)
 {
-    if (!appendOpen(ALL_LEVEL, FILE_LOG, &logstream))
+    if (!appendOpen(ALL_LEVEL, rootdir, FILE_LOG, &logstream))
         return false;
 
-    if (!appendOpen(PACKETS_DEBUG, FILE_LOG_PACKETS, &packet_logstream))
+    if (!appendOpen(PACKETS_DEBUG, rootdir, FILE_LOG_PACKETS, &packet_logstream))
         return false;
 
-    if (!appendOpen(SESSIONS_DEBUG, FILE_LOG_SESSIONS, &session_logstream))
+    if (!appendOpen(SESSIONS_DEBUG, rootdir, FILE_LOG_SESSIONS, &session_logstream))
         return false;
 
     return true;

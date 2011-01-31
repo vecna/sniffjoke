@@ -84,7 +84,7 @@ public:
 		return true;
 	}
 
-	fake_zero_window(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : ALWAYS) {};
+	fake_zero_window(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS) {};
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

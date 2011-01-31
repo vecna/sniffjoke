@@ -101,7 +101,7 @@ public:
 		return true;
 	}
 
-	fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : RARE) {};
+	fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE) {};
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

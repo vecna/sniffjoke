@@ -21,6 +21,7 @@
  */
 
 #include "UserConf.h"
+#include "portConfParsing.h"
 #include "internalProtocol.h"
 
 #include <cctype>
@@ -31,69 +32,91 @@
  * sj_cmdline_opts contain only the option passed to the command line
  * ther other information are used as default.
  *
- * as priority, we use:
- * 1) a specific config or enabler file override location 
- * both of these file are looked by default in the INSTALL_SYSCONFDIR
+ * are used for detect the user specified working directory and 
+ * location, or use the default.
  *
- * 3) if a location is used, is append to the base filename, and
- *    as default, is used the suffix ".generic"
+ * when the configuration file are found, the priority is given to
+ * 1) command line options
+ * 2) configuration files
+ * 3) defaults
  */
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
-cmdline_opts(cmdline_opts),
-chroot_status(false)
+cmdline_opts(cmdline_opts)
 {
     debug.log(VERBOSE_LEVEL, __func__);
+    char *selected_basedir = NULL, *selected_location = NULL;
 
-    memset(&runconfig, 0x00, sizeof (sj_config));
+    /* generating referringdir and configfile (public) */
+    if (cmdline_opts.basedir[0])
+    {
+        if(!access(cmdline_opts.basedir, X_OK))
+            selected_basedir = const_cast<char *>(cmdline_opts.basedir);
+        else
+            SJ_RUNTIME_EXCEPTION("--dir parameter is not accessible");
+    }
+    else /* no option used, default in hardcoded-defines.h */
+    {
+        selected_basedir = const_cast<char *>(WORK_DIR);
+    }
 
     if (cmdline_opts.location[0])
-    {
-        snprintf(configfile, sizeof (configfile), "%s%s/%s", WORK_DIR, cmdline_opts.location, FILE_CONF);
-                snprintf(runconfig.chroot_dir, sizeof (configfile), "%s%s", WORK_DIR, cmdline_opts.location);
-    }
-    else
     {
         debug.log(VERBOSE_LEVEL, "is highly suggestes to use sniffjoke specifying a location (--location option)");
         debug.log(VERBOSE_LEVEL, "a defined location means that the network it's profiled for the best results");
         debug.log(VERBOSE_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
-        snprintf(configfile, sizeof (configfile), "%s%s/%s", WORK_DIR, cmdline_opts.location, FILE_CONF);
-        snprintf(runconfig.chroot_dir, sizeof (configfile), "%s%s", WORK_DIR, DEFAULT_LOCATION);
+        selected_location = const_cast<char *>(cmdline_opts.location);
+    }
+    else
+        selected_location = const_cast<char *>(DEFAULT_LOCATION);
+
+    /* length sanity check, the input value are MEDIUMBUF (256) the generated buf are LARGEBUF (1024) */
+    if(strlen(selected_basedir) + strlen(selected_location) > (LARGEBUF - strlen(FILE_CONF) -1) )
+    {
+        debug.log(ALL_LEVEL, "Internal error: the length of --dir and --location argument is over %d byte lenght",
+            (LARGEBUF - strlen(FILE_CONF) -1));
+        SJ_RUNTIME_EXCEPTION("parameters too long");
     }
 
-    mkdir(runconfig.chroot_dir, 0700);
+    /* setting up che 'struct sj_config runconfig', the public member of UserConf class */
+    memset(&runconfig, 0x00, sizeof (sj_config));
+    memcpy(runconfig.location_name, selected_location, strlen(selected_location));
+
+    /* in main.cc, near getopt, basedir last char if set to be '/' */
+    snprintf(runconfig.working_dir, sizeof(runconfig.working_dir), "%s%s", selected_basedir, selected_location);
+    snprintf(configfile, sizeof(configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
+
+    debug.log(DEBUG_LEVEL, "%s chroot in %s with configfile %s", runconfig.working_dir, selected_basedir, configfile);
+
+    if(!access(runconfig.working_dir, X_OK)) 
+    {
+        debug.log(DEBUG_LEVEL, "unable to access %s: creating directory", runconfig.working_dir);
+        if(!mkdir(runconfig.working_dir, 0700))
+            SJ_RUNTIME_EXCEPTION("unable to create working directory (required for chroot into)");
+
+        debug.log(DEBUG_LEVEL, "created directory %s successful", runconfig.working_dir);
+    }
+    else
+        debug.log(DEBUG_LEVEL, "working directory %s already present", runconfig.working_dir);
 
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     load();
 
-    switch (runconfig.mode)
+    /* check integrity in the configuration loaded */
+    if(runconfig.use_blacklist && runconfig.use_whitelist)
     {
-    case '0':
-        iplistmap = new IPListMap(FILE_IPBLACKLIST);
-        break;
-    case '1':
-        iplistmap = new IPListMap(FILE_IPWHITELIST);
-        break;
+        debug.log(ALL_LEVEL, "configuration conflict: both blacklist and whitelist seem to be enabled");
+        SJ_RUNTIME_EXCEPTION("configuration conflict");
     }
+
+    if (runconfig.onlyplugin[0])
+        debug.log(VERBOSE_LEVEL, "plugin %s override the plugins settings in %s", runconfig.onlyplugin, FILE_PLUGINSENABLER);
+
+    debug.log(DEBUG_LEVEL, "runconfig pass the sanity checks");
 }
 
 UserConf::~UserConf()
 {
-    debug.log(DEBUG_LEVEL, "%s [process %d chroot %s], referred config file %s",
-              __func__, getpid(), chroot_status ? "YES" : "NO", configfile);
-}
-
-/* private function useful for resolution of code/name */
-const char *UserConf::resolve_weight_name(int command_code)
-{
-    switch (command_code)
-    {
-    case HEAVY: return "heavy";
-    case NORMAL: return "normal";
-    case LIGHT: return "light";
-    case NONE: return "no hacks";
-    default: debug.log(ALL_LEVEL, "danger: found invalid code in ports configuration");
-        return "VERY BAD BUFFER CORRUPTION! I WISH NO ONE EVER SEE THIS LINE";
-    }
+    debug.log(DEBUG_LEVEL, "%s [pid %d], config %s", __func__, getpid(), configfile);
 }
 
 void UserConf::autodetect_local_interface()
@@ -251,6 +274,18 @@ void UserConf::network_setup(void)
     debug.log(VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", runconfig.tun_number);
 }
 
+/*
+ * BELOW FOLLOW THE LIST OF PARSING METHOD. 
+ * some also low level, with strstr, memcmp, sscanf, ...
+ *
+ * IN THE FUTURE MAYBE SPLITTED IN ANOTHER CLASS, BUT UNTIL WE AUGMENT 
+ * THE NUMBER OF CONFIGURATION FILES, IS NOT A PRIORITY.
+ *
+ * BETTER WILL BE CREATE A CLASS like IPListMap, with Port instead of IP.
+ * IS A C++ SOLUTION INSTEAD OF THIS OLDISH C-like spaghetti code.
+ *
+ */
+
 /* internal function called by the overloaded parseMatch */
 bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keyword)
 {
@@ -270,7 +305,9 @@ bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keywor
         if (!memcmp(keyword, line, strlen(keyword)))
         {
             /* C's chop() */
-            line[strlen(line) - 1] = 0x00;
+            if(line[strlen(line) - 1] == '\n')
+                line[strlen(line) - 1] = 0x00;
+
             memcpy(userchoose, (&line[strlen(keyword) + 1]), strlen(line) - strlen(keyword) - 1);
             return true;
         }
@@ -303,15 +340,10 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
 
     memset(useropt, 0x00, SMALLBUF);
 
+    /* in the configuration file, if a boolean is present, then is TRUE */
     if (parseLine(cf, useropt, name))
     {
-        /* dst is large MEDIUMBUF, and none useropt will overflow this size */
-        if (!memcmp(useropt, "true", strlen("true")))
-            dst = true;
-
-        if (!memcmp(useropt, "false", strlen("false")))
-            dst = false;
-
+        dst = true;
         debugfmt = "%s/bool: keyword %s read from config file: [%s]";
     }
     else
@@ -414,23 +446,12 @@ EndparseMatchShort:
     debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst);
 }
 
-/* simple utiliy for dumping */
-uint32_t UserConf::dumpIfPresent(uint8_t *p, uint32_t datal, const char *name, char *data)
-{
-    uint32_t written = 0;
-
-    if (data[0])
-    {
-        written = snprintf((char *) p, datal, "%s:%s\n", name, data);
-    }
-    return written;
-}
-
-uint32_t UserConf::dumpComment(uint8_t *p, uint32_t datal, const char *writedblock)
-{
-    return snprintf((char *) p, datal, writedblock);
-}
-
+/* this is the function that load the settings, it merge the command line options with
+ * the file defined in hardcoded-define.h (all the .conf files) expected in the working_dir
+ * derived by the --dir and --location options
+ *
+ * are not verified the integrity of such configuration, but only loaded, the integrity
+ * is checked in the constructor of UserConf */
 bool UserConf::load(void)
 {
     FILE *loadfd;
@@ -440,35 +461,204 @@ bool UserConf::load(void)
     else
         debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
 
-    parseMatch(runconfig.user, "user", loadfd, cmdline_opts.user, DROP_USER);
-    parseMatch(runconfig.group, "group", loadfd, cmdline_opts.group, DROP_GROUP);
-    parseMatch(runconfig.mode, "mode", loadfd, cmdline_opts.mode, DEFAULT_MODE);
-    parseMatch(runconfig.admin_address, "management-address", loadfd, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
-    parseMatch(runconfig.admin_port, "management-port", loadfd, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
-    parseMatch(runconfig.debug_level, "debug", loadfd, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
-    parseMatch(runconfig.onlyplugin, "only-plugin", loadfd, cmdline_opts.onlyplugin, NULL);
-    if (runconfig.onlyplugin[0])
-    {
-        debug.log(VERBOSE_LEVEL, "single plugin %s will override plugins list in the enabler file", runconfig.onlyplugin);
-    }
-
+    /* the boolean value: if are present, are sets */
+    parseMatch(runconfig.use_whitelist, "whitelist", loadfd, cmdline_opts.use_whitelist, false);
+    parseMatch(runconfig.use_blacklist, "blacklist", loadfd, cmdline_opts.use_blacklist, false);
+    parseMatch(runconfig.go_foreground, "foreground", loadfd, cmdline_opts.go_foreground, false);
     parseMatch(runconfig.active, "active", loadfd, cmdline_opts.active, DEFAULT_START_STOPPED);
 
-    /* TODO BOTH OF THEM */
-    /* loadAggressivity(runconfig.aggressivity_file); */
-    /* loadFrequency(runconfig.frequency_file); */
-    /* YES, XXX, TODO INSTEAD OF: */
-    for (uint16_t i = 0; i < PORTNUMBER; ++i)
-        runconfig.portconf[i] = NORMAL;
+    parseMatch(runconfig.user, "user", loadfd, cmdline_opts.user, DROP_USER);
+    parseMatch(runconfig.group, "group", loadfd, cmdline_opts.group, DROP_GROUP);
+    parseMatch(runconfig.admin_address, "management-address", loadfd, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
+    parseMatch(runconfig.onlyplugin, "only-plugin", loadfd, cmdline_opts.onlyplugin, NULL);
+
+    parseMatch(runconfig.admin_port, "management-port", loadfd, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
+    parseMatch(runconfig.debug_level, "debug", loadfd, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
+
+    /* those files act in portconf[PORTNUMBER]; array, merging the ports configuration */
+    loadAggressivity();
+
+    /* loading of IP lists, in future also the source IP address should be useful */
+    if(runconfig.use_blacklist)
+        runconfig.blacklist = new IPListMap(FILE_IPBLACKLIST);
+
+    if(runconfig.use_whitelist)
+        runconfig.whitelist = new IPListMap(FILE_IPWHITELIST);
 
     if (loadfd)
         fclose(loadfd);
 
     return true;
-
 }
 
-void UserConf::dump(void)
+/* function for loading of the TCP port files */
+void UserConf::loadAggressivity(void)
 {
+    char aggrfile[LARGEBUF];
+    FILE *aggressivityFp;
 
+    /* remind: working dir contains the location */
+    snprintf(aggrfile, sizeof(aggrfile), "%s/%s", runconfig.working_dir, FILE_AGGRESSIVITY);
+
+    if((aggressivityFp = fopen(aggrfile, "r")) == NULL) 
+    {
+        debug.log(ALL_LEVEL, "port aggrssivity specifications in %s: %s, loading defaults", aggrfile, strerror(errno));
+ 
+        /* the default is:
+         *
+         * 1:65535      NORMAL,COMMON
+         */
+        for (uint16_t i = 0; i < PORTNUMBER; ++i)
+            runconfig.portconf[i] = FREQ_NORMAL & AGG_COMMON;
+
+        return;
+    }
+
+    /* the classes portLine has been written specifically for parse
+     * ... without Boost
+     * is defined in portConfParsing.h and implemented in PortConfParsing.cc
+     */
+    portLine pl;
+    char line[MEDIUMBUF];
+    uint32_t linecnt = 0;
+   
+    /* the minimum length of a line is 6 */ 
+    while(!feof(aggressivityFp))
+    {
+        linecnt++;
+        fgets(line, MEDIUMBUF, aggressivityFp);
+
+        /* C's chop() */
+        if(line[strlen(line) - 1] == '\n')
+            line[strlen(line) - 1] = 0x00;
+
+       if ( strlen(line) < 6 || line[0] == '#' || line[0] == '\n' )
+            continue;
+
+        /* setup function clear the previously used private variables */
+        pl.setup(line);
+
+        if(pl.error_message)
+        {
+            debug.log(ALL_LEVEL, "%s line %d: %s", aggrfile, linecnt, pl.error_message);
+            continue;
+        }
+
+        pl.extractPorts();
+        pl.extractValue();
+
+        if(pl.error_message)
+        {
+            debug.log(ALL_LEVEL, "%s line %d: %s", aggrfile, linecnt, pl.error_message);
+            continue;
+        }
+
+        pl.mergeLine(runconfig.portconf);
+    }
+}
+
+/* simple utiliy for dumping */
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, char *data)
+{
+    uint32_t written = 0;
+
+    if (data[0])
+        written = fprintf(out, "%s:%s\n", name, data);
+
+    return written;
+}
+
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, uint16_t shortdat)
+{
+    uint32_t written = 0;
+
+    if(shortdat)
+        written = fprintf(out, "%s:%u\n", name, shortdat);
+
+    return written;
+}
+
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata)
+{
+    uint32_t written = 0;
+
+    if (yndata)
+        written = fprintf(out, "%s\n", name);
+
+    return written;
+}
+
+bool UserConf::sync_disk_configuration(void)
+{
+    uint32_t written = 0;
+    char tempdumpfname[LARGEBUF];
+    FILE *out;
+
+    snprintf(tempdumpfname, LARGEBUF, "%s~.~", configfile);
+
+    if((out = fopen(tempdumpfname, "w+")) == NULL) 
+    {
+        debug.log(ALL_LEVEL, "Abort operation: unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
+        return false;
+    }
+
+    /* this is bad, this segment of code is more coherent in UserConf.cc */
+    written += fprintf(out, "# this is a dumped file by SniffJoke version %s\n", SW_VERSION);
+    written += dumpIfPresent(out, "user", runconfig.user);
+    written += dumpIfPresent(out, "group", runconfig.group);
+    written += dumpIfPresent(out, "management-address", runconfig.admin_address);
+    written += dumpIfPresent(out, "management-port", runconfig.admin_port);
+    written += dumpIfPresent(out, "debug", runconfig.debug_level);
+    written += dumpIfPresent(out, "foreground", runconfig.go_foreground);
+    written += dumpIfPresent(out, "whitelist", runconfig.use_whitelist);
+    written += dumpIfPresent(out, "blacklist", runconfig.use_blacklist);
+    written += dumpIfPresent(out, "active", runconfig.active);
+    written += dumpIfPresent(out, "only-plugin", runconfig.active);
+
+    if(!sync_ports_files() || !sync_iplists_files() )
+    {
+        debug.log(ALL_LEVEL, "interrupted dumping of running configuration in the %s location", runconfig.location_name);
+        goto faultyreturn;
+    }
+
+    if( (uint32_t)ftell(out) != written)
+    {
+        debug.log(ALL_LEVEL, "the written size of the new configuration file unable to open new configuration file %s: %s", 
+            tempdumpfname, strerror(errno));
+
+        goto faultyreturn;
+    }
+
+    fclose(out);
+    out = NULL;
+
+    if(rename(tempdumpfname, configfile))
+    {
+        debug.log(ALL_LEVEL, "unable to update the configuration file, moving the temporary %s to %s: %s", 
+            tempdumpfname, configfile, strerror(errno));
+
+        goto faultyreturn;
+    }
+
+    return true;
+
+faultyreturn:
+
+    if(out != NULL)
+        fclose(out);
+
+    unlink(tempdumpfname);
+    return false;
+}
+
+bool UserConf::sync_ports_files(void)
+{
+    /* TODO */
+    return true;
+}
+
+bool UserConf::sync_iplists_files(void)
+{
+    /* TODO */
+    return true;
 }

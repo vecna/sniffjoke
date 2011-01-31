@@ -43,116 +43,104 @@ TCPTrack::~TCPTrack(void)
     debug.log(VERBOSE_LEVEL, __func__);
 }
 
+uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
+{
+    uint32_t freqret = 0;
+
+    if(frequencyValue & AGG_RARE) {
+        freqret += 3;
+    }
+    if(frequencyValue & AGG_COMMON) {
+        freqret += 7;
+    }
+    if(frequencyValue & AGG_ALWAYS) {
+        freqret += 25;
+    }
+    if(frequencyValue & AGG_PACKETS10PEEK) {
+        if (!(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10))
+            freqret += 10;
+        else
+            freqret += 1;
+    }
+    if(frequencyValue & AGG_PACKETS30PEEK) {
+        if (!(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30))
+            freqret += 10;
+        else
+            freqret += 1;
+    }
+    if(frequencyValue & AGG_TIMEBASED5S) {
+        if (!((uint8_t) sj_clock % 5))
+            freqret += 12;
+        else
+            freqret += 1;
+    }
+    if(frequencyValue & AGG_TIMEBASED20S) {
+        if (!((uint8_t) sj_clock % 20))
+            freqret += 12;
+        else
+            freqret += 1;
+    }
+    if(frequencyValue & AGG_STARTPEEK) {
+        if (packet_number < 20)
+            freqret += 10;
+        else if (packet_number < 40)
+            freqret += 5;
+        else
+            freqret += 1;
+    }
+    if(frequencyValue & AGG_LONGPEEK) {
+        if (packet_number < 60)
+            freqret += 8;
+        else if (packet_number < 120)
+            freqret += 4;
+        else
+            freqret += 1;
+    }
+
+    return freqret;
+}
 /*  
  *  this function is used from the inject_hack_in_queue() routine for decretee
  *  the possibility for an hack to happen.
  *  returns true if it's possibile to forge the hack.
  *  the calculation involves:
- *   - the session packet count, because for example hacks must happen, for the most,
- *     at the start of the session (between the first 10 packets),
- *   - a specified frequency selector provided by hack's programmer.
- *   - a port strengh selector (none|light|normal|heavy) defined in running configuration
+ *   - the session packet count is a variable inside the equation (some hacks are 
+ *     configured to act in peek time or packets number relationship)
+ *   - the frequency selection provide from the hack programmer: is used when the 
+ *     port-aggressivity.conf file don't provide a specific configuration.
+ *   - the port configuration settings: derived from 'port-aggressivity.conf' 
  */
-bool TCPTrack::percentage(uint32_t packet_number, Frequency freqkind, uint8_t weightness)
+bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16_t userFrequency)
 {
-    uint8_t this_percentage = 0, freqret = 0;
-    switch (freqkind)
-    {
-    case RARE:
-        freqret = 3;
-        break;
-    case COMMON:
-        freqret = 7;
-        break;
-    case ALWAYS:
-        freqret = 25;
-        break;
-    case PACKETS10PEEK:
-        if (!(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10))
-            freqret = 10;
-        else
-            freqret = 1;
-        break;
-    case PACKETS30PEEK:
-        if (!(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30))
-            freqret = 10;
-        else
-            freqret = 1;
-        break;
-    case TIMEBASED5S:
-        if (!((uint8_t) sj_clock % 5))
-            freqret = 12;
-        else
-            freqret = 1;
-        break;
-    case TIMEBASED20S:
-        if (!((uint8_t) sj_clock % 20))
-            freqret = 12;
-        else
-            freqret = 1;
-        break;
-    case STARTPEEK:
-        if (packet_number < 20)
-            freqret = 10;
-        else if (packet_number < 40)
-            freqret = 5;
-        else
-            freqret = 1;
-        break;
-    case LONGPEEK:
-        if (packet_number < 60)
-            freqret = 8;
-        else if (packet_number < 120)
-            freqret = 4;
-        else
-            freqret = 1;
-        break;
+    uint32_t this_percentage = 0, aggressivity_percentage = 0;
+
+    /* the frequency is sets by default, if not provided by the user. the aggressivity is sets
+     * by the plugin developer, if is not used.  */
+    if(!(aggressivity_percentage = derivePercentage(packet_number, userFrequency)))
+        aggressivity_percentage = derivePercentage(packet_number, hackFrequency);
+
+    if(userFrequency & FREQ_NONE) {
+        /* when aggressivity match set to "10", now is 0% of probability */
+        this_percentage = aggressivity_percentage * 0;
+    }
+    else if(userFrequency & FREQ_LIGHT) {
+        /* with 10 ("common") is 40% of probability */
+        this_percentage = aggressivity_percentage * 4;
+    }
+    else if(userFrequency & FREQ_NORMAL) {
+        /* with 10 ("common") is 80% of probability */
+        this_percentage = aggressivity_percentage * 8;
+    }
+    else if(userFrequency & FREQ_HEAVY) {
+        /* with 10 ("common") is 120% of probabilty, this was useful when a 
+         * float value was used, better analysis will improve this algoritm */
+        this_percentage = aggressivity_percentage * 12;
+    } 
+    else {
+        SJ_RUNTIME_EXCEPTION("Invalid status: packet without Frequency set");
     }
 
-    /* the "NORMAL" transform a freqret of "10" in 80% of hack probability */
-    switch (weightness)
-    {
-    case NONE:
-        /* 0% of probability */
-        this_percentage = freqret * 0;
-        break;
-    case LIGHT:
-        /* 40% of probability */
-        this_percentage = freqret * 4;
-        break;
-    case NORMAL:
-        /* 80% of probability */
-        this_percentage = freqret * 8;
-        break;
-    case HEAVY:
-        /* 120% of probabilty :P (1) */
-        this_percentage = freqret * 12;
-        break;
-    }
-
-    return (((uint8_t) (random() % 100) + 1 <= this_percentage));
-}
-
-Frequency TCPTrack::betterProtocolFrequency(uint16_t dport, Frequency hackDefault)
-{
-    uint16_t hshort = ntohs(dport);
-    /* need adding and/or a specific file instead and hardcoded struct */
-    struct FrequencyMap Fm[] = {
-        { 22, RARE},
-        { 23, COMMON},
-        { 25, ALWAYS},
-        { 80, STARTPEEK},
-        { 8080, STARTPEEK},
-        { 6667, ALWAYS}
-    };
-
-    for (uint16_t i = 0; i < sizeof (Fm); i++)
-    {
-        if (Fm[i].port == hshort)
-            return Fm[i].preferred;
-    }
-
-    return hackDefault;
+    return (( (uint32_t)(random() % 100) + 1 <= this_percentage));
 }
 
 /*
@@ -505,7 +493,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
         applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
         applicable &= percentage(
                                  sessiontrack.packet_number,
-                                 betterProtocolFrequency(sessiontrack.dport, hppe->selfObj->hackFrequency),
+                                 hppe->selfObj->hackFrequency,
                                  runconfig.portconf[ntohs(origpkt.tcp->dest)]
                                  );
         if (applicable)
@@ -531,14 +519,14 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
              */
             if (!injpkt.selfIntegrityCheck(hppe->selfObj->hackName))
             {
-                debug.log(ALL_LEVEL, "XXX:invalid packet generated by hack %s", hppe->selfObj->hackName);
+                debug.log(ALL_LEVEL, "Invalid packet generated by hack %s", hppe->selfObj->hackName);
 
                 snprintf(injpkt.debug_buf, sizeof (injpkt.debug_buf), "bad integrity from: %s", hppe->selfObj->hackName);
                 injpkt.selflog(__func__, injpkt.debug_buf);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runconfig.debug_level == PACKETS_DEBUG)
-                    SJ_RUNTIME_EXCEPTION("");
+                    SJ_RUNTIME_EXCEPTION("Invalid packet generated from the hack");
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;

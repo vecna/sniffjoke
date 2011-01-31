@@ -78,7 +78,7 @@ public:
 		return true;
 	}
 
-	fake_close_fin(bool forcedTest) : Hack(HACK_NAME, forcedTest ? ALWAYS : PACKETS30PEEK) { };
+	fake_close_fin(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_PACKETS30PEEK) { };
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

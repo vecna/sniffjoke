@@ -124,7 +124,7 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
 TTLFocusMap::TTLFocusMap(const char* dumpfile)
 {
     debug.log(VERBOSE_LEVEL, __func__);
-    debug.log(ALL_LEVEL, "loading ttlfocusmap from %s");
+    debug.log(ALL_LEVEL, "loading ttlfocusmap from %s...", dumpfile);
 
     if ((diskcache = sj_fopen(dumpfile, "+")) == NULL)
     {
@@ -246,7 +246,7 @@ void TTLFocusMap::load()
         }
     }
 
-    debug.log(ALL_LEVEL, "ttlfocusmap load completed: %u records loaded", records_num);
+    debug.log(ALL_LEVEL, "load completed: %u records loaded", records_num);
 }
 
 void TTLFocusMap::dump()

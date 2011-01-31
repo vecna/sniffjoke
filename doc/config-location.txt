@@ -1,0 +1,113 @@
+the directory 'generic/' contains the default configuration settings.
+
+is copyed in /usr/local/var/sniffjoke/ 
+
+this directory contains the "location directory"
+
+every location is a network place where you use sniffjoke, you need to configure
+every location separately, and generic will work for the most of the time.
+
+* WHAT IS sniffjoke-autotest ? 
+
+Is a script performing some sniffjoke usage for detect which kind of attack will 
+be used in your network.
+The problem is: not every kind of evasion technology will work in every network, 
+and beside a manual verification, sniffjoke-autotest will make him job)
+it take as argumet the location name, and create the new directory:
+/usr/local/var/sniffjoke/$NEWLOCATION
+putting inside the related configuration files
+
+When you need to use a specific locaton, run sniffjoke --location $LOCATIONNAME and
+the related directory will be used to chroot into, write logs and caches.
+
+* WHAT DOES IT MEAN EVERY SINGLE CONFIG FILE ?
+
+***	plugins-enabled.conf
+
+It contains the list of the plugins to use in your sniffjoke service. The plugins
+are the shared object contained in src/plugins and installed in 
+/usr/local/lib/sniffjoke/*.so
+the configuration file contains these information:
+
+# comment
+plugin_name.so,SCRAMBLETECHSUPPORTED1,SCRAMBLETECHSUPPORTED2,...
+
+the plugin_name.so is exposed without path and intended to be found in the 
+/usr/local/lib/sniffjoke directory. the scramble technology are separated by
+a comma and without whitespace, and will be:
+
+PRESCRIPTION
+    is the scramble technology that decreare the TTL in the
+    packet causing to expire before reach the remote host
+
+INNOCENT
+    is a valid packet injected inside the stream
+
+MALFORMED
+    is a packet with rfc-valid but incoheren by the usege
+    in relation with the connection state of IP and TCP options
+    or other malformation based on IP/TCP options header.
+GUILTY
+    packet with bad checksum, discarged by the remote host
+    but accepted by the sniffer (very rare, is the less useful
+    scramble but useful in the sniffjoke logic)
+
+***	sniffjoke-service.conf
+
+It does contain the same options that will be passed by command line:
+
+
+active
+    will be present or not present, and is used if sniffjoke must start 
+	active in hijacking/injection or start and silently make mitm in
+	the network without packet injection and session tracking
+	default: not present
+user
+    specify the username to downgrade privileges after chrooting
+	default: nobody
+	suggested: the mantainer will create a sniffjoke user
+group
+    the same of user
+	default: nogroup
+	suggested: creation of sniffjoke group
+management-address
+	is the ip address where sniffjoke will bind the administrative socket,
+	is a required configuration if you plan to use sniffjoke in a gateway 
+	and manage the service by your client
+	default: 127.0.0.1
+management-port
+	the UDP port for the administrative traffic
+	default: 8844
+
+	note: the two management info, need to be passed in the sniffjokeclt
+	(the client managing sniffjoke service) to the command line.
+
+debug
+    the verbosity level used by sniffjoke:
+	1: suppress log, no one line are provided 
+	2: common, startup info and error reporting
+	3: verbose, description and check of I/O operation
+	4: debug, intensive and complete I/O description
+	5: session, creation of $LOGFILENAME.session and session debug 
+	6: packets, creation of $LOGFILENAME.packet and debug of every packet
+	default: 2
+
+foreground
+	will be present or not and simple don't goes in default or goes.
+	default: no
+
+*** ipblacklist.conf
+
+this is a series of ip address, written without every other information, and
+whenever the blacklist is set in sniffjoke, the connection destinated to a
+matching IP address will work untouched by sniffjoke
+
+*** ipwhitelist.conf
+
+this is the same of blacklist, but you specify the only ip address that will 
+be hacked.
+
+*** port-aggressivity.conf
+
+
+
