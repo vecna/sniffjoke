@@ -54,6 +54,7 @@ public:
     IPListMap(const char*);
     ~IPListMap();
     IPList& add(uint32_t, char, char, char);
+    bool isPresent(uint32_t);
     void load();
     void dump();
 };

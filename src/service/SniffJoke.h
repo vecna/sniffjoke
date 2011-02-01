@@ -78,10 +78,10 @@ private:
     void write_SJStatus(uint8_t);
     void write_SJPortStat(uint8_t);
     void write_SJProtoError(void);
-    uint8_t *appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
-    uint8_t *appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
-    uint8_t *appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
-    uint8_t *append_SJportBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
+    uint32_t append_SJportBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
 
     int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);
     uint8_t* handle_cmd(const char *);

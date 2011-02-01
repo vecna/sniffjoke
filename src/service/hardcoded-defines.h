@@ -31,7 +31,7 @@
 #define SJ_DEFINES_H
 
 #define SW_NAME                 "SniffJoke"
-#define SW_VERSION              "0.4-beta3"
+#define SW_VERSION              "0.4-beta4"
 
 /* Sniffjoke defaults config values */
 
@@ -53,7 +53,6 @@
 #define FILE_LOG_SESSIONS       "sniffjoke.log.sessions"
 
 /* fixed value */
-#define DEFAULT_MODE            0 /* blacklist */
 #define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_ADMIN_ADDRESS   "127.0.0.1"
 #define DEFAULT_ADMIN_PORT      8844

@@ -807,11 +807,43 @@ void TCPTrack::analyze_packets_queue()
         }
         else /* pkt->source == TUNNEL */
         {
+            /* the check is based in blacklist, whitelist. the port and protocol is checked inside the
+             * "Condition(" imported function. so, every session accepted after this point will be 
+             * ttl bruteforced and mangled by weird IP/TCP options */
             if (pkt->proto == TCP)
             {
-                /* check if hacks must be bypassed for this destination port */
-                if (runconfig.portconf[ntohs(pkt->tcp->dest)] != NONE)
+                if(runconfig.use_blacklist)
+                {
+                    if(!(runconfig.blacklist->isPresent(pkt->ip->daddr)))
+                    {
+                        sprintf(pkt->debug_buf, "blacklist setting is present: IP address don't match");
+                        pkt->selflog(__func__, pkt->debug_buf);
+                        send = analyze_outgoing(*pkt);
+                    }
+                    else
+                    {
+                        sprintf(pkt->debug_buf, "blacklist setting is present: IP address match and is not hacked");
+                        pkt->selflog(__func__, pkt->debug_buf);
+                    }
+                }
+                else if(runconfig.use_whitelist)
+                {
+                    if(runconfig.whitelist->isPresent(pkt->ip->daddr))
+                    {
+                        sprintf(pkt->debug_buf, "whitelist setting is present: IP address match");
+                        pkt->selflog(__func__, pkt->debug_buf);
+                        send = analyze_outgoing(*pkt);
+                    }
+                    else
+                    {
+                        sprintf(pkt->debug_buf, "whitelist setting is present: IP address don't match and is not hacked");
+                        pkt->selflog(__func__, pkt->debug_buf);
+                    }
+                }
+                else
+                {
                     send = analyze_outgoing(*pkt);
+                }
             }
         }
 

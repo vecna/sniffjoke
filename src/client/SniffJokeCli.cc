@@ -50,7 +50,7 @@ void SniffJokeCli::send_command(const char *cmdstring)
 	int sock;
 	struct sockaddr_in service_sin;	/* address of service */
 	struct sockaddr_in from;	/* address used for receiving data */
-	int rlen;
+	int rlen, flagblock;
 
 	/* Create a UNIX datagram socket for client */
 	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -75,32 +75,50 @@ void SniffJokeCli::send_command(const char *cmdstring)
 		return;
 	}
 
-        struct pollfd fd;
-        fd.events = POLLIN;
-        fd.fd = sock;
+    /* because we loop over the socket file description, is required a non blocking mode */
+    flagblock = fcntl(sock, F_GETFL);
+    if (fcntl(sock, F_SETFL, flagblock | O_NONBLOCK) == -1) {
+		fprintf(stderr, "FATAL: unable to set non blocking mode in listening socket: %s", strerror(errno));
+        fprintf(stderr, "anyway: the command has been sent to sniffjoke service, without error in sending");
+		return;
+    }
+
+
+    /* poll is required for timeout pourpose checking, because only one file desciption is used */
+    struct pollfd fd;
+    fd.events = POLLIN;
+    fd.fd = sock;
 
 	int nfds = poll(&fd, 1, ms_timeout);
 
 	if(nfds == 1) 
 	{
-		uint8_t rcv_buf[HUGEBUF];
-		memset(rcv_buf, 0x00, sizeof(rcv_buf));
+		uint8_t received_data[HUGEBUF];
+        uint8_t received_buf[LARGEBUF];
+        uint32_t progressive_recvl = 0;
+		memset(received_data, 0x00, HUGEBUF);
 		int fromlen = sizeof(struct sockaddr_in);
 
-		/* TODO: make a loop until the size don't become -1 */
-		if ((rlen = (recvfrom(sock, rcv_buf, sizeof(rcv_buf), MSG_WAITALL, (sockaddr*)&from, (socklen_t *)&fromlen))) == -1) {
-			printf("unable to receive from local socket: %s\n", strerror(errno));
-		}
+        do {
+            memset(received_buf, 0x00, LARGEBUF);
+		    rlen = (recvfrom(sock, received_buf, LARGEBUF, MSG_WAITALL, (sockaddr*)&from, (socklen_t *)&fromlen));
 
-		if (rlen == 0) {
-			fprintf(stderr, 
-				"[%s] command produces no answer. Verify sniffjoke is running and your command line\n",
-				cmdstring);
-		}
-		else {
-			if(!(parse_SjinternalProto(rcv_buf, rlen))) {
-				fprintf(stderr, "error in parsing received message\n");
-			}
+            if(rlen == -1) 
+            {
+                if( errno != EAGAIN) 
+                {
+                    printf("unable to receive from local socket: %s\n", strerror(errno));
+                    return;
+                }
+                break;
+		    }
+            memcpy(&received_data[progressive_recvl], received_buf, rlen);
+            progressive_recvl += rlen;
+        }
+        while(rlen > 0);
+
+	    if(!(parse_SjinternalProto(received_data, progressive_recvl))) {
+			fprintf(stderr, "error in parsing received message\n");
 		}
 	} else {
 		printf("Connection timeout: SniffJoke is not running, or --timeout too low\n");
@@ -121,28 +139,46 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
 	memcpy(&blockInfo, (void *)recvd, sizeof(blockInfo));
 
 	/* global transfert sanity check */
-	if(blockInfo.len !=  (uint32_t)rcvdlen)
+	if(blockInfo.cmd_len !=  (uint32_t)rcvdlen) 
+    {
+        printf("invalid lenght (received %d, declared %d)\n", rcvdlen, blockInfo.cmd_len);
 		return false;
+    }
 
-	switch(blockInfo.command_type) 
+	switch(blockInfo.cmd_type) 
 	{
 		case START_COMMAND_TYPE:
+            printf("received confirm of START command\n");
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case STOP_COMMAND_TYPE:
+            printf("received confirm of STOP command\n");
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case QUIT_COMMAND_TYPE:
+            printf("received confirm of QUIT command\n");
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case STAT_COMMAND_TYPE:
+            printf("received confirm of STAT command\n");
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case INFO_COMMAND_TYPE: /* tmp, INFO need to be other */
+            printf("received confirm of INFO command (not supported in version %s)\n", SW_VERSION);
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case LOGLEVEL_COMMAND_TYPE:
+            printf("received confirm of LOGLEVEL command\n");
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case DUMP_COMMAND_TYPE:
-			printf("not more supported! delete in the next repository sync");
-			return false;
+            printf("received confirm of DUMP command\n");
+			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case SETPORT_COMMAND_TYPE:
+            printf("received confirm of SET PORT command\n");
+			return printSJPort(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case SHOWPORT_COMMAND_TYPE:
+            printf("received confirm of SHOW PORT command\n");
 			return printSJPort(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case COMMAND_ERROR_MSG:
+            printf("received error in command sent\n");
 			return printSJError(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		default:
-			printf("invalid command type %d ?\n", blockInfo.command_type);
+			printf("invalid command type %d ?\n", blockInfo.cmd_type);
 	}
 	return false;
 }
@@ -158,91 +194,91 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
  */
 bool SniffJokeCli::printSJStat(uint8_t *statblock, int32_t blocklen)
 {
-	struct command_ret *cast_cmdr;
 	int32_t parsedlen = 0;
+    struct single_block *singleData;
 
 	while( parsedlen < blocklen ) 
 	{
-		/* struct command_ret { uint32_t len; uint8_t command_type } */
-	 	cast_cmdr = (struct command_ret *)&statblock[parsedlen];
-		void *p = (void *)&statblock[parsedlen + 2];
+        singleData = (struct single_block *)&statblock[parsedlen];
+		void *pointed_data = (void *)&statblock[parsedlen + sizeof(struct single_block)];
 
-		/* init to 0 the buffer to use for I/O */
+        /* this are the possibile used storave variables */
 		bool boolvar = false;
-		char charvar[MEDIUMBUF];
 		uint16_t intvar = 0;
+		char charvar[MEDIUMBUF];
 		memset(charvar, 0x00, MEDIUMBUF);
+        /* starting the parsing of the blocks */
 
-		switch(cast_cmdr->command_type)
+		switch(singleData->WHO)
 		{
 			case STAT_ACTIVE:
-				boolvar = (bool)(*(uint8_t *)p);
+				boolvar = (bool)(*(uint8_t *)pointed_data);
 				printf("SniffJoke %s\n", boolvar ? "running" : "not running");
 				break;
 			case STAT_MACGW:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("gw mac address:\t%s\n", charvar);
 				break;
 			case STAT_GWADDR:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("gw IP address:\t%s\n", charvar);
 				break;
 			case STAT_IFACE:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("hijacked interface:\t%s\n", charvar);
 				break;
 			case STAT_LOIP:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("gw fake IP used:\t%s\n", charvar);
 				break;
 			case STAT_TUNN:
-				intvar = *(uint16_t *)p;
+				memcpy(&intvar, pointed_data, singleData->len);
 				printf("tunnel interface number:\t%d\n", intvar);
 				break;
 			case STAT_DEBUGL:
-				intvar = *(uint16_t *)p;
+				memcpy(&intvar, pointed_data, singleData->len);
 				printf("debug level:\t%d\n", intvar);
 				break;
 			case STAT_LOGFN:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("log filename:\t%s\n", charvar);
 				break;
 			case STAT_CHROOT:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("chroot dir:\t%s\n", charvar);
 				break;
 			case STAT_ENABLR:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("enabler file:\t%s\n", charvar);
 				break;
 			case STAT_LOCAT:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("location name:\t%s\n", charvar);
 				break;
 			case STAT_ONLYP:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("single plugin:\t%s\n", charvar);
 				break;
 			case STAT_BINDA:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("admin address:\t%s\n", charvar);
 				break;
 			case STAT_BINDP:
-				intvar = *(uint16_t *)p;
+				memcpy(&intvar, pointed_data, singleData->len);
 				printf("admin UDP port:\t%d\n", intvar);
 				break;
 			case STAT_USER:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("dedicated user:\t%s\n", charvar);
 				break;
 			case STAT_GROUP:
-				memcpy(&charvar, p, cast_cmdr->len);
+				memcpy(&charvar, pointed_data, singleData->len);
 				printf("dedicated group:\t%s\n", charvar);
 				break;
 			default:
 				break;
 		}
-		parsedlen += (cast_cmdr->len + 2);
+		parsedlen += (singleData->len + sizeof(struct single_block));
 	}
 	return true;
 }

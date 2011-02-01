@@ -472,6 +472,7 @@ void SniffJoke::handle_cmd_dump(void)
     if(!userconf.sync_disk_configuration())
     {
         /* TODO - handle the communication of the error in the client */
+        debug.log(ALL_LEVEL, "error in communication error in loggin error in keyboad");
     }
     /* as generic rule, when a command has not an output, write the status */
     write_SJStatus(DUMP_COMMAND_TYPE);
@@ -539,10 +540,10 @@ void SniffJoke::write_SJPortStat(uint8_t type)
 {
     int i, prev_port = 1, prev_kind;
     struct command_ret retInfo;
+    uint32_t accumulen = sizeof(retInfo);
 
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, HUGEBUF);
-    uint8_t *p = &io_buf[sizeof (retInfo)];
 
     /* the first port work as initialization */
     prev_kind = userconf.runconfig.portconf[0];
@@ -551,44 +552,57 @@ void SniffJoke::write_SJPortStat(uint8_t type)
     {
         if (userconf.runconfig.portconf[i] != prev_kind)
         {
-            p = append_SJportBlock(p, prev_port, i - 1, prev_kind);
+            accumulen += append_SJportBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
             prev_kind = userconf.runconfig.portconf[i];
             prev_port = i;
         }
     }
 
-    p = append_SJportBlock(p, prev_port, PORTNUMBER, prev_kind);
+    accumulen = append_SJportBlock(&io_buf[accumulen], prev_port, PORTNUMBER, prev_kind);
 
-    retInfo.len = p - &io_buf[0];
-    retInfo.command_type = type;
-    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+    retInfo.cmd_len = accumulen;
+    retInfo.cmd_type = type;
+    memcpy(&io_buf[0], (void *)&retInfo, sizeof (retInfo));
 }
 
 void SniffJoke::write_SJStatus(uint8_t commandReceived)
 {
     struct command_ret retInfo;
+    uint32_t accumulen = sizeof(retInfo);
 
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, HUGEBUF);
-    uint8_t *p = &io_buf[sizeof (retInfo)];
 
     /* SJStatus is totally inspired by the IP/TCP options */
-    p = appendSJStatus(p, STAT_ACTIVE, sizeof (userconf.runconfig.active), userconf.runconfig.active);
-    p = appendSJStatus(p, STAT_MACGW, strlen(userconf.runconfig.gw_mac_str), userconf.runconfig.gw_mac_str);
-    p = appendSJStatus(p, STAT_GWADDR, strlen(userconf.runconfig.gw_ip_addr), userconf.runconfig.gw_ip_addr);
-    p = appendSJStatus(p, STAT_IFACE, strlen(userconf.runconfig.interface), userconf.runconfig.interface);
-    p = appendSJStatus(p, STAT_LOIP, strlen(userconf.runconfig.local_ip_addr), userconf.runconfig.local_ip_addr);
-    p = appendSJStatus(p, STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf.runconfig.tun_number);
-    p = appendSJStatus(p, STAT_DEBUGL, sizeof (userconf.runconfig.debug_level), userconf.runconfig.debug_level);
-    p = appendSJStatus(p, STAT_ONLYP, strlen(userconf.runconfig.onlyplugin), userconf.runconfig.onlyplugin);
-    p = appendSJStatus(p, STAT_BINDA, strlen(userconf.runconfig.admin_address), userconf.runconfig.admin_address);
-    p = appendSJStatus(p, STAT_BINDP, sizeof (userconf.runconfig.admin_port), userconf.runconfig.admin_port);
-    p = appendSJStatus(p, STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
-    p = appendSJStatus(p, STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf.runconfig.active), userconf.runconfig.active);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf.runconfig.gw_mac_str), userconf.runconfig.gw_mac_str);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf.runconfig.gw_ip_addr), userconf.runconfig.gw_ip_addr);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_IFACE, strlen(userconf.runconfig.interface), userconf.runconfig.interface);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOIP, strlen(userconf.runconfig.local_ip_addr), userconf.runconfig.local_ip_addr);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf.runconfig.tun_number);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf.runconfig.debug_level), userconf.runconfig.debug_level);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf.runconfig.onlyplugin), userconf.runconfig.onlyplugin);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf.runconfig.admin_address), userconf.runconfig.admin_address);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf.runconfig.admin_port), userconf.runconfig.admin_port);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
+debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
+debug.log(ALL_LEVEL, "%s: final len %d", __func__,accumulen);
 
-    retInfo.len = (uint32_t) (p - &io_buf[0]);
-    retInfo.command_type = commandReceived;
+    retInfo.cmd_len = accumulen;
+    retInfo.cmd_type = commandReceived;
     memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
 }
 
@@ -596,42 +610,56 @@ void SniffJoke::write_SJProtoError(void)
 {
     struct command_ret retInfo;
     memset(io_buf, 0x00, HUGEBUF);
-    retInfo.len = sizeof (retInfo);
-    retInfo.command_type = COMMAND_ERROR_MSG;
+    retInfo.cmd_len = sizeof (retInfo);
+    retInfo.cmd_type = COMMAND_ERROR_MSG;
     memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
 }
 
 /* follow the most "internal" method for io_buf creation, called from the methods before  */
-uint8_t *SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, uint16_t value)
+uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, uint16_t value)
 {
-    *p = len + 2;
-    *++p = (uint8_t) WHO;
-    p++;
+    struct single_block singleData;
+
+    singleData.len = len;
+    singleData.WHO = WHO;
+    memcpy(p, &singleData, sizeof(singleData));
+    p += sizeof(singleData);
     memcpy(p, &value, len);
 
-    return (p + len);
+    return len + sizeof(singleData);
 }
 
-uint8_t *SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, bool value)
+uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, bool value)
 {
-    *p = len + 2;
-    *++p = (uint8_t) WHO;
-    *++p = value;
+    struct single_block singleData;
 
-    return (p + len);
+    singleData.len = len;
+    singleData.WHO = WHO;
+    memcpy(p, &singleData, sizeof(singleData));
+    p += sizeof(singleData);
+    *p = (uint8_t)value;
+
+    return len + sizeof(singleData);
 }
 
-uint8_t *SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, char value[MEDIUMBUF])
+uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, char value[MEDIUMBUF])
 {
-    *p = len + 2;
-    *++p = (uint8_t) WHO;
-    p++;
-    memcpy(p, value, len);
+    if(len)
+    {
+        struct single_block singleData;
 
-    return (p + len);
+        singleData.len = len;
+        singleData.WHO = WHO;
+        memcpy(p, &singleData, sizeof(singleData));
+        p += sizeof(singleData);
+        memcpy(p, value, len);
+
+        len += sizeof(singleData);
+    }
+    return len;
 }
 
-uint8_t *SniffJoke::append_SJportBlock(uint8_t *p, uint16_t startP, uint16_t endP, uint8_t weight)
+uint32_t SniffJoke::append_SJportBlock(uint8_t *p, uint16_t startP, uint16_t endP, uint8_t weight)
 {
     struct port_info pInfo;
 
@@ -640,5 +668,5 @@ uint8_t *SniffJoke::append_SJportBlock(uint8_t *p, uint16_t startP, uint16_t end
     pInfo.weight = weight;
 
     memcpy(p, &pInfo, sizeof (pInfo));
-    return (p + sizeof (pInfo));
+    return (sizeof (pInfo));
 }
