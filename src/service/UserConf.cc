@@ -363,6 +363,13 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
 
     memset(useropt, 0x00, SMALLBUF);
 
+    if(cmdopt != NULL && strlen(cmdopt) && ( difolt == NULL ? true : memcmp(cmdopt, difolt, strlen(difolt))) )
+    {
+        debugfmt = "%s/string: keyword %s command line %s used";
+        memcpy(dst, cmdopt, strlen(cmdopt));
+        goto EndparseMatchString;
+    }
+
     /* only-plugin will be empty, no other cases */
     if (cf == NULL && difolt == NULL)
     {
@@ -384,15 +391,6 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
         debugfmt = "%s/string: parsed keyword %s [%s] option in conf file";
         /* dst is large MEDIUMBUF, and none useropt will overflow this size */
         memcpy(dst, useropt, strlen(useropt));
-
-        if (!memcmp(dst, cmdopt, strlen(dst)) && !memcmp(dst, difolt, strlen(difolt)))
-        {
-            debug.log(VERBOSE_LEVEL, "warning, config file specify '%s' as %s, command line as %s (default %s). used %s",
-                      name, dst, cmdopt, difolt, cmdopt);
-            memset(dst, 0x00, MEDIUMBUF);
-            memcpy(dst, cmdopt, strlen(cmdopt));
-            debugfmt = "%s/string: keyword %s command line override, %s used";
-        }
         goto EndparseMatchString;
     }
 
@@ -413,6 +411,13 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
     char useropt[SMALLBUF];
     const char *debugfmt = NULL;
 
+    if (cmdopt != difolt && cmdopt != 0)
+    {
+        debugfmt = "%s/uint16: for %s used command line option %d";
+        dst = cmdopt;
+        goto EndparseMatchShort;
+    }
+
     /* if the file is NULL, the default is used */
     if (cf == NULL)
     {
@@ -426,13 +431,6 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
     {
         debugfmt = "%s/uint16: parsed keyword %s [%d] option in conf file";
         dst = atoi(useropt);
-
-        if (dst != cmdopt && dst != difolt)
-        {
-            debug.log(VERBOSE_LEVEL, "warning, config file specify '%s' as %d, command line as %d (default %d). used %d",
-                      name, dst, cmdopt, difolt, cmdopt);
-            dst = cmdopt;
-        }
         goto EndparseMatchShort;
     }
 
@@ -471,6 +469,7 @@ bool UserConf::load(void)
     parseMatch(runconfig.group, "group", loadfd, cmdline_opts.group, DROP_GROUP);
     parseMatch(runconfig.admin_address, "management-address", loadfd, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
     parseMatch(runconfig.onlyplugin, "only-plugin", loadfd, cmdline_opts.onlyplugin, NULL);
+    parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadfd, cmdline_opts.max_ttl_probe, MAX_TTLPROBE);
 
     parseMatch(runconfig.admin_port, "management-port", loadfd, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
     parseMatch(runconfig.debug_level, "debug", loadfd, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);

@@ -43,7 +43,7 @@ runtime_error sj_runtime_exception(const char* func, const char* file, long line
     stringstream stream;
     stream << "[EXCEPTION] " << file << "(" << line << ") function: " << func << "()";
     if (msg != NULL)
-        stream << " : " << msg;
+        stream << " " << msg;
     return std::runtime_error(stream.str());
 }
 
@@ -125,7 +125,7 @@ static void sj_version(const char *pname)
 #define SNIFFJOKE_HELP_FORMAT \
     "%s [command] or %s --options:\n"\
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
-    " --dir <name>\tspecify the base directory where the location reside [default: %s]\n"\
+    " --dir <name>\t\tspecify the base directory where the location reside [default: %s]\n"\
     "\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
     " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
     " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
@@ -144,8 +144,8 @@ static void sj_help(const char *pname)
 {
     printf(SNIFFJOKE_HELP_FORMAT,
            pname, pname,
-           WORK_DIR,
            DEFAULT_LOCATION,
+           WORK_DIR,
            DROP_USER, DROP_GROUP,
            DEFAULT_START_STOPPED ? "present" : "not present",
            DEFAULT_DEBUG_LEVEL,

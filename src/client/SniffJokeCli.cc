@@ -213,15 +213,15 @@ bool SniffJokeCli::printSJStat(uint8_t *statblock, int32_t blocklen)
 		{
 			case STAT_ACTIVE:
 				boolvar = (bool)(*(uint8_t *)pointed_data);
-				printf("SniffJoke %s\n", boolvar ? "running" : "not running");
+				printf("SniffJoke\t\t%s\n", boolvar ? "running" : "not running");
 				break;
 			case STAT_MACGW:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("gw mac address:\t%s\n", charvar);
+				printf("gateway hw address:\t%s\n", charvar);
 				break;
 			case STAT_GWADDR:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("gw IP address:\t%s\n", charvar);
+				printf("gateway IP address:\t%s\n", charvar);
 				break;
 			case STAT_IFACE:
 				memcpy(&charvar, pointed_data, singleData->len);
@@ -229,47 +229,49 @@ bool SniffJokeCli::printSJStat(uint8_t *statblock, int32_t blocklen)
 				break;
 			case STAT_LOIP:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("gw fake IP used:\t%s\n", charvar);
+				printf("Sj's tunnel IP address:\t%s\n", charvar);
 				break;
 			case STAT_TUNN:
 				memcpy(&intvar, pointed_data, singleData->len);
-				printf("tunnel interface number:\t%d\n", intvar);
+				printf("tunnel iface number:\t%d\n", intvar);
 				break;
 			case STAT_DEBUGL:
 				memcpy(&intvar, pointed_data, singleData->len);
-				printf("debug level:\t%d\n", intvar);
+				printf("debug level:\t\t%d\n", intvar);
 				break;
 			case STAT_LOGFN:
 				memcpy(&charvar, pointed_data, singleData->len);
 				printf("log filename:\t%s\n", charvar);
 				break;
 			case STAT_CHROOT:
+            /* not useful ATM */ 
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("chroot dir:\t%s\n", charvar);
+				printf("base directory:\t\t%s\n", charvar);
 				break;
+            /* not more present in the sj_config */
 			case STAT_ENABLR:
 				memcpy(&charvar, pointed_data, singleData->len);
 				printf("enabler file:\t%s\n", charvar);
 				break;
 			case STAT_LOCAT:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("location name:\t%s\n", charvar);
+				printf("location name:\t\t%s\n", charvar);
 				break;
 			case STAT_ONLYP:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("single plugin:\t%s\n", charvar);
+				printf("single plugin:\t\t%s\n", charvar);
 				break;
 			case STAT_BINDA:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("admin address:\t%s\n", charvar);
+				printf("admin address:\t\t%s\n", charvar);
 				break;
 			case STAT_BINDP:
 				memcpy(&intvar, pointed_data, singleData->len);
-				printf("admin UDP port:\t%d\n", intvar);
+				printf("admin UDP port:\t\t%d\n", intvar);
 				break;
 			case STAT_USER:
 				memcpy(&charvar, pointed_data, singleData->len);
-				printf("dedicated user:\t%s\n", charvar);
+				printf("dedicated user:\t\t%s\n", charvar);
 				break;
 			case STAT_GROUP:
 				memcpy(&charvar, pointed_data, singleData->len);

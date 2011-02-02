@@ -575,31 +575,22 @@ void SniffJoke::write_SJStatus(uint8_t commandReceived)
     memset(io_buf, 0x00, HUGEBUF);
 
     /* SJStatus is totally inspired by the IP/TCP options */
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf.runconfig.active), userconf.runconfig.active);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf.runconfig.gw_mac_str), userconf.runconfig.gw_mac_str);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf.runconfig.gw_ip_addr), userconf.runconfig.gw_ip_addr);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_IFACE, strlen(userconf.runconfig.interface), userconf.runconfig.interface);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOIP, strlen(userconf.runconfig.local_ip_addr), userconf.runconfig.local_ip_addr);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf.runconfig.tun_number);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf.runconfig.debug_level), userconf.runconfig.debug_level);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf.runconfig.onlyplugin), userconf.runconfig.onlyplugin);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf.runconfig.admin_address), userconf.runconfig.admin_address);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf.runconfig.admin_port), userconf.runconfig.admin_port);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
-debug.log(ALL_LEVEL, "%s: len %d", __func__,accumulen);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
-debug.log(ALL_LEVEL, "%s: final len %d", __func__,accumulen);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location_name), userconf.runconfig.location_name);
+    /**
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHROOT, strlen(userconf.runconfig.working_dir), userconf.runconfig.working_dir);
+    **/
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = commandReceived;

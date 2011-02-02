@@ -99,7 +99,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
 HackPool::HackPool(const sj_config &runcfg) :
 runconfig(runcfg)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    debug.log(VERBOSE_LEVEL, "%s: onlyplugin [%s]", __func__, runcfg.onlyplugin);
 
     if (runcfg.onlyplugin[0])
     {
