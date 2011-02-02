@@ -31,22 +31,28 @@ of the injection.
 
 this is what we call FREQUENCY, Frequency is an enum defined in Hack.h:
 
-enum Frequency { RARE = 1, COMMON = 2, ALWAYS = 3, PACKETS10PEEK = 4, PACKETS30PEEK = 5,
-                 TIMEBASED5S = 6, TIMEBASED20S = 7, STARTPEEK = 8, LONGPEEK = 9 };
-
 meaning of single value in the "normal" PROBABILITY (probability is a variable like frequence)
 
-RARE		every packet has the 24% to be hacked
-COMMON		every packet has the 56% to be hacked
-ALWAYS		yes, every packet is hacked: 100% not good, but, useful in rare situations
-PACKETS10PEEK	when the packets count related to the session if 9, 10 or 11 
-		(or 19, 20, 21...) the probability is 80%, the other time, 8%
-PACKETS30PEEK	session count 29, 30, 31 (59, 60, 61), are 80%, the other, 8%
-TIMEBASED5S	when the absolute time express in seconds is divisible by 5, the probability 
-		is 96% the other time, 8%
-TIMEBASED20S	absolute timing in seconds divisible by 20, 96%, other time, 8%
-STARTPEEK	for the first 20 packets, 80%, since 21 to 40, 40%, after 8%
-LONGPEEK	first 60 packets 64%, since 61 to 120 32%, the other until the end 8%
+RARE		
+            every packet has the 24% to be hacked
+COMMON		
+            every packet has the 56% to be hacked
+ALWAYS		
+            yes, every packet is hacked: 100% not good, but, useful in rare situations
+PACKETS10PEEK	
+            when the packets count related to the session if 9, 10 or 11 
+		    (or 19, 20, 21...) the probability is 80%, the other time, 8%
+PACKETS30PEEK	
+            session count 29, 30, 31 (59, 60, 61), are 80%, the other, 8%
+TIMEBASED5S	
+            when the absolute time express in seconds is divisible by 5, the probability 
+		    is 96% the other time, 8%
+TIMEBASED20S	
+            absolute timing in seconds divisible by 20, 96%, other time, 8%
+STARTPEEK	
+            for the first 20 packets, 80%, since 21 to 40, 40%, after 8%
+LONGPEEK	
+            first 60 packets 64%, since 61 to 120 32%, the other until the end 8%
 
 the packets count is related to the original sessions packets, the hacked injected are excluded.
 
@@ -62,11 +68,15 @@ works (is used in testing time)
 
 the value are: none, light, normal, heavy.
 
-none		multiply by 0 the value returned by Frequency (suppress hacks)
-light		multiply by 4 the value returned by Frequency (you should halve the
-		percentage written before)
-normal		multiply by 8 (this is because every number is divisible by eight)
-heavy		multiply by 12
+NONE   
+            multiply by 0 the value returned by Frequency (suppress hacks)
+LIGHT
+            multiply by 4 the value returned by Frequency (you should halve the
+		    percentage written before)
+NORMAL 
+            multiply by 8 (this is because every number is divisible by eight)
+HEAVY
+            multiply by 12
 
 (coders: TCPTrack.cc::percentage is the method)
 

@@ -109,5 +109,31 @@ be hacked.
 
 *** port-aggressivity.conf
 
+this is how the default and simplest section appears:
+
+# this is always on the top of the port definition file, act as default
+1:65535     NORMAL,COMMON
+
+# follow the port rules
+22          RARE,LIGHT
+23,25,110   COMMON,NORMAL
+80,8080     PEEKATSTART,EVERY5SECONDS,HEAVY
+6667,7000   ALWAYS,NORMAL
+
+# edonkey p2p
+4600:4800   EVERY20SECONDS,LIGHT
+
+you need to select the destination TCP ports, use as separator "," or ":"
+with the "," you should address the single port and with the ":" a range.
+
+RARE
+COMMON
+ALWAYS
+PEEK10PKT
+PEEK30PKT
+EVERY5SECONDS
+EVERY20SECONDS
+PEEKATSTART
+LONGPEEK
 
 

@@ -37,19 +37,20 @@ start_singletest() {
 	SCRAMBLE=`echo $PLUGIN | sed -es/.*\.so,//`
 	TESTID=`echo $PLUGIN | tr "," "-"`
 	workingdir="/tmp/$LOCATION/$TESTID"
-    echo -e "Plugin Name\t[$PNAME]\nScramble\t[$SCRAMBLE]\nTestID\t\t[$TESTID]\n--dir\t\t[$workingdir]\n"
+    echo -e "Plugin Name\t\t[$PNAME]\nScramble\t\t[$SCRAMBLE]\nTestID\t\t\t[$TESTID]\n--dir\t\t\t[$workingdir]\n"
 	mkdir -p $workingdir
-	echo "+ Starting sniffjoke with $PLUGIN and $SCRAMBLE"
-	$SNIFFJOKEBIN --debug 6 --start --dir $workingdir --only-plugin $PLUGIN 
+	echo -e "+ Executing sniffjoke with $PLUGIN and $SCRAMBLE, command line:\n"
+	echo "$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
+	$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN 
 	sleep 2
 	$SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log 
 	cd $workingdir
 	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
-	INTERFACE=`$SNIFFJOKECLIBIN stat | grep "local interface" | cut -b 19- | sed -es/\,.*//`
+	INTERFACE=`$SNIFFJOKECLIBIN stat | grep "local interface" | cut -b 19-`
     # double check
     iflinelen=`wc -l < /sbin/ifconfig $INTERFACE`
-    if [ $iflinelen = 0 ]; then
-        echo "Interface $INTERFACE not found: sniffjoke is not working";
+    if [ -z $iflinelen ]; then
+        echo "Interface [$INTERFACE] not found: sniffjoke is not working";
         exit
     fi
 	echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
@@ -187,16 +188,16 @@ for hack in $success; do
 	echo -en "$hackName,$scramble" | sed -es/,\$// >> $PeL
 done
 
-echo -en "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
+echo -e "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure=`ls /tmp/$LOCATION/*.failed_hacks`
 for hack in $failure ; do
 	hackName=`basename $hack | sed -es/failed_hacks/so/`
 	scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-	echo -en "# $hackName,$scramble" | sed -es/,\$// >> $PeL
+	echo -e "\n# $hackName,$scramble" | sed -es/,\$// >> $PeL
 done
 
 now=`date`
-echo -en "\n\n# Generated in date: $now" >> $PeL
+echo -e "\n\n# Generated in date: $now" >> $PeL
 
 echo "file /tmp/$LOCATION/plugins_enabled.conf.$LOCATION has been generated"
 chmod 444 /tmp/$LOCATION/plugins_enabled.conf.$LOCATION

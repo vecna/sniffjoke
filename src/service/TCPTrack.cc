@@ -47,40 +47,48 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 {
     uint32_t freqret = 0;
 
-    if(frequencyValue & AGG_RARE) {
+    if(frequencyValue & AGG_RARE) 
+    {
         freqret += 3;
     }
-    if(frequencyValue & AGG_COMMON) {
+    if(frequencyValue & AGG_COMMON) 
+    {
         freqret += 7;
     }
-    if(frequencyValue & AGG_ALWAYS) {
+    if(frequencyValue & AGG_ALWAYS) 
+    {
         freqret += 25;
     }
-    if(frequencyValue & AGG_PACKETS10PEEK) {
+    if(frequencyValue & AGG_PACKETS10PEEK) 
+    {
         if (!(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10))
             freqret += 10;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_PACKETS30PEEK) {
+    if(frequencyValue & AGG_PACKETS30PEEK) 
+    {
         if (!(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30))
             freqret += 10;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_TIMEBASED5S) {
+    if(frequencyValue & AGG_TIMEBASED5S) 
+    {
         if (!((uint8_t) sj_clock % 5))
             freqret += 12;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_TIMEBASED20S) {
+    if(frequencyValue & AGG_TIMEBASED20S) 
+    {
         if (!((uint8_t) sj_clock % 20))
             freqret += 12;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_STARTPEEK) {
+    if(frequencyValue & AGG_STARTPEEK) 
+    {
         if (packet_number < 20)
             freqret += 10;
         else if (packet_number < 40)
@@ -88,7 +96,8 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_LONGPEEK) {
+    if(frequencyValue & AGG_LONGPEEK) 
+    {
         if (packet_number < 60)
             freqret += 8;
         else if (packet_number < 120)
@@ -113,31 +122,46 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16_t userFrequency)
 {
     uint32_t this_percentage = 0, aggressivity_percentage = 0;
+    uint16_t referenceFrequency;
 
     /* the frequency is sets by default, if not provided by the user. the aggressivity is sets
      * by the plugin developer, if is not used.  */
     if(!(aggressivity_percentage = derivePercentage(packet_number, userFrequency)))
+    {
+        /* this happen in --only-plugin (and the forced frequency to AGG_ALWAYS), not
+         * FREQ_ is provived and this cause an error, for this reason, I add the default
+         * FREQ_NORMAL here */
+        hackFrequency += FREQ_NORMAL;
+        referenceFrequency = hackFrequency;
         aggressivity_percentage = derivePercentage(packet_number, hackFrequency);
+    }
+    else
+    {
+        referenceFrequency = userFrequency;
+    }
 
-    if(userFrequency & FREQ_NONE) {
+    if(referenceFrequency & FREQ_NONE) {
         /* when aggressivity match set to "10", now is 0% of probability */
         this_percentage = aggressivity_percentage * 0;
     }
-    else if(userFrequency & FREQ_LIGHT) {
+    else if(referenceFrequency & FREQ_LIGHT) {
         /* with 10 ("common") is 40% of probability */
         this_percentage = aggressivity_percentage * 4;
     }
-    else if(userFrequency & FREQ_NORMAL) {
+    else if(referenceFrequency & FREQ_NORMAL) {
         /* with 10 ("common") is 80% of probability */
         this_percentage = aggressivity_percentage * 8;
     }
-    else if(userFrequency & FREQ_HEAVY) {
+    else if(referenceFrequency & FREQ_HEAVY) {
         /* with 10 ("common") is 120% of probabilty, this was useful when a 
          * float value was used, better analysis will improve this algoritm */
         this_percentage = aggressivity_percentage * 12;
     } 
     else {
-        SJ_RUNTIME_EXCEPTION("Invalid status: packet without Frequency set");
+        /* this is happen and I didn't understand why, so, I try to log */
+        debug.log(DEBUG_LEVEL, "arbitrary added percentage: no FREQ_ are present. (this prcnt %d) user %u hack %u", this_percentage, hackFrequency, userFrequency);
+        this_percentage = aggressivity_percentage * 3;
+        /* SJ_RUNTIME_EXCEPTION("Invalid status: packet without Frequency set"); */
     }
 
     return (( (uint32_t)(random() % 100) + 1 <= this_percentage));
