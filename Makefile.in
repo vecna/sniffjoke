@@ -635,6 +635,8 @@ installconf:
 	fi; \
 	echo "Copying generic location installation" && \
 	cp -r conf/generic $(localstatedir)/sniffjoke;
+	@echo "Installing sniffjoke-autotest in $(bindir)" && \
+	cp -p src/autotest/sniffjoke-autotest $(bindir)/
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

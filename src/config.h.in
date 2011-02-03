@@ -255,9 +255,6 @@
 /* where can I find my running track ? */
 #undef INSTALL_STATEDIR
 
-/* where can I find my sysconf file ? */
-#undef INSTALL_SYSCONFDIR
-
 /* Define if the OS needs help to load dependent libraries for dlopen(). */
 #undef LTDL_DLOPEN_DEPLIBS
 

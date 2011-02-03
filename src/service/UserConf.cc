@@ -96,7 +96,9 @@ cmdline_opts(cmdline_opts)
         debug.log(DEBUG_LEVEL, "created directory %s successful", runconfig.working_dir);
     }
     else
+    {
         debug.log(DEBUG_LEVEL, "working directory %s already present", runconfig.working_dir);
+    }
 
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     load();
@@ -109,7 +111,21 @@ cmdline_opts(cmdline_opts)
     }
 
     if (runconfig.onlyplugin[0])
+    {
         debug.log(VERBOSE_LEVEL, "plugin %s override the plugins settings in %s", runconfig.onlyplugin, FILE_PLUGINSENABLER);
+    }
+    else
+    {
+        if(!access(FILE_PLUGINSENABLER, R_OK))
+        {
+            debug.log(ALL_LEVEL, "unable to access to enabler file %s: %s: location unaccepted", FILE_PLUGINSENABLER, strerror(errno));
+            SJ_RUNTIME_EXCEPTION("Unacceptable location because enabler file not found nor --only-plugin specified");
+        }
+        else
+        {
+            debug.log(VERBOSE_LEVEL, "accepted location %s with enabler accessible", runconfig.location_name);
+        }
+    }
 
     debug.log(DEBUG_LEVEL, "runconfig pass the sanity checks");
 }

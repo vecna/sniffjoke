@@ -26,8 +26,9 @@ AC_DEFINE_UNQUOTED(INSTALL_PREFIX, "`eval echo $prefix`")
 AH_TEMPLATE(INSTALL_EXECPREFIX, [the exec_prefix passed by configure])
 AC_DEFINE_UNQUOTED(INSTALL_EXECPREFIX, "`eval echo $exec_prefix`")
 
-AH_TEMPLATE(INSTALL_SYSCONFDIR, [where can I find my sysconf file ?])
-AC_DEFINE_UNQUOTED(INSTALL_SYSCONFDIR, "`eval echo $sysconfdir/sniffjoke/`")
+# this will not be useful ATM
+# AH_TEMPLATE(INSTALL_SYSCONFDIR, [where can I find my sysconf file ?])
+# AC_DEFINE_UNQUOTED(INSTALL_SYSCONFDIR, "`eval echo $sysconfdir/sniffjoke/`")
 
 AH_TEMPLATE(INSTALL_STATEDIR, [where can I find my running track ?])
 AC_DEFINE_UNQUOTED(INSTALL_STATEDIR, "`eval echo $localstatedir/sniffjoke/`")
