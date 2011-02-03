@@ -126,14 +126,47 @@ this is how the default and simplest section appears:
 you need to select the destination TCP ports, use as separator "," or ":"
 with the "," you should address the single port and with the ":" a range.
 
+Those value are tell "Frequencies" and describe the frequency of the injection.
+related to the kind of session (IRC is really different, from sensibiliy of the
+data, amount of bytes and number of packets, from HTTP and peer2peer), those value
+should be mixed togheder, using the ","
+
 RARE
+            every packet has the 24% to be hacked
 COMMON
+            every packet has the 56% to be hacked
 ALWAYS
-PEEK10PKT
-PEEK30PKT
-EVERY5SECONDS
-EVERY20SECONDS
-PEEKATSTART
+            yes, every packet is hacked: 100% not good, but, useful in rare situations
+PACKETS10PEEK
+            when the packets count related to the session if 9, 10 or 11
+            (or 19, 20, 21...) the probability is 80%, the other time, 8%
+PACKETS30PEEK
+            session count 29, 30, 31 (59, 60, 61), are 80%, the other, 8%
+TIMEBASED5S
+            when the absolute time express in seconds is divisible by 5, the probability
+            is 96% the other time, 8%
+TIMEBASED20S
+            absolute timing in seconds divisible by 20, 96%, other time, 8%
+STARTPEEK
+            for the first 20 packets, 80%, since 21 to 40, 40%, after 8%
 LONGPEEK
+            first 60 packets 64%, since 61 to 120 32%, the other until the end 8%
 
+the packets count is related to the original sessions packets, the hacked injected are excluded.
 
+and those value, that REQUIRE to be ONE ALONE IN EVERY LINE, describe the Probability of
+happen (because every think in sniffjoke need to be randomized, also the probability of injection).
+
+NONE
+            multiply by 0 the value returned by Frequency (suppress hacks)
+LIGHT
+            multiply by 4 the value returned by Frequency (you should halve the
+            percentage written before)
+NORMAL
+            multiply by 8 (this is because every number is divisible by eight)
+HEAVY
+            multiply by 12
+
+Is a matter of percentage. use the default if you don't know what you do. and if you
+know what is better do, contact us sending a complete default, now really few TCP ports are
+written.

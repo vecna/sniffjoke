@@ -61,15 +61,29 @@ plugins loaded by sniffjooke.
 	#
 	# comment supported
 	#
-	fake_close_fin.so
-	#fake_close_rst.so
-	fake_data.so
-	fake_seq.so
+	fake_close_fin.so,TYPEOFSCRAMBLESUPPORTED
+	#fake_close_rst.so,TYPEOFSCRAMBLESUPPORTED
+	fake_data.so,TYPEOFSCRAMBLESUPPORTED
+	fake_seq.so,TYPEOFSCRAMBLESUPPORTED
 	#fake_syn.so
 	#fake_zero_window.so
 	#shift_ack.so
-	valid_rst_fake_seq.so
+	valid_rst_fake_seq.so,TYPEOFSCRAMBLESUPPORTED
 	# regards
 	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# 
 
 this is the default, and the four commented hacks need to be tested. 
+
+the type of scramble depends on your network, because some type of combination
+(like, real RST injection that will expire before reach the remote server, will
+be interpreted by your NAT gateway closing your session.) for this reason is 
+done the autotest: it test every combination of hack + scramble and save a 
+related configuration for the network environment you're are using (office, home)
+
+
+
+
+
+
+this is a freaking free software: documents well is a matter of respect and
+I understand, but truly, is painful, I prefer coding.

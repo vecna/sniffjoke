@@ -40,4 +40,5 @@ keep logs about sniffjoke users and if you want make those test by yourself, you
 1) require to be runned as root
 2) create a lot of dump in /tmp/ directory, that are not removed at the end of the test
 3) connect to http://www.delirandom.net/sniffjoke_test/post_echo.php
+   and other servers are welcomed
 4) POST the files, records the answers, verify md5sum, records timings, records .pcap

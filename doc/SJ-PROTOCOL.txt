@@ -19,6 +19,7 @@ set
 		light
 		normal
 		heavy
+    it is used for set ports range strongness of injection
 clear
 debug
 	followed by a space and a digit between 1 and 6
@@ -73,8 +74,22 @@ service/internalProtocol.h
 	the received struct are the same explained in START section, the command type for
 	"stop" has value of 2.
 3) stat
-	TO BE CONTINUED
 4) quit
+
+    TODO - need to be finished 
+    TODO - need to be finished 
+    TODO - need to be finished 
+    TODO - need to be finished 
+    TODO - need to be finished 
+    TODO - need to be finished 
+
+    TODO - need to be finished this documentation file because I've postponed the
+           description of the internel protocol when I'm sure about what's 
+           useful or not.
+
+    anyway, curiosity are welcomed, and your will be feeded by src/UserConf.cc and .h,
+    internalProtocol.h and SniffJoke.cc
+
 5) saveconf
 6) info
 7) showport

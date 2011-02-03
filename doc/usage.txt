@@ -8,40 +8,49 @@ this command returns three piece of information,
 	the option usefull when sniffjoke is started (by hand or by init script)
 
 sniffjoke [command] or sniffjoke --options:
- --config <filename>	config file [default: /usr/local/var/sniffjoke/sjconf.bin]
- --enabler <filename>	plugins enabler file [default: /usr/local/etc/sniffjoke/plugins_enabled.txt]
- --user <username>	downgrade priviledge to the specified user [default: sniffjoke]
- --group <groupname>	downgrade priviledge to the specified group [default: sniffjoke]
- --chroot-dir <dir>	runs chroted into the specified dir [default: /usr/local/var/sniffjoke/]
- --logfile <file>	set a logfile, [default: /usr/local/var/sniffjoke/sniffjoke.log]
- --debug <level 1-6>	set up verbosoty level [default: 2]
-			1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets
- --foreground		running in foreground [default:background]
- --admin <IPv4>[:port]	specify administration IP address [default: 127.0.0.1:8844]
- --force		force restart if sniffjoke service
- --version		show sniffjoke version
- --help			show this help (special --help hacking)
+ --location <name>  specify the network environment (suggested) [default: generic]
+ --dir <name>       specify the base directory where the location reside [default: /usr/local/var/sniffjoke/]
+        [using both location and dir defaults, the configuration status will not be saved]
+ --user <username>  downgrade priviledge to the specified user [default: nobody]
+ --group <groupname>    downgrade priviledge to the specified group [default: nogroup]
+ --whitelist    inject evasion packets only in the specified ip addresses
+ --blacklist    inject evasion packet in all session excluding the blacklisted ip address
+ --start        if present, evasion i'ts activated immediatly [default: not present]
+ --debug <level 1-6>    set up verbosoty level [default: 2]
+            1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets
+ --foreground       running in foreground [default:background]
+ --admin <ip>[:port]    specify administration IP address [default: 127.0.0.1:8844]
+ --force        force restart (usable when another sniffjoke service is running)
+ --version      show sniffjoke version
+ --help         show this help
 
 	when sniffjoke is running keep on memory the configuration settings and dump them
 	in a binary file, sniffjoke run under chroot directory and inside them there are files
 	usefull for sniffjoke and for the user.
 
-	the following options when sniffjoke is running and need to be managed (usually called client mode)
+and this is the sniffjoke manage, controller, client, whaterver:
 
-while sniffjoke is running, you should send one of those commands as command line argument:
- start			start sniffjoke hijacking/injection
- stop			stop sniffjoke (but remain tunnel interface active)
- quit			stop sniffjoke, save config, abort the service
- saveconf		dump config file
- stat			get statistics about sniffjoke configuration and network
- info			get massive info about sniffjoke internet stats
- showport		show TCP ports strongness of injection
- set start end value	set per tcp ports the strongness of injection
- 			the values are: <heavy|normal|light|none>
- 			example: sniffjoke set 22 80 heavy
- clear			alias to "set 1 65535 none"
- loglevel		[1-6] change the loglevel
+sniffjokectl --options [command]:
+ --address <ip>[:port]  specify administration IP address [default: 127.0.0.1:8844]
+ --version              show sniffjoke version
+ --timeout              set milliseconds timeout when contacting SniffJoke service [default: 500]
+ --help                 show this help
 
+when sniffjoke is running, you should send commands with a command line argument:
+ start                  start sniffjoke hijacking/injection
+ stop                   stop sniffjoke (but remain tunnel interface active)
+ quit                   stop sniffjoke, save config, abort the service
+ saveconf               dump config file
+ stat                   get statistics about sniffjoke configuration and network
+ info                   get massive info about sniffjoke internet stats
+ showport               show TCP ports strongness of injection
+ set start end value    set per tcp ports the strongness of injection
+                        the values are: <heavy|normal|light|none>
+                        example: sniffjoke set 22 80 heavy
+ clear                  alias to "set 1 65535 none"
+ debug                  [1-6] change the log debug level
+
+                        http://www.delirandom.net/sniffjoke
 
 	those command are used and accepted only when sniffjoke is running and the 
 	"client instance" is listening and reachable in the UDP port.
@@ -50,17 +59,11 @@ while sniffjoke is running, you should send one of those commands as command lin
 	to use sniffjoke. when you restart sniffjoke, using the same --chroot-dir, the 
 	previous configurations are reloaded.
 
-when sniffjoke is is on testing mode, other options are used (by the script sniffjoke-testsuite)
 
-testing options (not saved in configuration file):
- --only-plugin <plugin.so>	specify the single plugin to use
- --scramble <Y|N><Y|N><Y|N>	select scrambling techniques (order: TTL, checksum, IPmalform)
+SEMI-SECRET OPTION IN sniffjoke
+    --only-plugin plugin_name.so,SINGLESCRAMBLEUSED
 
-	--only-plugin will enable a single plugin, require the full path with of the .so file, and
-	is an option used with --scramble (Y|N)(Y|N)(Y|N), the scramble option require three Y or N,
-	the first char, if set to Y, enable TTL scrambling tech, the second the checksum malformation,
-	and the third the IPoptions malformation. almost one "Y" is required (without active malformation
-	tech is useless run sniffjoke) and more than one will be selected.
+    is used in testing within sniffjoke-autotest
 
 [*] DEFAULTS:
 

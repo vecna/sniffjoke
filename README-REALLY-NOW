@@ -27,7 +27,8 @@ REMIND:
    peer solution.
 
 SniffJoke is a free software, implemented in C++, and at the moment supports
-only under Linux environment.
+only under Linux environment. Will be easy make the OSX+BSD mods, will became
+in short.
 
 HOW TO COMPILE/INSTALL:
 
@@ -74,4 +75,5 @@ FEW TECHNICAL INFO:
    testing each plugin and each scrambling technology, to detect automatically
    what kind of scrambling your network environment supports)
 
-DOCUMENTATION, will be found in doc/* directory
+DOCUMENTATION, will be found in doc/* directory, and an intesive commentary
+is spreaded in the code.

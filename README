@@ -61,6 +61,13 @@ REFERENCE LINKS:
  official sniffjoke page:
     http://www.delirandom.net/sniffjoke
 
+ binary installed:
+    sniffjoke
+    sniffjokectl
+
+ script included
+    sniffjoke-autotest
+
  (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
