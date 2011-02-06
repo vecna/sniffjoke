@@ -46,12 +46,6 @@ static void sjcli_version(const char *pname)
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
 	" saveconf\t\tdump config file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
-	" info\t\t\tget massive info about sniffjoke internet stats\n"\
-	" showport\t\tshow TCP ports strongness of injection\n"\
-	" set start end value\tset per tcp ports the strongness of injection\n"\
-	" \t\t\tthe values are: <heavy|normal|light|none>\n"\
-	" \t\t\texample: sniffjoke set 22 80 heavy\n"\
-	" clear\t\t\talias to \"set 1 65535 none\"\n"\
 	" debug\t\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
@@ -109,13 +103,20 @@ int main(int argc, char **argv)
 		{ "start",    1 },
 		{ "stop",     1 },
 		{ "stat",     1 },
-		{ "clear",    1 },
+/*		{ "clear",    1 }, */
+/* CLEAR is SET 1:64k NONE and so I've commented this too */
 		{ "showport", 1 },
 		{ "quit",     1 },
-		{ "info",     1 },
+/*		{ "info",     1 }, */
+/* INFO is not implemented at the moment */
 		{ "saveconf", 1 },
-		{ "debug",    2 }, 	/* the log debuglevel */
-		{ "set",      4 }, 	/* set start_port end_port value */
+		{ "debug",    2 }, 	    /* the log debuglevel */
+/*		{ "set",      4 }, */ 	/* set start_port end_port value */
+/* SET is not supported in the 0.4.0 client release because I require implementation
+ * of the parsingPortBlah, because via command line is needed use all the keyword usable
+ * in the configuration files. Now is time to close the 0.4 definitely, and SET will not
+ * be supported now. holy fuck
+ */
 		{ NULL,       0	}
 	};
 

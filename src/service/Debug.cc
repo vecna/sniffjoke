@@ -34,7 +34,8 @@ bool Debug::appendOpen(uint8_t thislevel, const char *rootdir, const char fname[
 {
     if (*previously != NULL)
     {
-        log(thislevel, "requested close of logfile %s", fname);
+        log(thislevel, "requested close of logfile %s (vars used: %s %s and level %d)", 
+            fname, rootdir, fname, thislevel);
         fclose(*previously);
     }
 

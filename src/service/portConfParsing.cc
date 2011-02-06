@@ -228,7 +228,7 @@ void portLine::extractValue(void)
     return;
 
 keyword_not_found:
-    error_message = const_cast<char *>("invalid keyword in this line");
+    error_message = const_cast<char *>("invalid keyword in this line ");
 }
 
 void portLine::mergeLine(uint16_t *portarray)

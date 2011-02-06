@@ -83,22 +83,18 @@ cmdline_opts(cmdline_opts)
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
     snprintf(runconfig.working_dir, sizeof(runconfig.working_dir), "%s%s", selected_basedir, selected_location);
-    snprintf(configfile, sizeof(configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
-    debug.log(DEBUG_LEVEL, "%s chroot in %s with configfile %s", runconfig.working_dir, selected_basedir, configfile);
-
-    if(!access(runconfig.working_dir, X_OK)) 
+    /* checking if the option --location has sense: will be a typo! */
+    if(access(runconfig.working_dir, X_OK)) 
     {
-        debug.log(DEBUG_LEVEL, "unable to access %s: creating directory", runconfig.working_dir);
-        if(!mkdir(runconfig.working_dir, 0700))
-            SJ_RUNTIME_EXCEPTION("unable to create working directory (required for chroot into)");
-
-        debug.log(DEBUG_LEVEL, "created directory %s successful", runconfig.working_dir);
+        debug.log(ALL_LEVEL, "Invalid parm: basedir (%s) and location (%s) point to a non accessible directory: %s",
+            selected_basedir, selected_location, strerror(errno));
+        SJ_RUNTIME_EXCEPTION("Inaccessible chroot/conf/logs directory");
     }
     else
-    {
-        debug.log(DEBUG_LEVEL, "working directory %s already present", runconfig.working_dir);
-    }
+        debug.log(DEBUG_LEVEL, "checked working directory %s accessible", runconfig.working_dir);
+
+    snprintf(configfile, sizeof(configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     load();
@@ -553,19 +549,13 @@ void UserConf::loadAggressivity(void)
         /* setup function clear the previously used private variables */
         pl.setup(line);
 
-        if(pl.error_message)
-        {
-            debug.log(ALL_LEVEL, "%s line %d: %s", aggrfile, linecnt, pl.error_message);
-            continue;
-        }
-
         pl.extractPorts();
         pl.extractValue();
 
         if(pl.error_message)
         {
             debug.log(ALL_LEVEL, "%s line %d: %s", aggrfile, linecnt, pl.error_message);
-            continue;
+            SJ_RUNTIME_EXCEPTION("Unable to parse aggressivity file");
         }
 
         pl.mergeLine(runconfig.portconf);

@@ -138,7 +138,8 @@ static void sj_version(const char *pname)
     " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
     " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
     " --version\t\tshow sniffjoke version\n"\
-    " --help\t\t\tshow this help\n\n"
+    " --help\t\t\tshow this help\n\n"\
+    "\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sj_help(const char *pname)
 {

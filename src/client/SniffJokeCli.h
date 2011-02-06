@@ -28,6 +28,9 @@
 #include <memory>
 
 #include <stdint.h>
+#include "service/Packet.h"
+#include "service/portConfParsing.h"
+#include "service/internalProtocol.h"
 
 using namespace std;
 
@@ -52,6 +55,11 @@ private:
 	bool printSJStat(uint8_t *, int32_t);
 	bool printSJPort(uint8_t *, int32_t);
 	bool printSJError(uint8_t *, int32_t);
+
+    char *fillWithSpace(uint16_t);
+    char *fillWithSpace(uint16_t, uint16_t);
+    char *resolve_weight(uint32_t);
+
 public:
 	SniffJokeCli(char *, uint16_t, uint32_t);
 	void send_command(const char *cmdstring);

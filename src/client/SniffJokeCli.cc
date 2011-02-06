@@ -23,6 +23,7 @@
 #include "service/Utils.h"
 #include "SniffJokeCli.h"
 #include "service/internalProtocol.h"
+#include "service/portConfParsing.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -285,55 +286,109 @@ bool SniffJokeCli::printSJStat(uint8_t *statblock, int32_t blocklen)
 	return true;
 }
 
+#define SPACESIZE   20
+char *SniffJokeCli::fillWithSpace(uint16_t p)
+{
+    static char spaces[MEDIUMBUF];
+    char testingline[MEDIUMBUF];
+
+    memset(testingline, 0x00, MEDIUMBUF);
+    memset(spaces, 0x00, MEDIUMBUF);
+
+    sprintf(testingline, "%d", p);
+
+    for(uint32_t i = strlen(testingline); i < SPACESIZE; i++)
+        spaces[ i - strlen(testingline) ] = ' ';
+
+    return &spaces[0];
+}
+
+char *SniffJokeCli::fillWithSpace(uint16_t s, uint16_t e)
+{
+    static char spaces[MEDIUMBUF];
+    char testingline[MEDIUMBUF];
+
+    memset(testingline, 0x00, MEDIUMBUF);
+    memset(spaces, 0x00, MEDIUMBUF);
+
+    sprintf(testingline, "%d:%d", s, e);
+
+    for(uint32_t i = strlen(testingline); i < SPACESIZE; i++)
+        spaces[ i - strlen(testingline) ] = ' ';
+
+    return &spaces[0];
+}
+
+char *SniffJokeCli::resolve_weight(uint32_t weight)
+{
+    static char resolvedInfo[MEDIUMBUF];
+    const struct mapTheKeys *mtk;
+    uint32_t writtedLen = 0;
+
+    memset(&resolvedInfo, 0x00, MEDIUMBUF);
+
+    /* this is taken from portConfParsing.cc */
+    const struct mapTheKeys mappedKeywords[] = {
+        { AGG_RARE, AGG_N_RARE },
+        { AGG_COMMON, AGG_N_COMMON },
+        { AGG_ALWAYS, AGG_N_ALWAYS },
+        { AGG_PACKETS10PEEK, AGG_N_PACKETS10PEEK },
+        { AGG_PACKETS30PEEK, AGG_N_PACKETS30PEEK },
+        { AGG_TIMEBASED5S, AGG_N_TIMEBASED5S },
+        { AGG_TIMEBASED20S, AGG_N_TIMEBASED20S },
+        { AGG_STARTPEEK, AGG_N_STARTPEEK },
+        { AGG_LONGPEEK, AGG_N_LONGPEEK },
+        { FREQ_NONE, FREQ_N_NONE },
+        { FREQ_LIGHT, FREQ_N_LIGHT },
+        { FREQ_NORMAL, FREQ_N_NORMAL },
+        { FREQ_HEAVY, FREQ_N_HEAVY },
+        { 0, NULL }
+    };
+
+    for(mtk = &mappedKeywords[0]; mtk->value; mtk++)
+    {
+        if(weight & mtk->value) 
+        {
+            if(writtedLen)
+            {
+                resolvedInfo[writtedLen] = ',';
+                writtedLen++;
+            }
+
+            snprintf(&resolvedInfo[writtedLen], (MEDIUMBUF - writtedLen -1), "%s", mtk->keyword);
+            writtedLen = strlen(resolvedInfo);
+        }
+    }
+
+    return &resolvedInfo[0];
+}
+
 bool SniffJokeCli::printSJPort(uint8_t *statblock, int32_t blocklen)
 {
-	printf("y\n");
+	int32_t parsedlen = 0;
+
+	while( parsedlen < blocklen ) 
+	{
+        struct port_info *pInfo = (struct port_info *)&statblock[parsedlen];
+
+        if(pInfo->start == pInfo->end)
+        {
+            printf("%d%s%s\n", pInfo->start, fillWithSpace(pInfo->start), resolve_weight(pInfo->weight));
+        }
+        else
+        {
+            printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolve_weight(pInfo->weight));
+        }
+
+        parsedlen += sizeof(struct port_info);
+    }
+
 	return true;
 }
 
 bool SniffJokeCli::printSJError(uint8_t *statblock, int32_t blocklen)
 {
-	printf("x\n");
+	printf("error - not implemented the parsing of an error - ATM\n");
+
 	return true;
 }
-
-/*
-      switch(what) {
-                case HEAVY: what_weightness = "heavy"; break;
-                case NORMAL: what_weightness = "normal"; break;
-                case LIGHT: what_weightness = "light"; break;
-                case NONE: what_weightness = "no hacking"; break;
-                default:
-                        debug.log(ALL_LEVEL, "%s: invalid strength code for TCP ports");
-                        debug.log(ALL_LEVEL, "BAD ERROR: %s", io_buf);
-                        return;
-        }
-}
-
-bool UserConf::parse_port_weight(char *weightstr, Strength *value)
-{
-        struct parsedata {
-                const char *keyword;
-                const int keylen;
-                Strength equiv;
-        };
-
-#define keywordToParse  4
-
-        struct parsedata wParse[] = {
-                { "none",       strlen("none"),         NONE },
-                { "light",      strlen("light"),        LIGHT },
-                { "normal",     strlen("normal"),       NORMAL },
-                { "heavy",      strlen("heavy"),        HEAVY }
-        };
-
-        for(uint8_t i = 0; i < keywordToParse; ++i) {
-                if (!strncasecmp(weightstr, wParse[i].keyword, wParse[i].keylen)) {
-                        *value = wParse[i].equiv;
-                        return true;
-                }
-        }
-
-        return false;
-}
-*/

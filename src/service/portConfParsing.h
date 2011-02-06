@@ -33,6 +33,10 @@
 /* getservbyname */
 #include <netdb.h>
 
+struct mapTheKeys {
+    uint16_t value;
+    const char *keyword;
+};
 
 class portLine
 {
@@ -43,10 +47,6 @@ private:
     uint16_t OrValue;
     bool portSelected[PORTNUMBER];
 
-    struct mapTheKeys {
-        uint16_t value;
-        const char *keyword;
-    };
     void fixPointer(void);
 
 public:

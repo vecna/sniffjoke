@@ -66,7 +66,7 @@ struct single_block
     uint32_t len;
     uint32_t WHO;
 };
-/* WHO stay for: who do you choose between Yvonne Stravosky and 
+/* WHO stay for: who do you choose between Yvonne Strahovski and 
  * Scarlett Johansson for repopulate the Heart after the 
  * nuclear fallout ? */
 

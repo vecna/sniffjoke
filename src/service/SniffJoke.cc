@@ -85,9 +85,9 @@ void SniffJoke::run()
         debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously running SniffJoke");
 
     if (!userconf.runconfig.active)
-        debug.log(ALL_LEVEL, "SniffJoke is INACTIVE: use \"sniffjoke start\" command to start it");
+        debug.log(ALL_LEVEL, "SniffJoke is INACTIVE: use \"sniffjokectl start\" or use the --start option");
     else
-        debug.log(VERBOSE_LEVEL, "SniffJoke resumed as ACTIVE");
+        debug.log(VERBOSE_LEVEL, "SniffJoke started and ACTIVE");
 
     /* we run the network setup before the background, to keep the software output visible on the console */
     userconf.network_setup();
@@ -214,17 +214,19 @@ void SniffJoke::server_root_cleanup()
 {
     if (service_pid)
     {
-        debug.log(VERBOSE_LEVEL, "server_root_cleanup() %d", service_pid);
+        debug.log(VERBOSE_LEVEL, "%s found server root pid %d (from %d)", __func__, service_pid, getpid() );
         kill(service_pid, SIGTERM);
         waitpid(service_pid, NULL, WUNTRACED);
     }
+    else
+        debug.log(VERBOSE_LEVEL, "%s with a different pid: %d (from %d)", __func__, service_pid, getpid() );
 
     proc.unlinkPidfile(false);
 }
 
 void SniffJoke::server_user_cleanup()
 {
-    debug.log(VERBOSE_LEVEL, "client_user_cleanup()");
+    debug.log(VERBOSE_LEVEL, __func__);
 }
 
 void SniffJoke::admin_socket_setup()
@@ -554,12 +556,15 @@ void SniffJoke::write_SJPortStat(uint8_t type)
         {
             accumulen += append_SJportBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
+            if(accumulen > HUGEBUF)
+                SJ_RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is tring to overflow me");
+
             prev_kind = userconf.runconfig.portconf[i];
             prev_port = i;
         }
     }
 
-    accumulen = append_SJportBlock(&io_buf[accumulen], prev_port, PORTNUMBER, prev_kind);
+    accumulen += append_SJportBlock(&io_buf[accumulen], prev_port, PORTNUMBER, prev_kind);
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;

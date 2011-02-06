@@ -77,11 +77,11 @@ void SessionTrack::selflog(const char *func, const char *lmsg) const
     if (debug.level() == SUPPRESS_LOG)
         return;
 
-    debug.log(SESSIONS_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: [%s]",
+    debug.log(SESSIONS_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: %s%s%s",
               func, ntohs(sport),
               inet_ntoa(*((struct in_addr *) &daddr)),
               ntohs(dport),
-              packet_number, lmsg
+              packet_number, lmsg != NULL ? ("m[", lmsg, "]") : ("", "", "")
               );
 }
 
