@@ -44,10 +44,6 @@ when sniffjoke is running, you should send commands with a command line argument
  stat                   get statistics about sniffjoke configuration and network
  info                   get massive info about sniffjoke internet stats
  showport               show TCP ports strongness of injection
- set start end value    set per tcp ports the strongness of injection
-                        the values are: <heavy|normal|light|none>
-                        example: sniffjoke set 22 80 heavy
- clear                  alias to "set 1 65535 none"
  debug                  [1-6] change the log debug level
 
                         http://www.delirandom.net/sniffjoke

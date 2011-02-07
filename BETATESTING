@@ -2,23 +2,44 @@ Hi betatester, I'm glad you are reading this file:
 
 simple usage:
 
-# sniffjoke 
-(without options, or with --option, sniffjoke goes in background and start the service, listening
-in UDP port 8844 waiting for management commands)
+# sniffjoke --debug 6 --foregound --start
 
-# sniffjoke command
-(the command without "--", are used for start, stop, set TCP port policy, view info and stats)
+It start, run in foreground at the maximum verbosity. Will be helful at the first start for understand if 
+everythink is worked or not. If is worked, and you see your default gateway changed, a new tunnel 
+interface present, and every session started from your box generate a verbose logging... SniffJoke is running correctly.
 
-test you could do:
+Give ^c to block foreground mode, and lets a correct use begin:
 
-1) test sniffjoke in your system;
-2) try to run script/sniffjoke-testsuite and check the output in /tmp/sniffjoke-stats;
-3) try to edit your enabler file (default: /usr/local/etc/sniffjoke/plugins_enabled.txt)
-   and use other hacks;
-4) try to configure TCP ports with "sniffjoke set";
-5) try sniffjoke in different network environments (some examples: your office wifi, your home lan, etc...).
+# sniffjoke-autotest office /usr/local/var/sniffjoke
 
-optional:
+1) "office" is the name of your location, will be home, antanix, everything you will use to describe your network place.
+2) /usr/local/var/sniffjoke is the directory where the 'generic/' directory is present. 'generic/' represent the default (and generic) network place where sniffjoke is runned. It will be a good choice in your network environment and will not. sniffjoke-autotest generate a new location directory copying some of the file contained in 'generic/'
+
+sniffjoke-autotest is extremely verbose, and will make continuos start/stopping of sniffjoke instances.
+when has finished, you will have /usr/local/var/sniffjoke/office, and will be called as used location with:
+
+# sniffjoke --location office
+
+Checking and modify the configuration files in the location directory:
+
+# vim /usr/local/var/sniffjoke/office/sniffjoke-service.conf
+# vim /usr/local/var/sniffjoke/office/port-aggressivity.conf
+# vim /usr/local/var/sniffjoke/office/plugins-enabled.conf
+
+If you wan use sniffjoke only in the connections destinated to a determinted IP address, simply
+wrote them in 
+
+/usr/local/var/sniffjoke/office/ipwhitelist.conf
+
+and uncomment in the sniffjoke-service.conf the directive "whitelist": SniffJoke will modify, intercept and hack the sessions destinated to these IPs only.
+
+Otherwise, if you would test sniffjoke in the entire Internet and avoid eventually malfunction to your well know IP address, use the "blacklist", it works as opposite of whitelisting.
+
+remind: blacklist and whitelist will not work both.
+
+other options in the sniffjoke-service.conf are explaned in doc/* files, but for a simple betatesting is better you simply try to use your applications, check if them work correctly, and eventually, if you have access to some IDS or sniffer, try to use sniffing in a session under monitoring, checking if will became reassmbled effectively from wiretrapping engine.
+
+OPTIONAL BETATESTED ACHIEVEMENT:
 
 - if you work as a distribution package mantainer, you could try to make a sniffjoke package; the default
   user used in privilege downgrade are nobody/nogroup. in your install script you will add the
@@ -27,11 +48,10 @@ optional:
 - if you seen a lot of english typos :P please fix them or suggest correction to us;
 
 - if you want to translate the documentation in your language, we are glad to support your tranalation
-  in the sniffjoke official website (at the moment in rebuilding);
+  in the sniffjoke official website (at the moment in rebuilding)
 
 - if you had some ideas about TCP hacks, study the plugins and the hacks/hack_skeleton.skel example,
   we are glad to import your plugins.
-
 
 for every question or segnalations, please sent an email to both of the developers:
 
