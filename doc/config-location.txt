@@ -1,55 +1,58 @@
 the directory 'generic/' contains the default configuration settings.
 
-is copyed in /usr/local/var/sniffjoke/ 
+is copied in /usr/local/var/sniffjoke/ 
 
 this directory contains the "location directory"
 
-every location is a network place where you use sniffjoke, you need to configure
-every location separately, and generic will work for the most of the time.
+the concept of location stands for a network place where you use sniffjoke;
+sniffjoke can configure and optimize itself for every location separately and 
+and the generic will work instead for the most of the time.
 
 * WHAT IS sniffjoke-autotest ? 
 
-Is a script performing some sniffjoke usage for detect which kind of attack will 
-be used in your network.
-The problem is: not every kind of evasion technology will work in every network, 
-and beside a manual verification, sniffjoke-autotest will make him job)
-it take as argumet the location name, and create the new directory:
-/usr/local/var/sniffjoke/$NEWLOCATION
-putting inside the related configuration files
+Is a script performing some sniffjoke tests and verifications to detect which kind of attack
+can be used for be used in your network.
 
-When you need to use a specific locaton, run sniffjoke --location $LOCATIONNAME and
-the related directory will be used to chroot into, write logs and caches.
+The problem solved by the autotest suite arise because not every kind of evasion technology
+can work in every network.
+The script takes as argumet the location name, creates the new directory /usr/local/var/sniffjoke/$NEWLOCATION
+and prepare all the related configuration files inside.
 
-* WHAT DOES IT MEAN EVERY SINGLE CONFIG FILE ?
+When you need to use a specific locaton, you have to run sniffjoke with --location $LOCATIONNAME and
+the related directory will be used for the chrook; from that time on sniffjoke will use that directory as storage dir for
+logs and caches.
+
+* WHAT THE MEANING OF EVERY SINGLE CONFIG FILE ?
 
 ***	plugins-enabled.conf
 
-It contains the list of the plugins to use in your sniffjoke service. The plugins
+It contains the list of the plugins to be used in your sniffjoke service. The plugins
 are the shared object contained in src/plugins and installed in 
 /usr/local/lib/sniffjoke/*.so
-the configuration file contains these information:
+
+The configuration file contains these information:
 
 # comment
 plugin_name.so,SCRAMBLETECHSUPPORTED1,SCRAMBLETECHSUPPORTED2,...
 
 the plugin_name.so is exposed without path and intended to be found in the 
 /usr/local/lib/sniffjoke directory. the scramble technology are separated by
-a comma and without whitespace, and will be:
+a comma and without whitespace, where the accepted scramble values are:
 
 PRESCRIPTION
-    is the scramble technology that decreare the TTL in the
-    packet causing to expire before reach the remote host
+    this the scramble technology that decreases the TTL in the
+    packet causing to expire before reaching the remote host
 
 INNOCENT
     is a valid packet injected inside the stream
 
 MALFORMED
-    is a packet with rfc-valid but incoheren by the usege
+    is a packet with rfc-valid but incoherent for the usege
     in relation with the connection state of IP and TCP options
     or other malformation based on IP/TCP options header.
 GUILTY
-    packet with bad checksum, discarged by the remote host
-    but accepted by the sniffer (very rare, is the less useful
+    packet with bad checksum, discarded by the remote host
+    but accepted by the sniffer (used as last resort is the less useful
     scramble but useful in the sniffjoke logic)
 
 ***	sniffjoke-service.conf
@@ -63,17 +66,17 @@ active
 	the network without packet injection and session tracking
 	default: not present
 user
-    specify the username to downgrade privileges after chrooting
+    specify the username to use for the privileges downgrade after the chroot
 	default: nobody
-	suggested: the mantainer will create a sniffjoke user
+	suggested: it's suggested to a packet mantainer to create a sniffjoke user
 group
-    the same of user
+    the same as for user
 	default: nogroup
-	suggested: creation of sniffjoke group
+	suggested: it's suggested to a packet mantainer to create a sniffjoke group
 management-address
 	is the ip address where sniffjoke will bind the administrative socket,
-	is a required configuration if you plan to use sniffjoke in a gateway 
-	and manage the service by your client
+	it's a required configuration parameter if you plan to use sniffjoke in a gateway 
+	and you want to manage the service by a different host
 	default: 127.0.0.1
 management-port
 	the UDP port for the administrative traffic
@@ -93,12 +96,12 @@ debug
 	default: 2
 
 foreground
-	will be present or not and simple don't goes in default or goes.
+	it's an optional parameter used to make the sniffjoke service run in foreground
 	default: no
 
 *** ipblacklist.conf
 
-this is a series of ip address, written without every other information, and
+the file containts a list of ip address, written without every other information, and
 whenever the blacklist is set in sniffjoke, the connection destinated to a
 matching IP address will work untouched by sniffjoke
 
@@ -167,6 +170,7 @@ NORMAL
 HEAVY
             multiply by 12
 
-Is a matter of percentage. use the default if you don't know what you do. and if you
-know what is better do, contact us sending a complete default, now really few TCP ports are
-written.
+Is a matter of percentage.
+if you don't know what you do, it's suggested to use the default.
+if you instead find out a better default configuration please contact us commenting/sending it.
+At the time olny few TCP ports are configured.

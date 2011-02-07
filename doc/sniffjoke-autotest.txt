@@ -28,14 +28,14 @@ maybe some distribution use other path, found where sniffjoke is with:
 
 # whereis sniffjoke
 
-the "sniffjoke-autotest" use a one time chroot environment under /tmp, and collect
-information about witch kind of hacks your network permit to use. the test are done
+the "sniffjoke-autotest" script uses a one time chroot environment under /tmp, and collects
+information about which kind of hacks your network permits to use. the test are done
 searching in www.delirandom.net/sniffjoke/testsuite.info, the address of the server 
-available for the test. are three server, with different remote operating system
+available for the test. at the time three servers are used, one with different remote operating system
 (FIXME - define them ) and the server is distributed because I want to avoid
 an eccessive use of the tests (I don't know how much bandwidth will be consumed, and 
 I will assure that the server used are related to the sniffjoke developer, will not
-keep logs about sniffjoke users and if you want make those test by yourself, you will)
+keep logs about sniffjoke users and if you want make those test by yourself, you are free to do that)
 
 1) require to be runned as root
 2) create a lot of dump in /tmp/ directory, that are not removed at the end of the test
@@ -76,7 +76,7 @@ orig:366362ed7920364b473e5deaa8ca07ec recv:366362ed7920364b473e5deaa8ca07ec fake
 orig:366362ed7920364b473e5deaa8ca07ec recv:366362ed7920364b473e5deaa8ca07ec fake_close_fin.so-PRESCRIPTION
 
 The checksum of the original data and the received data must match, in a correct transmission.
-In this test is revealed that three hacks will not work from my office, precisely:
+for Example this test is revealed that three hacks wont work from my office, precisely:
 
 orig:366362ed7920364b473e5deaa8ca07ec recv:d41d8cd98f00b204e9800998ecf8427e fake_zero_window.so-INNOCENT
 orig:366362ed7920364b473e5deaa8ca07ec recv:988691468cc248630960360e84befb77 fake_close_rst.so-MALFORMED
@@ -106,10 +106,10 @@ fake_data.so,MALFORMED
 fake_zero_window.so,INNOCENT
 # Generated in date: Thu Feb  3 02:53:39 CET 2011
 
-and is copyed on the destination location directory, called with sniffjoke --location $LOCATION_NAME
+and is copied on the destination location directory, called with sniffjoke --location $LOCATION_NAME
 
-the other hack are considered valid because has returned the same md5sum between the
-sent data and the received, eg:
+the other hacks are considered valid because all have returned the same md5sum of the thata sent.
+eg:
 
 orig:366362ed7920364b473e5deaa8ca07ec recv:366362ed7920364b473e5deaa8ca07ec fake_seq.so-PRESCRIPTION
 

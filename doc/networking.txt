@@ -1,6 +1,6 @@
-
 Sniffjoke is an userspace software that could delay, inject, remove and modify the
-TCP packets sent by kernel. Is better we make some example.
+TCP packets sent by kernel.
+To clarify let we see some examples.
 
 this is an HTTP connection:
 
@@ -46,7 +46,7 @@ ciscosux (172.16.1.1) at 00:DE:E1:90:09:AA [ether] on eth0
 the packets with source addr 172.16.1.3, dest 89.186.95.190, with the dest mac address
 of my default gateway, is accepted and routed to 89.186.95.190.
 
-this is how a packet is commonly send, and via tcpdump will appear:
+this is how a packet is commonly sent, and via tcpdump will appear:
 
 root@caturday:~# tcpdump -vvv -s 0 -ni eth0 host 89.186.95.190
 tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
@@ -81,12 +81,12 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 eth0
 0.0.0.0         1.198.10.5      0.0.0.0         UG    0      0        0 tun1
 
-the ip address 1.198.10.5 (hardcoded in compile time, if you had the unlunk to live in
+the ip address 1.198.10.5 (hardcoded in compile time, if you had the misfortune to live in
 a network in 1.0.0.0 classes, you need to recompile it - at the moment I've not
 defined an option because class 1 is usually not used. I'll see how much users will
-throw an exception, I promis will be catched.
+throw this exception, and if necessarty I promis to handle this.
 
-so, your applications will send packets to the sniffjoke defaut gateway in tun1, 
+So, your applications will send packets to the sniffjoke default gateway in tun1, 
 those packets will be handled by sniffjoke and resent to your original default 
 gateway. the circle is closed, and sniffjoke will be able to inject the anti-sniffing
 packets between your packets.

@@ -84,6 +84,5 @@ related configuration for the network environment you're are using (office, home
 
 
 
-
 this is a freaking free software: documents well is a matter of respect and
 I understand, but truly, is painful, I prefer coding.

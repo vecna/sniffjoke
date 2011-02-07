@@ -1,4 +1,3 @@
-
 enter in hacks/
 mkdir your new-hack-name
 vim Makefile.ac
