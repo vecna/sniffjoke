@@ -102,8 +102,8 @@ IPList& IPListMap::add(uint32_t ip, char a, char b, char c)
 
 bool IPListMap::isPresent(uint32_t ip)
 {
-    IPListMap::iterator it;
-    return (find(ip) != end());
+    IPListMap::iterator it = find(ip);
+    return (it != end());
 }
 
 void IPListMap::load()
@@ -127,6 +127,7 @@ void IPListMap::load()
             tmp_a = (tmp_a == 'Y' ? 'Y' : 'N');
             tmp_b = (tmp_b == 'Y' ? 'Y' : 'N');
             tmp_c = (tmp_c == 'Y' ? 'Y' : 'N');
+            add(inet_addr(tmp_ip), tmp_a, tmp_b, tmp_c);
             records_num++;
         }
     }
