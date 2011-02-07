@@ -281,7 +281,7 @@ void NetIO::network_io(void)
 
             timespec timeout;
             timeout.tv_sec = 0;
-            timeout.tv_nsec = 40000;
+            timeout.tv_nsec = 1000000;
             nfds = ppoll(fds, 2, &timeout, NULL);
         }
 
