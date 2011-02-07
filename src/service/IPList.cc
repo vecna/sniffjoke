@@ -28,9 +28,7 @@
 
 using namespace std;
 
-typedef char ipconfig_cache_record[23]; /* "max size is 192.168.254.254,A,B,C" plus "\0" */
-
-IPList::IPList(uint32_t ip, char a, char b, char c) :
+IPList::IPList(uint32_t ip, uint8_t a, uint8_t b, uint8_t c) :
 ip(ip),
 a(a),
 b(b),
@@ -46,27 +44,20 @@ IPList::~IPList()
 
 void IPList::selflog(const char *func, const char *lmsg) const
 {
-    if (debug.level() == SUPPRESS_LOG)
-        return;
-
-    debug.log(SESSIONS_DEBUG, "antani");
+    debug.log(SESSIONS_DEBUG, "IPList: %s: IP %s attribute a(%02x) b(%02x) c(%02x)", 
+        lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c
+    );
 }
 
-IPListMap::IPListMap(const char* dumpfile)
+IPListMap::IPListMap(const char* ipConfFile)
 {
-    debug.log(ALL_LEVEL, "%s: loading ipconfig from %s", __func__, dumpfile);
-
-    if ((diskcache = sj_fopen(dumpfile, "r+")) == NULL)
-    {
-        debug.log(ALL_LEVEL, "keeping a ipconfig cache is required, link it to /dev/null if don't like it");
-        SJ_RUNTIME_EXCEPTION(strerror(errno));
-    }
+    debug.log(ALL_LEVEL, "%s: loading ipList from %s", __func__, ipConfFile);
+    dumpfname = ipConfFile;
     load();
 }
 
 IPListMap::~IPListMap()
 {
-    debug.log(VERBOSE_LEVEL, __func__);
     dump();
     for (IPListMap::iterator it = begin(); it != end();)
     {
@@ -75,13 +66,9 @@ IPListMap::~IPListMap()
     }
 }
 
-IPList& IPListMap::add(uint32_t ip, char a, char b, char c)
+IPList& IPListMap::add(uint32_t ip, uint8_t a, uint8_t b, uint8_t c)
 {
     IPList *ipcnf;
-
-    a = (a == 'Y' ? 'Y' : 'N');
-    b = (b == 'Y' ? 'Y' : 'N');
-    c = (c == 'Y' ? 'Y' : 'N');
 
     /* check if the key it's already present */
     IPListMap::iterator it = find(ip);
@@ -109,48 +96,61 @@ bool IPListMap::isPresent(uint32_t ip)
 void IPListMap::load()
 {
     uint32_t records_num = 0;
-    ipconfig_cache_record record;
+    char record[MEDIUMBUF];
     char tmp_ip[17];
-    char tmp_a, tmp_b, tmp_c;
-    void* ret;
+    uint32_t tmp_a, tmp_b, tmp_c;
+    FILE *IPfileP;
 
-    fseek(diskcache, 0, SEEK_END);
-    if (!ftell(diskcache))
-        debug.log(ALL_LEVEL, "unable to access ipconfig cache: sniffjoke will start without it");
-    else
+    if ((IPfileP = fopen(dumpfname, "r")) == NULL)
     {
-        rewind(diskcache);
-        while ((ret = fgets(record, sizeof (record), diskcache)) != NULL)
-        {
-            sscanf(record, "%s,%c,%c,%c\n", tmp_ip, &tmp_a, &tmp_b, &tmp_c);
-            printf("%s,%c,%c,%c\n", tmp_ip, tmp_a, tmp_b, tmp_c);
-            tmp_a = (tmp_a == 'Y' ? 'Y' : 'N');
-            tmp_b = (tmp_b == 'Y' ? 'Y' : 'N');
-            tmp_c = (tmp_c == 'Y' ? 'Y' : 'N');
-            add(inet_addr(tmp_ip), tmp_a, tmp_b, tmp_c);
-            records_num++;
-        }
+        debug.log(ALL_LEVEL, "unable to open %s: %s", dumpfname, strerror(errno));
+        return;
     }
 
-    debug.log(ALL_LEVEL, "ipconfigmap load completed: %u records loaded", records_num);
+    do
+    {
+        fgets(record, sizeof (record), IPfileP);
+  
+        printf("dio mercato [%s]\n", record); 
+        if(record[0] == '#' || strlen(record) < 7)
+            continue;
+
+        sscanf(record, "%s,%2x,%2x,%2x\n", tmp_ip, &tmp_a, &tmp_b, &tmp_c);
+        debug.log(VERBOSE_LEVEL, "importing record %d: %s,%02x,%02x,%02x", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
+
+        /* the value in tmp_* are not used at the moment */
+        add( inet_addr(tmp_ip), (uint8_t)tmp_a, (uint8_t)tmp_b, (uint8_t)tmp_c );
+        records_num++;
+
+        memset(record, 0x00, MEDIUMBUF);
+    }
+    while(!feof(IPfileP));
+
+    fclose(IPfileP);
+
+    debug.log(ALL_LEVEL, "IPListMap::load from %s completed: %u records loaded", dumpfname, records_num);
 }
 
+/* Implemented but not used until the client sniffjokectl supports the updating of whitelist/blacklist */
 void IPListMap::dump()
 {
     uint32_t records_num = 0;
+    char record[MEDIUMBUF];
+    FILE *IPfileP;
 
-    ipconfig_cache_record record;
-
-    rewind(diskcache);
+    if ((IPfileP = fopen(dumpfname, "w+")) == NULL)
+    {
+        debug.log(ALL_LEVEL, "unable to open %s: %s", dumpfname, strerror(errno));
+    }
 
     for (IPListMap::iterator it = begin(); it != end(); ++it)
     {
 
         IPList *tmp = &(*it->second);
 
-        snprintf(record, sizeof (record), "%s,%c,%c,%c\n", inet_ntoa(*((struct in_addr *) &(tmp->ip))), tmp->a, tmp->b, tmp->c);
+        snprintf(record, sizeof (record), "%s,%02x,%02x,%02x\n", inet_ntoa(*((struct in_addr *) &(tmp->ip))), tmp->a, tmp->b, tmp->c);
 
-        if (fwrite(&record, strlen(record), 1, diskcache) != 1)
+        if (fwrite(&record, strlen(record), 1, IPfileP) != 1)
         {
             debug.log(ALL_LEVEL, "unable to dump ipconfig: %s", strerror(errno));
             return;
@@ -158,6 +158,7 @@ void IPListMap::dump()
 
         ++records_num;
     }
+    fclose(IPfileP);
 
     debug.log(ALL_LEVEL, "ipconfigmap dump completed with %u records dumped", records_num);
 }

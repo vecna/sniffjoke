@@ -3,7 +3,7 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
+ *   Copyright (C) 2011 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -28,17 +28,21 @@
 #include <map>
 #include <memory>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 using namespace std;
 
 class IPList
 {
 public:
     uint32_t ip;
-    char a;
-    char b;
-    char c;
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
 
-    IPList(uint32_t, char, char, char);
+    IPList(uint32_t, uint8_t, uint8_t, uint8_t);
     ~IPList();
 
     /* utilities */
@@ -49,11 +53,11 @@ public:
 class IPListMap : public map<uint32_t, IPList*>
 {
 private:
-    FILE *diskcache;
+    const char *dumpfname;
 public:
     IPListMap(const char*);
     ~IPListMap();
-    IPList& add(uint32_t, char, char, char);
+    IPList& add(uint32_t, uint8_t, uint8_t, uint8_t);
     bool isPresent(uint32_t);
     void load();
     void dump();
