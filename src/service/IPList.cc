@@ -54,10 +54,9 @@ void IPList::selflog(const char *func, const char *lmsg) const
 
 IPListMap::IPListMap(const char* dumpfile)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
-    debug.log(ALL_LEVEL, "loading ipconfig from %s", dumpfile);
+    debug.log(ALL_LEVEL, "%s: loading ipconfig from %s", __func__, dumpfile);
 
-    if ((diskcache = sj_fopen(dumpfile, "+")) == NULL)
+    if ((diskcache = sj_fopen(dumpfile, "r+")) == NULL)
     {
         debug.log(ALL_LEVEL, "keeping a ipconfig cache is required, link it to /dev/null if don't like it");
         SJ_RUNTIME_EXCEPTION(strerror(errno));

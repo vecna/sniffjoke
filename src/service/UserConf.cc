@@ -49,10 +49,10 @@ cmdline_opts(cmdline_opts)
     /* generating referringdir and configfile (public) */
     if (cmdline_opts.basedir[0])
     {
-        if(!access(cmdline_opts.basedir, X_OK))
-            selected_basedir = const_cast<char *>(cmdline_opts.basedir);
-        else
+        if(access(cmdline_opts.basedir, X_OK))
             SJ_RUNTIME_EXCEPTION("--dir parameter is not accessible");
+        else
+            selected_basedir = const_cast<char *>(cmdline_opts.basedir);
     }
     else /* no option used, default in hardcoded-defines.h */
     {
@@ -96,6 +96,9 @@ cmdline_opts(cmdline_opts)
 
     snprintf(configfile, sizeof(configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
+    /* load() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
+    if(chdir(runconfig.working_dir))
+        SJ_RUNTIME_EXCEPTION("Unable to chdir in the specifiy location");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     load();
 
@@ -112,14 +115,14 @@ cmdline_opts(cmdline_opts)
     }
     else
     {
-        if(!access(FILE_PLUGINSENABLER, R_OK))
+        if(access(FILE_PLUGINSENABLER, R_OK))
         {
             debug.log(ALL_LEVEL, "unable to access to enabler file %s: %s: location unaccepted", FILE_PLUGINSENABLER, strerror(errno));
             SJ_RUNTIME_EXCEPTION("Unacceptable location because enabler file not found nor --only-plugin specified");
         }
         else
         {
-            debug.log(VERBOSE_LEVEL, "accepted location %s with enabler accessible", runconfig.location_name);
+            debug.log(VERBOSE_LEVEL, "accepted location %s with accessible enabler fileconf", runconfig.location_name);
         }
     }
 
@@ -466,7 +469,7 @@ bool UserConf::load(void)
 {
     FILE *loadfd;
 
-    if ((loadfd = sj_fopen(configfile, "r")) == NULL)
+    if ((loadfd = sj_fopen(FILE_CONF, "r")) == NULL)
         debug.log(ALL_LEVEL, "configuration file %s not accessible: %s, using default", configfile, strerror(errno));
     else
         debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
@@ -505,15 +508,13 @@ bool UserConf::load(void)
 /* function for loading of the TCP port files */
 void UserConf::loadAggressivity(void)
 {
-    char aggrfile[LARGEBUF];
     FILE *aggressivityFp;
 
-    /* remind: working dir contains the location */
-    snprintf(aggrfile, sizeof(aggrfile), "%s/%s", runconfig.working_dir, FILE_AGGRESSIVITY);
-
-    if((aggressivityFp = fopen(aggrfile, "r")) == NULL) 
+    if((aggressivityFp = fopen(FILE_AGGRESSIVITY, "r")) == NULL) 
     {
-        debug.log(ALL_LEVEL, "port aggrssivity specifications in %s: %s, loading defaults", aggrfile, strerror(errno));
+        debug.log(ALL_LEVEL, "port aggrssivity specifications in %s/%s: %s, loading defaults", 
+            runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno)
+        );
  
         /* the default is:
          *
@@ -554,7 +555,7 @@ void UserConf::loadAggressivity(void)
 
         if(pl.error_message)
         {
-            debug.log(ALL_LEVEL, "%s line %d: %s", aggrfile, linecnt, pl.error_message);
+            debug.log(ALL_LEVEL, "%s/%s line %d: %s", runconfig.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
             SJ_RUNTIME_EXCEPTION("Unable to parse aggressivity file");
         }
 
