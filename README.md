@@ -1,8 +1,6 @@
 # SniffJoke: transparent TCP connection scrambler
 
-SniffJoke is an application for Linux that handle transparently your
-TCP connection, delaying, modifyng and inject fake packets inside your
-transmission, make it almost impossible to be wiretapped.
+SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
 # Installation
     ./configure && make && make install
@@ -13,6 +11,7 @@ transmission, make it almost impossible to be wiretapped.
 # Requirements
 
 Linux OS (>=2.6.19) with tun kernel module;
+
 wifi/eth as default gateway (no other interface supported).
 
 ## Installed files (paths may vary in your system), becuase configure supports --prefix:
@@ -29,16 +28,21 @@ The "generic location" configuration, contains every default configuration files
 SniffJoke plugins
     /usr/local/lib/sniffjoke/*.so
 
+Betatesting 
+-----------
+
+The file **BETATESTING** is provided in the root directory of the package: every betatester has a good point to start
+
 # How does it work + Documentation
 
-Sniffjoke is an userspace software able to delay, block and modify the packets sent from the kernel. For obtain this, use a fake default gateway make with a tunnel device. run in background, read some configuration files, and related to which place is started will support a different 'location'.
+Sniffjoke is an userspace software able to delay, block and modify the packets sent from the kernel. For obtain this, use a fake default gateway make with a tunnel device. run in background, read some configuration files, and related to which place is started will support a different *location*.
 
 The doc/ directory include some usuful files:
 
 This file contains know bugs and weird situation derived from the network/kernel use/misuse:
     bugs-and-warning.txt
 
-This explain the 'location' concept, the generation of new location with *sniffjoke-autotest*:
+This explain the *location* concept, the generation of new location with *sniffjoke-autotest*:
     config-location.txt
 
 This was the older README file, contain some generic info, syntetized and better explained in the other files:
@@ -62,6 +66,9 @@ Explanation of the plugin work and the scrambling concept: the technique that co
 Example of usage, configuration etc..
     usage.txt
 
+TODO, and if you will help, we are glad:
+    TODO.txt
+
 # Internal & external links
 
 the files:
@@ -74,7 +81,7 @@ binary installed:
     sniffjoke
     sniffjokectl
 
-script included
+script installed:
     sniffjoke-autotest
 
 (old) academic researchs:
