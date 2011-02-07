@@ -66,7 +66,8 @@ start_singletest() {
 		echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
 	fi 
 	echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
-	clear
+#	clear
+# I belive the users like more see what happen
 }
 
 echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
