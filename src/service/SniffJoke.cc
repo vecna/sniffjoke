@@ -90,7 +90,7 @@ void SniffJoke::run()
         debug.log(VERBOSE_LEVEL, "SniffJoke started and ACTIVE");
 
     /* we run the network setup before the background, to keep the software output visible on the console */
-    userconf.network_setup();
+    userconf.networkSetup();
 
     if (!opts.go_foreground)
     {
@@ -471,7 +471,7 @@ void SniffJoke::handle_cmd_quit(void)
 void SniffJoke::handle_cmd_dump(void)
 {
     /* beside dump the FILE_CONF, sync_disk_configuration save the TCP port and list files */
-    if(!userconf.sync_disk_configuration())
+    if(!userconf.syncDiskConfiguration())
     {
         /* TODO - handle the communication of the error in the client */
         debug.log(ALL_LEVEL, "error in communication error in loggin error in keyboad");

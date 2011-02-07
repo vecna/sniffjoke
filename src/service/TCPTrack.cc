@@ -108,6 +108,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 
     return freqret;
 }
+
 /*  
  *  this function is used from the inject_hack_in_queue() routine for decretee
  *  the possibility for an hack to happen.
@@ -414,36 +415,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
         injpkt->selflog(__func__, injpkt->debug_buf);
         break;
     case TTL_KNOWN:
-        ttlfocus.selectPuppetPort();
-
-        ttlfocus.sent_probe = 0;
-        ttlfocus.received_probe = 0;
-
-        uint8_t pkts = 5;
-        uint8_t ttl = ttlfocus.ttl_estimate > 5 ? ttlfocus.ttl_estimate - 5 : 0;
-        while (pkts--)
-        {
-            ++ttlfocus.sent_probe;
-            injpkt = new Packet(ttlfocus.probe_dummy);
-            injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-            injpkt->ip->id = (ttlfocus.rand_key % 64) + ttl;
-            injpkt->ip->ttl = ttl;
-            injpkt->tcp->source = htons(ttlfocus.puppet_port);
-            injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttl);
-
-            injpkt->fixIpTcpSum();
-            p_queue.insert(*injpkt, SEND);
-
-            ttl++;
-
-            snprintf(injpkt->debug_buf, sizeof (injpkt->debug_buf), "TTL_KNOWN %u reprobe# %d [ttl_estimate %u]",
-                     ttlfocus.sent_probe, ttl, ttlfocus.ttl_estimate
-                     );
-            injpkt->selflog(__func__, injpkt->debug_buf);
-        }
-
-        /* the ttl verification of a known status is scheduled with 2mins interval */
-        ttlfocus.next_probe_time = sj_clock + 120;
+	/* TODO: Handle the KNOWN status; find a way to detect network topology changes. */
         break;
     }
 }
@@ -452,21 +424,18 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 {
     uint8_t retval = 0;
 
-    retval |= SCRAMBLE_CHECKSUM;
-    retval |= SCRAMBLE_INNOCENT;
+    /*
+     * TODO - when we will integrate passive os fingerprint and
+     * we will do a a clever study about different OS answer about
+     * IP option, for every OS we will have or not the related support
+     */
+    retval = SCRAMBLE_CHECKSUM | SCRAMBLE_INNOCENT | SCRAMBLE_MALFORMED;
 
     const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
     if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
     {
         retval |= SCRAMBLE_TTL;
     }
-
-    /*
-     * TODO - when we will integrate passive os fingerprint and
-     * we will do a a clever study about different OS answer about
-     * IP option, for every OS we will have or not the related support
-     */
-    retval |= SCRAMBLE_MALFORMED;
 
     return retval;
 }
@@ -728,7 +697,6 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
         pkt->mark(source, INNOCENT, GOOD);
 
         p_queue.insert(*pkt, YOUNG);
-
     }
     catch (exception &e)
     {
@@ -748,7 +716,6 @@ Packet* TCPTrack::readpacket(source_t destsource)
     else
         mask = TUNNEL | LOCAL | TTLBFORCE;
 
-
     Packet *pkt;
 
     p_queue.select(SEND);
@@ -759,7 +726,6 @@ Packet* TCPTrack::readpacket(source_t destsource)
             p_queue.remove(*pkt);
             return pkt;
         }
-
     }
 
     return NULL;
@@ -926,7 +892,9 @@ bypass_queue_analysis:
     for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it)
     {
         TTLFocus &ttlfocus = *((*it).second);
-        if ((ttlfocus.access_timestamp > sj_clock - 30) && ttlfocus.next_probe_time <= sj_clock)
+        if ((ttlfocus.status != TTL_KNOWN)
+	&& (ttlfocus.access_timestamp > sj_clock - 30)
+	&& (ttlfocus.next_probe_time <= sj_clock))
         {
             inject_ttlprobe_in_queue(*(*it).second);
         }

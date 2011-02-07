@@ -52,11 +52,11 @@ FILE *sj_fopen(const char *fname, const char *mode)
 {
     const char *nmode;
 
-    /*     communication intra sniffjoke: a "+" mean:
-     -
+    /* 
+     * communication intra sniffjoke: a "+" means:
      * if the file exists, open in read and write
      * if not, create it.
-     * ...it's late, maybe exists an easiest way     */
+     */
     if (strlen(mode) == 1 && mode[0] == '+')
     {
         if (access(fname, R_OK) == R_OK)

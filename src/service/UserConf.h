@@ -125,8 +125,8 @@ private:
     void debug_cleanup();
     void onlyparam_parser(const char*);
 
-    bool sync_ports_files(void);
-    bool sync_iplists_files(void);
+    bool syncPortsFiles(void);
+    bool syncIPListsFiles(void);
 
 public:
     const struct sj_cmdline_opts &cmdline_opts;
@@ -140,7 +140,7 @@ public:
 
     /* call all the private method for setup networking -- in future need to be modify
      * for multi OS supports */
-    void network_setup(void);
+    void networkSetup(void);
 
     /* file loading support */
     bool load(void);
@@ -154,7 +154,7 @@ public:
     void loadAggressivity(void);
 
     /* file dumping support */
-    bool sync_disk_configuration(void);
+    bool syncDiskConfiguration(void);
     uint32_t dumpIfPresent(FILE *, const char *, char *);
     uint32_t dumpIfPresent(FILE *, const char *, uint16_t);
     uint32_t dumpIfPresent(FILE *, const char *, bool);

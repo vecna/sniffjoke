@@ -209,12 +209,12 @@ uint8_t HackPool::parseScrambleList(const char *list_str)
         { "INNOCENT", SCRAMBLE_INNOCENT}
     };
 
-    int i, retval = 0;
+    int retval = 0;
     bool foundScramble = false;
 
     /*   the plugin_enable.conf.$LOCATION file has this format:
      *   plugin.so,SCRAMBLE1[,SCRAMBLE2][,SCRAMBLE3]         */
-    for (i = 0; i < SCRAMBLE_SUPPORTED; i++)
+    for (int i = 0; i < SCRAMBLE_SUPPORTED; i++)
     {
         if (strstr(list_str, availablescramble[i].keyword))
         {

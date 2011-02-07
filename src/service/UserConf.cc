@@ -272,7 +272,7 @@ void UserConf::autodetect_first_available_tunnel_interface()
 }
 
 /* this method is called by SniffJoke.cc */
-void UserConf::network_setup(void)
+void UserConf::networkSetup(void)
 {
     debug.log(DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
 
@@ -594,7 +594,7 @@ uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata)
     return written;
 }
 
-bool UserConf::sync_disk_configuration(void)
+bool UserConf::syncDiskConfiguration(void)
 {
     uint32_t written = 0;
     char tempdumpfname[LARGEBUF];
@@ -621,7 +621,7 @@ bool UserConf::sync_disk_configuration(void)
     written += dumpIfPresent(out, "active", runconfig.active);
     written += dumpIfPresent(out, "only-plugin", runconfig.active);
 
-    if(!sync_ports_files() || !sync_iplists_files() )
+    if(!syncPortsFiles() || !syncIPListsFiles() )
     {
         debug.log(ALL_LEVEL, "interrupted dumping of running configuration in the %s location", runconfig.location_name);
         goto faultyreturn;
@@ -657,13 +657,13 @@ faultyreturn:
     return false;
 }
 
-bool UserConf::sync_ports_files(void)
+bool UserConf::syncPortsFiles(void)
 {
     /* TODO */
     return true;
 }
 
-bool UserConf::sync_iplists_files(void)
+bool UserConf::syncIPListsFiles(void)
 {
     /* TODO */
     return true;
