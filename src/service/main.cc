@@ -38,7 +38,7 @@ time_t sj_clock;
 
 static auto_ptr<SniffJoke> sniffjoke;
 
-runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
+runtime_error runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
     stringstream stream;
     stream << "[EXCEPTION] " << file << "(" << line << ") function: " << func << "()";

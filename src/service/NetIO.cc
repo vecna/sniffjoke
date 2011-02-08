@@ -209,12 +209,12 @@ NetIO::~NetIO(void)
     close(netfd);
 }
 
-void NetIO::prepare_conntrack(TCPTrack *ct)
+void NetIO::prepareConntrack(TCPTrack *ct)
 {
     conntrack = ct;
 }
 
-void NetIO::network_io(void)
+void NetIO::networkIO(void)
 {
     /*
      * This is a critical function for sniffjoke operativity.

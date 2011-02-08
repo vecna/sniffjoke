@@ -44,7 +44,7 @@ IPList::~IPList()
 
 void IPList::selflog(const char *func, const char *lmsg) const
 {
-    LOG_SESSION("IPList: %s: IP %s attribute a(%02x) b(%02x) c(%02x)",
+    LOG_SESSION("%s: IP %s attribute a(%02x) b(%02x) c(%02x)",
                 lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c
                 );
 }
@@ -111,7 +111,6 @@ void IPListMap::load()
     {
         fgets(record, sizeof (record), IPfileP);
 
-        printf("dio mercato [%s]\n", record);
         if (record[0] == '#' || strlen(record) < 7)
             continue;
 
@@ -128,7 +127,7 @@ void IPListMap::load()
 
     fclose(IPfileP);
 
-    LOG_ALL("IPListMap::load from %s completed: %u records loaded", dumpfname, records_num);
+    LOG_ALL("from %s completed: %u records loaded", dumpfname, records_num);
 }
 
 /* Implemented but not used until the client sniffjokectl supports the updating of whitelist/blacklist */
@@ -160,5 +159,5 @@ void IPListMap::dump()
     }
     fclose(IPfileP);
 
-    LOG_ALL("ipconfigmap dump completed with %u records dumped", records_num);
+    LOG_ALL("completed with %u records dumped", records_num);
 }

@@ -342,14 +342,14 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
     if (cmdopt != difolt)
     {
         dst = cmdopt;
-        debugfmt = "%s/bool: keyword %s used command line value: [%s]";
+        debugfmt = "bool: keyword %s used command line value: [%s]";
         goto EndparseMatchBool;
     }
 
     if (cf == NULL)
     {
         dst = difolt;
-        debugfmt = "%s/bool: keyword %s config file not present, used default: [%s]";
+        debugfmt = "bool: keyword %s config file not present, used default: [%s]";
         goto EndparseMatchBool;
     }
 
@@ -359,16 +359,16 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
     if (parseLine(cf, useropt, name))
     {
         dst = true;
-        debugfmt = "%s/bool: keyword %s read from config file: [%s]";
+        debugfmt = "bool: keyword %s read from config file: [%s]";
     }
     else
     {
         dst = difolt;
-        debugfmt = "%s/bool: not found %s option in conf file, using default: [%s]";
+        debugfmt = "bool: not found %s option in conf file, using default: [%s]";
     }
 
 EndparseMatchBool:
-    LOG_DEBUG(debugfmt, __func__, name, dst ? "true" : "false");
+    LOG_DEBUG(debugfmt, name, dst ? "true" : "false");
 }
 
 void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
@@ -388,7 +388,7 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     /* only-plugin will be empty, no other cases */
     if (cf == NULL && difolt == NULL)
     {
-        debugfmt = "%s/string: conf file not found and option neither: used no value in %s";
+        debugfmt = "string: conf file not found and option neither: used no value in %s";
         memset(dst, 0x00, MEDIUMBUF);
         goto EndparseMatchString;
     }
@@ -396,14 +396,14 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     /* if the file is NULL, the default is used */
     if (cf == NULL)
     {
-        debugfmt = "%s/string: conf file not found, for %s used default %s";
+        debugfmt = "string: conf file not found, for %s used default %s";
         memcpy(dst, difolt, strlen(difolt));
         goto EndparseMatchString;
     }
 
     if (parseLine(cf, useropt, name))
     {
-        debugfmt = "%s/string: parsed keyword %s [%s] option in conf file";
+        debugfmt = "string: parsed keyword %s [%s] option in conf file";
         /* dst is large MEDIUMBUF, and none useropt will overflow this size */
         memcpy(dst, useropt, strlen(useropt));
         goto EndparseMatchString;
@@ -414,11 +414,11 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     {
         memset(dst, 0x00, MEDIUMBUF);
         memcpy(dst, difolt, strlen(difolt));
-        debugfmt = "%s/string: %s not found in config file, used default %s";
+        debugfmt = "string: %s not found in config file, used default %s";
     }
 
 EndparseMatchString:
-    LOG_DEBUG(debugfmt, __func__, name, dst);
+    LOG_DEBUG(debugfmt, name, dst);
 }
 
 void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, const uint16_t difolt)
@@ -428,7 +428,7 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
 
     if (cmdopt != difolt && cmdopt != 0)
     {
-        debugfmt = "%s/uint16: for %s used command line option %d";
+        debugfmt = "uint16: for %s used command line option %d";
         dst = cmdopt;
         goto EndparseMatchShort;
     }
@@ -437,26 +437,26 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
     if (cf == NULL)
     {
         memcpy((void *) &dst, (void *) &difolt, sizeof (difolt));
-        debugfmt = "%s/uint16: conf file not found, for %s used default %d";
+        debugfmt = "uint16: conf file not found, for %s used default %d";
         goto EndparseMatchShort;
     }
     memset(useropt, 0x00, SMALLBUF);
 
     if (parseLine(cf, useropt, name))
     {
-        debugfmt = "%s/uint16: parsed keyword %s [%d] option in conf file";
+        debugfmt = "uint16: parsed keyword %s [%d] option in conf file";
         dst = atoi(useropt);
         goto EndparseMatchShort;
     }
 
     if (difolt)
     {
-        debugfmt = "%s/uint16: %s not found in config file, used default %d";
+        debugfmt = "uint16: %s not found in config file, used default %d";
         dst = difolt;
     }
 
 EndparseMatchShort:
-    LOG_DEBUG(debugfmt, __func__, name, dst);
+    LOG_DEBUG(debugfmt, name, dst);
 }
 
 /* this is the function that load the settings, it merge the command line options with
