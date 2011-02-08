@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "hardcoded-defines.h"
+#include "hardcodedDefines.h"
 
 enum size_buf_t
 {
@@ -71,11 +71,10 @@ enum size_buf_t
  */
 extern time_t sj_clock;
 
-#define SJ_RUNTIME_EXCEPTION(msg) throw runtime_exception(__func__, __FILE__, __LINE__, msg)
+#define RUNTIME_EXCEPTION(msg) throw runtime_exception(__func__, __FILE__, __LINE__, msg)
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
 std::runtime_error runtime_exception(const char *, const char *, long, const char *);
 void* memset_random(void *, size_t);
 void sigtrap(int);
-FILE *sj_fopen(const char *, const char *);
 
 #endif /* SJ_UTILS_H */

@@ -167,7 +167,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
         /* this is happen and I didn't understand why, so, I try to log */
         LOG_DEBUG("arbitrary added percentage: no FREQ_ are present. (this prcnt %d) user %u hack %u", this_percentage, hackFrequency, userFrequency);
         this_percentage = aggressivity_percentage * 3;
-        /* SJ_RUNTIME_EXCEPTION("Invalid status: packet without Frequency set"); */
+        /* RUNTIME_EXCEPTION("Invalid status: packet without Frequency set"); */
     }
 
     return (((uint32_t) (random() % 100) + 1 <= this_percentage));
@@ -524,7 +524,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runconfig.debug_level == PACKET_LEVEL)
-                    SJ_RUNTIME_EXCEPTION("Invalid packet generated from the hack");
+                    RUNTIME_EXCEPTION("Invalid packet generated from the hack");
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -565,7 +565,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
                 break;
             case POSITIONUNASSIGNED:
                 LOG_ALL("Invalid and impossibile %s:%d", __FILE__, __LINE__);
-                SJ_RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("");
             }
         }
 
@@ -848,7 +848,7 @@ void TCPTrack::analyze_packets_queue()
             if (pkt->source == NETWORK || pkt->proto != TCP || last_pkt_fix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                SJ_RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("");
         }
     }
 
@@ -863,7 +863,7 @@ void TCPTrack::analyze_packets_queue()
             if (last_pkt_fix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                SJ_RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("");
         }
     }
 

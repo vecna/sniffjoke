@@ -23,16 +23,16 @@
 #ifndef SJ_INTERNALPROTOCOL_H
 #define SJ_INTERNALPROTOCOL_H
 
-#define START_COMMAND_TYPE      1
-#define STOP_COMMAND_TYPE       2
-#define QUIT_COMMAND_TYPE       3
-#define DUMP_COMMAND_TYPE       4
-#define STAT_COMMAND_TYPE       5
-#define LOGLEVEL_COMMAND_TYPE   6
-#define SETPORT_COMMAND_TYPE    7
-#define SHOWPORT_COMMAND_TYPE   8
-#define INFO_COMMAND_TYPE       9
-#define COMMAND_ERROR_MSG       100
+#define START_COMMAND_TYPE          1
+#define STOP_COMMAND_TYPE           2
+#define QUIT_COMMAND_TYPE           3
+#define SAVECONF_COMMAND_TYPE       4
+#define STAT_COMMAND_TYPE           5
+#define LOGLEVEL_COMMAND_TYPE       6
+#define SETPORT_COMMAND_TYPE        7
+#define SHOWPORT_COMMAND_TYPE       8
+#define INFO_COMMAND_TYPE           9
+#define COMMAND_ERROR_MSG          100
 
 /* this contain the description of the entire block */
 struct command_ret

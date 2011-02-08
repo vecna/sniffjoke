@@ -102,17 +102,17 @@ void Packet::updatePacketMetadata()
 
     /* start ip update */
     if (pktlen < sizeof (struct iphdr))
-        SJ_RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
+        RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
 
     ip = (struct iphdr *) &(pbuf[0]);
     iphdrlen = ip->ihl * 4;
 
     if (pktlen < iphdrlen)
-        SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen");
+        RUNTIME_EXCEPTION("pktlen < iphdrlen");
 
 
     if (pktlen < ntohs(ip->tot_len))
-        SJ_RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
+        RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
     /* end ip update */
 
     switch (ip->protocol)
@@ -144,13 +144,13 @@ void Packet::updatePacketMetadata()
     case IPPROTO_TCP:
         /* start tcp update */
         if (pktlen < iphdrlen + sizeof (struct tcphdr))
-            SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
         tcp = (struct tcphdr *) ((unsigned char *) (ip) + iphdrlen);
         tcphdrlen = tcp->doff * 4;
 
         if (pktlen < iphdrlen + tcphdrlen)
-            SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
 
         datalen = pktlen - iphdrlen - tcphdrlen;
         if (datalen)
@@ -160,7 +160,7 @@ void Packet::updatePacketMetadata()
     case IPPROTO_ICMP:
         /* start icmp update */
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
-            SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
         icmp = (struct icmphdr *) ((unsigned char *) (ip) + iphdrlen);
         /* end icmp update */
@@ -343,7 +343,7 @@ void Packet::TCPPAYLOAD_resize(uint16_t size)
 
     /* begin safety checks */
     if (pktlen - datalen + size > MTU)
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     /* end safety checks */
 
     const uint16_t new_total_len = pktlen - datalen + size;
@@ -611,7 +611,7 @@ void Packet::selflog(const char *func, const char *loginfo) const
             break;
         default:
             LOG_ALL("Invalid and impossibile %s:%d", __FILE__, __LINE__);
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
             break;
         }
 

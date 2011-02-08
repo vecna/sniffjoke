@@ -79,10 +79,8 @@ public:
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*>
 {
-private:
-    FILE *diskcache;
 public:
-    TTLFocusMap(const char *);
+    TTLFocusMap();
     ~TTLFocusMap();
     TTLFocus& get(const Packet &);
     void manage();

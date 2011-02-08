@@ -88,7 +88,7 @@ private:
     void handleCmdStart(void);
     void handleCmdStop(void);
     void handleCmdQuit(void);
-    void handleCmdDump(void);
+    void handleCmdSaveconf(void);
     void handleCmdStat(void);
     void handleCmdInfo(void);
     void handleCmdShowport(void);

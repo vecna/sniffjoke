@@ -149,7 +149,7 @@ void SniffJoke::run()
         proc.privilegesDowngrade();
 
         sessiontrack_map = auto_ptr<SessionTrackMap > (new SessionTrackMap);
-        ttlfocus_map = auto_ptr<TTLFocusMap > (new TTLFocusMap(FILE_TTLFOCUSMAP));
+        ttlfocus_map = auto_ptr<TTLFocusMap > (new TTLFocusMap());
         conntrack = auto_ptr<TCPTrack > (new TCPTrack(userconf.runconfig, *hack_pool, *sessiontrack_map, *ttlfocus_map));
 
         mitm->prepareConntrack(conntrack.get());
@@ -188,7 +188,7 @@ void SniffJoke::setupDebug(FILE *forcedoutput) const
     {
         /* Logfiles are used only by a Sniffjoke SERVER runnning in background */
         if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
-            SJ_RUNTIME_EXCEPTION("opening log files");
+            RUNTIME_EXCEPTION("opening log files");
     }
     else /* userconf.runconfig.go_foreground */
     {
@@ -235,7 +235,7 @@ void SniffJoke::setupAdminSocket()
     if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
         LOG_ALL("FATAL: unable to open UDP socket: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     memset(&in_service, 0x00, sizeof (in_service));
@@ -243,7 +243,7 @@ void SniffJoke::setupAdminSocket()
     if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr))
     {
         LOG_ALL("FATAL: unable to accept hostname (%s): only IP address allow", userconf.runconfig.admin_address);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
     in_service.sin_family = AF_INET;
     in_service.sin_port = htons(userconf.runconfig.admin_port);
@@ -254,7 +254,7 @@ void SniffJoke::setupAdminSocket()
         LOG_ALL("FATAL: unable to bind UDP socket %s:%d: %s",
                 userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno)
                 );
-        SJ_RUNTIME_EXCEPTION("binding administrative socket");
+        RUNTIME_EXCEPTION("binding administrative socket");
     }
     LOG_VERBOSE("bind %u UDP port in %s ip interface for administration",
                 userconf.runconfig.admin_port, userconf.runconfig.admin_address);
@@ -268,7 +268,7 @@ void SniffJoke::setupAdminSocket()
         LOG_ALL("FATAL: unable to set non blocking administration socket: %s",
                 strerror(errno)
                 );
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     admin_socket = tmp;
@@ -289,7 +289,7 @@ void SniffJoke::handleAdminSocket()
             return;
         }
         LOG_ALL("FATAL: unable to receive from local socket: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     LOG_VERBOSE("received command from the client: %s", r_buf);
@@ -304,7 +304,7 @@ void SniffJoke::handleAdminSocket()
         debug.debuglevel = userconf.runconfig.debug_level;
 
         if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
-            SJ_RUNTIME_EXCEPTION("Changing logfile settings");
+            RUNTIME_EXCEPTION("Changing logfile settings");
     }
 
     /* send the answer message to the client */
@@ -362,9 +362,9 @@ uint8_t* SniffJoke::handleCmd(const char *cmd)
     {
         handleCmdQuit();
     }
-    else if (!memcmp(cmd, "dump", strlen("dump")))
+    else if (!memcmp(cmd, "saveconf", strlen("saveconf")))
     {
-        handleCmdDump();
+        handleCmdSaveconf();
     }
     else if (!memcmp(cmd, "stat", strlen("stat")))
     {
@@ -466,7 +466,7 @@ void SniffJoke::handleCmdQuit(void)
  *
  * this function is never autocalled, but only specifically request by the client
  */
-void SniffJoke::handleCmdDump(void)
+void SniffJoke::handleCmdSaveconf(void)
 {
     /* beside dump the FILE_CONF, sync_disk_configuration save the TCP port and list files */
     if (!userconf.syncDiskConfiguration())
@@ -475,7 +475,7 @@ void SniffJoke::handleCmdDump(void)
         LOG_ALL("error in communication error in loggin error in keyboad");
     }
     /* as generic rule, when a command has not an output, write the status */
-    writeSJStatus(DUMP_COMMAND_TYPE);
+    writeSJStatus(SAVECONF_COMMAND_TYPE);
 }
 
 void SniffJoke::handleCmdStat(void)
@@ -554,7 +554,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
             accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
             if (accumulen > HUGEBUF)
-                SJ_RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
+                RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
 
             prev_kind = userconf.runconfig.portconf[i];
             prev_port = i;

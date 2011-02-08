@@ -137,7 +137,7 @@ void IPListMap::dump()
     char record[MEDIUMBUF];
     FILE *IPfileP;
 
-    if ((IPfileP = fopen(dumpfname, "w+")) == NULL)
+    if ((IPfileP = fopen(dumpfname, "w")) == NULL)
     {
         LOG_ALL("unable to open %s: %s", dumpfname, strerror(errno));
     }

@@ -115,15 +115,14 @@ struct sj_config
 class UserConf
 {
 private:
-    const char *resolve_weight_name(int);
-    void compare_check_copy(char *target, uint32_t tlen, const char *sjdefault, const char *useropt);
-    void autodetect_local_interface(void);
-    void autodetect_local_interface_ip_address(void);
-    void autodetect_gw_ip_address(void);
-    void autodetect_gw_mac_address(void);
-    void autodetect_first_available_tunnel_interface(void);
-    void debug_cleanup();
-    void onlyparam_parser(const char*);
+    const char *resolveWeightName(int);
+    void compareCheckCopy(char *, uint32_t, const char *, const char *);
+    void autodetectLocalInterface(void);
+    void autodetectLocalInterfaceIPAddress(void);
+    void autodetectGWIPAddress(void);
+    void autodetectGWMACAddress(void);
+    void autodetectFirstAvailableTunnelInterface(void);
+    void parseOnlyParam(const char*);
 
     bool syncPortsFiles(void);
     bool syncIPListsFiles(void);

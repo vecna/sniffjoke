@@ -20,7 +20,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hardcoded-defines.h"
+#include "hardcodedDefines.h"
 
 #include "Utils.h"
 #include "UserConf.h"
@@ -45,31 +45,6 @@ runtime_error runtime_exception(const char* func, const char* file, long line, c
     if (msg != NULL)
         stream << " " << msg;
     return std::runtime_error(stream.str());
-}
-
-/* this function is used for read/write configuration and cache files, */
-FILE *sj_fopen(const char *fname, const char *mode)
-{
-    const char *nmode;
-
-    /* 
-     * communication intra sniffjoke: a "+" means:
-     * if the file exists, open in read and write
-     * if not, create it.
-     */
-    if (strlen(mode) == 1 && mode[0] == '+')
-    {
-        if (access(fname, R_OK) == R_OK)
-            nmode = "r+";
-        else
-            nmode = "w+";
-    }
-    else
-    {
-        nmode = const_cast<char *> (mode);
-    }
-
-    return fopen(fname, nmode);
 }
 
 void init_random()

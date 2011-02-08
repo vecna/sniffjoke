@@ -120,23 +120,19 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
     memset((void*) debug_buf, 0x00, sizeof (debug_buf));
 }
 
-TTLFocusMap::TTLFocusMap(const char* dumpfile)
+TTLFocusMap::TTLFocusMap()
 {
     LOG_VERBOSE("");
-    LOG_ALL("loading ttlfocusmap from %s", dumpfile);
 
-    if ((diskcache = sj_fopen(dumpfile, "+")) == NULL)
-    {
-        LOG_ALL("keeping a network cache is required, link it to /dev/null if don't like it");
-        SJ_RUNTIME_EXCEPTION(strerror(errno));
-    }
     load();
 }
 
 TTLFocusMap::~TTLFocusMap()
 {
     LOG_VERBOSE("");
+
     dump();
+
     for (TTLFocusMap::iterator it = begin(); it != end();)
     {
         delete &(*it->second);
@@ -227,36 +223,46 @@ void TTLFocusMap::manage()
 
 void TTLFocusMap::load()
 {
+    FILE *loadstream = NULL;
     uint32_t records_num = 0;
     struct ttlfocus_cache_record tmp;
     int ret;
 
-    fseek(diskcache, 0, SEEK_END);
-    if (!ftell(diskcache))
-        LOG_ALL("unable to access network cache: sniffjoke will start without it");
-    else
+    LOG_ALL("loading ttlfocusmap from %s", FILE_TTLFOCUSMAP);
+
+    if ((loadstream = fopen(FILE_TTLFOCUSMAP, "r")) == NULL)
     {
-        rewind(diskcache);
-        while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, diskcache)) == 1)
-        {
-            records_num++;
-            TTLFocus *ttlfocus = new TTLFocus(tmp);
-            insert(pair<uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
-        }
+        LOG_ALL("unable to access network cache: sniffjoke will start without it");
+        return;
     }
+    
+    while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream)) == 1)
+    {
+        records_num++;
+        TTLFocus *ttlfocus = new TTLFocus(tmp);
+        insert(pair<uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
+    }
+
+    fclose(loadstream);
 
     LOG_ALL("load completed: %u records loaded", records_num);
 }
 
 void TTLFocusMap::dump()
 {
+    FILE *dumpstream = NULL;
     uint32_t undumped = 0, records_num = 0;
 
-    rewind(diskcache);
+    LOG_ALL("dumping ttlfocusmap to %s", FILE_TTLFOCUSMAP);
+
+    if ((dumpstream = fopen(FILE_TTLFOCUSMAP, "w")) == NULL)
+    {
+        LOG_ALL("unable to write network cache");
+        return;
+    }
 
     for (TTLFocusMap::iterator it = begin(); it != end(); ++it)
     {
-
         TTLFocus *tmp = &(*it->second);
 
         /* we saves only with TTL_KNOWN status */
@@ -280,7 +286,7 @@ void TTLFocusMap::dump()
          */
         memcpy(cache_record.probe_dummy, &(tmp->probe_dummy.pbuf[0]), 40);
 
-        if (fwrite(&cache_record, sizeof (struct ttlfocus_cache_record), 1, diskcache) != 1)
+        if (fwrite(&cache_record, sizeof (struct ttlfocus_cache_record), 1, dumpstream) != 1)
         {
             LOG_ALL("unable to dump ttlfocus: %s", strerror(errno));
             return;
@@ -288,6 +294,8 @@ void TTLFocusMap::dump()
 
         ++records_num;
     }
+    
+    fclose(dumpstream);
 
     LOG_ALL("ttlfocusmap dump completed with %u records dumped, %u where incomplete.", records_num, undumped);
 }

@@ -33,7 +33,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
     if (pluginHandler == NULL)
     {
         LOG_ALL("unable to load plugin %s: %s", plugabspath, dlerror());
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
@@ -52,14 +52,14 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
     if (fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL)
     {
         LOG_ALL("hack plugin %s lack of packet mangling object", plugabspath);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
     {
         LOG_ALL("loading %s incorred version (%s) with SniffJoke %s",
                 plugabspath, fp_versionValue(), SW_VERSION);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     if (pluginOnly)
@@ -70,7 +70,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
     if (selfObj->hackName == NULL)
     {
         LOG_ALL("hack plugin %s lack of ->hackName member", plugabspath);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     /* in future release some other information will be passed here. this function
@@ -115,7 +115,7 @@ runconfig(runcfg)
         {
             LOG_ALL("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
             LOG_ALL("--only-plugin is used by sniffjoke-autotest with a reason :P");
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
         }
 
         *comma = 0x00;
@@ -128,7 +128,7 @@ runconfig(runcfg)
         {
             LOG_ALL("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
             LOG_ALL("--only-plugin is used by sniffjoke-autotest with a reason :P");
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
         }
 
         importPlugin(plugabspath, runcfg.onlyplugin, supportedScramble, true);
@@ -141,7 +141,7 @@ runconfig(runcfg)
     if (!size())
     {
         LOG_ALL("loaded correctly 0 plugins: FAILURE while loading detected");
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
     else
         LOG_ALL("loaded correctly %d plugins", size());
@@ -187,7 +187,7 @@ void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, u
     catch (runtime_error &e)
     {
         LOG_ALL("unable to load plugin %s", enablerentry);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
 }
@@ -239,10 +239,10 @@ void HackPool::parseEnablerFile()
 
     snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
 
-    if ((plugfile = sj_fopen(enablerabspath, "r")) == NULL)
+    if ((plugfile = fopen(enablerabspath, "r")) == NULL)
     {
         LOG_ALL("unable to open in reading %s: %s", enablerabspath, strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     uint8_t line = 0;
@@ -265,7 +265,7 @@ void HackPool::parseEnablerFile()
         {
             LOG_ALL("reading %s: imported %d plugins, matched interruption at line %d",
                     FILE_PLUGINSENABLER, size(), line);
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
         }
 
         memset(plugabspath, 0x00, MEDIUMBUF);
@@ -275,7 +275,7 @@ void HackPool::parseEnablerFile()
         {
             LOG_ALL("reading %s at line %d lack the comma separator for scramble selection",
                     FILE_PLUGINSENABLER, line);
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
         }
 
         /* name.so,SCRAMBLE became name.so[NULL]SCRAMBLE, *comma point to "S" */
@@ -299,7 +299,7 @@ void HackPool::parseEnablerFile()
         {
             LOG_ALL("in line %d (%s), no valid scramble are present in %s",
                     line, enablerentry, FILE_PLUGINSENABLER);
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
         }
 
         importPlugin(plugabspath, enablerentry, supportedScramble, false);

@@ -42,19 +42,19 @@ runconfig(runcfg)
     char cmd[MEDIUMBUF];
 
     if (getuid() || geteuid())
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
 
     /* pseudo sanity check of received data, sjconf had already make something */
     if (strlen(runconfig.gw_ip_addr) < 7 || strlen(runconfig.gw_ip_addr) > 17)
     {
         LOG_ALL("invalid ip address [%s] is not an IPv4, check the config", runconfig.gw_ip_addr);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     if (strlen(runconfig.gw_mac_str) != 17)
     {
         LOG_ALL("invalid mac address [%s] is not a MAC addr, check the config", runconfig.gw_mac_str);
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     if ((tunfd = open("/dev/net/tun", O_RDWR)) != -1)
@@ -64,7 +64,7 @@ runconfig(runcfg)
     else
     {
         LOG_ALL("unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     memset(&ifr, 0x00, sizeof (ifr));
@@ -82,7 +82,7 @@ runconfig(runcfg)
     else
     {
         LOG_ALL("unable to set flags in tunnel socket: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     tmpfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -95,7 +95,7 @@ runconfig(runcfg)
     else
     {
         LOG_ALL("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s", ifr.ifr_name, strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
     close(tmpfd);
 
@@ -107,7 +107,7 @@ runconfig(runcfg)
     else
     {
         LOG_ALL("unable to set flag FD_CLOEXEC in tun socket: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     LOG_VERBOSE("deleting default gateway in routing table");
@@ -141,7 +141,7 @@ runconfig(runcfg)
         LOG_ALL("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
                 runconfig.interface, strerror(errno)
                 );
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     close(tmpfd);
@@ -153,7 +153,7 @@ runconfig(runcfg)
     else
     {
         LOG_ALL("unable to open datalink layer packet: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     send_ll.sll_family = PF_PACKET;
@@ -173,7 +173,7 @@ runconfig(runcfg)
     else
     {
         LOG_ALL("unable to bind datalink layer interface: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     }
 
     fds[0].fd = tunfd;
@@ -292,7 +292,7 @@ void NetIO::networkIO(void)
         if (nfds == -1)
         {
             LOG_ALL("strange and dangerous error in ppoll: %s", strerror(errno));
-            SJ_RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("");
         }
 
         if (fds[0].revents & POLLIN)
@@ -303,7 +303,7 @@ void NetIO::networkIO(void)
             if (ret == -1)
             {
                 LOG_ALL("read from tunnel: %s", strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             if (runconfig.active == true)
@@ -315,7 +315,7 @@ void NetIO::networkIO(void)
                 if (sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll)) != ret)
                 {
                     LOG_ALL("send to network: %s", strerror(errno));
-                    SJ_RUNTIME_EXCEPTION(strerror(errno));
+                    RUNTIME_EXCEPTION(strerror(errno));
                 }
             }
         }
@@ -332,7 +332,7 @@ void NetIO::networkIO(void)
                  * -1 only on error's case.
                  */
                 LOG_DEBUG("write in tunnel: error: %s", strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             /* corretly written in tunfd */
@@ -348,7 +348,7 @@ void NetIO::networkIO(void)
             if (ret == -1)
             {
                 LOG_ALL("read from network: %s", strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             if (runconfig.active == true)
@@ -362,7 +362,7 @@ void NetIO::networkIO(void)
                 if (write(tunfd, pktbuf, ret) != ret)
                 {
                     LOG_ALL("write in tunnel: %s", strerror(errno));
-                    SJ_RUNTIME_EXCEPTION(strerror(errno));
+                    RUNTIME_EXCEPTION(strerror(errno));
                 }
             }
         }
@@ -379,7 +379,7 @@ void NetIO::networkIO(void)
                  * -1 only on error's case.
                  */
                 LOG_DEBUG("write in network: error: %s", strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             /* correctly written in netfd */

@@ -166,8 +166,8 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
 		case LOGLEVEL_COMMAND_TYPE:
             printf("received confirm of LOGLEVEL command\n");
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
-		case DUMP_COMMAND_TYPE:
-            printf("received confirm of DUMP command\n");
+		case SAVECONF_COMMAND_TYPE:
+            printf("received confirm of SAVECONF command\n");
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case SETPORT_COMMAND_TYPE:
             printf("received confirm of SET PORT command\n");
