@@ -41,7 +41,7 @@ groupinfo_buf(NULL)
 
     if (getuid() || geteuid())
     {
-        LOG_ALL("Process: required root privileges");
+        LOG_ALL("required root privileges");
         SJ_RUNTIME_EXCEPTION("");
     }
 
@@ -56,7 +56,7 @@ groupinfo_buf(NULL)
 
     if (userinfo_buf == NULL || groupinfo_buf == NULL)
     {
-        LOG_ALL("Process: problem in memory allocation for userinfo or groupinfo");
+        LOG_ALL("problem during memory allocation for userinfo or groupinfo");
         SJ_RUNTIME_EXCEPTION("");
     }
 
@@ -65,14 +65,14 @@ groupinfo_buf(NULL)
 
     if (userinfo_result == NULL || groupinfo_result == NULL)
     {
-        LOG_ALL("Process: invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
+        LOG_ALL("invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
         SJ_RUNTIME_EXCEPTION("");
     }
 }
 
 Process::~Process()
 {
-    LOG_DEBUG("[process %d, uid %d]", getpid(), getuid());
+    LOG_DEBUG("[process id %d, uid %d]", getpid(), getuid());
     free(userinfo_buf);
     free(groupinfo_buf);
 }
@@ -85,7 +85,7 @@ int Process::detach()
 
     if ((pid_child = fork()) == -1)
     {
-        LOG_ALL("detach: unable to fork (calling pid %d, parent %d)", getpid(), getppid());
+        LOG_ALL("unable to fork (calling pid %d, parent %d)", getpid(), getppid());
         SJ_RUNTIME_EXCEPTION("");
     }
 
@@ -118,7 +118,7 @@ int Process::detach()
         write(pdes[1], &pid_child, sizeof (pid_t));
         close(pdes[1]);
 
-        LOG_DEBUG("detach: forked child process, pid %d", getpid());
+        LOG_DEBUG("forked child process, pid %d", getpid());
 
         return 0;
     }
@@ -128,7 +128,7 @@ void Process::jail(const char *chroot_dir)
 {
     if (chroot_dir == NULL)
     {
-        LOG_ALL("jail() invoked but no chroot_dir specified: %s: unable to start sniffjoke");
+        LOG_ALL("invoked but no chroot_dir is specified: unable to start sniffjoke");
         SJ_RUNTIME_EXCEPTION("");
     }
 
@@ -136,18 +136,18 @@ void Process::jail(const char *chroot_dir)
 
     if (chown(chroot_dir, userinfo.pw_uid, groupinfo.gr_gid))
     {
-        LOG_ALL("jail: chown of %s to %s:%s failed: %s: unable to start sniffjoke",
+        LOG_ALL("chown of %s to %s:%s failed: %s: unable to start sniffjoke",
                   chroot_dir, runconfig.user, runconfig.group, strerror(errno));
         SJ_RUNTIME_EXCEPTION("");
     }
 
     if (chdir(chroot_dir) || chroot(chroot_dir))
     {
-        LOG_ALL("jail: chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
+        LOG_ALL("chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
         SJ_RUNTIME_EXCEPTION("");
     }
 
-    LOG_VERBOSE("jail: chroot'ed process %d in %s", getpid(), chroot_dir);
+    LOG_VERBOSE("chroot'ed process %d in %s", getpid(), chroot_dir);
 }
 
 void Process::privilegesDowngrade()
@@ -156,17 +156,17 @@ void Process::privilegesDowngrade()
 
     if (setgid(groupinfo.gr_gid) || setuid(userinfo.pw_uid))
     {
-        LOG_ALL("privilegesDowngrade: error loosing root privileges");
+        LOG_ALL("error loosing root privileges");
         SJ_RUNTIME_EXCEPTION("");
     }
 
     if (!getuid() && !geteuid())
     {
-        LOG_ALL("privilegesDowngrade: sniffjoke user process can't be runned with root privileges");
+        LOG_ALL("sniffjoke user process can't be runned with root privileges");
         SJ_RUNTIME_EXCEPTION("");
     }
 
-    LOG_VERBOSE("privilegesDowngrade: process %d downgrade privileges to uid %d gid %d",
+    LOG_VERBOSE("process %d downgrade privileges to uid %d gid %d",
               getpid(), userinfo.pw_uid, groupinfo.gr_gid);
 }
 
@@ -217,7 +217,7 @@ pid_t Process::readPidfile(void)
     FILE *pidFile = fopen(SJ_PIDFILE, "r");
     if (pidFile == NULL)
     {
-        LOG_DEBUG("readPidfile: pidfile %s not present: %s", SJ_PIDFILE, strerror(errno));
+        LOG_DEBUG("pidfile %s not present: %s", SJ_PIDFILE, strerror(errno));
         return ret;
     }
 
@@ -235,11 +235,11 @@ void Process::writePidfile(void)
     FILE *pidFile = fopen(SJ_PIDFILE, "w+");
     if (pidFile == NULL)
     {
-        LOG_ALL("writePidfile: unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
+        LOG_ALL("unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
         SJ_RUNTIME_EXCEPTION("");
     }
 
-    LOG_DEBUG("writePidfile: created pidfile %s from %d", SJ_PIDFILE, getpid());
+    LOG_DEBUG("created pidfile %s from %d", SJ_PIDFILE, getpid());
     fprintf(pidFile, "%d", getpid());
     fclose(pidFile);
 }
@@ -290,7 +290,7 @@ __unlinkPidfile:
 
 void Process::background()
 {
-    LOG_VERBOSE("The starting process is going to close the output logging. Follow the logfile");
+    LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles wile be used instead.");
 
     if (fork())
         exit(0);
@@ -306,7 +306,7 @@ void Process::background()
 
 void Process::isolation()
 {
-    LOG_DEBUG("isolation: the pid %d, uid %d is isolating themeself", getpid(), getuid());
+    LOG_DEBUG("the pid %d, uid %d is isolating themeself", getpid(), getuid());
     setsid();
     umask(027);
 }
