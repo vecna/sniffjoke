@@ -44,14 +44,14 @@ IPList::~IPList()
 
 void IPList::selflog(const char *func, const char *lmsg) const
 {
-    debug.log(SESSIONS_DEBUG, "IPList: %s: IP %s attribute a(%02x) b(%02x) c(%02x)", 
-        lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c
-    );
+    LOG_SESSION("IPList: %s: IP %s attribute a(%02x) b(%02x) c(%02x)",
+                lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c
+                );
 }
 
 IPListMap::IPListMap(const char* ipConfFile)
 {
-    debug.log(ALL_LEVEL, "%s: loading ipList from %s", __func__, ipConfFile);
+    LOG_ALL("loading ipList from %s", ipConfFile);
     dumpfname = ipConfFile;
     load();
 }
@@ -103,32 +103,32 @@ void IPListMap::load()
 
     if ((IPfileP = fopen(dumpfname, "r")) == NULL)
     {
-        debug.log(ALL_LEVEL, "unable to open %s: %s", dumpfname, strerror(errno));
+        LOG_ALL("unable to open %s: %s", dumpfname, strerror(errno));
         return;
     }
 
     do
     {
         fgets(record, sizeof (record), IPfileP);
-  
-        printf("dio mercato [%s]\n", record); 
-        if(record[0] == '#' || strlen(record) < 7)
+
+        printf("dio mercato [%s]\n", record);
+        if (record[0] == '#' || strlen(record) < 7)
             continue;
 
         sscanf(record, "%s,%2x,%2x,%2x\n", tmp_ip, &tmp_a, &tmp_b, &tmp_c);
-        debug.log(VERBOSE_LEVEL, "importing record %d: %s,%02x,%02x,%02x", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
+        LOG_VERBOSE("importing record %d: %s,%02x,%02x,%02x", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
 
         /* the value in tmp_* are not used at the moment */
-        add( inet_addr(tmp_ip), (uint8_t)tmp_a, (uint8_t)tmp_b, (uint8_t)tmp_c );
+        add(inet_addr(tmp_ip), (uint8_t) tmp_a, (uint8_t) tmp_b, (uint8_t) tmp_c);
         records_num++;
 
         memset(record, 0x00, MEDIUMBUF);
     }
-    while(!feof(IPfileP));
+    while (!feof(IPfileP));
 
     fclose(IPfileP);
 
-    debug.log(ALL_LEVEL, "IPListMap::load from %s completed: %u records loaded", dumpfname, records_num);
+    LOG_ALL("IPListMap::load from %s completed: %u records loaded", dumpfname, records_num);
 }
 
 /* Implemented but not used until the client sniffjokectl supports the updating of whitelist/blacklist */
@@ -140,7 +140,7 @@ void IPListMap::dump()
 
     if ((IPfileP = fopen(dumpfname, "w+")) == NULL)
     {
-        debug.log(ALL_LEVEL, "unable to open %s: %s", dumpfname, strerror(errno));
+        LOG_ALL("unable to open %s: %s", dumpfname, strerror(errno));
     }
 
     for (IPListMap::iterator it = begin(); it != end(); ++it)
@@ -152,7 +152,7 @@ void IPListMap::dump()
 
         if (fwrite(&record, strlen(record), 1, IPfileP) != 1)
         {
-            debug.log(ALL_LEVEL, "unable to dump ipconfig: %s", strerror(errno));
+            LOG_ALL("unable to dump ipconfig: %s", strerror(errno));
             return;
         }
 
@@ -160,5 +160,5 @@ void IPListMap::dump()
     }
     fclose(IPfileP);
 
-    debug.log(ALL_LEVEL, "ipconfigmap dump completed with %u records dumped", records_num);
+    LOG_ALL("ipconfigmap dump completed with %u records dumped", records_num);
 }

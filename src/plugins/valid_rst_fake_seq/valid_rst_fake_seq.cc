@@ -83,7 +83,7 @@ public:
 			supportedScramble = configuredScramble;
 			return true;
 		} else {
-			debug.log(ALL_LEVEL, "%s hack supports only INNOCENT scramble type", HACK_NAME);
+			LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
 			return false;
 		}
 	}

@@ -53,17 +53,17 @@ enum size_buf_t
 /* loglevels & log classess */
 #include "Debug.h"
 
-#define SUPPRESS_LOG        1
-#define ALL_LEVEL        2
-#define ALL_LEVEL_NAME        "default"
+#define SUPPRESS_LEVEL      1
+#define ALL_LEVEL           2
+#define ALL_LEVEL_NAME      "default"
 #define VERBOSE_LEVEL        3
-#define VERBOSE_LEVEL_NAME    "verbose"
-#define DEBUG_LEVEL        4
+#define VERBOSE_LEVEL_NAME  "verbose"
+#define DEBUG_LEVEL         4
 #define DEBUG_LEVEL_NAME    "debug"
-#define SESSIONS_DEBUG        5
-#define SESSION_DEBUG_NAME    "sessions"
-#define PACKETS_DEBUG        6
-#define PACKETS_DEBUG_NAME      "packets"
+#define SESSION_LEVEL      5
+#define SESSION_LEVEL_NAME  "sessions"
+#define PACKET_LEVEL       6
+#define PACKET_LEVEL_NAME  "packets"
 
 /*
  * there is a single clock in sniffjoke, global and

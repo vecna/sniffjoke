@@ -36,19 +36,19 @@ proc(userconf.runconfig),
 service_pid(0)
 {
     debug_setup(stdout);
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 }
 
 SniffJoke::~SniffJoke()
 {
     if (getuid() || geteuid())
     {
-        debug.log(DEBUG_LEVEL, "Service with users privileges: %s [%d]", __func__, getpid());
+        LOG_DEBUG("Service with users privileges [%d]", getpid());
         server_user_cleanup();
     }
     else
     {
-        debug.log(DEBUG_LEVEL, "Service with root privileges: %s [%d]", __func__, getpid());
+        LOG_DEBUG("Service with root privileges [%d]", getpid());
         server_root_cleanup();
     }
     /* closing the log files */
@@ -62,13 +62,13 @@ void SniffJoke::run()
     {
         if (!opts.force_restart)
         {
-            debug.log(ALL_LEVEL, "SniffJoke is already runconfig, use --force or check --help");
-            debug.log(ALL_LEVEL, "the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, old_service_pid);
+            LOG_ALL("SniffJoke is already runconfig, use --force or check --help");
+            LOG_ALL("the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, old_service_pid);
             return;
         }
         else
         {
-            debug.log(VERBOSE_LEVEL, "forcing exit of previous running service %d ...", old_service_pid);
+            LOG_VERBOSE("forcing exit of previous running service %d ...", old_service_pid);
 
             /* we have to do quite the same as in sniffjoke_server_cleanup,
              * but relative to the service_pid read with readPidfile;
@@ -77,17 +77,17 @@ void SniffJoke::run()
             kill(old_service_pid, SIGTERM);
             sleep(2);
             proc.unlinkPidfile(true);
-            debug.log(ALL_LEVEL, "A new instance of SniffJoke is going background");
+            LOG_ALL("A new instance of SniffJoke is going background");
         }
     }
 
     if (!old_service_pid && opts.force_restart)
-        debug.log(VERBOSE_LEVEL, "option --force ignore: not found a previously running SniffJoke");
+        LOG_VERBOSE("option --force ignore: not found a previously running SniffJoke");
 
     if (!userconf.runconfig.active)
-        debug.log(ALL_LEVEL, "SniffJoke is INACTIVE: use \"sniffjokectl start\" or use the --start option");
+        LOG_ALL("SniffJoke is INACTIVE: use \"sniffjokectl start\" or use the --start option");
     else
-        debug.log(VERBOSE_LEVEL, "SniffJoke started and ACTIVE");
+        LOG_VERBOSE("SniffJoke started and ACTIVE");
 
     /* we run the network setup before the background, to keep the software output visible on the console */
     userconf.networkSetup();
@@ -123,18 +123,18 @@ void SniffJoke::run()
         {
 
             if (WIFEXITED(deadtrace))
-                debug.log(VERBOSE_LEVEL, "child %d WIFEXITED", service_pid);
+                LOG_VERBOSE("child %d WIFEXITED", service_pid);
             if (WIFSIGNALED(deadtrace))
-                debug.log(VERBOSE_LEVEL, "child %d WIFSIGNALED", service_pid);
+                LOG_VERBOSE("child %d WIFSIGNALED", service_pid);
             if (WIFSTOPPED(deadtrace))
-                debug.log(VERBOSE_LEVEL, "child %d WIFSTOPPED", service_pid);
+                LOG_VERBOSE("child %d WIFSTOPPED", service_pid);
         }
         else
         {
-            debug.log(VERBOSE_LEVEL, "child waitpid failed with: %s", strerror(errno));
+            LOG_VERBOSE("child waitpid failed with: %s", strerror(errno));
         }
 
-        debug.log(DEBUG_LEVEL, "child %d died, going to shutdown", service_pid);
+        LOG_DEBUG("child %d died, going to shutdown", service_pid);
 
     }
     else
@@ -187,13 +187,13 @@ void SniffJoke::debug_setup(FILE *forcedoutput) const
     if (!opts.go_foreground)
     {
         /* Logfiles are used only by a Sniffjoke SERVER runnning in background */
-        if (!debug.resetLevel(const_cast<const char *>(userconf.runconfig.working_dir)))
+        if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
             SJ_RUNTIME_EXCEPTION("Error in opening log files");
     }
     else /* userconf.runconfig.go_foreground */
     {
         debug.logstream = stdout;
-        debug.log(ALL_LEVEL, "forground logging enable, use ^c for quit SniffJoke");
+        LOG_ALL("forground logging enable, use ^c for quit SniffJoke");
     }
 }
 
@@ -214,19 +214,17 @@ void SniffJoke::server_root_cleanup()
 {
     if (service_pid)
     {
-        debug.log(VERBOSE_LEVEL, "%s found server root pid %d (from %d)", __func__, service_pid, getpid() );
+        LOG_VERBOSE("found server root pid %d (from %d)", service_pid, getpid());
         kill(service_pid, SIGTERM);
         waitpid(service_pid, NULL, WUNTRACED);
     }
-    else
-        debug.log(VERBOSE_LEVEL, "%s with a different pid: %d (from %d)", __func__, service_pid, getpid() );
 
     proc.unlinkPidfile(false);
 }
 
 void SniffJoke::server_user_cleanup()
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 }
 
 void SniffJoke::admin_socket_setup()
@@ -236,7 +234,7 @@ void SniffJoke::admin_socket_setup()
 
     if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
-        debug.log(ALL_LEVEL, "FATAL: unable to open UDP socket: %s", strerror(errno));
+        LOG_ALL("FATAL: unable to open UDP socket: %s", strerror(errno));
         SJ_RUNTIME_EXCEPTION("");
     }
 
@@ -244,7 +242,7 @@ void SniffJoke::admin_socket_setup()
     /* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
     if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr))
     {
-        debug.log(ALL_LEVEL, "Unable to accept hostname (%s): only IP address allow", userconf.runconfig.admin_address);
+        LOG_ALL("Unable to accept hostname (%s): only IP address allow", userconf.runconfig.admin_address);
         SJ_RUNTIME_EXCEPTION("");
     }
     in_service.sin_family = AF_INET;
@@ -253,13 +251,13 @@ void SniffJoke::admin_socket_setup()
     if (bind(tmp, (struct sockaddr *) &in_service, sizeof (in_service)) == -1)
     {
         close(tmp);
-        debug.log(ALL_LEVEL, "FATAL ERROR: unable to bind UDP socket %s:%d: %s",
-                  userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno)
-                  );
+        LOG_ALL("FATAL ERROR: unable to bind UDP socket %s:%d: %s",
+                userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno)
+                );
         SJ_RUNTIME_EXCEPTION("Binding administrative socket");
     }
-    debug.log(VERBOSE_LEVEL, "Bind %u UDP port in %s ip interface for administration", 
-        userconf.runconfig.admin_port, userconf.runconfig.admin_address);
+    LOG_VERBOSE("Bind %u UDP port in %s ip interface for administration",
+                userconf.runconfig.admin_port, userconf.runconfig.admin_address);
 
     admin_socket_flags_blocking = fcntl(tmp, F_GETFL);
     admin_socket_flags_nonblocking = admin_socket_flags_blocking | O_NONBLOCK;
@@ -267,9 +265,9 @@ void SniffJoke::admin_socket_setup()
     if (fcntl(tmp, F_SETFL, admin_socket_flags_nonblocking) == -1)
     {
         close(tmp);
-        debug.log(ALL_LEVEL, "FATAL ERROR: unable to set non blocking administration socket: %s",
-                  strerror(errno)
-                  );
+        LOG_ALL("FATAL ERROR: unable to set non blocking administration socket: %s",
+                strerror(errno)
+                );
         SJ_RUNTIME_EXCEPTION("");
     }
 
@@ -290,11 +288,11 @@ void SniffJoke::admin_socket_handle()
         {
             return;
         }
-        debug.log(ALL_LEVEL, "unable to receive from local socket: %s", strerror(errno));
+        LOG_ALL("unable to receive from local socket: %s", strerror(errno));
         SJ_RUNTIME_EXCEPTION("");
     }
 
-    debug.log(VERBOSE_LEVEL, "received command from the client: %s", r_buf);
+    LOG_VERBOSE("received command from the client: %s", r_buf);
 
     output_buf = handle_cmd(r_buf);
 
@@ -305,7 +303,7 @@ void SniffJoke::admin_socket_handle()
     {
         debug.debuglevel = userconf.runconfig.debug_level;
 
-        if (!debug.resetLevel(const_cast<const char *>(userconf.runconfig.working_dir)))
+        if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
             SJ_RUNTIME_EXCEPTION("Changing logfile settings");
     }
 
@@ -318,7 +316,7 @@ void SniffJoke::admin_socket_handle()
     }
     else
     {
-        debug.log(ALL_LEVEL, "BUG: command handling of [%s] don't return any answer", r_buf);
+        LOG_ALL("BUG: command handling of [%s] don't return any answer", r_buf);
     }
 }
 
@@ -333,7 +331,7 @@ int SniffJoke::recv_command(int sock, char *databuf, int bufsize, struct sockadd
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return 0;
 
-        debug.log(ALL_LEVEL, "unable to receive local socket: %s: %s", usermsg, strerror(errno));
+        LOG_ALL("unable to receive local socket: %s: %s", usermsg, strerror(errno));
     }
 
     return ret;
@@ -344,7 +342,7 @@ uint8_t* SniffJoke::handle_cmd(const char *cmd)
     memset(io_buf, 0x00, sizeof (io_buf));
     uint16_t* psize = (uint16_t *) io_buf;
 
-    debug.log(DEBUG_LEVEL, "command received begin processed: [%s]", cmd);
+    LOG_DEBUG("command received begin processed: [%s]", cmd);
 
     /* the handle_cmd_* fill partialy the io_buf, as defined
      * protocol, the first 4 byte represent the length of the
@@ -405,21 +403,21 @@ uint8_t* SniffJoke::handle_cmd(const char *cmd)
         int32_t debuglevel;
 
         sscanf(cmd, "debug %d", &debuglevel);
-        if (debuglevel < 0 || debuglevel > PACKETS_DEBUG)
+        if (debuglevel < 0 || debuglevel > PACKET_LEVEL)
             goto handle_error;
 
         handle_cmd_debuglevel(debuglevel);
     }
     else
     {
-        debug.log(ALL_LEVEL, "Invalid command received");
+        LOG_ALL("Invalid command received");
     }
 
-    debug.log(ALL_LEVEL, "handled command (%s): answer %d bytes length", cmd, *psize);
+    LOG_ALL("handled command (%s): answer %d bytes length", cmd, *psize);
     return &io_buf[0];
 
 handle_error:
-    debug.log(ALL_LEVEL, "invalid command received");
+    LOG_ALL("invalid command received");
     write_SJProtoError();
 
     return &io_buf[0];
@@ -429,11 +427,11 @@ void SniffJoke::handle_cmd_start(void)
 {
     if (userconf.runconfig.active != true)
     {
-        debug.log(VERBOSE_LEVEL, "%s: started sniffjoke as requested!", __func__);
+        LOG_VERBOSE("started sniffjoke as requested!");
     }
-    else /* sniffjoke is already runconfig */
+    else /* sniffjoke is already running */
     {
-        debug.log(VERBOSE_LEVEL, "%s: start requested by already running service", __func__);
+        LOG_VERBOSE("sniffjoke it's already in run status");
     }
     userconf.runconfig.active = true;
     /* this function fill io_buf with the status information */
@@ -444,11 +442,11 @@ void SniffJoke::handle_cmd_stop(void)
 {
     if (userconf.runconfig.active != false)
     {
-        debug.log(VERBOSE_LEVEL, "%s: stopped sniffjoke as requested!", __func__);
+        LOG_VERBOSE("stopped sniffjoke as requested!");
     }
     else /* sniffjoke is already runconfig */
     {
-        debug.log(VERBOSE_LEVEL, "%s: stop requested by already stopped service", __func__);
+        LOG_VERBOSE("sniffjoke it's already in stop status");
     }
     userconf.runconfig.active = false;
     /* this function fill io_buf with the status information */
@@ -458,7 +456,7 @@ void SniffJoke::handle_cmd_stop(void)
 void SniffJoke::handle_cmd_quit(void)
 {
     alive = false;
-    debug.log(VERBOSE_LEVEL, "%s: starting shutdown", __func__);
+    LOG_VERBOSE("starting shutdown");
     write_SJStatus(QUIT_COMMAND_TYPE);
 }
 
@@ -471,10 +469,10 @@ void SniffJoke::handle_cmd_quit(void)
 void SniffJoke::handle_cmd_dump(void)
 {
     /* beside dump the FILE_CONF, sync_disk_configuration save the TCP port and list files */
-    if(!userconf.syncDiskConfiguration())
+    if (!userconf.syncDiskConfiguration())
     {
         /* TODO - handle the communication of the error in the client */
-        debug.log(ALL_LEVEL, "error in communication error in loggin error in keyboad");
+        LOG_ALL("error in communication error in loggin error in keyboad");
     }
     /* as generic rule, when a command has not an output, write the status */
     write_SJStatus(DUMP_COMMAND_TYPE);
@@ -482,14 +480,14 @@ void SniffJoke::handle_cmd_dump(void)
 
 void SniffJoke::handle_cmd_stat(void)
 {
-    debug.log(VERBOSE_LEVEL, "%s: stat requested", __func__);
+    LOG_VERBOSE("stat requested");
     write_SJStatus(STAT_COMMAND_TYPE);
 }
 
 void SniffJoke::handle_cmd_info(void)
 {
     write_SJStatus(INFO_COMMAND_TYPE);
-    debug.log(VERBOSE_LEVEL, "%s: info command NOT IMPLEMENTED", __func__);
+    LOG_VERBOSE("info command NOT IMPLEMENTED");
 }
 
 void SniffJoke::handle_cmd_showport(void)
@@ -499,8 +497,8 @@ void SniffJoke::handle_cmd_showport(void)
 
 void SniffJoke::handle_cmd_set(uint16_t start, uint16_t end, uint8_t what)
 {
-    debug.log(VERBOSE_LEVEL, "%s: set TCP ports from %d to %d at %d strenght level",
-              __func__, start, end, what);
+    LOG_VERBOSE("%s: set TCP ports from %d to %d at %d strenght level",
+                __func__, start, end, what);
 
     if (end == PORTNUMBER)
     {
@@ -519,15 +517,15 @@ void SniffJoke::handle_cmd_set(uint16_t start, uint16_t end, uint8_t what)
 
 void SniffJoke::handle_cmd_debuglevel(int32_t newdebuglevel)
 {
-    if (newdebuglevel < ALL_LEVEL || newdebuglevel > PACKETS_DEBUG)
+    if (newdebuglevel < ALL_LEVEL || newdebuglevel > PACKET_LEVEL)
     {
-        debug.log(ALL_LEVEL, "%s: requested debuglevel %d invalid (>= %d <= %d permitted)",
-                  __func__, newdebuglevel, ALL_LEVEL, PACKETS_DEBUG
-                  );
+        LOG_ALL("requested debuglevel %d invalid (>= %d <= %d permitted)",
+                newdebuglevel, ALL_LEVEL, PACKET_LEVEL
+                );
     }
     else
     {
-        debug.log(ALL_LEVEL, "%s: changing log level since %d to %d\n", __func__, userconf.runconfig.debug_level, newdebuglevel);
+        LOG_ALL("changing log level since %d to %d\n", userconf.runconfig.debug_level, newdebuglevel);
         userconf.runconfig.debug_level = newdebuglevel;
     }
     write_SJStatus(LOGLEVEL_COMMAND_TYPE);
@@ -542,7 +540,7 @@ void SniffJoke::write_SJPortStat(uint8_t type)
 {
     int i, prev_port = 1, prev_kind;
     struct command_ret retInfo;
-    uint32_t accumulen = sizeof(retInfo);
+    uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, HUGEBUF);
@@ -556,7 +554,7 @@ void SniffJoke::write_SJPortStat(uint8_t type)
         {
             accumulen += append_SJportBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
-            if(accumulen > HUGEBUF)
+            if (accumulen > HUGEBUF)
                 SJ_RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is tring to overflow me");
 
             prev_kind = userconf.runconfig.portconf[i];
@@ -568,13 +566,13 @@ void SniffJoke::write_SJPortStat(uint8_t type)
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;
-    memcpy(&io_buf[0], (void *)&retInfo, sizeof (retInfo));
+    memcpy(&io_buf[0], (void *) &retInfo, sizeof (retInfo));
 }
 
 void SniffJoke::write_SJStatus(uint8_t commandReceived)
 {
     struct command_ret retInfo;
-    uint32_t accumulen = sizeof(retInfo);
+    uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, HUGEBUF);
@@ -595,7 +593,7 @@ void SniffJoke::write_SJStatus(uint8_t commandReceived)
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location_name), userconf.runconfig.location_name);
     /**
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHROOT, strlen(userconf.runconfig.working_dir), userconf.runconfig.working_dir);
-    **/
+     **/
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = commandReceived;
@@ -618,11 +616,11 @@ uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, uint16
 
     singleData.len = len;
     singleData.WHO = WHO;
-    memcpy(p, &singleData, sizeof(singleData));
-    p += sizeof(singleData);
+    memcpy(p, &singleData, sizeof (singleData));
+    p += sizeof (singleData);
     memcpy(p, &value, len);
 
-    return len + sizeof(singleData);
+    return len + sizeof (singleData);
 }
 
 uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, bool value)
@@ -631,26 +629,26 @@ uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, bool v
 
     singleData.len = len;
     singleData.WHO = WHO;
-    memcpy(p, &singleData, sizeof(singleData));
-    p += sizeof(singleData);
-    *p = (uint8_t)value;
+    memcpy(p, &singleData, sizeof (singleData));
+    p += sizeof (singleData);
+    *p = (uint8_t) value;
 
-    return len + sizeof(singleData);
+    return len + sizeof (singleData);
 }
 
 uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, char value[MEDIUMBUF])
 {
-    if(len)
+    if (len)
     {
         struct single_block singleData;
 
         singleData.len = len;
         singleData.WHO = WHO;
-        memcpy(p, &singleData, sizeof(singleData));
-        p += sizeof(singleData);
+        memcpy(p, &singleData, sizeof (singleData));
+        p += sizeof (singleData);
         memcpy(p, value, len);
 
-        len += sizeof(singleData);
+        len += sizeof (singleData);
     }
     return len;
 }

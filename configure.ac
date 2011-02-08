@@ -113,7 +113,7 @@ AC_CONFIG_FILES(
 )
 
 
-CFLAGS="-O3 -ansi -pedantic -Wall"
+CFLAGS="-O3 -ansi -pedantic -Wall -Wno-variadic-macros"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

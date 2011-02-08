@@ -96,7 +96,7 @@ void TTLFocus::selectPuppetPort()
 
 void TTLFocus::selflog(const char *func, const char *umsg) const
 {
-    if (debug.level() == SUPPRESS_LOG)
+    if (debug.level() == SUPPRESS_LEVEL)
         return;
 
     const char *status_name;
@@ -113,22 +113,21 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
         break;
     }
 
-    debug.log(SESSIONS_DEBUG,
-              "%s (%s) [%s] m_sent %d, m_recv %d ttl_estimate %u synackttl %u [%s]",
-              func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe, received_probe, ttl_estimate, ttl_synack, umsg
-              );
+    LOG_SESSION("%s (%s) [%s] m_sent %d, m_recv %d ttl_estimate %u synackttl %u [%s]",
+                func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe, received_probe, ttl_estimate, ttl_synack, umsg
+                );
 
     memset((void*) debug_buf, 0x00, sizeof (debug_buf));
 }
 
 TTLFocusMap::TTLFocusMap(const char* dumpfile)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
-    debug.log(ALL_LEVEL, "loading ttlfocusmap from %s...", dumpfile);
+    LOG_VERBOSE("");
+    LOG_ALL("loading ttlfocusmap from %s", dumpfile);
 
     if ((diskcache = sj_fopen(dumpfile, "+")) == NULL)
     {
-        debug.log(ALL_LEVEL, "keeping a network cache is required, link it to /dev/null if don't like it");
+        LOG_ALL("keeping a network cache is required, link it to /dev/null if don't like it");
         SJ_RUNTIME_EXCEPTION(strerror(errno));
     }
     load();
@@ -136,7 +135,7 @@ TTLFocusMap::TTLFocusMap(const char* dumpfile)
 
 TTLFocusMap::~TTLFocusMap()
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
     dump();
     for (TTLFocusMap::iterator it = begin(); it != end();)
     {
@@ -234,7 +233,7 @@ void TTLFocusMap::load()
 
     fseek(diskcache, 0, SEEK_END);
     if (!ftell(diskcache))
-        debug.log(ALL_LEVEL, "unable to access network cache: sniffjoke will start without it");
+        LOG_ALL("unable to access network cache: sniffjoke will start without it");
     else
     {
         rewind(diskcache);
@@ -246,7 +245,7 @@ void TTLFocusMap::load()
         }
     }
 
-    debug.log(ALL_LEVEL, "load completed: %u records loaded", records_num);
+    LOG_ALL("load completed: %u records loaded", records_num);
 }
 
 void TTLFocusMap::dump()
@@ -283,12 +282,12 @@ void TTLFocusMap::dump()
 
         if (fwrite(&cache_record, sizeof (struct ttlfocus_cache_record), 1, diskcache) != 1)
         {
-            debug.log(ALL_LEVEL, "unable to dump ttlfocus: %s", strerror(errno));
+            LOG_ALL("unable to dump ttlfocus: %s", strerror(errno));
             return;
         }
 
         ++records_num;
     }
 
-    debug.log(ALL_LEVEL, "ttlfocusmap dump completed with %u records dumped, %u where incomplete.", records_num, undumped);
+    LOG_ALL("ttlfocusmap dump completed with %u records dumped, %u where incomplete.", records_num, undumped);
 }

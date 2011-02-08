@@ -74,25 +74,25 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 
 void SessionTrack::selflog(const char *func, const char *lmsg) const
 {
-    if (debug.level() == SUPPRESS_LOG)
+    if (debug.level() == SUPPRESS_LEVEL)
         return;
 
-    debug.log(SESSIONS_DEBUG, "%s sport %d saddr %s dport %u, #pkt %d: %s",
-              func, ntohs(sport),
-              inet_ntoa(*((struct in_addr *) &daddr)),
-              ntohs(dport),
-              packet_number, lmsg != NULL ? lmsg : "(no message)"
-          );
+    LOG_SESSION("%s sport %d saddr %s dport %u, #pkt %d: %s",
+                func, ntohs(sport),
+                inet_ntoa(*((struct in_addr *) &daddr)),
+                ntohs(dport),
+                packet_number, lmsg != NULL ? lmsg : "(no message)"
+                );
 }
 
 SessionTrackMap::SessionTrackMap()
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 }
 
 SessionTrackMap::~SessionTrackMap()
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
     for (SessionTrackMap::iterator it = begin(); it != end();)
     {
         delete &(*it->second);

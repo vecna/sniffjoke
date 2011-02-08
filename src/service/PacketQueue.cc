@@ -28,7 +28,7 @@ cur_queue(FIRST_QUEUE),
 cur_pkt(NULL),
 next_pkt(NULL)
 {
-    debug.log(DEBUG_LEVEL, __func__);
+    LOG_DEBUG("");
 
     memset(front, NULL, sizeof (Packet*)*(QUEUE_NUM));
     memset(back, NULL, sizeof (Packet*)*(QUEUE_NUM));
@@ -36,7 +36,7 @@ next_pkt(NULL)
 
 PacketQueue::~PacketQueue(void)
 {
-    debug.log(DEBUG_LEVEL, __func__);
+    LOG_DEBUG("");
 
     for (uint8_t i = FIRST_QUEUE; i <= LAST_QUEUE; ++i)
     {

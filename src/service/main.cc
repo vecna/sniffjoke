@@ -174,8 +174,8 @@ int main(int argc, char **argv)
         { "whitelist", no_argument, NULL, 'w'},
         { "blacklist", no_argument, NULL, 'b'},
         { "admin", required_argument, NULL, 'a'},
-        { "only-plugin", required_argument, NULL, 'p'},     /* not documented in --help */
-        { "max-ttl-probe", required_argument, NULL, 'm' },  /* not documented too */
+        { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
+        { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
         { "debug", required_argument, NULL, 'd'},
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
@@ -265,7 +265,7 @@ sniffjoke_help:
     }
     catch (runtime_error &exception)
     {
-        debug.log(ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
+        LOG_ALL("Runtime exception, going shutdown: %s", exception.what());
 
         sniffjoke.reset();
         return 0;

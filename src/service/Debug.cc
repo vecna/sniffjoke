@@ -34,7 +34,7 @@ bool Debug::appendOpen(uint8_t thislevel, const char *rootdir, const char fname[
 {
     if (*previously != NULL)
     {
-        log(thislevel, "requested close of logfile %s (vars used: %s %s and level %d)", 
+        log(thislevel, "requested close of logfile %s (vars used: %s %s and level %d)",
             fname, rootdir, fname, thislevel);
         fclose(*previously);
     }
@@ -60,16 +60,16 @@ bool Debug::resetLevel(const char *rootdir)
     if (!appendOpen(ALL_LEVEL, rootdir, FILE_LOG, &logstream))
         return false;
 
-    if (!appendOpen(PACKETS_DEBUG, rootdir, FILE_LOG_PACKETS, &packet_logstream))
+    if (!appendOpen(PACKET_LEVEL, rootdir, FILE_LOG_PACKET, &packet_logstream))
         return false;
 
-    if (!appendOpen(SESSIONS_DEBUG, rootdir, FILE_LOG_SESSIONS, &session_logstream))
+    if (!appendOpen(SESSION_LEVEL, rootdir, FILE_LOG_SESSION, &session_logstream))
         return false;
 
     return true;
 }
 
-void Debug::log(uint8_t errorlevel, const char *msg, ...)
+void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
 {
     if (errorlevel <= debuglevel)
     {
@@ -82,17 +82,17 @@ void Debug::log(uint8_t errorlevel, const char *msg, ...)
         else
             output_flow = stderr;
 
-        if (errorlevel == PACKETS_DEBUG && packet_logstream != NULL)
+        if (errorlevel == PACKET_LEVEL && packet_logstream != NULL)
             output_flow = packet_logstream;
 
-        if (errorlevel == SESSIONS_DEBUG && session_logstream != NULL)
+        if (errorlevel == SESSION_LEVEL && session_logstream != NULL)
             output_flow = session_logstream;
 
         char time_str[sizeof ("YYYY-MM-GG HH:MM:SS")];
         strftime(time_str, sizeof (time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
         va_start(arguments, msg);
-        fprintf(output_flow, "%s ", time_str);
+        fprintf(output_flow, "%s %s: ", time_str, funcname);
 
         /* the debug level used in development require a pid/uid addictional block */
         if (errorlevel == DEBUG_LEVEL)
