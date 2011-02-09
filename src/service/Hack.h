@@ -47,6 +47,15 @@ class Hack
 {
 public:
 
+    uint8_t supportedScramble; /* supported by the location, derived
+                                  from plugin_enabler.conf.$location */
+    const char *hackName; /* hack name as const string */
+    const uint16_t hackFrequency; /* hack frequency, using the value  */
+    bool removeOrigPkt; /* boolean to be set true if the hack
+                           needs to remove the original packet */
+
+    vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
+
     judge_t pktRandomDamage(uint8_t scrambles)
     {
         if (ISSET_TTL(scrambles) && RANDOMPERCENT(75))
@@ -55,15 +64,6 @@ public:
             return MALFORMED;
         return GUILTY;
     }
-
-    uint8_t supportedScramble; /* supported by the location, derived
-                       from plugin_enabler.conf.$location */
-    const char *hackName; /* hack name as const string */
-    const uint16_t hackFrequency; /* hack frequency, using the value  */
-    bool removeOrigPkt; /* boolean to be set true if the hack
-                       needs to remove the original packet */
-
-    vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
 
     Hack(const char* hackName, uint16_t hackFrequency, bool removeOrigPkt = false) :
     hackName(hackName),
