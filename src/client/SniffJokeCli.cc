@@ -160,9 +160,9 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
 		case STAT_COMMAND_TYPE:
             printf("received confirm of STAT command\n");
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
-		case INFO_COMMAND_TYPE: /* tmp, INFO need to be other */
-            printf("received confirm of INFO command (not supported in version %s)\n", SW_VERSION);
-			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
+		case INFO_COMMAND_TYPE:
+            printf("received confirm of INFO command\n");
+			return printSJSessionInfo(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case LOGLEVEL_COMMAND_TYPE:
             printf("received confirm of LOGLEVEL command\n");
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
@@ -284,6 +284,27 @@ bool SniffJokeCli::printSJStat(uint8_t *statblock, int32_t blocklen)
 		parsedlen += (singleData->len + sizeof(struct single_block));
 	}
 	return true;
+}
+
+bool SniffJokeCli::printSJSessionInfo(uint8_t *received, uint32_t rcvdlen)
+{
+    struct sex_record *sr;
+    uint32_t cnt = 1, i = 0;
+
+    while(i < rcvdlen)
+    {
+        sr = (struct sex_record *)&received[i];
+        printf(" %02d) %s:%u #%u\n", cnt, inet_ntoa(*((struct in_addr *) &(sr->daddr))), ntohs(sr->dport), sr->packet_number);
+        cnt++;
+        i += sizeof(sr);
+    }
+
+    if(!i)
+    {
+        printf("none Session appears to be tracked at the moment\n");
+    }
+
+    return true;
 }
 
 #define SPACESIZE   20

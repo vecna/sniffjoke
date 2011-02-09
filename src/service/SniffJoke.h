@@ -75,16 +75,10 @@ private:
     void handleAdminSocket();
 
     /* internalProtocol handling */
-    void writeSJStatus(uint8_t);
-    void writeSJPortStat(uint8_t);
-    void writeSJProtoError(void);
-    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
-    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
-    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
-    uint32_t appendSJPortBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
-
     int recvCommand(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);
     uint8_t* handleCmd(const char *);
+
+    /* single command management */
     void handleCmdStart(void);
     void handleCmdStop(void);
     void handleCmdQuit(void);
@@ -94,6 +88,19 @@ private:
     void handleCmdShowport(void);
     void handleCmdSet(unsigned short, uint16_t, uint8_t);
     void handleCmdDebuglevel(int);
+
+    /* main function for build the answer */
+    void writeSJStatus(uint8_t);
+    void writeSJPortStat(uint8_t);
+    void writeSJInfoDump(uint8_t);
+    void writeSJProtoError(void);
+
+    /* called by writeSJ* functions = answer building */
+    uint32_t appendSJSessionInfo(uint8_t *, SessionTrack &);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
+    uint32_t appendSJPortBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
 };
 
 #endif /* SJ_SNIFFJOKE_H */

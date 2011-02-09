@@ -469,10 +469,11 @@ void SniffJoke::handleCmdStat(void)
     writeSJStatus(STAT_COMMAND_TYPE);
 }
 
+
 void SniffJoke::handleCmdInfo(void)
 {
-    LOG_VERBOSE("info command NOT IMPLEMENTED");
-    writeSJStatus(INFO_COMMAND_TYPE);
+    LOG_VERBOSE("info command requested: sessions only supported in this version");
+    writeSJInfoDump(INFO_COMMAND_TYPE);
 }
 
 void SniffJoke::handleCmdShowport(void)
@@ -579,6 +580,25 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
 }
 
+void SniffJoke::writeSJInfoDump(uint8_t type)
+{
+    struct command_ret retInfo;
+    uint32_t accumulen = sizeof (retInfo);
+
+    /* clean the buffer and fix the starting pointer */
+    memset(io_buf, 0x00, HUGEBUF);
+
+    for (SessionTrackMap::iterator it = sessiontrack_map->begin(); it != sessiontrack_map->end(); ++it)
+    {
+        SessionTrack &Tracked = *((*it).second);
+        accumulen += appendSJSessionInfo(&io_buf[accumulen], Tracked);
+    }
+
+    retInfo.cmd_len = accumulen;
+    retInfo.cmd_type = type;
+    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+}
+
 void SniffJoke::writeSJProtoError(void)
 {
     struct command_ret retInfo;
@@ -642,4 +662,20 @@ uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP
 
     memcpy(p, &pInfo, sizeof (pInfo));
     return (sizeof (pInfo));
+}
+
+/* follow the most "internal" method for io_buf creation, called from the methods before  */
+uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
+{
+    struct sex_record sr;
+
+    sr.timestamp = SexToDump.access_timestamp;
+    sr.daddr = SexToDump.daddr;
+    sr.dport = SexToDump.dport;
+    sr.sport = SexToDump.sport;
+    sr.packet_number = SexToDump.packet_number;
+
+    memcpy(p, &sr, sizeof (sr));
+
+    return sizeof (sr);
 }

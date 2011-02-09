@@ -46,6 +46,7 @@ static void sjcli_version(const char *pname)
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
 	" saveconf\t\tdump config file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
+	" into\t\t\tget statistics about sniffjoke active sessions\n"\
 	" debug\t\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
@@ -107,8 +108,7 @@ int main(int argc, char **argv)
 /* CLEAR is SET 1:64k NONE and so I've commented this too */
 		{ "showport", 1 },
 		{ "quit",     1 },
-/*		{ "info",     1 }, */
-/* INFO is not implemented at the moment */
+		{ "info",     1 },
 		{ "saveconf", 1 },
 		{ "debug",    2 }, 	    /* the log debuglevel */
 /*		{ "set",      4 }, */ 	/* set start_port end_port value */
