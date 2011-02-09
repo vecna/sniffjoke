@@ -32,8 +32,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
     pluginHandler = dlopen(plugabspath, RTLD_NOW);
     if (pluginHandler == NULL)
     {
-        LOG_ALL("unable to load plugin %s: %s", plugabspath, dlerror());
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("unable to load plugin %s: %s", plugabspath, dlerror());
     }
 
     /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
@@ -51,15 +50,14 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
 
     if (fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL)
     {
-        LOG_ALL("hack plugin %s lack of packet mangling object", plugabspath);
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("hack plugin %s lack of packet mangling object",
+                          plugabspath);
     }
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
     {
-        LOG_ALL("loading %s incorred version (%s) with SniffJoke %s",
-                plugabspath, fp_versionValue(), SW_VERSION);
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("loading %s incorred version (%s) with SniffJoke %s",
+                          plugabspath, fp_versionValue(), SW_VERSION);
     }
 
     if (pluginOnly)
@@ -69,8 +67,8 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
 
     if (selfObj->hackName == NULL)
     {
-        LOG_ALL("hack plugin %s lack of ->hackName member", plugabspath);
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("hack plugin %s lack of ->hackName member",
+                          plugabspath);
     }
 
     /* in future release some other information will be passed here. this function
@@ -112,11 +110,7 @@ runconfig(runcfg)
         snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), runcfg.onlyplugin);
 
         if ((comma = strchr(onlyplugin_cpy, ',')) == NULL)
-        {
-            LOG_ALL("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
-            LOG_ALL("--only-plugin is used by sniffjoke-autotest with a reason :P");
-            RUNTIME_EXCEPTION("");
-        }
+            RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
         *comma = 0x00;
 
@@ -125,11 +119,7 @@ runconfig(runcfg)
         comma++;
 
         if (!(supportedScramble = parseScrambleList(comma)))
-        {
-            LOG_ALL("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
-            LOG_ALL("--only-plugin is used by sniffjoke-autotest with a reason :P");
-            RUNTIME_EXCEPTION("");
-        }
+            RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
         importPlugin(plugabspath, runcfg.onlyplugin, supportedScramble, true);
     }
@@ -140,8 +130,7 @@ runconfig(runcfg)
 
     if (!size())
     {
-        LOG_ALL("loaded correctly 0 plugins: FAILURE while loading detected");
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("loaded correctly 0 plugins");
     }
     else
         LOG_ALL("loaded correctly %d plugins", size());
@@ -186,8 +175,7 @@ void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, u
     }
     catch (runtime_error &e)
     {
-        LOG_ALL("unable to load plugin %s", enablerentry);
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("unable to load plugin %s", enablerentry);
     }
 
 }
@@ -241,8 +229,7 @@ void HackPool::parseEnablerFile()
 
     if ((plugfile = fopen(enablerabspath, "r")) == NULL)
     {
-        LOG_ALL("unable to open in reading %s: %s", enablerabspath, strerror(errno));
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
     }
 
     uint8_t line = 0;
@@ -263,9 +250,8 @@ void HackPool::parseEnablerFile()
         /* 11 is the minimum length of a ?.so plugin, comma and strlen("GUILTY") the shortest keyword */
         if (strlen(enablerentry) < 11 || feof(plugfile))
         {
-            LOG_ALL("reading %s: imported %d plugins, matched interruption at line %d",
-                    FILE_PLUGINSENABLER, size(), line);
-            RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("reading %s: imported %d plugins, matched interruption at line %d",
+                              FILE_PLUGINSENABLER, size(), line);
         }
 
         memset(plugabspath, 0x00, MEDIUMBUF);
@@ -273,9 +259,8 @@ void HackPool::parseEnablerFile()
         /* parsing of the file line, finding the first comma and make it a 0x00 */
         if ((comma = strchr(enablerentry, ',')) == NULL)
         {
-            LOG_ALL("reading %s at line %d lack the comma separator for scramble selection",
-                    FILE_PLUGINSENABLER, line);
-            RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("reading %s at line %d lack the comma separator for scramble selection",
+                              FILE_PLUGINSENABLER, line);
         }
 
         /* name.so,SCRAMBLE became name.so[NULL]SCRAMBLE, *comma point to "S" */
@@ -286,8 +271,7 @@ void HackPool::parseEnablerFile()
         if (enablerentry[0] == '/')
         {
             LOG_ALL("only relative path is ufficially supported, but we are far ahead: 'ur lucky day about %s",
-                    enablerentry
-                    );
+                    enablerentry);
             snprintf(plugabspath, sizeof (plugabspath), "%s", enablerentry);
         }
         else
@@ -297,9 +281,8 @@ void HackPool::parseEnablerFile()
 
         if (!(supportedScramble = parseScrambleList(comma)))
         {
-            LOG_ALL("in line %d (%s), no valid scramble are present in %s",
-                    line, enablerentry, FILE_PLUGINSENABLER);
-            RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
+                              line, enablerentry, FILE_PLUGINSENABLER);
         }
 
         importPlugin(plugabspath, enablerentry, supportedScramble, false);

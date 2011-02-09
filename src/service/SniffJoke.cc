@@ -77,6 +77,7 @@ void SniffJoke::run()
             kill(old_service_pid, SIGTERM);
             sleep(2);
             proc.unlinkPidfile(true);
+
             LOG_ALL("a new instance of SniffJoke is going background");
         }
     }
@@ -130,9 +131,7 @@ void SniffJoke::run()
                 LOG_VERBOSE("child %d WIFSTOPPED", service_pid);
         }
         else
-        {
             LOG_VERBOSE("child waitpid failed with: %s", strerror(errno));
-        }
 
         LOG_DEBUG("child %d died, going to shutdown", service_pid);
 
@@ -233,28 +232,23 @@ void SniffJoke::setupAdminSocket()
     struct sockaddr_in in_service;
 
     if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
-    {
-        LOG_ALL("FATAL: unable to open UDP socket: %s", strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to open UDP socket: %s",
+                          strerror(errno));
 
     memset(&in_service, 0x00, sizeof (in_service));
     /* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
     if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr))
-    {
-        LOG_ALL("FATAL: unable to accept hostname (%s): only IP address allow", userconf.runconfig.admin_address);
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to accept hostname (%s): only IP address allow",
+                          userconf.runconfig.admin_address);
+
     in_service.sin_family = AF_INET;
     in_service.sin_port = htons(userconf.runconfig.admin_port);
 
     if (bind(tmp, (struct sockaddr *) &in_service, sizeof (in_service)) == -1)
     {
         close(tmp);
-        LOG_ALL("FATAL: unable to bind UDP socket %s:%d: %s",
-                userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno)
-                );
-        RUNTIME_EXCEPTION("binding administrative socket");
+        RUNTIME_EXCEPTION("unable to bind UDP socket %s:%d: %s",
+                          userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno));
     }
     LOG_VERBOSE("bind %u UDP port in %s ip interface for administration",
                 userconf.runconfig.admin_port, userconf.runconfig.admin_address);
@@ -265,10 +259,8 @@ void SniffJoke::setupAdminSocket()
     if (fcntl(tmp, F_SETFL, admin_socket_flags_nonblocking) == -1)
     {
         close(tmp);
-        LOG_ALL("FATAL: unable to set non blocking administration socket: %s",
-                strerror(errno)
-                );
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("unable to set non blocking administration socket: %s",
+                          strerror(errno));
     }
 
     admin_socket = tmp;
@@ -288,8 +280,8 @@ void SniffJoke::handleAdminSocket()
         {
             return;
         }
-        LOG_ALL("FATAL: unable to receive from local socket: %s", strerror(errno));
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("unable to receive from local socket: %s",
+                          strerror(errno));
     }
 
     LOG_VERBOSE("received command from the client: %s", r_buf);
@@ -331,7 +323,8 @@ int SniffJoke::recvCommand(int sock, char *databuf, int bufsize, struct sockaddr
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return 0;
 
-        LOG_ALL("FATAL: unable to receive local socket: %s: %s", usermsg, strerror(errno));
+        RUNTIME_EXCEPTION("unable to receive from local socket: %s: %s",
+                          usermsg, strerror(errno));
     }
 
     return ret;
@@ -426,13 +419,9 @@ handle_error:
 void SniffJoke::handleCmdStart(void)
 {
     if (userconf.runconfig.active != true)
-    {
         LOG_VERBOSE("started SniffJoke as requested!");
-    }
     else /* SniffJoke is already running */
-    {
         LOG_VERBOSE("SniffJoke it's already in run status");
-    }
     userconf.runconfig.active = true;
     /* this function fill io_buf with the status information */
     writeSJStatus(START_COMMAND_TYPE);
@@ -441,13 +430,9 @@ void SniffJoke::handleCmdStart(void)
 void SniffJoke::handleCmdStop(void)
 {
     if (userconf.runconfig.active != false)
-    {
         LOG_VERBOSE("stopped SniffJoke as requested!");
-    }
     else /* SniffJoke is already runconfig */
-    {
         LOG_VERBOSE("SniffJoke it's already in stop status");
-    }
     userconf.runconfig.active = false;
     /* this function fill io_buf with the status information */
     writeSJStatus(STOP_COMMAND_TYPE);
@@ -505,11 +490,7 @@ void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
         --end;
     }
 
-    do
-    {
-        userconf.runconfig.portconf[start++] = what;
-    }
-    while (start <= end);
+    do userconf.runconfig.portconf[start++] = what; while (start <= end);
 
     writeSJPortStat(SETPORT_COMMAND_TYPE);
 }
@@ -519,8 +500,7 @@ void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
     if (newdebuglevel < ALL_LEVEL || newdebuglevel > PACKET_LEVEL)
     {
         LOG_ALL("requested debuglevel %d invalid (>= %d <= %d permitted)",
-                newdebuglevel, ALL_LEVEL, PACKET_LEVEL
-                );
+                newdebuglevel, ALL_LEVEL, PACKET_LEVEL);
     }
     else
     {
@@ -537,7 +517,7 @@ void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
  */
 void SniffJoke::writeSJPortStat(uint8_t type)
 {
-    int i, prev_port = 1, prev_kind;
+    uint16_t prev_port = 1, prev_kind;
     struct command_ret retInfo;
     uint32_t accumulen = sizeof (retInfo);
 
@@ -547,7 +527,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
     /* the first port work as initialization */
     prev_kind = userconf.runconfig.portconf[0];
 
-    for (i = 1; i < PORTNUMBER; ++i)
+    for (uint32_t i = 1; i < PORTNUMBER; ++i)
     {
         if (userconf.runconfig.portconf[i] != prev_kind)
         {

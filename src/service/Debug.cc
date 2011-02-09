@@ -44,10 +44,9 @@ bool Debug::appendOpen(uint8_t thislevel, const char *rootdir, const char fname[
         char completefname[LARGEBUF];
 
         snprintf(completefname, LARGEBUF, "%s/%s", rootdir, fname);
+
         if ((*previously = fopen(completefname, "a+")) == NULL)
-        {
             return false;
-        }
 
         log(thislevel, "opened logfile %s (logdir %s) successful with debug level %d", fname, rootdir, debuglevel);
     }
@@ -97,7 +96,7 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
         /* the debug level used in development require a pid/uid addictional block */
         if (errorlevel == DEBUG_LEVEL)
             fprintf(output_flow, "%d/%d ", getpid(), getuid());
-        /* yes, if you dig in the github, will discover that this line has been added
+        /* yes, if you dig in the github, you will discover that this line has been added
          * after one year of developing */
 
         vfprintf(output_flow, msg, arguments);

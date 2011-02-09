@@ -38,12 +38,18 @@ time_t sj_clock;
 
 static auto_ptr<SniffJoke> sniffjoke;
 
-runtime_error runtime_exception(const char* func, const char* file, long line, const char* msg)
+runtime_error runtime_exception(const char* func, const char* file, int32_t line, const char* format, ...)
 {
+    char error[LARGEBUF];
+    char complete_error[LARGEBUF];
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprintf(error, sizeof (error), format, arguments);
+    snprintf(complete_error, sizeof (complete_error), "%s:%d %s() [ %s ]", file, line, func, error);
+    va_end(arguments);
+
     stringstream stream;
-    stream << "[EXCEPTION] " << file << "(" << line << ") function: " << func << "()";
-    if (msg != NULL)
-        stream << " " << msg;
+    stream << complete_error;
     return std::runtime_error(stream.str());
 }
 

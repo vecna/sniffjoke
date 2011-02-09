@@ -233,7 +233,9 @@ keyword_not_found:
 
 void portLine::mergeLine(uint16_t *portarray)
 {
-    for(uint32_t i = 0; i < PORTNUMBER; i++) 
+    for(uint32_t i = 0; i < PORTNUMBER; i++)
+    {
         if(portSelected[i])
             portarray[i] = OrValue;
+    }
 }
