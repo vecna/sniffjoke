@@ -43,14 +43,14 @@
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 cmdline_opts(cmdline_opts)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
     char *selected_basedir = NULL, *selected_location = NULL;
 
     /* generating referringdir and configfile (public) */
     if (cmdline_opts.basedir[0])
     {
         if(access(cmdline_opts.basedir, X_OK))
-            SJ_RUNTIME_EXCEPTION("--dir parameter is not accessible");
+            RUNTIME_EXCEPTION("--dir parameter is not accessible");
         else
             selected_basedir = const_cast<char *>(cmdline_opts.basedir);
     }
@@ -61,9 +61,9 @@ cmdline_opts(cmdline_opts)
 
     if (cmdline_opts.location[0])
     {
-        debug.log(VERBOSE_LEVEL, "is highly suggestes to use sniffjoke specifying a location (--location option)");
-        debug.log(VERBOSE_LEVEL, "a defined location means that the network it's profiled for the best results");
-        debug.log(VERBOSE_LEVEL, "a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
+        LOG_VERBOSE("is highly suggestes to use sniffjoke specifying a location (--location option)");
+        LOG_VERBOSE("a defined location means that the network it's profiled for the best results");
+        LOG_VERBOSE("a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
         selected_location = const_cast<char *>(cmdline_opts.location);
     }
     else
@@ -72,9 +72,9 @@ cmdline_opts(cmdline_opts)
     /* length sanity check, the input value are MEDIUMBUF (256) the generated buf are LARGEBUF (1024) */
     if(strlen(selected_basedir) + strlen(selected_location) > (LARGEBUF - strlen(FILE_CONF) -1) )
     {
-        debug.log(ALL_LEVEL, "Internal error: the length of --dir and --location argument is over %d byte lenght",
+        LOG_ALL("Internal error: the length of --dir and --location argument is over %d byte lenght",
             (LARGEBUF - strlen(FILE_CONF) -1));
-        SJ_RUNTIME_EXCEPTION("parameters too long");
+        RUNTIME_EXCEPTION("parameters too long");
     }
 
     /* setting up che 'struct sj_config runconfig', the public member of UserConf class */
@@ -87,54 +87,54 @@ cmdline_opts(cmdline_opts)
     /* checking if the option --location has sense: will be a typo! */
     if(access(runconfig.working_dir, X_OK)) 
     {
-        debug.log(ALL_LEVEL, "Invalid parm: basedir (%s) and location (%s) point to a non accessible directory: %s",
+        LOG_ALL("Invalid parm: basedir (%s) and location (%s) point to a non accessible directory: %s",
             selected_basedir, selected_location, strerror(errno));
-        SJ_RUNTIME_EXCEPTION("Inaccessible chroot/conf/logs directory");
+        RUNTIME_EXCEPTION("Inaccessible chroot/conf/logs directory");
     }
     else
-        debug.log(DEBUG_LEVEL, "checked working directory %s accessible", runconfig.working_dir);
+        LOG_DEBUG("checked working directory %s accessible", runconfig.working_dir);
 
     snprintf(configfile, sizeof(configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
     /* load() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
     if(chdir(runconfig.working_dir))
-        SJ_RUNTIME_EXCEPTION("Unable to chdir in the specifiy location");
+        RUNTIME_EXCEPTION("Unable to chdir in the specifiy location");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     load();
 
     /* check integrity in the configuration loaded */
     if(runconfig.use_blacklist && runconfig.use_whitelist)
     {
-        debug.log(ALL_LEVEL, "configuration conflict: both blacklist and whitelist seem to be enabled");
-        SJ_RUNTIME_EXCEPTION("configuration conflict");
+        LOG_ALL("configuration conflict: both blacklist and whitelist seem to be enabled");
+        RUNTIME_EXCEPTION("configuration conflict");
     }
 
     if (runconfig.onlyplugin[0])
     {
-        debug.log(VERBOSE_LEVEL, "plugin %s override the plugins settings in %s", runconfig.onlyplugin, FILE_PLUGINSENABLER);
+        LOG_VERBOSE("plugin %s override the plugins settings in %s", runconfig.onlyplugin, FILE_PLUGINSENABLER);
     }
     else
     {
         if(access(FILE_PLUGINSENABLER, R_OK))
         {
-            debug.log(ALL_LEVEL, "unable to access to enabler file %s: %s: location unaccepted", FILE_PLUGINSENABLER, strerror(errno));
-            SJ_RUNTIME_EXCEPTION("Unacceptable location because enabler file not found nor --only-plugin specified");
+            LOG_ALL("unable to access to enabler file %s: %s: location unaccepted", FILE_PLUGINSENABLER, strerror(errno));
+            RUNTIME_EXCEPTION("Unacceptable location because enabler file not found nor --only-plugin specified");
         }
         else
         {
-            debug.log(VERBOSE_LEVEL, "accepted location %s with accessible enabler fileconf", runconfig.location_name);
+            LOG_VERBOSE("accepted location %s with accessible enabler fileconf", runconfig.location_name);
         }
     }
 
-    debug.log(DEBUG_LEVEL, "runconfig pass the sanity checks");
+    LOG_DEBUG("runconfig pass the sanity checks");
 }
 
 UserConf::~UserConf()
 {
-    debug.log(DEBUG_LEVEL, "%s [pid %d], config %s", __func__, getpid(), configfile);
+    LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
 }
 
-void UserConf::autodetect_local_interface()
+void UserConf::autodetectLocalInterface()
 {
     /* check this command: the flag value, matched in 0003, is derived from:
      *     /usr/src/linux/include/linux/route.h
@@ -144,7 +144,7 @@ void UserConf::autodetect_local_interface()
     char imp_str[SMALLBUF];
     uint8_t i;
 
-    debug.log(ALL_LEVEL, "++ detecting external gateway interface with [%s]", cmd);
+    LOG_ALL("++ detecting external gateway interface with [%s]", cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -155,16 +155,16 @@ void UserConf::autodetect_local_interface()
 
     if (i < 3)
     {
-        debug.log(ALL_LEVEL, "-- default gateway not present: sniffjoke cannot be started");
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("-- default gateway not present: sniffjoke cannot be started");
+        RUNTIME_EXCEPTION("");
     }
     else
     {
-        debug.log(ALL_LEVEL, "  == detected external interface with default gateway: %s", runconfig.interface);
+        LOG_ALL("  == detected external interface with default gateway: %s", runconfig.interface);
     }
 }
 
-void UserConf::autodetect_local_interface_ip_address()
+void UserConf::autodetectLocalInterfaceIPAddress()
 {
     char cmd[MEDIUMBUF];
     FILE *foca;
@@ -174,7 +174,7 @@ void UserConf::autodetect_local_interface_ip_address()
              runconfig.interface
              );
 
-    debug.log(ALL_LEVEL, "++ detecting interface %s ip address with [%s]", runconfig.interface, cmd);
+    LOG_ALL("++ detecting interface %s ip address with [%s]", runconfig.interface, cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -183,17 +183,17 @@ void UserConf::autodetect_local_interface_ip_address()
     for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
         runconfig.local_ip_addr[i] = imp_str[i];
 
-    debug.log(ALL_LEVEL, "  == acquired local ip address: %s", runconfig.local_ip_addr);
+    LOG_ALL("  == acquired local ip address: %s", runconfig.local_ip_addr);
 }
 
-void UserConf::autodetect_gw_ip_address()
+void UserConf::autodetectGWIPAddress()
 {
     const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32";
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
 
-    debug.log(ALL_LEVEL, "++ detecting gateway ip address with [%s]", cmd);
+    LOG_ALL("++ detecting gateway ip address with [%s]", cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -203,16 +203,16 @@ void UserConf::autodetect_gw_ip_address()
         runconfig.gw_ip_addr[i] = imp_str[i];
     if (strlen(runconfig.gw_ip_addr) < 7)
     {
-        debug.log(ALL_LEVEL, "  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("  -- unable to autodetect gateway ip address, sniffjoke cannot be started");
+        RUNTIME_EXCEPTION("");
     }
     else
     {
-        debug.log(ALL_LEVEL, "  == acquired gateway ip address: %s", runconfig.gw_ip_addr);
+        LOG_ALL("  == acquired gateway ip address: %s", runconfig.gw_ip_addr);
     }
 }
 
-void UserConf::autodetect_gw_mac_address()
+void UserConf::autodetectGWMACAddress()
 {
     char cmd[MEDIUMBUF];
     FILE *foca;
@@ -220,7 +220,7 @@ void UserConf::autodetect_gw_mac_address()
     uint8_t i;
     snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
 
-    debug.log(ALL_LEVEL, "++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);
+    LOG_ALL("++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);
 
     foca = popen(cmd, "r");
     /* we do not need the output of ping, we need to wait the ping to finish
@@ -229,7 +229,7 @@ void UserConf::autodetect_gw_mac_address()
 
     memset(cmd, 0x00, sizeof (cmd));
     snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50", runconfig.gw_ip_addr);
-    debug.log(ALL_LEVEL, "++ detecting mac address of gateway with %s", cmd);
+    LOG_ALL("++ detecting mac address of gateway with %s", cmd);
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
     pclose(foca);
@@ -238,12 +238,12 @@ void UserConf::autodetect_gw_mac_address()
         runconfig.gw_mac_str[i] = imp_str[i];
     if (i != 17)
     {
-        debug.log(ALL_LEVEL, "  -- unable to autodetect gateway mac address");
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("  -- unable to autodetect gateway mac address");
+        RUNTIME_EXCEPTION("");
     }
     else
     {
-        debug.log(ALL_LEVEL, "  == automatically acquired mac address: %s", runconfig.gw_mac_str);
+        LOG_ALL("  == automatically acquired mac address: %s", runconfig.gw_mac_str);
         uint32_t mac[6];
         sscanf(runconfig.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         for (i = 0; i < 6; ++i)
@@ -251,13 +251,13 @@ void UserConf::autodetect_gw_mac_address()
     }
 }
 
-void UserConf::autodetect_first_available_tunnel_interface()
+void UserConf::autodetectFirstAvailableTunnelInterface()
 {
     const char *cmd = "ifconfig -a | grep tun | cut -b -7";
     FILE *foca;
     char imp_str[SMALLBUF];
 
-    debug.log(ALL_LEVEL, "++ detecting first unused tunnel device with [%s]", cmd);
+    LOG_ALL("++ detecting first unused tunnel device with [%s]", cmd);
 
     foca = popen(cmd, "r");
     for (runconfig.tun_number = 0;; ++runconfig.tun_number)
@@ -268,25 +268,25 @@ void UserConf::autodetect_first_available_tunnel_interface()
             break;
     }
     pclose(foca);
-    debug.log(ALL_LEVEL, "  == detected %d as first unused tunnel device", runconfig.tun_number);
+    LOG_ALL("  == detected %d as first unused tunnel device", runconfig.tun_number);
 }
 
 /* this method is called by SniffJoke.cc */
 void UserConf::networkSetup(void)
 {
-    debug.log(DEBUG_LEVEL, "Initializing network for service/child: %d", getpid());
+    LOG_DEBUG("Initializing network for service/child: %d", getpid());
 
     /* autodetect is always used, we should not trust the preloaded configuration */
-    autodetect_local_interface();
-    autodetect_local_interface_ip_address();
-    autodetect_gw_ip_address();
-    autodetect_gw_mac_address();
-    autodetect_first_available_tunnel_interface();
+    autodetectLocalInterface();
+    autodetectLocalInterfaceIPAddress();
+    autodetectGWIPAddress();
+    autodetectGWMACAddress();
+    autodetectFirstAvailableTunnelInterface();
 
-    debug.log(VERBOSE_LEVEL, "-- system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
-    debug.log(VERBOSE_LEVEL, "-- default gateway mac address: %s", runconfig.gw_mac_str);
-    debug.log(VERBOSE_LEVEL, "-- default gateway ip address: %s", runconfig.gw_ip_addr);
-    debug.log(VERBOSE_LEVEL, "-- first available tunnel interface: tun%d", runconfig.tun_number);
+    LOG_VERBOSE("-- system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
+    LOG_VERBOSE("-- default gateway mac address: %s", runconfig.gw_mac_str);
+    LOG_VERBOSE("-- default gateway ip address: %s", runconfig.gw_ip_addr);
+    LOG_VERBOSE("-- first available tunnel interface: tun%d", runconfig.tun_number);
 }
 
 /*
@@ -342,14 +342,14 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
     if (cmdopt != difolt)
     {
         dst = cmdopt;
-        debugfmt = "%s/bool: keyword %s used command line value: [%s]";
+        debugfmt = "bool: keyword %s used command line value: [%s]";
         goto EndparseMatchBool;
     }
 
     if (cf == NULL)
     {
         dst = difolt;
-        debugfmt = "%s/bool: keyword %s config file not present, used default: [%s]";
+        debugfmt = "bool: keyword %s config file not present, used default: [%s]";
         goto EndparseMatchBool;
     }
 
@@ -359,16 +359,16 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
     if (parseLine(cf, useropt, name))
     {
         dst = true;
-        debugfmt = "%s/bool: keyword %s read from config file: [%s]";
+        debugfmt = "bool: keyword %s read from config file: [%s]";
     }
     else
     {
         dst = difolt;
-        debugfmt = "%s/bool: not found %s option in conf file, using default: [%s]";
+        debugfmt = "bool: not found %s option in conf file, using default: [%s]";
     }
 
 EndparseMatchBool:
-    debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst ? "true" : "false");
+    LOG_DEBUG(debugfmt, name, dst ? "true" : "false");
 }
 
 void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
@@ -388,7 +388,7 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     /* only-plugin will be empty, no other cases */
     if (cf == NULL && difolt == NULL)
     {
-        debugfmt = "%s/string: conf file not found and option neither: used no value in %s";
+        debugfmt = "string: conf file not found and option neither: used no value in %s";
         memset(dst, 0x00, MEDIUMBUF);
         goto EndparseMatchString;
     }
@@ -396,14 +396,14 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     /* if the file is NULL, the default is used */
     if (cf == NULL)
     {
-        debugfmt = "%s/string: conf file not found, for %s used default %s";
+        debugfmt = "string: conf file not found, for %s used default %s";
         memcpy(dst, difolt, strlen(difolt));
         goto EndparseMatchString;
     }
 
     if (parseLine(cf, useropt, name))
     {
-        debugfmt = "%s/string: parsed keyword %s [%s] option in conf file";
+        debugfmt = "string: parsed keyword %s [%s] option in conf file";
         /* dst is large MEDIUMBUF, and none useropt will overflow this size */
         memcpy(dst, useropt, strlen(useropt));
         goto EndparseMatchString;
@@ -414,11 +414,11 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     {
         memset(dst, 0x00, MEDIUMBUF);
         memcpy(dst, difolt, strlen(difolt));
-        debugfmt = "%s/string: %s not found in config file, used default %s";
+        debugfmt = "string: %s not found in config file, used default %s";
     }
 
 EndparseMatchString:
-    debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst);
+    LOG_DEBUG(debugfmt, name, dst);
 }
 
 void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, const uint16_t difolt)
@@ -428,7 +428,7 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
 
     if (cmdopt != difolt && cmdopt != 0)
     {
-        debugfmt = "%s/uint16: for %s used command line option %d";
+        debugfmt = "uint16: for %s used command line option %d";
         dst = cmdopt;
         goto EndparseMatchShort;
     }
@@ -437,26 +437,26 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
     if (cf == NULL)
     {
         memcpy((void *) &dst, (void *) &difolt, sizeof (difolt));
-        debugfmt = "%s/uint16: conf file not found, for %s used default %d";
+        debugfmt = "uint16: conf file not found, for %s used default %d";
         goto EndparseMatchShort;
     }
     memset(useropt, 0x00, SMALLBUF);
 
     if (parseLine(cf, useropt, name))
     {
-        debugfmt = "%s/uint16: parsed keyword %s [%d] option in conf file";
+        debugfmt = "uint16: parsed keyword %s [%d] option in conf file";
         dst = atoi(useropt);
         goto EndparseMatchShort;
     }
 
     if (difolt)
     {
-        debugfmt = "%s/uint16: %s not found in config file, used default %d";
+        debugfmt = "uint16: %s not found in config file, used default %d";
         dst = difolt;
     }
 
 EndparseMatchShort:
-    debug.log(DEBUG_LEVEL, debugfmt, __func__, name, dst);
+    LOG_DEBUG(debugfmt, name, dst);
 }
 
 /* this is the function that load the settings, it merge the command line options with
@@ -467,27 +467,27 @@ EndparseMatchShort:
  * is checked in the constructor of UserConf */
 bool UserConf::load(void)
 {
-    FILE *loadfd;
+    FILE *loadstream;
 
-    if ((loadfd = sj_fopen(FILE_CONF, "r")) == NULL)
-        debug.log(ALL_LEVEL, "configuration file %s not accessible: %s, using default", configfile, strerror(errno));
+    if ((loadstream = fopen(FILE_CONF, "r")) == NULL)
+        LOG_ALL("configuration file %s not accessible: %s, using default", configfile, strerror(errno));
     else
-        debug.log(DEBUG_LEVEL, "opening configuration file: %s", configfile);
+        LOG_DEBUG("opening configuration file: %s", configfile);
 
     /* the boolean value: if are present, are sets */
-    parseMatch(runconfig.use_whitelist, "whitelist", loadfd, cmdline_opts.use_whitelist, false);
-    parseMatch(runconfig.use_blacklist, "blacklist", loadfd, cmdline_opts.use_blacklist, false);
-    parseMatch(runconfig.go_foreground, "foreground", loadfd, cmdline_opts.go_foreground, false);
-    parseMatch(runconfig.active, "active", loadfd, cmdline_opts.active, DEFAULT_START_STOPPED);
+    parseMatch(runconfig.use_whitelist, "whitelist", loadstream, cmdline_opts.use_whitelist, false);
+    parseMatch(runconfig.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, false);
+    parseMatch(runconfig.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, false);
+    parseMatch(runconfig.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
 
-    parseMatch(runconfig.user, "user", loadfd, cmdline_opts.user, DROP_USER);
-    parseMatch(runconfig.group, "group", loadfd, cmdline_opts.group, DROP_GROUP);
-    parseMatch(runconfig.admin_address, "management-address", loadfd, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
-    parseMatch(runconfig.onlyplugin, "only-plugin", loadfd, cmdline_opts.onlyplugin, NULL);
-    parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadfd, cmdline_opts.max_ttl_probe, MAX_TTLPROBE);
+    parseMatch(runconfig.user, "user", loadstream, cmdline_opts.user, DROP_USER);
+    parseMatch(runconfig.group, "group", loadstream, cmdline_opts.group, DROP_GROUP);
+    parseMatch(runconfig.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
+    parseMatch(runconfig.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
+    parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, MAX_TTLPROBE);
 
-    parseMatch(runconfig.admin_port, "management-port", loadfd, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
-    parseMatch(runconfig.debug_level, "debug", loadfd, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
+    parseMatch(runconfig.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
+    parseMatch(runconfig.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
 
     /* those files act in portconf[PORTNUMBER]; array, merging the ports configuration */
     loadAggressivity();
@@ -499,8 +499,8 @@ bool UserConf::load(void)
     if(runconfig.use_whitelist)
         runconfig.whitelist = new IPListMap(FILE_IPWHITELIST);
 
-    if (loadfd)
-        fclose(loadfd);
+    if (loadstream)
+        fclose(loadstream);
 
     return true;
 }
@@ -508,11 +508,11 @@ bool UserConf::load(void)
 /* function for loading of the TCP port files */
 void UserConf::loadAggressivity(void)
 {
-    FILE *aggressivityFp;
+    FILE *loadstream;
 
-    if((aggressivityFp = fopen(FILE_AGGRESSIVITY, "r")) == NULL) 
+    if((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
     {
-        debug.log(ALL_LEVEL, "port aggrssivity specifications in %s/%s: %s, loading defaults", 
+        LOG_ALL("port aggrssivity specifications in %s/%s: %s, loading defaults", 
             runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno)
         );
  
@@ -535,10 +535,10 @@ void UserConf::loadAggressivity(void)
     uint32_t linecnt = 0;
    
     /* the minimum length of a line is 6 */ 
-    while(!feof(aggressivityFp))
+    while(!feof(loadstream))
     {
         linecnt++;
-        fgets(line, MEDIUMBUF, aggressivityFp);
+        fgets(line, MEDIUMBUF, loadstream);
 
         /* C's chop() */
         if(line[strlen(line) - 1] == '\n')
@@ -555,12 +555,14 @@ void UserConf::loadAggressivity(void)
 
         if(pl.error_message)
         {
-            debug.log(ALL_LEVEL, "%s/%s line %d: %s", runconfig.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
-            SJ_RUNTIME_EXCEPTION("Unable to parse aggressivity file");
+            LOG_ALL("%s/%s line %d: %s", runconfig.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
+            RUNTIME_EXCEPTION("Unable to parse aggressivity file");
         }
 
         pl.mergeLine(runconfig.portconf);
     }
+
+    fclose(loadstream);
 }
 
 /* simple utiliy for dumping */
@@ -600,11 +602,11 @@ bool UserConf::syncDiskConfiguration(void)
     char tempdumpfname[LARGEBUF];
     FILE *out;
 
-    snprintf(tempdumpfname, LARGEBUF, "%s~.~", configfile);
+    snprintf(tempdumpfname, LARGEBUF, "%s.temp", FILE_CONF);
 
-    if((out = fopen(tempdumpfname, "w+")) == NULL) 
+    if((out = fopen(tempdumpfname, "w")) == NULL) 
     {
-        debug.log(ALL_LEVEL, "Abort operation: unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
+        LOG_ALL("Abort operation: unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
         return false;
     }
 
@@ -623,13 +625,13 @@ bool UserConf::syncDiskConfiguration(void)
 
     if(!syncPortsFiles() || !syncIPListsFiles() )
     {
-        debug.log(ALL_LEVEL, "interrupted dumping of running configuration in the %s location", runconfig.location_name);
+        LOG_ALL("interrupted dumping of running configuration in the %s location", runconfig.location_name);
         goto faultyreturn;
     }
 
     if( (uint32_t)ftell(out) != written)
     {
-        debug.log(ALL_LEVEL, "the written size of the new configuration file unable to open new configuration file %s: %s", 
+        LOG_ALL("the written size of the new configuration file unable to open new configuration file %s: %s", 
             tempdumpfname, strerror(errno));
 
         goto faultyreturn;
@@ -638,10 +640,10 @@ bool UserConf::syncDiskConfiguration(void)
     fclose(out);
     out = NULL;
 
-    if(rename(tempdumpfname, configfile))
+    if(rename(tempdumpfname, FILE_CONF))
     {
-        debug.log(ALL_LEVEL, "unable to update the configuration file, moving the temporary %s to %s: %s", 
-            tempdumpfname, configfile, strerror(errno));
+        LOG_ALL("unable to update the configuration file, moving the temporary %s to %s: %s", 
+            tempdumpfname, FILE_CONF, strerror(errno));
 
         goto faultyreturn;
     }

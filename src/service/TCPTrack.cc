@@ -35,59 +35,59 @@ sessiontrack_map(sessiontrack_map),
 ttlfocus_map(ttlfocus_map),
 hack_pool(hpp)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 }
 
 TCPTrack::~TCPTrack(void)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 }
 
 uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
 {
     uint32_t freqret = 0;
 
-    if(frequencyValue & AGG_RARE) 
+    if (frequencyValue & AGG_RARE)
     {
         freqret += 3;
     }
-    if(frequencyValue & AGG_COMMON) 
+    if (frequencyValue & AGG_COMMON)
     {
         freqret += 7;
     }
-    if(frequencyValue & AGG_ALWAYS) 
+    if (frequencyValue & AGG_ALWAYS)
     {
         freqret += 25;
     }
-    if(frequencyValue & AGG_PACKETS10PEEK) 
+    if (frequencyValue & AGG_PACKETS10PEEK)
     {
         if (!(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10))
             freqret += 10;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_PACKETS30PEEK) 
+    if (frequencyValue & AGG_PACKETS30PEEK)
     {
         if (!(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30))
             freqret += 10;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_TIMEBASED5S) 
+    if (frequencyValue & AGG_TIMEBASED5S)
     {
         if (!((uint8_t) sj_clock % 5))
             freqret += 12;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_TIMEBASED20S) 
+    if (frequencyValue & AGG_TIMEBASED20S)
     {
         if (!((uint8_t) sj_clock % 20))
             freqret += 12;
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_STARTPEEK) 
+    if (frequencyValue & AGG_STARTPEEK)
     {
         if (packet_number < 20)
             freqret += 10;
@@ -96,7 +96,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
         else
             freqret += 1;
     }
-    if(frequencyValue & AGG_LONGPEEK) 
+    if (frequencyValue & AGG_LONGPEEK)
     {
         if (packet_number < 60)
             freqret += 8;
@@ -127,7 +127,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 
     /* the frequency is sets by default, if not provided by the user. the aggressivity is sets
      * by the plugin developer, if is not used.  */
-    if(!(aggressivity_percentage = derivePercentage(packet_number, userFrequency)))
+    if (!(aggressivity_percentage = derivePercentage(packet_number, userFrequency)))
     {
         /* this happen in --only-plugin (and the forced frequency to AGG_ALWAYS), not
          * FREQ_ is provived and this cause an error, for this reason, I add the default
@@ -141,31 +141,36 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
         referenceFrequency = userFrequency;
     }
 
-    if(referenceFrequency & FREQ_NONE) {
+    if (referenceFrequency & FREQ_NONE)
+    {
         /* when aggressivity match set to "10", now is 0% of probability */
         this_percentage = aggressivity_percentage * 0;
     }
-    else if(referenceFrequency & FREQ_LIGHT) {
+    else if (referenceFrequency & FREQ_LIGHT)
+    {
         /* with 10 ("common") is 40% of probability */
         this_percentage = aggressivity_percentage * 4;
     }
-    else if(referenceFrequency & FREQ_NORMAL) {
+    else if (referenceFrequency & FREQ_NORMAL)
+    {
         /* with 10 ("common") is 80% of probability */
         this_percentage = aggressivity_percentage * 8;
     }
-    else if(referenceFrequency & FREQ_HEAVY) {
+    else if (referenceFrequency & FREQ_HEAVY)
+    {
         /* with 10 ("common") is 120% of probabilty, this was useful when a 
          * float value was used, better analysis will improve this algoritm */
         this_percentage = aggressivity_percentage * 12;
-    } 
-    else {
+    }
+    else
+    {
         /* this is happen and I didn't understand why, so, I try to log */
-        debug.log(DEBUG_LEVEL, "arbitrary added percentage: no FREQ_ are present. (this prcnt %d) user %u hack %u", this_percentage, hackFrequency, userFrequency);
+        LOG_DEBUG("arbitrary added percentage: no FREQ_ are present. (this prcnt %d) user %u hack %u", this_percentage, hackFrequency, userFrequency);
         this_percentage = aggressivity_percentage * 3;
-        /* SJ_RUNTIME_EXCEPTION("Invalid status: packet without Frequency set"); */
+        /* RUNTIME_EXCEPTION("Invalid status: packet without Frequency set"); */
     }
 
-    return (( (uint32_t)(random() % 100) + 1 <= this_percentage));
+    return (((uint32_t) (random() % 100) + 1 <= this_percentage));
 }
 
 /*
@@ -415,7 +420,7 @@ void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
         injpkt->selflog(__func__, injpkt->debug_buf);
         break;
     case TTL_KNOWN:
-	/* TODO: Handle the KNOWN status; find a way to detect network topology changes. */
+        /* TODO: Handle the KNOWN status; find a way to detect network topology changes. */
         break;
     }
 }
@@ -512,14 +517,14 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
              */
             if (!injpkt.selfIntegrityCheck(hppe->selfObj->hackName))
             {
-                debug.log(ALL_LEVEL, "Invalid packet generated by hack %s", hppe->selfObj->hackName);
+                LOG_ALL("Invalid packet generated by hack %s", hppe->selfObj->hackName);
 
                 snprintf(injpkt.debug_buf, sizeof (injpkt.debug_buf), "bad integrity from: %s", hppe->selfObj->hackName);
                 injpkt.selflog(__func__, injpkt.debug_buf);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
-                if (runconfig.debug_level == PACKETS_DEBUG)
-                    SJ_RUNTIME_EXCEPTION("Invalid packet generated from the hack");
+                if (runconfig.debug_level == PACKET_LEVEL)
+                    RUNTIME_EXCEPTION("Invalid packet generated from the hack");
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -559,8 +564,8 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
                     p_queue.insert_after(injpkt, origpkt);
                 break;
             case POSITIONUNASSIGNED:
-                debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-                SJ_RUNTIME_EXCEPTION("");
+                LOG_ALL("Invalid and impossibile %s:%d", __FILE__, __LINE__);
+                RUNTIME_EXCEPTION("");
             }
         }
 
@@ -701,7 +706,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
     catch (exception &e)
     {
         /* anomalous/malformed packets are flushed bypassing the queue */
-        debug.log(ALL_LEVEL, "malformed original packet dropped: %s", e.what());
+        LOG_ALL("malformed original packet dropped: %s", e.what());
     }
 }
 
@@ -802,9 +807,9 @@ void TCPTrack::analyze_packets_queue()
              * ttl bruteforced and mangled by weird IP/TCP options */
             if (pkt->proto == TCP)
             {
-                if(runconfig.use_blacklist)
+                if (runconfig.use_blacklist)
                 {
-                    if(!(runconfig.blacklist->isPresent(pkt->ip->daddr)))
+                    if (!(runconfig.blacklist->isPresent(pkt->ip->daddr)))
                     {
                         sprintf(pkt->debug_buf, "blacklist setting is present: IP address don't match");
                         pkt->selflog(__func__, pkt->debug_buf);
@@ -816,9 +821,9 @@ void TCPTrack::analyze_packets_queue()
                         pkt->selflog(__func__, pkt->debug_buf);
                     }
                 }
-                else if(runconfig.use_whitelist)
+                else if (runconfig.use_whitelist)
                 {
-                    if(runconfig.whitelist->isPresent(pkt->ip->daddr))
+                    if (runconfig.whitelist->isPresent(pkt->ip->daddr))
                     {
                         sprintf(pkt->debug_buf, "whitelist setting is present: IP address match");
                         pkt->selflog(__func__, pkt->debug_buf);
@@ -843,7 +848,7 @@ void TCPTrack::analyze_packets_queue()
             if (pkt->source == NETWORK || pkt->proto != TCP || last_pkt_fix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                SJ_RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("");
         }
     }
 
@@ -858,7 +863,7 @@ void TCPTrack::analyze_packets_queue()
             if (last_pkt_fix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                SJ_RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("");
         }
     }
 
@@ -893,8 +898,8 @@ bypass_queue_analysis:
     {
         TTLFocus &ttlfocus = *((*it).second);
         if ((ttlfocus.status != TTL_KNOWN)
-	&& (ttlfocus.access_timestamp > sj_clock - 30)
-	&& (ttlfocus.next_probe_time <= sj_clock))
+                && (ttlfocus.access_timestamp > sj_clock - 30)
+                && (ttlfocus.next_probe_time <= sj_clock))
         {
             inject_ttlprobe_in_queue(*(*it).second);
         }

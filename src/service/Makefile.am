@@ -1,6 +1,6 @@
 bin_PROGRAMS =		sniffjoke
 
-sniffjoke_SOURCES =	hardcoded-defines.h \
+sniffjoke_SOURCES =	hardcodedDefines.h \
 			Debug.h \
 			Debug.cc \
 			Utils.h \

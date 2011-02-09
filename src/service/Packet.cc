@@ -102,17 +102,17 @@ void Packet::updatePacketMetadata()
 
     /* start ip update */
     if (pktlen < sizeof (struct iphdr))
-        SJ_RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
+        RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
 
     ip = (struct iphdr *) &(pbuf[0]);
     iphdrlen = ip->ihl * 4;
 
     if (pktlen < iphdrlen)
-        SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen");
+        RUNTIME_EXCEPTION("pktlen < iphdrlen");
 
 
     if (pktlen < ntohs(ip->tot_len))
-        SJ_RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
+        RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
     /* end ip update */
 
     switch (ip->protocol)
@@ -144,13 +144,13 @@ void Packet::updatePacketMetadata()
     case IPPROTO_TCP:
         /* start tcp update */
         if (pktlen < iphdrlen + sizeof (struct tcphdr))
-            SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
         tcp = (struct tcphdr *) ((unsigned char *) (ip) + iphdrlen);
         tcphdrlen = tcp->doff * 4;
 
         if (pktlen < iphdrlen + tcphdrlen)
-            SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
 
         datalen = pktlen - iphdrlen - tcphdrlen;
         if (datalen)
@@ -160,7 +160,7 @@ void Packet::updatePacketMetadata()
     case IPPROTO_ICMP:
         /* start icmp update */
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
-            SJ_RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
         icmp = (struct icmphdr *) ((unsigned char *) (ip) + iphdrlen);
         /* end icmp update */
@@ -235,26 +235,26 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 {
     if (wtf == JUDGEUNASSIGNED)
     {
-        debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+        LOG_ALL("selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
         goto errorinfo;
     }
 
     if (proto == PROTOUNASSIGNED)
     {
-        debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
+        LOG_ALL("selfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
         goto errorinfo;
     }
 
     if (position == POSITIONUNASSIGNED)
     {
-        debug.log(ALL_LEVEL, "selfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
+        LOG_ALL("selfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
         goto errorinfo;
     }
 
     return true;
 
 errorinfo:
-    debug.log(DEBUG_LEVEL, "Documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
+    LOG_DEBUG("Documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
     return false;
 }
 
@@ -264,7 +264,7 @@ void Packet::IPHDR_resize(uint8_t size)
         return;
 
     if (ipfragment == true)
-        debug.log(PACKETS_DEBUG, "WARNING: calling %s in a fragment is not supported", __func__);
+        LOG_PACKET("WARNING: it's not possible to call this function on a ip fragment");
 
     const uint16_t pktlen = pbuf.size();
 
@@ -302,7 +302,7 @@ void Packet::TCPHDR_resize(uint8_t size)
 
     if (ipfragment == true)
     {
-        debug.log(PACKETS_DEBUG, "ERROR: calling %s in a fragment is not possibile!", __func__);
+        LOG_PACKET("WARNING: it's not possible to call this function on a ip fragment");
     }
 
     const uint16_t pktlen = pbuf.size();
@@ -343,7 +343,7 @@ void Packet::TCPPAYLOAD_resize(uint16_t size)
 
     /* begin safety checks */
     if (pktlen - datalen + size > MTU)
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
     /* end safety checks */
 
     const uint16_t new_total_len = pktlen - datalen + size;
@@ -526,7 +526,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
 void Packet::selflog(const char *func, const char *loginfo) const
 {
-    if (debug.level() == SUPPRESS_LOG)
+    if (debug.level() == SUPPRESS_LEVEL)
         return;
 
     const char *evilstr, *wtfstr, *sourcestr, *p;
@@ -579,11 +579,11 @@ void Packet::selflog(const char *func, const char *loginfo) const
 
     if (ipfragment)
     {
-        debug.log(PACKETS_DEBUG, "%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %d [%s]",
-                  func, evilstr, wtfstr, sourcestr,
-                  saddr, daddr, ntohs(ip->frag_off),
-                  ip->ttl, loginfo
-                  );
+        LOG_PACKET("%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %d [%s]",
+                   func, evilstr, wtfstr, sourcestr,
+                   saddr, daddr, ntohs(ip->frag_off),
+                   ip->ttl, loginfo
+                   );
     }
     else
     {
@@ -610,16 +610,16 @@ void Packet::selflog(const char *func, const char *loginfo) const
             snprintf(protoinfo, sizeof (protoinfo), "protocol unassigned! value %d", ip->protocol);
             break;
         default:
-            debug.log(ALL_LEVEL, "Invalid and impossibile %s:%d %s", __FILE__, __LINE__, __func__);
-            SJ_RUNTIME_EXCEPTION("");
+            LOG_ALL("Invalid and impossibile %s:%d", __FILE__, __LINE__);
+            RUNTIME_EXCEPTION("");
             break;
         }
 
-        debug.log(PACKETS_DEBUG, "%s %s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-                  func, debug_buf, evilstr, wtfstr, sourcestr,
-                  saddr, daddr,
-                  protoinfo, ip->ttl, loginfo
-                  );
+        LOG_PACKET("%s %s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+                   func, debug_buf, evilstr, wtfstr, sourcestr,
+                   saddr, daddr,
+                   protoinfo, ip->ttl, loginfo
+                   );
     }
 
     memset((void*) debug_buf, 0x00, sizeof (debug_buf));

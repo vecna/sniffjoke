@@ -31,7 +31,7 @@
 NetIO::NetIO(sj_config& runcfg) :
 runconfig(runcfg)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 
     struct ifreq orig_gw;
     struct ifreq ifr;
@@ -42,29 +42,29 @@ runconfig(runcfg)
     char cmd[MEDIUMBUF];
 
     if (getuid() || geteuid())
-        SJ_RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("");
 
     /* pseudo sanity check of received data, sjconf had already make something */
     if (strlen(runconfig.gw_ip_addr) < 7 || strlen(runconfig.gw_ip_addr) > 17)
     {
-        debug.log(ALL_LEVEL, "NetIO: invalid ip address [%s] is not an IPv4, check the config", runconfig.gw_ip_addr);
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("invalid ip address [%s] is not an IPv4, check the config", runconfig.gw_ip_addr);
+        RUNTIME_EXCEPTION("");
     }
 
     if (strlen(runconfig.gw_mac_str) != 17)
     {
-        debug.log(ALL_LEVEL, "NetIO: invalid mac address [%s] is not a MAC addr, check the config", runconfig.gw_mac_str);
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("invalid mac address [%s] is not a MAC addr, check the config", runconfig.gw_mac_str);
+        RUNTIME_EXCEPTION("");
     }
 
     if ((tunfd = open("/dev/net/tun", O_RDWR)) != -1)
     {
-        debug.log(DEBUG_LEVEL, "NetIO: /dev/net/tun opened successfully");
+        LOG_DEBUG("/dev/net/tun opened successfully");
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
+        RUNTIME_EXCEPTION("");
     }
 
     memset(&ifr, 0x00, sizeof (ifr));
@@ -77,12 +77,12 @@ runconfig(runcfg)
 
     if ((ret = ioctl(tunfd, TUNSETIFF, (void *) &ifr)) != -1)
     {
-        debug.log(DEBUG_LEVEL, "NetIO: flags set successfully in tun socket");
+        LOG_DEBUG("flags set successfully in tun socket");
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to set flags in tunnel socket: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to set flags in tunnel socket: %s", strerror(errno));
+        RUNTIME_EXCEPTION("");
     }
 
     tmpfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -90,27 +90,27 @@ runconfig(runcfg)
     netifr.ifr_qlen = 4096;
     if ((ret = ioctl(tmpfd, SIOCSIFTXQLEN, (void *) &netifr)) != -1)
     {
-        debug.log(DEBUG_LEVEL, "NetIO: ioctl(SIOCGIFINDEX) executed successfully on interface %s", ifr.ifr_name);
+        LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", ifr.ifr_name);
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s", ifr.ifr_name, strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s", ifr.ifr_name, strerror(errno));
+        RUNTIME_EXCEPTION("");
     }
     close(tmpfd);
 
 
     if (((tmp_flags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, tmp_flags | FD_CLOEXEC) != -1))
     {
-        debug.log(DEBUG_LEVEL, "NetIO: flag FD_CLOEXEC set successfully in tun socket");
+        LOG_DEBUG("flag FD_CLOEXEC set successfully in tun socket");
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to set flag FD_CLOEXEC in tun socket: %s", strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to set flag FD_CLOEXEC in tun socket: %s", strerror(errno));
+        RUNTIME_EXCEPTION("");
     }
 
-    debug.log(VERBOSE_LEVEL, "NetIO: deleting default gateway in routing table...");
+    LOG_VERBOSE("deleting default gateway in routing table");
     system("/sbin/route del default");
 
     snprintf(cmd, sizeof (cmd),
@@ -119,12 +119,14 @@ runconfig(runcfg)
              runconfig.local_ip_addr,
              MTU_FAKE
              );
-    debug.log(VERBOSE_LEVEL, "NetIO: setting up tun%d with the %s's IP (%s) command [%s]",
-              runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd
-              );
+
+    LOG_VERBOSE("setting up tun % d with the % s's IP (%s) command [%s]",
+                runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd
+                );
+
     pclose(popen(cmd, "r"));
 
-    debug.log(VERBOSE_LEVEL, "NetIO: setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
+    LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
     system("/sbin/route add default gw 1.198.10.5");
 
     strcpy(orig_gw.ifr_name, (const char *) runconfig.interface);
@@ -132,27 +134,26 @@ runconfig(runcfg)
 
     if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1)
     {
-        debug.log(DEBUG_LEVEL, "NetIO: ioctl(SIOCGIFINDEX) executed successfully on interface %s", runconfig.interface);
+        LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", runconfig.interface);
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
-                  runconfig.interface, strerror(errno));
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
+                runconfig.interface, strerror(errno)
+                );
+        RUNTIME_EXCEPTION("");
     }
 
     close(tmpfd);
 
     if ((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) != -1)
     {
-        debug.log(DEBUG_LEVEL, "NetIO: datalink layer socket packet opened successfully");
+        LOG_DEBUG("datalink layer socket packet opened successfully");
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to open datalink layer packet: %s",
-                  strerror(errno)
-                  );
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to open datalink layer packet: %s", strerror(errno));
+        RUNTIME_EXCEPTION("");
     }
 
     send_ll.sll_family = PF_PACKET;
@@ -167,14 +168,12 @@ runconfig(runcfg)
 
     if ((ret = bind(netfd, (struct sockaddr *) &send_ll, sizeof (send_ll))) != -1)
     {
-        debug.log(DEBUG_LEVEL, "NetIO: binding datalink layer interface successfully");
+        LOG_DEBUG("binding datalink layer interface successfully");
     }
     else
     {
-        debug.log(ALL_LEVEL, "NetIO: unable to bind datalink layer interface: %s",
-                  strerror(errno)
-                  );
-        SJ_RUNTIME_EXCEPTION("");
+        LOG_ALL("unable to bind datalink layer interface: %s", strerror(errno));
+        RUNTIME_EXCEPTION("");
     }
 
     fds[0].fd = tunfd;
@@ -183,25 +182,26 @@ runconfig(runcfg)
 
 NetIO::~NetIO(void)
 {
-    debug.log(VERBOSE_LEVEL, __func__);
+    LOG_VERBOSE("");
 
     char cmd[MEDIUMBUF];
 
     if (getuid() || geteuid())
     {
-        debug.log(VERBOSE_LEVEL, "~NetIO: not root: unable to restore default gw");
+        LOG_VERBOSE("not root: unable to restore default gw");
     }
     else
     {
-        debug.log(VERBOSE_LEVEL, "~NetIO: deleting our default gw [route del default]");
+        LOG_VERBOSE("deleting our default gw [route del default]");
+
         system("route del default");
 
         snprintf(cmd, sizeof (cmd), "ifconfig tun%d down", runconfig.tun_number);
-        debug.log(VERBOSE_LEVEL, "~NetIO: shutting down tun%d interface [%s]", runconfig.tun_number, cmd);
+        LOG_VERBOSE("shutting down tun%d interface [%s]", runconfig.tun_number, cmd);
         pclose(popen(cmd, "r"));
 
         snprintf(cmd, sizeof (cmd), "route add default gw %s", runconfig.gw_ip_addr);
-        debug.log(VERBOSE_LEVEL, "~NetIO: restoring previous default gateway [%s]", cmd);
+        LOG_VERBOSE("restoring previous default gateway [%s]", cmd);
         pclose(popen(cmd, "r"));
     }
 
@@ -209,12 +209,12 @@ NetIO::~NetIO(void)
     close(netfd);
 }
 
-void NetIO::prepare_conntrack(TCPTrack *ct)
+void NetIO::prepareConntrack(TCPTrack *ct)
 {
     conntrack = ct;
 }
 
-void NetIO::network_io(void)
+void NetIO::networkIO(void)
 {
     /*
      * This is a critical function for sniffjoke operativity.
@@ -291,8 +291,8 @@ void NetIO::network_io(void)
         /* in the three cases poll/ppoll is set, now we check the nfds return value */
         if (nfds == -1)
         {
-            debug.log(ALL_LEVEL, "network_io: strange and dangerous error in ppoll: %s", strerror(errno));
-            SJ_RUNTIME_EXCEPTION("");
+            LOG_ALL("strange and dangerous error in ppoll: %s", strerror(errno));
+            RUNTIME_EXCEPTION("");
         }
 
         if (fds[0].revents & POLLIN)
@@ -302,8 +302,8 @@ void NetIO::network_io(void)
 
             if (ret == -1)
             {
-                debug.log(ALL_LEVEL, "%s: read from tunnel: %s", __func__, strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                LOG_ALL("read from tunnel: %s", strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             if (runconfig.active == true)
@@ -314,8 +314,8 @@ void NetIO::network_io(void)
             {
                 if (sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll)) != ret)
                 {
-                    debug.log(ALL_LEVEL, "%s: send to network: %s", __func__, strerror(errno));
-                    SJ_RUNTIME_EXCEPTION(strerror(errno));
+                    LOG_ALL("send to network: %s", strerror(errno));
+                    RUNTIME_EXCEPTION(strerror(errno));
                 }
             }
         }
@@ -331,8 +331,8 @@ void NetIO::network_io(void)
                  * on single thread applications after a poll a write returns
                  * -1 only on error's case.
                  */
-                debug.log(DEBUG_LEVEL, "network_io: write in tunnel: error: %s", strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                LOG_DEBUG("write in tunnel: error: %s", strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             /* corretly written in tunfd */
@@ -347,8 +347,8 @@ void NetIO::network_io(void)
 
             if (ret == -1)
             {
-                debug.log(ALL_LEVEL, "%s: read from network: %s", __func__, strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                LOG_ALL("read from network: %s", strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             if (runconfig.active == true)
@@ -361,8 +361,8 @@ void NetIO::network_io(void)
                  * an intensive traffic will return -1 on a non ready to write socket */
                 if (write(tunfd, pktbuf, ret) != ret)
                 {
-                    debug.log(ALL_LEVEL, "%s: write in tunnel: %s", __func__, strerror(errno));
-                    SJ_RUNTIME_EXCEPTION(strerror(errno));
+                    LOG_ALL("write in tunnel: %s", strerror(errno));
+                    RUNTIME_EXCEPTION(strerror(errno));
                 }
             }
         }
@@ -378,8 +378,8 @@ void NetIO::network_io(void)
                  * on single thread applications after a poll a write returns
                  * -1 only on error's case.
                  */
-                debug.log(DEBUG_LEVEL, "network_io: write in network: error: %s", strerror(errno));
-                SJ_RUNTIME_EXCEPTION(strerror(errno));
+                LOG_DEBUG("write in network: error: %s", strerror(errno));
+                RUNTIME_EXCEPTION(strerror(errno));
             }
 
             /* correctly written in netfd */

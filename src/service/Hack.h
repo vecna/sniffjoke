@@ -83,4 +83,5 @@ public:
         return true;
     };
 };
+
 #endif /* SJ_HACK_H */

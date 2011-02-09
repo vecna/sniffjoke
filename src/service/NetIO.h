@@ -64,8 +64,8 @@ public:
 
     NetIO(sj_config &);
     ~NetIO(void);
-    void prepare_conntrack(TCPTrack *);
-    void network_io(void);
+    void prepareConntrack(TCPTrack *);
+    void networkIO(void);
 };
 
 #endif /* SJ_NETIO_H */

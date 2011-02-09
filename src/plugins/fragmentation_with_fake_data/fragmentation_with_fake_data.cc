@@ -44,7 +44,7 @@ public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		if(!ISSET_TTL(availableScramble)) {
-			debug.log(VERBOSE_LEVEL, "TTL/prescription hack not available in %s: loss hack possibility", HACK_NAME);
+			LOG_VERBOSE("TTL/prescription hack not available in %s: loss hack possibility", HACK_NAME);
 			return;
 		}
 
@@ -141,7 +141,7 @@ public:
 			supportedScramble = configuredScramble;
 			return true;
 		} else {
-			debug.log(ALL_LEVEL, "Fragmentation with fake data require INNOCENT and PRESCRIPTION as option");
+			LOG_ALL("Fragmentation with fake data require INNOCENT and PRESCRIPTION as option");
 			return false;
 		}
 	}

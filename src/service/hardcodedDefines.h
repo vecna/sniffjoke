@@ -49,8 +49,8 @@
 #define FILE_IPBLACKLIST        "ipblacklist.conf"
 #define FILE_AGGRESSIVITY       "port-aggressivity.conf"
 #define FILE_LOG                "sniffjoke.log"
-#define FILE_LOG_PACKETS        "sniffjoke.log.packets"
-#define FILE_LOG_SESSIONS       "sniffjoke.log.sessions"
+#define FILE_LOG_PACKET        "sniffjoke.log.packets"
+#define FILE_LOG_SESSION       "sniffjoke.log.sessions"
 
 /* fixed value */
 #define DEFAULT_DEBUG_LEVEL     2

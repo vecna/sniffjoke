@@ -67,33 +67,33 @@ private:
     int admin_socket_flags_blocking;
     int admin_socket_flags_nonblocking;
 
-    void debug_setup(FILE *) const;
-    void debug_cleanup();
-    void server_root_cleanup();
-    void server_user_cleanup();
-    void admin_socket_setup();
-    void admin_socket_handle();
+    void setupDebug(FILE *) const;
+    void cleanDebug();
+    void cleanServerRoot();
+    void cleanServerUser();
+    void setupAdminSocket();
+    void handleAdminSocket();
 
     /* internalProtocol handling */
-    void write_SJStatus(uint8_t);
-    void write_SJPortStat(uint8_t);
-    void write_SJProtoError(void);
+    void writeSJStatus(uint8_t);
+    void writeSJPortStat(uint8_t);
+    void writeSJProtoError(void);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
-    uint32_t append_SJportBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
+    uint32_t appendSJPortBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
 
-    int recv_command(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);
-    uint8_t* handle_cmd(const char *);
-    void handle_cmd_start(void);
-    void handle_cmd_stop(void);
-    void handle_cmd_quit(void);
-    void handle_cmd_dump(void);
-    void handle_cmd_stat(void);
-    void handle_cmd_info(void);
-    void handle_cmd_showport(void);
-    void handle_cmd_set(unsigned short, uint16_t, uint8_t);
-    void handle_cmd_debuglevel(int);
+    int recvCommand(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);
+    uint8_t* handleCmd(const char *);
+    void handleCmdStart(void);
+    void handleCmdStop(void);
+    void handleCmdQuit(void);
+    void handleCmdSaveconf(void);
+    void handleCmdStat(void);
+    void handleCmdInfo(void);
+    void handleCmdShowport(void);
+    void handleCmdSet(unsigned short, uint16_t, uint8_t);
+    void handleCmdDebuglevel(int);
 };
 
 #endif /* SJ_SNIFFJOKE_H */

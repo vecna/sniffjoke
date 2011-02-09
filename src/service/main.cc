@@ -20,7 +20,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hardcoded-defines.h"
+#include "hardcodedDefines.h"
 
 #include "Utils.h"
 #include "UserConf.h"
@@ -38,38 +38,13 @@ time_t sj_clock;
 
 static auto_ptr<SniffJoke> sniffjoke;
 
-runtime_error sj_runtime_exception(const char* func, const char* file, long line, const char* msg)
+runtime_error runtime_exception(const char* func, const char* file, long line, const char* msg)
 {
     stringstream stream;
     stream << "[EXCEPTION] " << file << "(" << line << ") function: " << func << "()";
     if (msg != NULL)
         stream << " " << msg;
     return std::runtime_error(stream.str());
-}
-
-/* this function is used for read/write configuration and cache files, */
-FILE *sj_fopen(const char *fname, const char *mode)
-{
-    const char *nmode;
-
-    /* 
-     * communication intra sniffjoke: a "+" means:
-     * if the file exists, open in read and write
-     * if not, create it.
-     */
-    if (strlen(mode) == 1 && mode[0] == '+')
-    {
-        if (access(fname, R_OK) == R_OK)
-            nmode = "r+";
-        else
-            nmode = "w+";
-    }
-    else
-    {
-        nmode = const_cast<char *> (mode);
-    }
-
-    return fopen(fname, nmode);
 }
 
 void init_random()
@@ -174,8 +149,8 @@ int main(int argc, char **argv)
         { "whitelist", no_argument, NULL, 'w'},
         { "blacklist", no_argument, NULL, 'b'},
         { "admin", required_argument, NULL, 'a'},
-        { "only-plugin", required_argument, NULL, 'p'},     /* not documented in --help */
-        { "max-ttl-probe", required_argument, NULL, 'm' },  /* not documented too */
+        { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
+        { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
         { "debug", required_argument, NULL, 'd'},
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
@@ -265,7 +240,7 @@ sniffjoke_help:
     }
     catch (runtime_error &exception)
     {
-        debug.log(ALL_LEVEL, "Runtime exception, going shutdown: %s", exception.what());
+        LOG_ALL("Runtime exception, going shutdown: %s", exception.what());
 
         sniffjoke.reset();
         return 0;

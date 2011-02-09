@@ -2,7 +2,7 @@ AC_INIT
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/service/hardcoded-defines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/service/hardcodedDefines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 AC_SUBST(PACKAGE_VERSION)
 
 AC_PREFIX_DEFAULT(/usr/local)
@@ -113,7 +113,7 @@ AC_CONFIG_FILES(
 )
 
 
-CFLAGS="-O3 -ansi -pedantic -Wall"
+CFLAGS="-O3 -ansi -pedantic -Wall -Wno-variadic-macros"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

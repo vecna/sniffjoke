@@ -43,10 +43,16 @@ public:
         return debuglevel;
     };
     bool resetLevel(const char *);
-    void log(uint8_t errorlevel, const char *msg, ...);
-    void downgradeOpenlog(uid_t uid, gid_t gid);
+    void log(uint8_t, const char *, const char *, ...);
+    void downgradeOpenlog(uid_t, gid_t);
 };
 
 extern Debug debug;
+
+#define LOG_ALL(...)      debug.log(ALL_LEVEL, __func__, __VA_ARGS__)
+#define LOG_VERBOSE(...)  debug.log(VERBOSE_LEVEL, __func__, __VA_ARGS__)
+#define LOG_DEBUG(...)    debug.log(DEBUG_LEVEL, __func__, __VA_ARGS__)
+#define LOG_SESSION(...) debug.log(SESSION_LEVEL, __func__, __VA_ARGS__)
+#define LOG_PACKET(...)  debug.log(PACKET_LEVEL, __func__, __VA_ARGS__)
 
 #endif /* SJ_DEBUG_H */
