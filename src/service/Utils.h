@@ -71,9 +71,9 @@ enum size_buf_t
  */
 extern time_t sj_clock;
 
-#define RUNTIME_EXCEPTION(msg) throw runtime_exception(__func__, __FILE__, __LINE__, msg)
 #define RANDOMPERCENT(percent) (random() % 100 <= percent)
-std::runtime_error runtime_exception(const char *, const char *, long, const char *);
+#define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
+std::runtime_error runtime_exception(const char *, const char *, int32_t, const char *, ...);
 void* memset_random(void *, size_t);
 void sigtrap(int);
 

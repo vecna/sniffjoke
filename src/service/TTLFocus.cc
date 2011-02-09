@@ -114,7 +114,8 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
     }
 
     LOG_SESSION("%s (%s) [%s] m_sent %d, m_recv %d ttl_estimate %u synackttl %u [%s]",
-                func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe, received_probe, ttl_estimate, ttl_synack, umsg
+                func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe,
+                received_probe, ttl_estimate, ttl_synack, umsg
                 );
 
     memset((void*) debug_buf, 0x00, sizeof (debug_buf));
@@ -149,10 +150,8 @@ TTLFocus& TTLFocusMap::get(const Packet &pkt)
     TTLFocusMap::iterator it = find(pkt.ip->daddr);
     if (it != end()) /* on hit: return the ttlfocus object. */
         ttlfocus = &(*it->second);
-    else
-    { /* on miss: create a new ttlfocus and insert it into the map */
+    else /* on miss: create a new ttlfocus and insert it into the map */
         ttlfocus = &(*insert(pair<uint32_t, TTLFocus*>(pkt.ip->daddr, new TTLFocus(pkt))).first->second);
-    }
 
     /* update access timestamp using global clock */
     ttlfocus->access_timestamp = sj_clock;
@@ -211,11 +210,7 @@ void TTLFocusMap::manage()
         }
         while (++index != TTLFOCUSMAP_MEMORY_THRESHOLD / 2);
 
-        do
-        {
-            delete tmp[index];
-        }
-        while (++index != map_size);
+        do delete tmp[index]; while (++index != map_size);
 
         delete[] tmp;
     }
@@ -235,7 +230,7 @@ void TTLFocusMap::load()
         LOG_ALL("unable to access network cache: sniffjoke will start without it");
         return;
     }
-    
+
     while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream)) == 1)
     {
         records_num++;
@@ -294,7 +289,7 @@ void TTLFocusMap::dump()
 
         ++records_num;
     }
-    
+
     fclose(dumpstream);
 
     LOG_ALL("ttlfocusmap dump completed with %u records dumped, %u where incomplete.", records_num, undumped);

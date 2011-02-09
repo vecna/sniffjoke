@@ -42,30 +42,22 @@ runconfig(runcfg)
     char cmd[MEDIUMBUF];
 
     if (getuid() || geteuid())
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("required root privileges");
 
     /* pseudo sanity check of received data, sjconf had already make something */
     if (strlen(runconfig.gw_ip_addr) < 7 || strlen(runconfig.gw_ip_addr) > 17)
-    {
-        LOG_ALL("invalid ip address [%s] is not an IPv4, check the config", runconfig.gw_ip_addr);
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("invalid ip address [%s] is not an IPv4, check the config",
+                          runconfig.gw_ip_addr);
 
     if (strlen(runconfig.gw_mac_str) != 17)
-    {
-        LOG_ALL("invalid mac address [%s] is not a MAC addr, check the config", runconfig.gw_mac_str);
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("invalid mac address [%s] is not a MAC addr, check the config",
+                          runconfig.gw_mac_str);
 
     if ((tunfd = open("/dev/net/tun", O_RDWR)) != -1)
-    {
         LOG_DEBUG("/dev/net/tun opened successfully");
-    }
     else
-    {
-        LOG_ALL("unable to open /dev/net/tun: %s, check the kernel module", strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to open /dev/net/tun: %s, check the kernel module",
+                          strerror(errno));
 
     memset(&ifr, 0x00, sizeof (ifr));
     memset(&netifr, 0x00, sizeof (netifr));
@@ -76,53 +68,36 @@ runconfig(runcfg)
 
 
     if ((ret = ioctl(tunfd, TUNSETIFF, (void *) &ifr)) != -1)
-    {
         LOG_DEBUG("flags set successfully in tun socket");
-    }
     else
-    {
-        LOG_ALL("unable to set flags in tunnel socket: %s", strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to set flags in tunnel socket: %s",
+                          strerror(errno));
 
     tmpfd = socket(AF_INET, SOCK_DGRAM, 0);
     memcpy(netifr.ifr_name, ifr.ifr_name, IFNAMSIZ);
     netifr.ifr_qlen = 4096;
     if ((ret = ioctl(tmpfd, SIOCSIFTXQLEN, (void *) &netifr)) != -1)
-    {
         LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", ifr.ifr_name);
-    }
     else
-    {
-        LOG_ALL("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s", ifr.ifr_name, strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
+                          ifr.ifr_name, strerror(errno));
     close(tmpfd);
 
 
     if (((tmp_flags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, tmp_flags | FD_CLOEXEC) != -1))
-    {
         LOG_DEBUG("flag FD_CLOEXEC set successfully in tun socket");
-    }
     else
-    {
-        LOG_ALL("unable to set flag FD_CLOEXEC in tun socket: %s", strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to set flag FD_CLOEXEC in tun socket: %s",
+                          strerror(errno));
 
     LOG_VERBOSE("deleting default gateway in routing table");
     system("/sbin/route del default");
 
-    snprintf(cmd, sizeof (cmd),
-             "/sbin/ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d",
-             runconfig.tun_number,
-             runconfig.local_ip_addr,
-             MTU_FAKE
-             );
+    snprintf(cmd, sizeof (cmd), "/sbin/ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d",
+             runconfig.tun_number, runconfig.local_ip_addr, MTU_FAKE);
 
     LOG_VERBOSE("setting up tun % d with the % s's IP (%s) command [%s]",
-                runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd
-                );
+                runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd);
 
     pclose(popen(cmd, "r"));
 
@@ -133,28 +108,18 @@ runconfig(runcfg)
     tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 
     if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1)
-    {
         LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", runconfig.interface);
-    }
     else
-    {
-        LOG_ALL("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
-                runconfig.interface, strerror(errno)
-                );
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
+                          runconfig.interface, strerror(errno));
 
     close(tmpfd);
 
     if ((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) != -1)
-    {
         LOG_DEBUG("datalink layer socket packet opened successfully");
-    }
     else
-    {
-        LOG_ALL("unable to open datalink layer packet: %s", strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to open datalink layer packet: %s",
+                          strerror(errno));
 
     send_ll.sll_family = PF_PACKET;
     send_ll.sll_protocol = htons(ETH_P_IP);
@@ -167,14 +132,9 @@ runconfig(runcfg)
     memcpy(send_ll.sll_addr, runconfig.gw_mac_addr, ETH_ALEN);
 
     if ((ret = bind(netfd, (struct sockaddr *) &send_ll, sizeof (send_ll))) != -1)
-    {
         LOG_DEBUG("binding datalink layer interface successfully");
-    }
     else
-    {
-        LOG_ALL("unable to bind datalink layer interface: %s", strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to bind datalink layer interface: %s", strerror(errno));
 
     fds[0].fd = tunfd;
     fds[1].fd = netfd;
@@ -290,10 +250,7 @@ void NetIO::networkIO(void)
 
         /* in the three cases poll/ppoll is set, now we check the nfds return value */
         if (nfds == -1)
-        {
-            LOG_ALL("strange and dangerous error in ppoll: %s", strerror(errno));
-            RUNTIME_EXCEPTION("");
-        }
+            RUNTIME_EXCEPTION("strange and dangerous error in ppoll: %s", strerror(errno));
 
         if (fds[0].revents & POLLIN)
         {
@@ -301,23 +258,12 @@ void NetIO::networkIO(void)
             ret = read(tunfd, pktbuf, MTU_FAKE);
 
             if (ret == -1)
-            {
-                LOG_ALL("read from tunnel: %s", strerror(errno));
-                RUNTIME_EXCEPTION(strerror(errno));
-            }
+                RUNTIME_EXCEPTION("reading from tunnel: %s", strerror(errno));
 
             if (runconfig.active == true)
-            {
                 conntrack->writepacket(TUNNEL, pktbuf, ret);
-            }
-            else
-            {
-                if (sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll)) != ret)
-                {
-                    LOG_ALL("send to network: %s", strerror(errno));
-                    RUNTIME_EXCEPTION(strerror(errno));
-                }
-            }
+            else if (sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll)) != ret)
+                RUNTIME_EXCEPTION("writing to network: %s", strerror(errno));
         }
 
         if (fds[0].revents & POLLOUT)
@@ -325,15 +271,8 @@ void NetIO::networkIO(void)
             /* it's possibile to write in tunfd */
             ret = write(tunfd, (void*) &(pkt_net->pbuf[0]), pkt_net->pbuf.size());
 
-            if (ret == -1)
-            {
-                /*
-                 * on single thread applications after a poll a write returns
-                 * -1 only on error's case.
-                 */
-                LOG_DEBUG("write in tunnel: error: %s", strerror(errno));
-                RUNTIME_EXCEPTION(strerror(errno));
-            }
+            if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */
+                RUNTIME_EXCEPTION("writing in tunnel: error: %s", strerror(errno));
 
             /* corretly written in tunfd */
             delete pkt_net;
@@ -346,25 +285,12 @@ void NetIO::networkIO(void)
             ret = recv(netfd, pktbuf, MTU, 0);
 
             if (ret == -1)
-            {
-                LOG_ALL("read from network: %s", strerror(errno));
-                RUNTIME_EXCEPTION(strerror(errno));
-            }
+                RUNTIME_EXCEPTION("reading from network: %s", strerror(errno));
 
             if (runconfig.active == true)
-            {
                 conntrack->writepacket(NETWORK, pktbuf, ret);
-            }
-            else
-            {
-                /* sniffjoke it's disabled? we make a blocking write, because
-                 * an intensive traffic will return -1 on a non ready to write socket */
-                if (write(tunfd, pktbuf, ret) != ret)
-                {
-                    LOG_ALL("write in tunnel: %s", strerror(errno));
-                    RUNTIME_EXCEPTION(strerror(errno));
-                }
-            }
+            else if (write(tunfd, pktbuf, ret) != ret)
+                RUNTIME_EXCEPTION("write in tunnel: %s", strerror(errno));
         }
 
         if (fds[1].revents & POLLOUT)
@@ -372,15 +298,8 @@ void NetIO::networkIO(void)
             /* it's possibile to write in netfd */
             ret = sendto(netfd, (void*) &(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll));
 
-            if (ret == -1)
-            {
-                /*
-                 * on single thread applications after a poll a write returns
-                 * -1 only on error's case.
-                 */
-                LOG_DEBUG("write in network: error: %s", strerror(errno));
-                RUNTIME_EXCEPTION(strerror(errno));
-            }
+            if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */
+                RUNTIME_EXCEPTION("write in network: error: %s", strerror(errno));
 
             /* correctly written in netfd */
             delete pkt_tun;

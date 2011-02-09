@@ -40,10 +40,7 @@ groupinfo_buf(NULL)
     LOG_VERBOSE("");
 
     if (getuid() || geteuid())
-    {
-        LOG_ALL("FATAL: required root privileges");
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("required root privileges");
 
     struct passwd *userinfo_result;
     struct group *groupinfo_result;
@@ -55,19 +52,13 @@ groupinfo_buf(NULL)
     groupinfo_buf = calloc(1, groupinfo_buf_len);
 
     if (userinfo_buf == NULL || groupinfo_buf == NULL)
-    {
-        LOG_ALL("FATAL: problem during memory allocation for userinfo or groupinfo");
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("problem during memory allocation for userinfo or groupinfo");
 
     getpwnam_r(runconfig.user, &userinfo, (char*) userinfo_buf, userinfo_buf_len, &userinfo_result);
     getgrnam_r(runconfig.group, &groupinfo, (char*) groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
 
     if (userinfo_result == NULL || groupinfo_result == NULL)
-    {
-        LOG_ALL("FATAL: invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
 }
 
 Process::~Process()
@@ -85,10 +76,7 @@ int Process::detach()
     pipe(pdes);
 
     if ((pid_child = fork()) == -1)
-    {
-        LOG_ALL("FATAL: unable to fork (calling pid %d, parent %d)", getpid(), getppid());
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to fork (calling pid %d, parent %d)", getpid(), getppid());
 
     if (pid_child)
     {
@@ -131,16 +119,13 @@ void Process::jail(const char *chroot_dir)
 
     if (chown(chroot_dir, userinfo.pw_uid, groupinfo.gr_gid))
     {
-        LOG_ALL("chown of %s to %s:%s failed: %s: unable to start SniffJoke",
-                  chroot_dir, runconfig.user, runconfig.group, strerror(errno));
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("chown of %s to %s:%s failed: %s: unable to start SniffJoke",
+                          chroot_dir, runconfig.user, runconfig.group, strerror(errno));
     }
 
     if (chdir(chroot_dir) || chroot(chroot_dir))
-    {
-        LOG_ALL("chroot into %s: %s: unable to start sniffjoke", chroot_dir, strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("chroot into %s: %s: unable to start sniffjoke",
+                          chroot_dir, strerror(errno));
 
     LOG_VERBOSE("chroot'ed process %d in %s", getpid(), chroot_dir);
 }
@@ -150,19 +135,13 @@ void Process::privilegesDowngrade()
     debug.downgradeOpenlog(userinfo.pw_uid, groupinfo.gr_gid);
 
     if (setgid(groupinfo.gr_gid) || setuid(userinfo.pw_uid))
-    {
-        LOG_ALL("FATAL: error loosing root privileges");
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("error loosing root privileges");
 
     if (!getuid() && !geteuid())
-    {
-        LOG_ALL("FATAL: sniffjoke user process can't be runned with root privileges");
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("SniffJoke user process can't be runned with root privileges");
 
     LOG_VERBOSE("process %d downgrade privileges to uid %d gid %d",
-              getpid(), userinfo.pw_uid, groupinfo.gr_gid);
+                getpid(), userinfo.pw_uid, groupinfo.gr_gid);
 }
 
 void Process::sigtrapSetup(sig_t sigtrap_function)
@@ -227,12 +206,9 @@ pid_t Process::readPidfile(void)
 
 void Process::writePidfile(void)
 {
-    FILE *pidFile = fopen(SJ_PIDFILE, "w+");
+    FILE *pidFile = fopen(SJ_PIDFILE, "w");
     if (pidFile == NULL)
-    {
-        LOG_ALL("FATAL: unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
 
     LOG_DEBUG("created pidfile %s from %d", SJ_PIDFILE, getpid());
 
@@ -276,11 +252,9 @@ void Process::unlinkPidfile(bool killOther)
     }
 
 __unlinkPidfile:
+
     if (unlink(SJ_PIDFILE))
-    {
-        LOG_ALL("FATAL: weird, I'm able to open but not unlink %s: %s", SJ_PIDFILE, strerror(errno));
-        RUNTIME_EXCEPTION("");
-    }
+        RUNTIME_EXCEPTION("weird, I'm able to open but not unlink %s: %s", SJ_PIDFILE, strerror(errno));
 
     LOG_DEBUG("pid %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
 }

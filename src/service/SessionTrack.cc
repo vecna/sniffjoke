@@ -45,23 +45,15 @@ SessionTrack::~SessionTrack()
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {
     if (daddr < comp.daddr)
-    {
         return true;
-    }
     else if (daddr > comp.daddr)
-    {
         return false;
-    }
     else
     {
         if (sport < comp.sport)
-        {
             return true;
-        }
         else if (sport > comp.sport)
-        {
             return false;
-        }
         else
         {
             if (dport < comp.dport)
@@ -112,10 +104,8 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
     SessionTrackMap::iterator it = find(key);
     if (it != end()) /* on hit: return the sessiontrack object. */
         sessiontrack = it->second;
-    else
-    { /* on miss: create a new sessiontrack and insert it into the map */
+    else /* on miss: create a new sessiontrack and insert it into the map */
         sessiontrack = insert(pair<SessionTrackKey, SessionTrack*>(key, new SessionTrack(pkt))).first->second;
-    }
 
     /* update access timestamp using global clock */
     sessiontrack->access_timestamp = sj_clock;
@@ -125,7 +115,6 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
 
 struct sessiontrack_timestamp_comparison
 {
-
     bool operator() (SessionTrack *i, SessionTrack * j)
     {
         return ( i->access_timestamp < j->access_timestamp);
@@ -144,9 +133,7 @@ void SessionTrackMap::manage()
                 erase(it++);
             }
             else
-            {
                 it++;
-            }
         }
     }
 
@@ -182,11 +169,7 @@ void SessionTrackMap::manage()
         while (++index != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2);
 
 
-        do
-        {
-            delete tmp[index];
-        }
-        while (++index != map_size);
+        do delete tmp[index]; while (++index != map_size);
 
         delete[] tmp;
     }
