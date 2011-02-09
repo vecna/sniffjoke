@@ -422,6 +422,7 @@ void SniffJoke::handleCmdStart(void)
         LOG_VERBOSE("started SniffJoke as requested!");
     else /* SniffJoke is already running */
         LOG_VERBOSE("SniffJoke it's already in run status");
+
     userconf.runconfig.active = true;
     /* this function fill io_buf with the status information */
     writeSJStatus(START_COMMAND_TYPE);
@@ -433,6 +434,7 @@ void SniffJoke::handleCmdStop(void)
         LOG_VERBOSE("stopped SniffJoke as requested!");
     else /* SniffJoke is already runconfig */
         LOG_VERBOSE("SniffJoke it's already in stop status");
+
     userconf.runconfig.active = false;
     /* this function fill io_buf with the status information */
     writeSJStatus(STOP_COMMAND_TYPE);

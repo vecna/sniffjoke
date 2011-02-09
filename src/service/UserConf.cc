@@ -70,20 +70,22 @@ cmdline_opts(cmdline_opts)
         selected_location = const_cast<char *> (DEFAULT_LOCATION);
 
     /* length sanity check, the input value are MEDIUMBUF (256) the generated buf are LARGEBUF (1024) */
-    if (strlen(selected_basedir) + strlen(selected_location) > (LARGEBUF - strlen(FILE_CONF) - 1)) {
+    if (strlen(selected_basedir) + strlen(selected_location) > (LARGEBUF - strlen(FILE_CONF) - 1))
+    {
         RUNTIME_EXCEPTION("internal error: the length of --dir and --location argument is over %d byte lenght",
                           (LARGEBUF - strlen(FILE_CONF) - 1));
     }
 
-        /* setting up che 'struct sj_config runconfig', the public member of UserConf class */
-        memset(&runconfig, 0x00, sizeof (sj_config));
+    /* setting up che 'struct sj_config runconfig', the public member of UserConf class */
+    memset(&runconfig, 0x00, sizeof (sj_config));
     memcpy(runconfig.location_name, selected_location, strlen(selected_location));
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
     snprintf(runconfig.working_dir, sizeof (runconfig.working_dir), "%s%s", selected_basedir, selected_location);
 
     /* checking if the option --location has sense: will be a typo! */
-    if (access(runconfig.working_dir, X_OK)) {
+    if (access(runconfig.working_dir, X_OK))
+    {
         RUNTIME_EXCEPTION("invalid parm: basedir (%s) and location (%s) point to a non accessible directory: %s",
                           selected_basedir, selected_location, strerror(errno));
     }
@@ -105,16 +107,20 @@ cmdline_opts(cmdline_opts)
     if (runconfig.use_blacklist && runconfig.use_whitelist)
         RUNTIME_EXCEPTION("configuration conflict: both blacklist and whitelist seem to be enabled");
 
-    if (runconfig.onlyplugin[0]) {
+    if (runconfig.onlyplugin[0])
+    {
         LOG_VERBOSE("plugin %s override the plugins settings in %s", runconfig.onlyplugin,
                     FILE_PLUGINSENABLER);
     }
     else
     {
-        if (access(FILE_PLUGINSENABLER, R_OK)) {
+        if (access(FILE_PLUGINSENABLER, R_OK))
+        {
             RUNTIME_EXCEPTION("unable to access to enabler file %s: %s: location unaccepted",
                               FILE_PLUGINSENABLER, strerror(errno));
-        } else {
+        }
+        else
+        {
             LOG_VERBOSE("accepted location %s with accessible enabler fileconf",
                         runconfig.location_name);
         }
