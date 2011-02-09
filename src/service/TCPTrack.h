@@ -35,7 +35,6 @@ class TCPTrack
 {
 private:
     const struct sj_config &runconfig;
-    struct timespec clock; /* clock time updated by analyze_packet_queue */
 
     SessionTrackMap &sessiontrack_map;
     TTLFocusMap &ttlfocus_map;
