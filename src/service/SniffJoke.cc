@@ -122,7 +122,6 @@ void SniffJoke::run()
         proc.writePidfile();
         if (waitpid(service_pid, &deadtrace, WUNTRACED) > 0)
         {
-
             if (WIFEXITED(deadtrace))
                 LOG_VERBOSE("child %d WIFEXITED", service_pid);
             if (WIFSIGNALED(deadtrace))

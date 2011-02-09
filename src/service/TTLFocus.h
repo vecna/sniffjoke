@@ -49,8 +49,10 @@ public:
     ttlsearch_t status; /* status of the traceroute */
     uint8_t rand_key; /* random key used as try to discriminate traceroute packet */
     uint16_t puppet_port; /* random port used with the aim to not disturbe a session */
-#define PUPPET_MARGIN 10            /* margin to mantain between real dest port and puppet port
-                           with the aim to not disturbe a session */
+
+#define PUPPET_MARGIN 10 /* margin to mantain between real dest port and puppet port
+                            with the aim to not disturbe a session */
+
     uint8_t sent_probe; /* number of sent probes */
     uint8_t received_probe; /* number of received probes */
 
@@ -98,9 +100,9 @@ struct ttlfocus_cache_record
     uint8_t ttl_synack; /* the value of the ttl read in the synack packet */
 
     unsigned char probe_dummy[40]; /* dummy ttlprobe packet generated from the packet
-                           that scattered the ttlfocus creation.
-                           the packet size is always 40 bytes long,
-                           (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
+                                      that scattered the ttlfocus creation.
+                                      the packet size is always 40 bytes long,
+                                      (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
 };
 
 #endif /* SJ_TTLFOCUS_H */

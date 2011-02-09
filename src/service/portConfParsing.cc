@@ -30,7 +30,7 @@ void portLine::fixPointer(void)
     bool spacing = false, before = true;
     char *startStrPort =NULL, *startKeyword =NULL;
 
-    while(i < linelen)
+    while(i++ < linelen)
     {
         /* this happen when "line[i]" match an invalid byte before the port number */
         if(spacing == false && before && !isdigit(line[i]) )
@@ -58,8 +58,6 @@ void portLine::fixPointer(void)
             startKeyword = &line[i];
             break;
         }
-
-        i++;
     }
 
     if(startStrPort == NULL || portLen == 0 || startKeyword == NULL)
@@ -155,7 +153,7 @@ void portLine::extractPorts(void)
         while( readedp < readedendp )
         {
             portSelected[(uint16_t)readedp] = true;
-            readedp++;
+            ++readedp;
         }
         return;
     }
@@ -211,7 +209,7 @@ void portLine::extractValue(void)
             ++p;
         }
 
-        for(mtk = &mappedKeywords[0]; mtk->value; mtk++)
+        for(mtk = &mappedKeywords[0]; mtk->value; ++mtk)
         {
             if(!memcmp(mtk->keyword, p, strlen(mtk->keyword)))
             {
@@ -224,6 +222,7 @@ void portLine::extractValue(void)
         if(!foundK)
             goto keyword_not_found;
     }
+
     while( (p = strchr(p, ',')) != NULL  );
     return;
 
@@ -233,9 +232,6 @@ keyword_not_found:
 
 void portLine::mergeLine(uint16_t *portarray)
 {
-    for(uint32_t i = 0; i < PORTNUMBER; i++)
-    {
-        if(portSelected[i])
-            portarray[i] = OrValue;
-    }
+    for(uint32_t i = 0; i < PORTNUMBER; ++i)
+        if(portSelected[i]) portarray[i] = OrValue;
 }

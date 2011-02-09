@@ -550,16 +550,16 @@ void TCPTrack::injectHack(Packet &origpkt)
             switch (injpkt.position)
             {
             case ANTICIPATION:
-                p_queue.insert_before(injpkt, origpkt);
+                p_queue.insertBefore(injpkt, origpkt);
                 break;
             case POSTICIPATION:
-                p_queue.insert_after(injpkt, origpkt);
+                p_queue.insertAfter(injpkt, origpkt);
                 break;
             case ANY_POSITION:
                 if (random() % 2)
-                    p_queue.insert_before(injpkt, origpkt);
+                    p_queue.insertBefore(injpkt, origpkt);
                 else
-                    p_queue.insert_after(injpkt, origpkt);
+                    p_queue.insertAfter(injpkt, origpkt);
                 break;
             case POSITIONUNASSIGNED:
                 RUNTIME_EXCEPTION("invalid and impossibile");

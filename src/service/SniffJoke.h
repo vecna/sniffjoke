@@ -32,10 +32,6 @@
 #include <cstdio>
 #include <memory>
 
-#include <sys/types.h>
-#include <pwd.h>
-#include <grp.h>
-
 using namespace std;
 
 class SniffJoke

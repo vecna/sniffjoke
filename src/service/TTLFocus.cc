@@ -90,7 +90,7 @@ void TTLFocus::selectPuppetPort()
     uint16_t realport = probe_dummy.tcp->source;
     puppet_port = (realport + random()) % 32767 + 1;
     if (puppet_port > realport - PUPPET_MARGIN
-            && puppet_port < realport + PUPPET_MARGIN)
+        && puppet_port < realport + PUPPET_MARGIN)
         puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
 }
 
@@ -101,8 +101,7 @@ void TTLFocus::selflog(const char *func, const char *umsg) const
 
     const char *status_name;
 
-    switch (status)
-    {
+    switch (status) {
     case TTL_KNOWN: status_name = "TTL known";
         break;
     case TTL_BRUTEFORCE: status_name = "BRUTEFORCE running";
@@ -134,8 +133,7 @@ TTLFocusMap::~TTLFocusMap()
 
     dump();
 
-    for (TTLFocusMap::iterator it = begin(); it != end();)
-    {
+    for (TTLFocusMap::iterator it = begin(); it != end();) {
         delete &(*it->second);
         erase(it++);
     }
@@ -169,10 +167,8 @@ struct ttlfocus_timestamp_comparison
 
 void TTLFocusMap::manage()
 {
-    if (!(sj_clock % TTLFOCUSMAP_MANAGE_ROUTINE_TIMER))
-    {
-        for (TTLFocusMap::iterator it = begin(); it != end();)
-        {
+    if (!(sj_clock % TTLFOCUSMAP_MANAGE_ROUTINE_TIMER)) {
+        for (TTLFocusMap::iterator it = begin(); it != end();) {
             if ((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock)
                 erase(it++);
             else
@@ -182,8 +178,7 @@ void TTLFocusMap::manage()
 
     uint32_t map_size = size();
     uint32_t index;
-    if (map_size > TTLFOCUSMAP_MEMORY_THRESHOLD)
-    {
+    if (map_size > TTLFOCUSMAP_MEMORY_THRESHOLD) {
         /*
          * We are forced to make a map cleanup.
          * In solve this critical condition we decide to reset half
@@ -204,13 +199,13 @@ void TTLFocusMap::manage()
         sort(tmp, tmp + map_size, ttlfocusTimestampComparison);
 
         index = 0;
-        do
-        {
+        do {
             insert(pair<uint32_t, TTLFocus*>((tmp[index])->daddr, tmp[index]));
         }
         while (++index != TTLFOCUSMAP_MEMORY_THRESHOLD / 2);
 
-        do delete tmp[index]; while (++index != map_size);
+        do delete tmp[index];
+        while (++index != map_size);
 
         delete[] tmp;
     }
@@ -225,15 +220,13 @@ void TTLFocusMap::load()
 
     LOG_ALL("loading ttlfocusmap from %s", FILE_TTLFOCUSMAP);
 
-    if ((loadstream = fopen(FILE_TTLFOCUSMAP, "r")) == NULL)
-    {
+    if ((loadstream = fopen(FILE_TTLFOCUSMAP, "r")) == NULL) {
         LOG_ALL("unable to access network cache: sniffjoke will start without it");
         return;
     }
 
-    while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream)) == 1)
-    {
-        records_num++;
+    while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream)) == 1) {
+        ++records_num;
         TTLFocus *ttlfocus = new TTLFocus(tmp);
         insert(pair<uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
     }
@@ -250,20 +243,17 @@ void TTLFocusMap::dump()
 
     LOG_ALL("dumping ttlfocusmap to %s", FILE_TTLFOCUSMAP);
 
-    if ((dumpstream = fopen(FILE_TTLFOCUSMAP, "w")) == NULL)
-    {
+    if ((dumpstream = fopen(FILE_TTLFOCUSMAP, "w")) == NULL) {
         LOG_ALL("unable to write network cache");
         return;
     }
 
-    for (TTLFocusMap::iterator it = begin(); it != end(); ++it)
-    {
+    for (TTLFocusMap::iterator it = begin(); it != end(); ++it) {
         TTLFocus *tmp = &(*it->second);
 
         /* we saves only with TTL_KNOWN status */
-        if (tmp->status != TTL_KNOWN)
-        {
-            undumped++;
+        if (tmp->status != TTL_KNOWN) {
+            ++undumped;
             continue;
         }
 
@@ -281,8 +271,7 @@ void TTLFocusMap::dump()
          */
         memcpy(cache_record.probe_dummy, &(tmp->probe_dummy.pbuf[0]), 40);
 
-        if (fwrite(&cache_record, sizeof (struct ttlfocus_cache_record), 1, dumpstream) != 1)
-        {
+        if (fwrite(&cache_record, sizeof (struct ttlfocus_cache_record), 1, dumpstream) != 1) {
             LOG_ALL("unable to dump ttlfocus: %s", strerror(errno));
             return;
         }

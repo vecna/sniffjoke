@@ -589,7 +589,7 @@ uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata)
     return written;
 }
 
-bool UserConf::syncDiskConfiguration(void)
+bool UserConf::dump(void)
 {
     uint32_t written = 0;
     char tempdumpfname[LARGEBUF];

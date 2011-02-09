@@ -72,7 +72,7 @@ void PacketQueue::insert(Packet &pkt, queue_t queue)
     }
 }
 
-void PacketQueue::insert_before(Packet &pkt, Packet &ref)
+void PacketQueue::insertBefore(Packet &pkt, Packet &ref)
 {
     /*
       pkt is not in any queue so:
@@ -102,7 +102,7 @@ void PacketQueue::insert_before(Packet &pkt, Packet &ref)
     ref.prev = &pkt;
 }
 
-void PacketQueue::insert_after(Packet &pkt, Packet &ref)
+void PacketQueue::insertAfter(Packet &pkt, Packet &ref)
 {
     /*
       pkt is not in any queue so:
