@@ -78,6 +78,17 @@ struct port_info
     uint8_t weight;
 };
 
+/* this struct is used for Info command handling, 
+ * it contains a single session record */
+struct sex_record 
+{
+    time_t timestamp; 
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
+    uint32_t packet_number;
+};
+
 /* port weight */
 #define NONE            0
 #define LIGHT           1

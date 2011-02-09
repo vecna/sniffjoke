@@ -144,7 +144,7 @@ void UserConf::autodetectLocalInterface()
     char imp_str[SMALLBUF];
     uint8_t i;
 
-    LOG_ALL("++ detecting external gateway interface with [%s]", cmd);
+    LOG_ALL("detecting external gateway interface with [%s]", cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -157,7 +157,7 @@ void UserConf::autodetectLocalInterface()
         RUNTIME_EXCEPTION("default gateway not present: sniffjoke cannot be started");
     else
     {
-        LOG_ALL("  == detected external interface with default gateway: %s",
+        LOG_ALL("detected external interface with default gateway: %s",
                 runconfig.interface);
     }
 }
@@ -171,8 +171,7 @@ void UserConf::autodetectLocalInterfaceIPAddress()
     snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-",
              runconfig.interface);
 
-    LOG_ALL("++ detecting interface %s ip address with [%s]",
-            runconfig.interface, cmd);
+    LOG_ALL("detecting interface %s ip address with [%s]", runconfig.interface, cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -181,7 +180,7 @@ void UserConf::autodetectLocalInterfaceIPAddress()
     for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
         runconfig.local_ip_addr[i] = imp_str[i];
 
-    LOG_ALL("  == acquired local ip address: %s", runconfig.local_ip_addr);
+    LOG_ALL("acquired local ip address: %s", runconfig.local_ip_addr);
 }
 
 void UserConf::autodetectGWIPAddress()
@@ -191,7 +190,7 @@ void UserConf::autodetectGWIPAddress()
     char imp_str[SMALLBUF];
     uint8_t i;
 
-    LOG_ALL("++ detecting gateway ip address with [%s]", cmd);
+    LOG_ALL("detecting gateway ip address with [%s]", cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -204,7 +203,7 @@ void UserConf::autodetectGWIPAddress()
         RUNTIME_EXCEPTION("unable to autodetect gateway ip address, sniffjoke cannot be started");
     else
     {
-        LOG_ALL("  == acquired gateway ip address: %s", runconfig.gw_ip_addr);
+        LOG_ALL("acquired gateway ip address: %s", runconfig.gw_ip_addr);
     }
 }
 
@@ -216,7 +215,7 @@ void UserConf::autodetectGWMACAddress()
     uint8_t i;
     snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
 
-    LOG_ALL("++ pinging %s for ARP table popoulation motivations [%s]", runconfig.gw_ip_addr, cmd);
+    LOG_ALL("pinging %s trying to populate ARP table [%s]", runconfig.gw_ip_addr, cmd);
 
     foca = popen(cmd, "r");
     /* we do not need the output of ping, we need to wait the ping to finish
@@ -226,7 +225,7 @@ void UserConf::autodetectGWMACAddress()
     memset(cmd, 0x00, sizeof (cmd));
     snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50", runconfig.gw_ip_addr);
 
-    LOG_ALL("++ detecting mac address of gateway with %s", cmd);
+    LOG_ALL("detecting mac address of gateway with %s", cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -239,7 +238,7 @@ void UserConf::autodetectGWMACAddress()
         RUNTIME_EXCEPTION("unable to autodetect gateway mac address");
     else
     {
-        LOG_ALL("  == automatically acquired mac address: %s", runconfig.gw_mac_str);
+        LOG_ALL("automatically acquired mac address: %s", runconfig.gw_mac_str);
         uint32_t mac[6];
         sscanf(runconfig.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         for (i = 0; i < 6; ++i)
@@ -253,7 +252,7 @@ void UserConf::autodetectFirstAvailableTunnelInterface()
     FILE *foca;
     char imp_str[SMALLBUF];
 
-    LOG_ALL("++ detecting first unused tunnel device with [%s]", cmd);
+    LOG_ALL("detecting first unused tunnel device with [%s]", cmd);
 
     foca = popen(cmd, "r");
     for (runconfig.tun_number = 0;; ++runconfig.tun_number)
@@ -265,7 +264,7 @@ void UserConf::autodetectFirstAvailableTunnelInterface()
     }
     pclose(foca);
 
-    LOG_ALL("  == detected %d as first unused tunnel device", runconfig.tun_number);
+    LOG_ALL("detected %d as first unused tunnel device", runconfig.tun_number);
 }
 
 /* this method is called by SniffJoke.cc */
@@ -280,10 +279,10 @@ void UserConf::networkSetup(void)
     autodetectGWMACAddress();
     autodetectFirstAvailableTunnelInterface();
 
-    LOG_VERBOSE("-- system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
-    LOG_VERBOSE("-- default gateway mac address: %s", runconfig.gw_mac_str);
-    LOG_VERBOSE("-- default gateway ip address: %s", runconfig.gw_ip_addr);
-    LOG_VERBOSE("-- first available tunnel interface: tun%d", runconfig.tun_number);
+    LOG_VERBOSE("* system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
+    LOG_VERBOSE("* default gateway mac address: %s", runconfig.gw_mac_str);
+    LOG_VERBOSE("* default gateway ip address: %s", runconfig.gw_ip_addr);
+    LOG_VERBOSE("* first available tunnel interface: tun%d", runconfig.tun_number);
 }
 
 /*

@@ -174,3 +174,46 @@ Is a matter of percentage.
 if you don't know what you do, it's suggested to use the default.
 if you instead find out a better default configuration please contact us commenting/sending it.
 At the time olny few TCP ports are configured.
+
+The Frequency and the Probability are the variables causing SniffJoke to be aggressive. 
+
+How an user will manage those variables ? 
+
+FACTS about injection:
+
+1) A single injected packet will broke the reassembly apply by a sniffer, for this reason is not require inject a large amount of packet (will result a bandwidth loss).
+
+2) sniffer/IDS making patter detection (string comparisation, heuristic analysis, etc...)will make this detection also without having the correctly assembled stream (fake_data.so plusing prevent from this)
+
+3) Every sniffjoke injected packet will happen and will not, because the SniffJoke strength is based on the randomness. A non random patter will be detected and managed, a random one, will not.
+
+SniffJoke solutions:
+
+SniffJoke for every outgoing packet check:
+
+    if the plugin will inject an hacked-packet: sometimes will and some other not. fake_data in example work only when the packet contains some payload.
+
+    if the "random" choose to inject or not: the "random" is based on the configuration file port-aggressivity.conf
+
+port-aggressivity has a strong influence about the injection happening, and the coder of the plugin too.
+
+WHICH INPUT POINT EXISTS AND HOW THEY ARE MIXED
+
+1) port-aggressivity.conf contains something like:
+
+1:65535     NORMAL,COMMON
+22          RARE,LIGHT
+25,110,143  LONGPEEK,EVERY5SECONDS,NORMAL
+
+2) every plugin is initialized with:
+
+fake_syn(bool forcedTest) 
+{
+    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE);
+}
+
+In short: every Hack specify which kind of frequency is better them use, and this probability is mixed with the probability
+derived by port-aggressivity.conf
+
+The AGG_ALWAYS is used only when the non-documentation option --only-plugin is called, an option used for testing a single
+hack+scramble combination, used in sniffjoke-autotest
