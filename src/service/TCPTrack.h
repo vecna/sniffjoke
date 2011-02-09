@@ -47,16 +47,16 @@ private:
 
     /* this functions are called inside analyze_packets_queue;
      * boolean functions return true if the packet must be sended */
-    bool analyze_incoming_icmp(Packet &);
-    void analyze_incoming_tcp_ttl(Packet &);
-    bool analyze_incoming_tcp_synack(Packet &);
-    bool analyze_incoming_tcp_rstfin(Packet &);
-    bool analyze_outgoing(Packet &);
-    bool analyze_keep(Packet &);
+    bool analyzeIncomingICMP(Packet &);
+    void analyzeIncomingTCPTTL(Packet &);
+    bool analyzeIncomingTCPSynAck(Packet &);
+    bool analyzeIncomingTCPRstFin(Packet &);
+    bool analyzeOutgoing(Packet &);
+    bool analyzeKeep(Packet &);
 
-    void inject_ttlprobe_in_queue(TTLFocus &);
-    void inject_hack_in_queue(Packet &);
-    bool last_pkt_fix(Packet &);
+    void injectTTLProbe(TTLFocus &);
+    void injectHack(Packet &);
+    bool lastPktFix(Packet &);
 
 public:
 
@@ -67,8 +67,7 @@ public:
 
     void writepacket(source_t, const unsigned char *, int);
     Packet* readpacket(source_t);
-    void analyze_packets_queue();
-    void force_send(void);
+    void analyzePacketQueue();
 };
 
 #endif /* SJ_TCPTRACK_H */

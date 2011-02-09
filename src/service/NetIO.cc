@@ -313,5 +313,5 @@ void NetIO::networkIO(void)
      *   - there is some input data to handle (maximum 20 pkts i/o) or
      *     a max delay of 10ms it's passed.
      */
-    conntrack->analyze_packets_queue();
+    conntrack->analyzePacketQueue();
 }

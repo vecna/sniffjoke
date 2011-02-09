@@ -178,7 +178,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
  * a TIME_EXCEEDED packet shoulds contain informations to discern HOP distance
  * from a remote host.
  */
-bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
+bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
 {
     if (pkt.icmp->type != ICMP_TIME_EXCEEDED)
         return true;
@@ -250,7 +250,7 @@ bool TCPTrack::analyze_incoming_icmp(Packet &pkt)
  * a topology hop change;
  * at the time it's only used for stat's reasons.
  */
-void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
+void TCPTrack::analyzeIncomingTCPTTL(Packet &pkt)
 {
     /*
      * Here we call the find() mathod of std::map because
@@ -280,7 +280,7 @@ void TCPTrack::analyze_incoming_tcp_ttl(Packet &pkt)
  *     
  *     unsigned char discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
  */
-bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
+bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
 {
     /*
      * here we call the find() mathod of std::map for the same reason as for
@@ -330,7 +330,7 @@ bool TCPTrack::analyze_incoming_tcp_synack(Packet &pkt)
  *   - true if the packet could be SEND;
  *   - false if the bruteforce stage is active.
  */
-bool TCPTrack::analyze_outgoing(Packet &pkt)
+bool TCPTrack::analyzeOutgoing(Packet &pkt)
 {
     SessionTrack &sessiontrack = sessiontrack_map.get(pkt);
     ++sessiontrack.packet_number;
@@ -352,7 +352,7 @@ bool TCPTrack::analyze_outgoing(Packet &pkt)
  *   - true if the packet could be SEND;
  *   - false if the bruteforce stage is active.
  */
-bool TCPTrack::analyze_keep(Packet &pkt)
+bool TCPTrack::analyzeKeep(Packet &pkt)
 {
     const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
     if (ttlfocus.status == TTL_BRUTEFORCE)
@@ -376,7 +376,7 @@ bool TCPTrack::analyze_keep(Packet &pkt)
  *  - tcp->seq
  * 
  */
-void TCPTrack::inject_ttlprobe_in_queue(TTLFocus &ttlfocus)
+void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
 {
     if (ttlfocus.sent_probe == MAX_TTLPROBE)
     {
@@ -459,7 +459,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
  * the latter kind of attack works forging packets with a bad tcp checksum.
  *
  */
-void TCPTrack::inject_hack_in_queue(Packet &origpkt)
+void TCPTrack::injectHack(Packet &origpkt)
 {
     if (origpkt.ipfragment == true)
         return;
@@ -529,7 +529,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
                 continue;
             }
 
-            if (!last_pkt_fix(injpkt))
+            if (!lastPktFix(injpkt))
             {
                 snprintf(injpkt.debug_buf, sizeof (injpkt.debug_buf), "unable to scramble (%s)", hppe->selfObj->hackName);
                 injpkt.selflog(__func__, injpkt.debug_buf);
@@ -612,7 +612,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
  * 
  *
  */
-bool TCPTrack::last_pkt_fix(Packet &pkt)
+bool TCPTrack::lastPktFix(Packet &pkt)
 {
     /* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
     /*
@@ -753,7 +753,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
  * SEND (packets marked as sendable)
  * 
  */
-void TCPTrack::analyze_packets_queue()
+void TCPTrack::analyzePacketQueue()
 {
     /* if all queues are empy we have nothing to do */
     if (!p_queue.size())
@@ -785,16 +785,16 @@ void TCPTrack::analyze_packets_queue()
         {
             if (pkt->proto == ICMP)
             {
-                send = analyze_incoming_icmp(*pkt);
+                send = analyzeIncomingICMP(*pkt);
             }
             else if (pkt->proto == TCP)
             {
                 /* analysis of the incoming TCP packet for check if TTL we are receiving is
                  * changed or not. is not the correct solution for detect network topology
                  * change, but we need it! */
-                analyze_incoming_tcp_ttl(*pkt);
+                analyzeIncomingTCPTTL(*pkt);
 
-                send = analyze_incoming_tcp_synack(*pkt);
+                send = analyzeIncomingTCPSynAck(*pkt);
             }
         }
         else /* pkt->source == TUNNEL */
@@ -810,7 +810,7 @@ void TCPTrack::analyze_packets_queue()
                     {
                         sprintf(pkt->debug_buf, "blacklist setting is present: IP address don't match");
                         pkt->selflog(__func__, pkt->debug_buf);
-                        send = analyze_outgoing(*pkt);
+                        send = analyzeOutgoing(*pkt);
                     }
                     else
                     {
@@ -824,7 +824,7 @@ void TCPTrack::analyze_packets_queue()
                     {
                         sprintf(pkt->debug_buf, "whitelist setting is present: IP address match");
                         pkt->selflog(__func__, pkt->debug_buf);
-                        send = analyze_outgoing(*pkt);
+                        send = analyzeOutgoing(*pkt);
                     }
                     else
                     {
@@ -834,7 +834,7 @@ void TCPTrack::analyze_packets_queue()
                 }
                 else
                 {
-                    send = analyze_outgoing(*pkt);
+                    send = analyzeOutgoing(*pkt);
                 }
             }
         }
@@ -842,7 +842,7 @@ void TCPTrack::analyze_packets_queue()
         if (send == true)
         {
             p_queue.remove(*pkt);
-            if (pkt->source == NETWORK || pkt->proto != TCP || last_pkt_fix(*pkt))
+            if (pkt->source == NETWORK || pkt->proto != TCP || lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
                 RUNTIME_EXCEPTION("");
@@ -853,11 +853,11 @@ void TCPTrack::analyze_packets_queue()
     p_queue.select(KEEP);
     while ((pkt = p_queue.get()) != NULL)
     {
-        bool send = analyze_keep(*pkt);
+        bool send = analyzeKeep(*pkt);
         if (send == true)
         {
             p_queue.remove(*pkt);
-            if (last_pkt_fix(*pkt))
+            if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
                 RUNTIME_EXCEPTION("");
@@ -869,7 +869,7 @@ void TCPTrack::analyze_packets_queue()
     while ((pkt = p_queue.get()) != NULL)
     {
         if (pkt->source == TUNNEL && pkt->proto == TCP)
-            inject_hack_in_queue(*pkt);
+            injectHack(*pkt);
     }
 
 bypass_queue_analysis:
@@ -898,7 +898,7 @@ bypass_queue_analysis:
                 && (ttlfocus.access_timestamp > sj_clock - 30)
                 && (ttlfocus.next_probe_time <= sj_clock))
         {
-            inject_ttlprobe_in_queue(*(*it).second);
+            injectTTLProbe(*(*it).second);
         }
     }
 }
