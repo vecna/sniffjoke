@@ -37,8 +37,6 @@ private:
     const struct sj_config &runconfig;
     struct timespec clock; /* clock time updated by analyze_packet_queue */
 
-#define APQ_MANAGMENT_ROUTINE_TIMER    60    /* manager routine time interval in seconds */
-
     SessionTrackMap &sessiontrack_map;
     TTLFocusMap &ttlfocus_map;
     HackPool &hack_pool;
