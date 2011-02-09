@@ -72,17 +72,15 @@ IPList& IPListMap::add(uint32_t ip, uint8_t a, uint8_t b, uint8_t c)
 
     /* check if the key it's already present */
     IPListMap::iterator it = find(ip);
-    if (it != end())
-    { /* on hit: update the IPConfig object. */
+    if (it != end()) /* on hit: update the IPConfig object. */
+    {
         ipcnf = &(*it->second);
         ipcnf->a = a;
         ipcnf->b = b;
         ipcnf->c = c;
     }
-    else
-    { /* on miss: create a new IPConfig and insert it into the map */
+    else /* on miss: create a new IPConfig and insert it into the map */
         ipcnf = &(*insert(pair<uint32_t, IPList*>(ip, new IPList(ip, a, b, c))).first->second);
-    }
 
     return *ipcnf;
 }
@@ -144,7 +142,6 @@ void IPListMap::dump()
 
     for (IPListMap::iterator it = begin(); it != end(); ++it)
     {
-
         IPList *tmp = &(*it->second);
 
         snprintf(record, sizeof (record), "%s,%02x,%02x,%02x\n", inet_ntoa(*((struct in_addr *) &(tmp->ip))), tmp->a, tmp->b, tmp->c);

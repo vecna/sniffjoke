@@ -72,11 +72,12 @@ public:
     {
     };
 
+    virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
+
     virtual bool Condition(const Packet &, uint8_t availableScramble)
     {
         return true;
     };
-    virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {

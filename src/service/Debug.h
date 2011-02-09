@@ -49,9 +49,9 @@ public:
 
 extern Debug debug;
 
-#define LOG_ALL(...)      debug.log(ALL_LEVEL, __func__, __VA_ARGS__)
-#define LOG_VERBOSE(...)  debug.log(VERBOSE_LEVEL, __func__, __VA_ARGS__)
-#define LOG_DEBUG(...)    debug.log(DEBUG_LEVEL, __func__, __VA_ARGS__)
+#define LOG_ALL(...)     debug.log(ALL_LEVEL, __func__, __VA_ARGS__)
+#define LOG_VERBOSE(...) debug.log(VERBOSE_LEVEL, __func__, __VA_ARGS__)
+#define LOG_DEBUG(...)   debug.log(DEBUG_LEVEL, __func__, __VA_ARGS__)
 #define LOG_SESSION(...) debug.log(SESSION_LEVEL, __func__, __VA_ARGS__)
 #define LOG_PACKET(...)  debug.log(PACKET_LEVEL, __func__, __VA_ARGS__)
 
