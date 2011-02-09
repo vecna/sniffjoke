@@ -149,34 +149,34 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
 	switch(blockInfo.cmd_type) 
 	{
 		case START_COMMAND_TYPE:
-            printf("received confirm of START command\n");
+            printf("received (%d bytes) confirm of START command\n", rcvdlen);
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case STOP_COMMAND_TYPE:
-            printf("received confirm of STOP command\n");
+            printf("received (%d bytes) confirm of STOP command\n", rcvdlen);
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case QUIT_COMMAND_TYPE:
-            printf("received confirm of QUIT command\n");
+            printf("received (%d bytes) confirm of QUIT command\n", rcvdlen);
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case STAT_COMMAND_TYPE:
-            printf("received confirm of STAT command\n");
+            printf("received (%d bytes) confirm of STAT command\n", rcvdlen);
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case INFO_COMMAND_TYPE:
-            printf("received confirm of INFO command\n");
+            printf("received (%d bytes) confirm of INFO command\n", rcvdlen);
 			return printSJSessionInfo(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case LOGLEVEL_COMMAND_TYPE:
-            printf("received confirm of LOGLEVEL command\n");
+            printf("received (%d bytes) confirm of LOGLEVEL command\n", rcvdlen);
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case SAVECONF_COMMAND_TYPE:
-            printf("received confirm of SAVECONF command\n");
+            printf("received (%d bytes) confirm of SAVECONF command\n", rcvdlen);
 			return printSJStat(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case SETPORT_COMMAND_TYPE:
-            printf("received confirm of SET PORT command\n");
+            printf("received (%d bytes) confirm of SET PORT command\n", rcvdlen);
 			return printSJPort(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case SHOWPORT_COMMAND_TYPE:
-            printf("received confirm of SHOW PORT command\n");
+            printf("received (%d bytes) confirm of SHOW PORT command\n", rcvdlen);
 			return printSJPort(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case COMMAND_ERROR_MSG:
-            printf("received error in command sent\n");
+            printf("received (%d bytes) error in command sent\n", rcvdlen);
 			return printSJError(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		default:
 			printf("invalid command type %d ?\n", blockInfo.cmd_type);
@@ -294,7 +294,7 @@ bool SniffJokeCli::printSJSessionInfo(uint8_t *received, uint32_t rcvdlen)
     while(i < rcvdlen)
     {
         sr = (struct sex_record *)&received[i];
-        printf(" %02d) %s:%u #%u\n", cnt, inet_ntoa(*((struct in_addr *) &(sr->daddr))), ntohs(sr->dport), sr->packet_number);
+        printf(" %02d) %s:%u #%d\n", cnt, inet_ntoa(*((struct in_addr *) &(sr->daddr))), ntohs(sr->dport), sr->packet_number);
         cnt++;
         i += sizeof(sr);
     }

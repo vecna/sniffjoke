@@ -299,11 +299,21 @@ void SniffJoke::handleAdminSocket()
             RUNTIME_EXCEPTION("Changing logfile settings");
     }
 
-    /* send the answer message to the client */
+    /* send the answer message to the client, maybe scattered in more packets (HUGEBUF are 4k bytes large) */
     if (output_buf != NULL)
     {
+        uint32_t sent =0, avail =((uint32_t *) output_buf)[0] ;
+
         fcntl(admin_socket, F_SETFL, admin_socket_flags_blocking);
-        sendto(admin_socket, output_buf, ((uint32_t *) output_buf)[0], 0, (struct sockaddr *) &fromaddr, sizeof (fromaddr));
+
+        do
+        {
+            uint32_t this_block = (avail - sent) > LARGEBUF ? LARGEBUF : (avail - sent);
+            sendto(admin_socket, &output_buf[sent], this_block, 0, (struct sockaddr *) &fromaddr, sizeof (fromaddr));
+            sent += this_block;
+        } 
+        while(sent < avail);
+
         fcntl(admin_socket, F_SETFL, admin_socket_flags_nonblocking);
     }
     else
@@ -513,7 +523,7 @@ void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
 
 /*
  * follow the method used for compose the io_buf with the internalProtocol.h struct,
- * those methods are intetnal in UserConf, and are, exception noted for handle_cmd_dump,
+ * those methods are intetnal in UserConf, and are, exception noted for handleCmdSaveconf
  * the only commands writing in io_buf and generating answer.
  */
 void SniffJoke::writeSJPortStat(uint8_t type)
@@ -590,6 +600,9 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
 
     for (SessionTrackMap::iterator it = sessiontrack_map->begin(); it != sessiontrack_map->end(); ++it)
     {
+        if(accumulen > HUGEBUF)
+            RUNTIME_EXCEPTION("Overflow detected! io_buf for client-service communication too much short!?");
+
         SessionTrack &Tracked = *((*it).second);
         accumulen += appendSJSessionInfo(&io_buf[accumulen], Tracked);
     }
@@ -668,6 +681,9 @@ uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP
 uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
 {
     struct sex_record sr;
+
+    if(!SexToDump.packet_number)
+        return 0;
 
     sr.timestamp = SexToDump.access_timestamp;
     sr.daddr = SexToDump.daddr;
