@@ -43,7 +43,7 @@ SniffJoke::~SniffJoke()
 {
     if (getuid() || geteuid())
     {
-        LOG_DEBUG("service with users privileges [%d]", getpid());
+        LOG_DEBUG("service with user privileges [%d]", getpid());
         cleanServerUser();
     }
     else
@@ -192,7 +192,7 @@ void SniffJoke::setupDebug(FILE *forcedoutput) const
     else /* userconf.runconfig.go_foreground */
     {
         debug.logstream = stdout;
-        LOG_ALL("forground logging enable, use ^c for quit SniffJoke");
+        LOG_ALL("foreground logging enable, use ^c for quit SniffJoke");
     }
 }
 
