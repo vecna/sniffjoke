@@ -294,9 +294,9 @@ bool SniffJokeCli::printSJSessionInfo(uint8_t *received, uint32_t rcvdlen)
     while(i < rcvdlen)
     {
         sr = (struct sex_record *)&received[i];
-        printf(" %02d) %s:%u #%d\n", cnt, inet_ntoa(*((struct in_addr *) &(sr->daddr))), ntohs(sr->dport), sr->packet_number);
+        printf(" %02d) %u -> %s:%u #%d\n", cnt, ntohs(sr->sport), inet_ntoa(*((struct in_addr *) &(sr->daddr))), ntohs(sr->dport), sr->packet_number);
         cnt++;
-        i += sizeof(sr);
+        i += sizeof(struct sex_record);
     }
 
     if(!i)

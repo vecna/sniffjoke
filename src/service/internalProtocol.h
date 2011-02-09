@@ -82,7 +82,6 @@ struct port_info
  * it contains a single session record */
 struct sex_record 
 {
-    time_t timestamp; 
     uint32_t daddr;
     uint16_t sport;
     uint16_t dport;

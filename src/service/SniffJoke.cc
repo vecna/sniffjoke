@@ -685,13 +685,12 @@ uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
     if(!SexToDump.packet_number)
         return 0;
 
-    sr.timestamp = SexToDump.access_timestamp;
     sr.daddr = SexToDump.daddr;
     sr.dport = SexToDump.dport;
     sr.sport = SexToDump.sport;
     sr.packet_number = SexToDump.packet_number;
 
-    memcpy(p, &sr, sizeof (sr));
+    memcpy( (void *)p, (void *)&sr, sizeof (sr));
 
     return sizeof (sr);
 }
