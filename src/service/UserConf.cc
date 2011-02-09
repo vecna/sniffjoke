@@ -97,11 +97,11 @@ cmdline_opts(cmdline_opts)
 
     snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
-    /* load() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
+    /* loadDiskConfiguration() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
     if (chdir(runconfig.working_dir))
         RUNTIME_EXCEPTION("Unable to chdir in the specifiy location");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
-    load();
+    loadDiskConfiguration();
 
     /* check integrity in the configuration loaded */
     if (runconfig.use_blacklist && runconfig.use_whitelist)
@@ -462,7 +462,7 @@ EndparseMatchShort:
  *
  * are not verified the integrity of such configuration, but only loaded, the integrity
  * is checked in the constructor of UserConf */
-bool UserConf::load(void)
+bool UserConf::loadDiskConfiguration(void)
 {
     FILE *loadstream;
 
@@ -589,7 +589,7 @@ uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata)
     return written;
 }
 
-bool UserConf::dump(void)
+bool UserConf::syncDiskConfiguration(void)
 {
     uint32_t written = 0;
     char tempdumpfname[LARGEBUF];
