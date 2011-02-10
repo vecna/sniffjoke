@@ -52,7 +52,6 @@ private:
     bool analyzeIncomingTCPSynAck(Packet &);
     bool analyzeIncomingTCPRstFin(Packet &);
     bool analyzeOutgoing(Packet &);
-    bool analyzeKeep(Packet &);
 
     void injectTTLProbe(TTLFocus &);
     void injectHack(Packet &);
