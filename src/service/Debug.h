@@ -28,21 +28,26 @@
 class Debug
 {
 private:
-    bool appendOpen(uint8_t thislevel, const char *, const char fname[LARGEBUF], FILE **previously);
+    friend class SniffJoke;
     bool enabled;
     uint8_t debuglevel;
+    const char* logstream_file;
+    const char* session_logstream_file;
+    const char* packet_logstream_file;
     FILE *logstream;
     FILE *session_logstream;
     FILE *packet_logstream;
-    friend class SniffJoke;
+    bool appendOpen(uint8_t thislevel, const char *fname, FILE **previously);
 public:
     Debug();
-
+    void setLogstream(const char *lsf);
+    void setSessionLogstream(const char *lsf);
+    void setPacketLogstream(const char *lsf);
     uint8_t level()
     {
         return debuglevel;
     };
-    bool resetLevel(const char *);
+    bool resetLevel();
     void log(uint8_t, const char *, const char *, ...);
     void downgradeOpenlog(uid_t, gid_t);
 };

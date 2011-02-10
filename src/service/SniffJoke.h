@@ -63,7 +63,7 @@ private:
     int admin_socket_flags_blocking;
     int admin_socket_flags_nonblocking;
 
-    void setupDebug(FILE *) const;
+    void setupDebug();
     void cleanDebug();
     void cleanServerRoot();
     void cleanServerUser();

@@ -50,7 +50,7 @@ private:
     void fixPointer(void);
 
 public:
-    char *error_message;
+    const char *error_message;
 
     void setup(char *);
     void extractPorts(void);

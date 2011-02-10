@@ -24,45 +24,63 @@
 
 Debug::Debug() :
 debuglevel(ALL_LEVEL),
-logstream(NULL),
-session_logstream(NULL),
-packet_logstream(NULL)
+logstream(stdout),
+session_logstream(stdout),
+packet_logstream(stdout)
 {
 }
 
-bool Debug::appendOpen(uint8_t thislevel, const char *rootdir, const char fname[LARGEBUF], FILE **previously)
+void Debug::setLogstream(const char *lsf)
 {
+    logstream_file = lsf;
+    logstream = NULL;
+}
+
+void Debug::setSessionLogstream(const char *lsf)
+{
+    session_logstream_file = lsf;
+    session_logstream = NULL;
+}
+
+void Debug::setPacketLogstream(const char *lsf)
+{
+    packet_logstream_file = lsf;
+    packet_logstream = NULL;
+}
+
+bool Debug::appendOpen(uint8_t thislevel, const char *fname, FILE **previously)
+{
+    if(*previously == stdout)
+        return true;
+
     if (*previously != NULL)
     {
-        log(thislevel, "requested close of logfile %s (vars used: %s %s and level %d)",
-            fname, rootdir, fname, thislevel);
+        log(thislevel, __func__, "requested close of logfile %s (vars used: %s and level %d)",
+            fname, fname, thislevel);
         fclose(*previously);
+        *previously = NULL;
     }
 
     if (debuglevel >= thislevel)
     {
-        char completefname[LARGEBUF];
-
-        snprintf(completefname, LARGEBUF, "%s/%s", rootdir, fname);
-
-        if ((*previously = fopen(completefname, "a+")) == NULL)
+        if ((fname == NULL) || ((*previously = fopen(fname, "a+")) == NULL))
             return false;
 
-        log(thislevel, "opened logfile %s (logdir %s) successful with debug level %d", fname, rootdir, debuglevel);
+        log(thislevel, __func__, "opened logfile %s successful with debug level %d", fname, debuglevel);
     }
 
     return true;
 }
 
-bool Debug::resetLevel(const char *rootdir)
+bool Debug::resetLevel()
 {
-    if (!appendOpen(ALL_LEVEL, rootdir, FILE_LOG, &logstream))
+    if (!appendOpen(ALL_LEVEL, logstream_file, &logstream))
         return false;
 
-    if (!appendOpen(PACKET_LEVEL, rootdir, FILE_LOG_PACKET, &packet_logstream))
+   if (!appendOpen(SESSION_LEVEL, session_logstream_file, &session_logstream))
         return false;
 
-    if (!appendOpen(SESSION_LEVEL, rootdir, FILE_LOG_SESSION, &session_logstream))
+    if (!appendOpen(PACKET_LEVEL, packet_logstream_file, &packet_logstream))
         return false;
 
     return true;

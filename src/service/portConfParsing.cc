@@ -28,40 +28,42 @@ void portLine::fixPointer(void)
 {
     uint32_t portLen = 0, i = 0;
     bool spacing = false, before = true;
-    char *startStrPort =NULL, *startKeyword =NULL;
+    char *startStrPort = NULL, *startKeyword = NULL;
 
-    while(i++ < linelen)
+    while (i < linelen)
     {
         /* this happen when "line[i]" match an invalid byte before the port number */
-        if(spacing == false && before && !isdigit(line[i]) )
+        if (spacing == false && before && !isdigit(line[i]))
             goto error_before;
 
         /* this happen when the first digit is matched, at the first space */
-        if(spacing == false && before && isdigit(line[i]) )
+        if (spacing == false && before && isdigit(line[i]))
             before = false;
 
         /* this is used for set the pointer to the first byte */
-        if(spacing == false && startStrPort == NULL && isdigit(line[i]))
+        if (spacing == false && startStrPort == NULL && isdigit(line[i]))
             startStrPort = &line[i];
 
         /* continue to set endStrPort to the last byte in port1,porti2 or port1:portN */
-        if(spacing == false && (isdigit(line[i]) || line[i] == ':' || line[i] == ',') )
+        if (spacing == false && (isdigit(line[i]) || line[i] == ':' || line[i] == ','))
             portLen++;
 
         /* this is the spacing */
-        if(spacing == false && (line[i] == ' ' || line[i] == '\t') )
+        if (spacing == false && (line[i] == ' ' || line[i] == '\t'))
             spacing = true;
 
         /* pointer to the keyword, break the loop */
-        if(spacing == true && (line[i] != ' ' && line[i] != '\t' ) && isupper(line[i]) )
+        if (spacing == true && (line[i] != ' ' && line[i] != '\t') && isupper(line[i]))
         {
             startKeyword = &line[i];
             break;
         }
+
+        i++;
     }
 
-    if(startStrPort == NULL || portLen == 0 || startKeyword == NULL)
-        error_message = const_cast<char *>("Not all fields found in this line");
+    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL)
+        error_message = "Not all fields found in this line";
 
     /* copy in the right buffer the pointed data */
     memset(portsblock, 0x00, MEDIUMBUF);
@@ -73,7 +75,7 @@ void portLine::fixPointer(void)
     return;
 
 error_before:
-    error_message = const_cast<char *>("Not found separator between ports and keywords");
+    error_message = "Not found separator between ports and keywords";
 }
 
 void portLine::setup(char *readedline)
@@ -85,7 +87,7 @@ void portLine::setup(char *readedline)
     linelen = strlen(line);
 
     OrValue = 0;
-    memset(portSelected, 0x00, sizeof(portSelected));
+    memset(portSelected, 0x00, sizeof (portSelected));
 
     error_message = NULL;
 
@@ -94,45 +96,41 @@ void portLine::setup(char *readedline)
 
 void portLine::extractPorts(void)
 {
-    char *comma =NULL, *dpoints = NULL, *p = &portsblock[0];
+    char *p = portsblock;
     uint32_t readedp;
 
     /* check if the user is not too much optimistic about conf flexibility */
-    comma = strchr(p, ',');
-    dpoints = strchr(p, ':');
+    char *comma = strchr(p, ',');
+    char *dpoints = strchr(p, ':');
 
-    if(comma != NULL && dpoints != NULL)
+    if ((comma != NULL) && (dpoints != NULL))
         goto not_so_flexibility_error;
 
-    /* block of code when the comma list is detected */
-    if(comma != NULL) 
+    if (comma != NULL) /* block of code when the comma list is detected */
     {
-        do {
+        do
+        {
             *comma = 0x00;
 
             readedp = atoi(p);
 
-            if( readedp > PORTNUMBER || readedp < 0 )
+            if (readedp > PORTNUMBER || readedp < 0)
                 goto invalid_range;
-            
-            portSelected[(uint16_t)atoi(p)] = true;
+
+            portSelected[(uint16_t) atoi(p)] = true;
 
             p = ++comma;
         }
-        while( (comma = strchr(p, ',')) != NULL );
+        while ((comma = strchr(p, ',')) != NULL);
 
         /* the last port, eg, one,two,three, here is trapped "three" because before is not */
         readedp = atoi(p);
-        if( readedp > PORTNUMBER || readedp < 0 )
+        if (readedp > PORTNUMBER || readedp < 0)
             goto invalid_range;
-        
-        portSelected[(uint16_t)atoi(p)] = true;
 
-        return;
+        portSelected[(uint16_t) atoi(p)] = true;
     }
-
-    /* block of code handling the startport:endport range */
-    if(dpoints != NULL) 
+    else if (dpoints != NULL) /* block of code handling the startport:endport range */
     {
         uint32_t readedendp;
 
@@ -140,38 +138,39 @@ void portLine::extractPorts(void)
 
         readedp = atoi(p);
 
-        if( readedp > PORTNUMBER || readedp < 0 )
+        if (readedp > PORTNUMBER || readedp < 0)
             goto invalid_range;
 
         p = ++dpoints;
-            
+
         readedendp = atoi(p);
 
-        if( readedendp > PORTNUMBER || readedendp < 0 )
+        if (readedendp > PORTNUMBER || readedendp < 0)
             goto invalid_range;
-  
-        while( readedp < readedendp )
+
+        while (readedp < readedendp)
         {
-            portSelected[(uint16_t)readedp] = true;
+            portSelected[(uint16_t) readedp] = true;
             ++readedp;
         }
-        return;
+    }
+    else /* the "single port" */
+    {
+        readedp = atoi(p);
+
+        if (readedp > PORTNUMBER || readedp < 0)
+            goto invalid_range;
+
+        portSelected[(uint16_t) readedp] = true;
     }
 
-    /* the "single port" */
-    readedp = atoi(p);
-
-    if( readedp > PORTNUMBER || readedp < 0 )
-        goto invalid_range;
-
-    portSelected[(uint16_t)readedp] = true;
     return;
 
 invalid_range:
-    error_message = const_cast<char *>("Invalid range found, permitted goes since 1 to 65535");
+    error_message = "Invalid range found, permitted goes since 1 to 65535";
     return;
 not_so_flexibility_error:
-    error_message = const_cast<char *>("A configuration line will support comma separation OR port range with ':', not both");
+    error_message = "A configuration line will support comma separation OR port range with ':', not both";
 }
 
 void portLine::extractValue(void)
@@ -182,36 +181,36 @@ void portLine::extractValue(void)
 
     /* AGG_* and FREQ_* are defined in Packet.h */
     const struct mapTheKeys mappedKeywords[] = {
-        { AGG_RARE, AGG_N_RARE },
-        { AGG_COMMON, AGG_N_COMMON },
-        { AGG_ALWAYS, AGG_N_ALWAYS },
-        { AGG_PACKETS10PEEK, AGG_N_PACKETS10PEEK },
-        { AGG_PACKETS30PEEK, AGG_N_PACKETS30PEEK },
-        { AGG_TIMEBASED5S, AGG_N_TIMEBASED5S },
-        { AGG_TIMEBASED20S, AGG_N_TIMEBASED20S },
-        { AGG_STARTPEEK, AGG_N_STARTPEEK },
-        { AGG_LONGPEEK, AGG_N_LONGPEEK },
-        { FREQ_NONE, FREQ_N_NONE },
-        { FREQ_LIGHT, FREQ_N_LIGHT },
-        { FREQ_NORMAL, FREQ_N_NORMAL },
-        { FREQ_HEAVY, FREQ_N_HEAVY },
-        { 0, NULL }
+        { AGG_RARE, AGG_N_RARE},
+        { AGG_COMMON, AGG_N_COMMON},
+        { AGG_ALWAYS, AGG_N_ALWAYS},
+        { AGG_PACKETS10PEEK, AGG_N_PACKETS10PEEK},
+        { AGG_PACKETS30PEEK, AGG_N_PACKETS30PEEK},
+        { AGG_TIMEBASED5S, AGG_N_TIMEBASED5S},
+        { AGG_TIMEBASED20S, AGG_N_TIMEBASED20S},
+        { AGG_STARTPEEK, AGG_N_STARTPEEK},
+        { AGG_LONGPEEK, AGG_N_LONGPEEK},
+        { FREQ_NONE, FREQ_N_NONE},
+        { FREQ_LIGHT, FREQ_N_LIGHT},
+        { FREQ_NORMAL, FREQ_N_NORMAL},
+        { FREQ_HEAVY, FREQ_N_HEAVY},
+        { 0, NULL}
     };
 
-    do 
+    do
     {
         /* every keywork checked must be found, otherwise is an error */
         foundK = false;
 
-        if(*p == ',')
+        if (*p == ',')
         {
             *p = 0x00;
             ++p;
         }
 
-        for(mtk = &mappedKeywords[0]; mtk->value; ++mtk)
+        for (mtk = &mappedKeywords[0]; mtk->value; ++mtk)
         {
-            if(!memcmp(mtk->keyword, p, strlen(mtk->keyword)))
+            if (!memcmp(mtk->keyword, p, strlen(mtk->keyword)))
             {
                 foundK = true;
                 OrValue |= mtk->value;
@@ -219,19 +218,19 @@ void portLine::extractValue(void)
             }
         }
 
-        if(!foundK)
+        if (!foundK)
             goto keyword_not_found;
     }
 
-    while( (p = strchr(p, ',')) != NULL  );
+    while ((p = strchr(p, ',')) != NULL);
     return;
 
 keyword_not_found:
-    error_message = const_cast<char *>("invalid keyword in this line ");
+    error_message = "invalid keyword found in this line";
 }
 
 void portLine::mergeLine(uint16_t *portarray)
 {
-    for(uint32_t i = 0; i < PORTNUMBER; ++i)
-        if(portSelected[i]) portarray[i] = OrValue;
+    for (uint32_t i = 0; i < PORTNUMBER; ++i)
+        if (portSelected[i]) portarray[i] = OrValue;
 }

@@ -535,7 +535,7 @@ void UserConf::loadAggressivity(void)
     /* the minimum length of a line is 6 */
     while (!feof(loadstream))
     {
-        linecnt++;
+        ++linecnt;
         fgets(line, MEDIUMBUF, loadstream);
 
         /* C's chop() */

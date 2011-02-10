@@ -99,8 +99,6 @@ int Process::detach()
          * networking process
          */
 
-        isolation();
-
         pid_child = getpid();
 
         close(pdes[0]);
@@ -261,8 +259,6 @@ __unlinkPidfile:
 
 void Process::background()
 {
-    LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles wile be used instead.");
-
     if (fork())
         exit(0);
 

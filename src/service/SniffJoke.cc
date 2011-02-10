@@ -35,7 +35,6 @@ userconf(opts),
 proc(userconf.runconfig),
 service_pid(0)
 {
-    setupDebug(stdout);
     LOG_VERBOSE("");
 }
 
@@ -90,18 +89,13 @@ void SniffJoke::run()
     else
         LOG_VERBOSE("SniffJoke started and ACTIVE");
 
-    /* we run the network setup before the background, to keep the software output visible on the console */
-    userconf.networkSetup();
-
     if (!opts.go_foreground)
     {
         proc.background();
-
-        /* Log Object must be reinitialized after background and before the chroot! */
-        setupDebug(NULL);
-
-        proc.isolation();
     }
+
+    /* we run the network setup before the background, to keep the software output visible on the console */
+    userconf.networkSetup();
 
     /* the code flow reach here, SniffJoke is ready to instance network environment */
     mitm = auto_ptr<NetIO > (new NetIO(userconf.runconfig));
@@ -138,11 +132,14 @@ void SniffJoke::run()
     else
     {
 
+        proc.isolation();
+
+        setupDebug();
+
         /* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
         hack_pool = auto_ptr<HackPool > (new HackPool(userconf.runconfig));
 
         proc.jail(userconf.runconfig.working_dir);
-        userconf.chroot_status = true;
 
         proc.privilegesDowngrade();
 
@@ -171,28 +168,23 @@ void SniffJoke::run()
     }
 }
 
-void SniffJoke::setupDebug(FILE *forcedoutput) const
+void SniffJoke::setupDebug()
 {
-    debug.debuglevel = userconf.runconfig.debug_level;
+        if (!opts.go_foreground)
+        {
+            LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles will be used instead.");
 
-    /* when sniffjoke start force the output to be stdout */
-    if (forcedoutput != NULL)
-    {
-        debug.logstream = forcedoutput;
-        return;
-    }
-
-    if (!opts.go_foreground)
-    {
-        /* Logfiles are used only by a Sniffjoke SERVER runnning in background */
-        if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
-            RUNTIME_EXCEPTION("opening log files");
-    }
-    else /* userconf.runconfig.go_foreground */
-    {
-        debug.logstream = stdout;
-        LOG_ALL("foreground logging enable, use ^c for quit SniffJoke");
-    }
+            debug.debuglevel = userconf.runconfig.debug_level;
+            debug.setLogstream(FILE_LOG);
+            debug.setSessionLogstream(FILE_LOG_SESSION);
+            debug.setPacketLogstream(FILE_LOG_PACKET);
+            if (!debug.resetLevel())
+                RUNTIME_EXCEPTION("opening log files");
+        }
+        else
+        {
+            LOG_ALL("foreground logging enable, use ^c for quit SniffJoke");
+        }
 }
 
 /* this function must not close the FILE *desc, because in the destructor of the
@@ -315,7 +307,7 @@ void SniffJoke::handleAdminSocket()
         LOG_ALL("changing log level since %d to %d\n", debug.debuglevel, userconf.runconfig.debug_level);
         debug.debuglevel = userconf.runconfig.debug_level;
 
-        if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
+        if (!debug.resetLevel())
             RUNTIME_EXCEPTION("Changing logfile settings");
     }
 }
@@ -338,7 +330,7 @@ int SniffJoke::recvCommand(int sock, char *databuf, int bufsize, struct sockaddr
     return ret;
 }
 
-uint8_t* SniffJoke::handleCmd(const char *cmd)
+uint8_t * SniffJoke::handleCmd(const char *cmd)
 {
     memset(io_buf, 0x00, sizeof (io_buf));
     uint16_t* psize = (uint16_t *) io_buf;
@@ -456,7 +448,7 @@ void SniffJoke::handleCmdQuit(void)
 }
 
 /* this function like the debug level change, call some operations
- * that may fail. But in this case, is possibile know the status 
+ * that may fail. But in this case, is possibile know the status
  * of the operation immediatly.
  *
  * this function is never autocalled, but only specifically request by the client
@@ -501,17 +493,17 @@ void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
     }
 
     do userconf.runconfig.portconf[start++] = what;
-        while (start <= end);
+    while (start <= end);
 
     writeSJPortStat(SETPORT_COMMAND_TYPE);
 }
 
 void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
 {
-    if (newdebuglevel < ALL_LEVEL || newdebuglevel > PACKET_LEVEL)
+    if (newdebuglevel < SUPPRESS_LEVEL || newdebuglevel > PACKET_LEVEL)
     {
         LOG_ALL("requested debuglevel %d invalid (>= %d <= %d permitted)",
-                newdebuglevel, ALL_LEVEL, PACKET_LEVEL);
+                newdebuglevel, SUPPRESS_LEVEL, PACKET_LEVEL);
     }
     else
     {
@@ -677,7 +669,7 @@ uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP
 }
 
 /* follow the most "internal" method for io_buf creation, called from the methods before  */
-uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
+uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack & SexToDump)
 {
     struct sex_record sr;
 
