@@ -57,7 +57,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
     }
     if (frequencyValue & AGG_ALWAYS)
     {
-        freqret += 25;
+        freqret += 200;
     }
     if (frequencyValue & AGG_PACKETS10PEEK)
     {
@@ -125,21 +125,17 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     uint32_t this_percentage = 0, aggressivity_percentage = 0;
     uint16_t referenceFrequency;
 
-    /* the frequency is sets by default, if not provided by the user. the aggressivity is sets
-     * by the plugin developer, if is not used.  */
-    if (!(aggressivity_percentage = derivePercentage(packet_number, userFrequency)))
-    {
-        /* this happen in --only-plugin (and the forced frequency to AGG_ALWAYS), not
-         * FREQ_ is provived and this cause an error, for this reason, I add the default
-         * FREQ_NORMAL here */
-        hackFrequency += FREQ_NORMAL;
-        referenceFrequency = hackFrequency;
-        aggressivity_percentage = derivePercentage(packet_number, hackFrequency);
-    }
-    else
-    {
-        referenceFrequency = userFrequency;
-    }
+    /* as first is checked hackFrequency, because will be AGG_ALWAYS and mean that we are in 
+     * testing mode with --only-olugin option */
+    if(hackFrequency & AGG_ALWAYS)
+        return true;
+
+#if 0
+    aggressivity_percentage = (derivePercentage(packet_number, hackFrequency + FREQ_NORMAL) + derivePercentage(packet_number, userFrequency)) / 2;
+#endif
+
+    aggressivity_percentage = derivePercentage(packet_number, userFrequency);
+    referenceFrequency = userFrequency;
 
     if (referenceFrequency & FREQ_NONE)
     {
@@ -153,14 +149,14 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     }
     else if (referenceFrequency & FREQ_NORMAL)
     {
-        /* with 10 ("common") is 80% of probability */
-        this_percentage = aggressivity_percentage * 8;
+        /* with 10 ("common") is 60% of probability */
+        this_percentage = aggressivity_percentage * 6;
     }
     else if (referenceFrequency & FREQ_HEAVY)
     {
-        /* with 10 ("common") is 120% of probabilty, this was useful when a 
+        /* with 10 ("common") is 80% of probabilty, this was useful when a 
          * float value was used, better analysis will improve this algoritm */
-        this_percentage = aggressivity_percentage * 12;
+        this_percentage = aggressivity_percentage * 8;
     }
     else
     {
@@ -466,7 +462,7 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
 
     bool removeOrig = false;
 
-    const SessionTrack &sessiontrack = sessiontrack_map.get(origpkt);
+    SessionTrack &sessiontrack = sessiontrack_map.get(origpkt);
 
     vector<PluginTrack *> applicable_hacks;
 
@@ -481,7 +477,9 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
     snprintf(origpkt.debug_buf, sizeof (origpkt.debug_buf), "OrigPKT");
     origpkt.selflog(__func__, origpkt.debug_buf);
 
-    /* SELECT APPLICABLE HACKS */
+    /* SELECT APPLICABLE HACKS, the selection are base on:
+     * 1) the plugin/hacks detect if the condition exists (eg: the hack want a SYN and the packet is a RST+ACK,
+     * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
     for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
     {
         PluginTrack *hppe = *it;
@@ -543,6 +541,9 @@ void TCPTrack::inject_hack_in_queue(Packet &origpkt)
              * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too
              */
             injpkt.mark(LOCAL, EVIL);
+
+            /* setting for debug pourporse: sniffjokectl info will show this value */
+            sessiontrack.incrementInjected();
 
             snprintf(injpkt.debug_buf, sizeof (injpkt.debug_buf), "HackPKT (%s)", hppe->selfObj->hackName);
             injpkt.selflog(__func__, injpkt.debug_buf);

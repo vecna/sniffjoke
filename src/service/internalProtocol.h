@@ -86,6 +86,7 @@ struct sex_record
     uint16_t sport;
     uint16_t dport;
     uint32_t packet_number;
+    uint32_t injected_pktnumber;
 };
 
 /* port weight */

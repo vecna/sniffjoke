@@ -689,6 +689,7 @@ uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
     sr.dport = SexToDump.dport;
     sr.sport = SexToDump.sport;
     sr.packet_number = SexToDump.packet_number;
+    sr.injected_pktnumber = SexToDump.injected_pktnumber;
 
     memcpy( (void *)p, (void *)&sr, sizeof (sr));
 
