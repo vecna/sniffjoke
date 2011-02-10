@@ -40,12 +40,14 @@ public:
     uint16_t sport;
     uint16_t dport;
     uint32_t packet_number;
+    uint32_t injected_pktnumber;
 
     SessionTrack(const Packet &);
     ~SessionTrack();
 
     /* utilities */
     void selflog(const char *, const char *) const;
+    void incrementInjected(void);
     /* no personal buffer used in selflog, maybe in the future */
 };
 

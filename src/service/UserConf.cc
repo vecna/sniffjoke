@@ -511,12 +511,15 @@ void UserConf::loadAggressivity(void)
         LOG_ALL("port aggrssivity specifications in %s/%s: %s, loading defaults",
                 runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno));
 
-        /* the default is:
+        /* the default is NONE. in the file port-aggrssivity.conf
+         * the default is:
          *
          * 1:65535      NORMAL,COMMON
+         *
+         * but is not an absolute truth, I like the user that choose for himself
          */
         for (uint16_t i = 0; i < PORTNUMBER; ++i)
-            runconfig.portconf[i] = FREQ_NORMAL & AGG_COMMON;
+            runconfig.portconf[i] = FREQ_NONE;
 
         return;
     }

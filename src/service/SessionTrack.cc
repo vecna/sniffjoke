@@ -32,7 +32,8 @@ access_timestamp(0),
 daddr(pkt.ip->daddr),
 sport(pkt.tcp->source),
 dport(pkt.tcp->dest),
-packet_number(0)
+packet_number(0),
+injected_pktnumber(0)
 {
     selflog(__func__, NULL);
 }
@@ -69,12 +70,18 @@ void SessionTrack::selflog(const char *func, const char *lmsg) const
     if (debug.level() == SUPPRESS_LEVEL)
         return;
 
-    LOG_SESSION("%s sport %d saddr %s dport %u, #pkt %d: %s",
+    LOG_SESSION("%s sport %d saddr %s dport %u, #pkt %d #inj %d: %s",
                 func, ntohs(sport),
                 inet_ntoa(*((struct in_addr *) &daddr)),
                 ntohs(dport),
-                packet_number, lmsg != NULL ? lmsg : "(no message)"
+                packet_number, injected_pktnumber,
+                lmsg != NULL ? lmsg : "(no message)"
                 );
+}
+
+void SessionTrack::incrementInjected(void)
+{
+    injected_pktnumber++;
 }
 
 SessionTrackMap::SessionTrackMap()
