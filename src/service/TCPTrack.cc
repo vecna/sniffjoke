@@ -332,31 +332,14 @@ bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
  */
 bool TCPTrack::analyzeOutgoing(Packet &pkt)
 {
-    SessionTrack &sessiontrack = sessiontrack_map.get(pkt);
-    ++sessiontrack.packet_number;
+    ++(sessiontrack_map.get(pkt).packet_number);
 
-    const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-    if (ttlfocus.status == TTL_BRUTEFORCE)
+    if (ttlfocus_map.get(pkt).status == TTL_BRUTEFORCE)
     {
         p_queue.remove(pkt);
         p_queue.insert(pkt, KEEP);
         return false;
     }
-
-    return true;
-}
-
-/*
- * this function analyzes KEEP packets.
- * returns:
- *   - true if the packet could be SEND;
- *   - false if the bruteforce stage is active.
- */
-bool TCPTrack::analyzeKeep(Packet &pkt)
-{
-    const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-    if (ttlfocus.status == TTL_BRUTEFORCE)
-        return false;
 
     return true;
 }
@@ -425,14 +408,12 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
 
 uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 {
-    uint8_t retval = 0;
-
     /*
      * TODO - when we will integrate passive os fingerprint and
      * we will do a a clever study about different OS answer about
      * IP option, for every OS we will have or not the related support
      */
-    retval = SCRAMBLE_CHECKSUM | SCRAMBLE_INNOCENT | SCRAMBLE_MALFORMED;
+    uint8_t retval = SCRAMBLE_CHECKSUM | SCRAMBLE_INNOCENT | SCRAMBLE_MALFORMED;
 
     const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
     if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
@@ -853,8 +834,7 @@ void TCPTrack::analyzePacketQueue()
     p_queue.select(KEEP);
     while ((pkt = p_queue.get()) != NULL)
     {
-        bool send = analyzeKeep(*pkt);
-        if (send == true)
+        if (ttlfocus_map.get(*pkt).status == TTL_BRUTEFORCE)
         {
             p_queue.remove(*pkt);
             if (lastPktFix(*pkt))

@@ -287,21 +287,10 @@ void SniffJoke::handleAdminSocket()
 
     output_buf = handleCmd(r_buf);
 
-    /* checking if the command require SniffJoke class interaction (loglevel change), these are the
-     * command that could cause an interruption of the service - require to be modify the "char *output"
-     * with the appropriate error - TODO ATM */
-    if (debug.debuglevel != userconf.runconfig.debug_level)
-    {
-        debug.debuglevel = userconf.runconfig.debug_level;
-
-        if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
-            RUNTIME_EXCEPTION("Changing logfile settings");
-    }
-
     /* send the answer message to the client, maybe scattered in more packets (HUGEBUF are 4k bytes large) */
     if (output_buf != NULL)
     {
-        uint32_t sent =0, avail =((uint32_t *) output_buf)[0] ;
+        uint32_t sent = 0, avail = ((uint32_t *) output_buf)[0];
 
         fcntl(admin_socket, F_SETFL, admin_socket_flags_blocking);
 
@@ -310,14 +299,24 @@ void SniffJoke::handleAdminSocket()
             uint32_t this_block = (avail - sent) > LARGEBUF ? LARGEBUF : (avail - sent);
             sendto(admin_socket, &output_buf[sent], this_block, 0, (struct sockaddr *) &fromaddr, sizeof (fromaddr));
             sent += this_block;
-        } 
-        while(sent < avail);
+        }
+        while (sent < avail);
 
         fcntl(admin_socket, F_SETFL, admin_socket_flags_nonblocking);
     }
     else
     {
         LOG_ALL("BUG: command handling of [%s] don't return any answer", r_buf);
+    }
+
+    /* delayed execution of requested commands (only debug level change ATM) */
+    if (debug.debuglevel != userconf.runconfig.debug_level)
+    {
+        LOG_ALL("changing log level since %d to %d\n", debug.debuglevel, userconf.runconfig.debug_level);
+        debug.debuglevel = userconf.runconfig.debug_level;
+
+        if (!debug.resetLevel(const_cast<const char *> (userconf.runconfig.working_dir)))
+            RUNTIME_EXCEPTION("Changing logfile settings");
     }
 }
 
@@ -480,7 +479,6 @@ void SniffJoke::handleCmdStat(void)
     writeSJStatus(STAT_COMMAND_TYPE);
 }
 
-
 void SniffJoke::handleCmdInfo(void)
 {
     LOG_VERBOSE("info command requested: sessions only supported in this version");
@@ -502,7 +500,8 @@ void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
         --end;
     }
 
-    do userconf.runconfig.portconf[start++] = what; while (start <= end);
+    do userconf.runconfig.portconf[start++] = what;
+        while (start <= end);
 
     writeSJPortStat(SETPORT_COMMAND_TYPE);
 }
@@ -516,7 +515,6 @@ void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
     }
     else
     {
-        LOG_ALL("changing log level since %d to %d\n", userconf.runconfig.debug_level, newdebuglevel);
         userconf.runconfig.debug_level = newdebuglevel;
     }
     writeSJStatus(LOGLEVEL_COMMAND_TYPE);
@@ -601,7 +599,7 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
 
     for (SessionTrackMap::iterator it = sessiontrack_map->begin(); it != sessiontrack_map->end(); ++it)
     {
-        if(accumulen > HUGEBUF)
+        if (accumulen > HUGEBUF)
             RUNTIME_EXCEPTION("Overflow detected! io_buf for client-service communication too much short!?");
 
         SessionTrack &Tracked = *((*it).second);
@@ -683,7 +681,7 @@ uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
 {
     struct sex_record sr;
 
-    if(!SexToDump.packet_number)
+    if (!SexToDump.packet_number)
         return 0;
 
     sr.daddr = SexToDump.daddr;
@@ -691,7 +689,7 @@ uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack &SexToDump)
     sr.sport = SexToDump.sport;
     sr.packet_number = SexToDump.packet_number;
 
-    memcpy( (void *)p, (void *)&sr, sizeof (sr));
+    memcpy((void *) p, (void *) &sr, sizeof (sr));
 
     return sizeof (sr);
 }
