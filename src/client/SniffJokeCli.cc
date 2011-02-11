@@ -84,7 +84,6 @@ void SniffJokeCli::send_command(const char *cmdstring)
 		return;
     }
 
-
     /* poll is required for timeout pourpose checking, because only one file desciption is used */
     struct pollfd fd;
     fd.events = POLLIN;
@@ -94,7 +93,8 @@ void SniffJokeCli::send_command(const char *cmdstring)
 
 	if(nfds == 1) 
 	{
-		uint8_t received_data[HUGEBUF];
+        /* the same size declared in io_buf SniffJoke.cc service */
+		uint8_t received_data[HUGEBUF * 4];
         uint8_t received_buf[LARGEBUF];
         uint32_t progressive_recvl = 0;
 		memset(received_data, 0x00, HUGEBUF);
@@ -175,6 +175,9 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
 		case SHOWPORT_COMMAND_TYPE:
             printf("received (%d bytes) confirm of SHOW PORT command\n", rcvdlen);
 			return printSJPort(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
+        case TTLMAP_COMMAND_TYPE:
+            printf("received (%d bytes) confirm of TTL MAP command\n", rcvdlen);
+			return printSJTTL(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
 		case COMMAND_ERROR_MSG:
             printf("received (%d bytes) error in command sent\n", rcvdlen);
 			return printSJError(&recvd[sizeof(blockInfo)], rcvdlen - sizeof(blockInfo));
@@ -306,6 +309,42 @@ bool SniffJokeCli::printSJSessionInfo(uint8_t *received, uint32_t rcvdlen)
     if(!i)
     {
         printf("none Session appears to be tracked at the moment\n");
+    }
+
+    return true;
+}
+
+bool SniffJokeCli::printSJTTL(uint8_t *received, uint32_t rcvdlen)
+{
+    struct ttl_record *tr;
+    uint32_t cnt = 1, i = 0;
+
+    while(i < rcvdlen)
+    {
+        struct tm *tm;
+        char access[SMALLBUF], nextprobe[SMALLBUF];
+
+        tr = (struct ttl_record *)&received[i];
+        
+        tm = localtime(const_cast<const time_t *>(&tr->access));
+        strftime(access, SMALLBUF, "%d %H:%M:%S", const_cast<const struct tm *>(tm) );
+
+        tm = localtime(const_cast<const time_t *>(&tr->nextprobe));
+        strftime(nextprobe, SMALLBUF, "%d %H:%M:%S", const_cast<const struct tm *>(tm) );
+
+        printf(" %02d) %s [%s %s] sent #%d recv #%d incoming TTL (%d) ext hop dist %d\n", 
+            cnt, 
+            inet_ntoa(*((struct in_addr *) &(tr->daddr))), 
+            access, nextprobe,
+            tr->sentprobe, tr->receivedprobe, tr->synackval, tr->ttlestimate
+        );
+        cnt++;
+        i += sizeof(struct ttl_record);
+    }
+
+    if(!i)
+    {
+        printf("none host seem to be hop-mapped the moment\n");
     }
 
     return true;

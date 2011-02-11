@@ -32,7 +32,8 @@
 #define SETPORT_COMMAND_TYPE        7
 #define SHOWPORT_COMMAND_TYPE       8
 #define INFO_COMMAND_TYPE           9
-#define COMMAND_ERROR_MSG          100
+#define TTLMAP_COMMAND_TYPE        10
+#define COMMAND_ERROR_MSG         100
 
 /* this contain the description of the entire block */
 struct command_ret
@@ -89,10 +90,16 @@ struct sex_record
     uint32_t injected_pktnumber;
 };
 
-/* port weight */
-#define NONE            0
-#define LIGHT           1
-#define NORMAL          2
-#define HEAVY           3
+/* this struct used for ttlmap command handling */
+struct ttl_record
+{
+    time_t access;
+    time_t nextprobe;
+    uint32_t daddr;
+    uint8_t sentprobe;
+    uint8_t receivedprobe;
+    uint8_t synackval;
+    uint8_t ttlestimate;
+};
 
 #endif /* SJ_INTERNALPROTOCOL_H */

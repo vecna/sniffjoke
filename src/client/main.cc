@@ -46,7 +46,8 @@ static void sjcli_version(const char *pname)
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
 	" saveconf\t\tdump config file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
-	" into\t\t\tget statistics about sniffjoke active sessions\n"\
+	" info\t\t\tget statistics about sniffjoke active sessions\n"\
+	" ttpmap\t\t\tshow the mapped hop count for destination\n"\
 	" debug\t\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
@@ -109,6 +110,7 @@ int main(int argc, char **argv)
 		{ "showport", 1 },
 		{ "quit",     1 },
 		{ "info",     1 },
+		{ "ttlmap",   1 },
 		{ "saveconf", 1 },
 		{ "debug",    2 }, 	    /* the log debuglevel */
 /*		{ "set",      4 }, */ 	/* set start_port end_port value */

@@ -367,10 +367,16 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
     {
         handleCmdInfo();
     }
+    else if (!memcmp(cmd, "ttlmap", strlen("ttlmap")))
+    {
+        handleCmdTTL();
+    }
     else if (!memcmp(cmd, "showport", strlen("showport")))
     {
         handleCmdShowport();
     }
+    /* no used handleCmdSet ATM */
+#if 0
     else if (!memcmp(cmd, "set", strlen("set")))
     {
         uint32_t start_port, end_port, value;
@@ -388,9 +394,10 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
     }
     else if (!memcmp(cmd, "clear", strlen("clear")))
     {
-        uint8_t clearPortValue = NONE;
+        uint8_t clearPortValue = FREQ_NONE;
         handleCmdSet(0, PORTNUMBER, clearPortValue);
     }
+#endif
     else if (!memcmp(cmd, "debug", strlen("debug")))
     {
         int32_t debuglevel;
@@ -477,8 +484,15 @@ void SniffJoke::handleCmdInfo(void)
     writeSJInfoDump(INFO_COMMAND_TYPE);
 }
 
+void SniffJoke::handleCmdTTL(void)
+{
+    LOG_VERBOSE("ttlmap command requested: dumping ttl tracking data");
+    writeSJTTLmap(TTLMAP_COMMAND_TYPE);
+}
+
 void SniffJoke::handleCmdShowport(void)
 {
+    LOG_VERBOSE("showport command requested: dumping port aggressivity and frequency");
     writeSJPortStat(SHOWPORT_COMMAND_TYPE);
 }
 
@@ -524,7 +538,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, HUGEBUF);
+    memset(io_buf, 0x00, sizeof(io_buf) );
 
     /* the first port work as initialization */
     prev_kind = userconf.runconfig.portconf[0];
@@ -535,7 +549,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
         {
             accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
-            if (accumulen > HUGEBUF)
+            if (accumulen > sizeof(io_buf) )
                 RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
 
             prev_kind = userconf.runconfig.portconf[i];
@@ -556,7 +570,7 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, HUGEBUF);
+    memset(io_buf, 0x00, sizeof(io_buf) );
 
     /* SJStatus is totally inspired by the IP/TCP options */
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf.runconfig.active), userconf.runconfig.active);
@@ -581,18 +595,46 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
 }
 
+void SniffJoke::writeSJTTLmap(uint8_t type)
+{
+    struct command_ret retInfo;
+    uint32_t accumulen = sizeof (retInfo);
+
+    /* clean the buffer and fix the starting pointer */
+    memset(io_buf, 0x00, sizeof(io_buf) );
+
+    for (TTLFocusMap::iterator it = ttlfocus_map->begin(); it != ttlfocus_map->end(); ++it)
+    {
+        if (accumulen > sizeof(io_buf) - sizeof(struct ttl_record))
+        {
+            LOG_ALL("Overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
+            break;
+        }
+
+        TTLFocus &TT= *((*it).second);
+        accumulen += appendSJTTLInfo(&io_buf[accumulen], TT);
+    }
+    retInfo.cmd_len = accumulen;
+    retInfo.cmd_type = type;
+    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+}
+
+
 void SniffJoke::writeSJInfoDump(uint8_t type)
 {
     struct command_ret retInfo;
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, HUGEBUF);
+    memset(io_buf, 0x00, sizeof(io_buf) );
 
     for (SessionTrackMap::iterator it = sessiontrack_map->begin(); it != sessiontrack_map->end(); ++it)
     {
-        if (accumulen > HUGEBUF)
-            RUNTIME_EXCEPTION("Overflow detected! io_buf for client-service communication too much short!?");
+        if (accumulen > sizeof(io_buf) - sizeof(struct sex_record))
+        {
+            LOG_ALL("Overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
+            break;
+        }
 
         SessionTrack &Tracked = *((*it).second);
         accumulen += appendSJSessionInfo(&io_buf[accumulen], Tracked);
@@ -606,7 +648,7 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
 void SniffJoke::writeSJProtoError(void)
 {
     struct command_ret retInfo;
-    memset(io_buf, 0x00, HUGEBUF);
+    memset(io_buf, 0x00, sizeof(io_buf) );
     retInfo.cmd_len = sizeof (retInfo);
     retInfo.cmd_type = COMMAND_ERROR_MSG;
     memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
@@ -668,7 +710,6 @@ uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP
     return (sizeof (pInfo));
 }
 
-/* follow the most "internal" method for io_buf creation, called from the methods before  */
 uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack & SexToDump)
 {
     struct sex_record sr;
@@ -685,4 +726,21 @@ uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack & SexToDump)
     memcpy((void *) p, (void *) &sr, sizeof (sr));
 
     return sizeof (sr);
+}
+
+uint32_t SniffJoke::appendSJTTLInfo(uint8_t *p, TTLFocus & TT)
+{
+    struct ttl_record ttlr;
+
+    ttlr.access = TT.access_timestamp;
+    ttlr.nextprobe = TT.next_probe_time;
+    ttlr.daddr = TT.daddr;
+    ttlr.sentprobe = TT.sent_probe;
+    ttlr.receivedprobe = TT.received_probe;
+    ttlr.synackval = TT.ttl_synack;
+    ttlr.ttlestimate = TT.ttl_estimate;
+
+    memcpy((void *) p, (void *) &ttlr, sizeof (ttlr));
+
+    return sizeof (ttlr);
 }

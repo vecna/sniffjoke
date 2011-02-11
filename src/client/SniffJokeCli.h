@@ -56,6 +56,7 @@ private:
 	bool printSJPort(uint8_t *, int32_t);
 	bool printSJError(uint8_t *, int32_t);
     bool printSJSessionInfo(uint8_t*, uint32_t);
+    bool printSJTTL(uint8_t *, uint32_t);
 
     char *fillWithSpace(uint16_t);
     char *fillWithSpace(uint16_t, uint16_t);

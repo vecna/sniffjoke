@@ -44,7 +44,8 @@ public:
 
 private:
     sj_cmdline_opts &opts;
-    uint8_t io_buf[HUGEBUF]; /* used to copy structs for command I/O */
+    /* used to copy structs for command I/O */
+    uint8_t io_buf[HUGEBUF * 4]; 
     UserConf userconf;
     Process proc;
     auto_ptr<NetIO> mitm;
@@ -81,6 +82,7 @@ private:
     void handleCmdSaveconf(void);
     void handleCmdStat(void);
     void handleCmdInfo(void);
+    void handleCmdTTL(void);
     void handleCmdShowport(void);
     void handleCmdSet(unsigned short, uint16_t, uint8_t);
     void handleCmdDebuglevel(int);
@@ -89,10 +91,12 @@ private:
     void writeSJStatus(uint8_t);
     void writeSJPortStat(uint8_t);
     void writeSJInfoDump(uint8_t);
+    void writeSJTTLmap(uint8_t);
     void writeSJProtoError(void);
 
     /* called by writeSJ* functions = answer building */
     uint32_t appendSJSessionInfo(uint8_t *, SessionTrack &);
+    uint32_t appendSJTTLInfo(uint8_t *, TTLFocus &);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
