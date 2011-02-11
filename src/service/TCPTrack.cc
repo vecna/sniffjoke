@@ -127,7 +127,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 
     /* as first is checked hackFrequency, because will be AGG_ALWAYS and mean that we are in 
      * testing mode with --only-olugin option */
-    if(hackFrequency & AGG_ALWAYS)
+    if (hackFrequency & AGG_ALWAYS)
         return true;
 
 #if 0
@@ -199,33 +199,37 @@ bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
         TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
         if (it != ttlfocus_map.end())
         {
+
             TTLFocus *ttlfocus = it->second;
+
+
             const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
             const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
             if (expired_ttl == exp_double_check)
             {
-
-                snprintf(pkt.debug_buf, sizeof (pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED, generated from %d",
-                         ttlfocus->puppet_port, expired_ttl);
-                pkt.selflog(__func__, pkt.debug_buf);
-
-                ttlfocus->received_probe++;
-
-                if (expired_ttl >= ttlfocus->ttl_estimate)
+                if (ttlfocus->status == TTL_BRUTEFORCE)
                 {
-                    /*
-                     * if we are changing our estimation due to an expired
-                     * we have to set status = TTL_UNKNOWN
-                     * this is important to permit recalibration.
-                     */
-                    ttlfocus->status = TTL_UNKNOWN;
-                    ttlfocus->ttl_estimate = expired_ttl + 1;
-                }
+                    snprintf(pkt.debug_buf, sizeof (pkt.debug_buf), "puppet %d Incoming ICMP EXPIRED, generated from %d",
+                             ttlfocus->puppet_port, expired_ttl);
+                    pkt.selflog(__func__, pkt.debug_buf);
 
-                snprintf(ttlfocus->debug_buf, sizeof (ttlfocus->debug_buf),
-                         "expired_ttl from ICMP: %d, puppet %u", expired_ttl, ttlfocus->puppet_port);
-                ttlfocus->selflog(__func__, NULL);
+                    ttlfocus->received_probe++;
+
+                    if (ttlfocus->probe_timeout)
+                        ttlfocus->probe_timeout = sj_clock + 2;
+
+                    if (expired_ttl >= ttlfocus->ttl_estimate)
+                    {
+                        /*
+                         * if we are changing our estimation due to an expired
+                         * we have to set status = TTL_UNKNOWN
+                         * this is important to permit recalibration.
+                         */
+                        ttlfocus->status = TTL_UNKNOWN;
+                        ttlfocus->ttl_estimate = expired_ttl + 1;
+                    }
+                }
 
                 /*
                  * the expired icmp scattered due to our ttl probes,
@@ -290,23 +294,26 @@ bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
 
         if (pkt.tcp->dest == htons(ttlfocus->puppet_port))
         {
-            snprintf(pkt.debug_buf, sizeof (pkt.debug_buf), "puppet %d Incoming SYN/ACK", ttlfocus->puppet_port);
-            pkt.selflog(__func__, pkt.debug_buf);
-
-            uint8_t discern_ttl = ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
-
-            ++ttlfocus->received_probe;
-
-            if (discern_ttl < ttlfocus->ttl_estimate)
+            if (ttlfocus->status == TTL_BRUTEFORCE)
             {
-                ttlfocus->ttl_estimate = discern_ttl;
-                ttlfocus->ttl_synack = ntohs(pkt.ip->ttl);
+                snprintf(pkt.debug_buf, sizeof (pkt.debug_buf), "puppet %d Incoming SYN/ACK", ttlfocus->puppet_port);
+                pkt.selflog(__func__, pkt.debug_buf);
+
+                uint8_t discern_ttl = ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
+
+                ++ttlfocus->received_probe;
+
+                if (discern_ttl < ttlfocus->ttl_estimate)
+                {
+                    ttlfocus->ttl_estimate = discern_ttl;
+                    ttlfocus->ttl_synack = pkt.ip->ttl;
+                }
+
+                ttlfocus->status = TTL_KNOWN;
+
+                ttlfocus->selflog(__func__, NULL);
+
             }
-
-            ttlfocus->status = TTL_KNOWN;
-
-            ttlfocus->selflog(__func__, NULL);
-
             /*
              * the syn+ack scattered due to our ttl probes,
              * so we can trasparently remove it
@@ -357,18 +364,6 @@ bool TCPTrack::analyzeOutgoing(Packet &pkt)
  */
 void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
 {
-    if (ttlfocus.sent_probe == MAX_TTLPROBE)
-    {
-        ttlfocus.status = TTL_UNKNOWN;
-        ttlfocus.sent_probe = 0;
-        ttlfocus.received_probe = 0;
-        ttlfocus.ttl_estimate = 0xFF;
-        ttlfocus.ttl_synack = 0;
-        /* retry scheduled in 10 minutes */
-        ttlfocus.next_probe_time = sj_clock + 600;
-        return;
-    }
-
     Packet *injpkt;
 
     switch (ttlfocus.status)
@@ -377,19 +372,39 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         ttlfocus.status = TTL_BRUTEFORCE;
         /* do not break, continue inside TTL_BRUTEFORCE */
     case TTL_BRUTEFORCE:
-        ++ttlfocus.sent_probe;
-        injpkt = new Packet(ttlfocus.probe_dummy);
-        injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-        injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
-        injpkt->ip->ttl = ttlfocus.sent_probe;
-        injpkt->tcp->source = htons(ttlfocus.puppet_port);
-        injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
+        if (ttlfocus.sent_probe == MAX_TTLPROBE)
+        {
+            if (!ttlfocus.probe_timeout)
+            {
+                ttlfocus.probe_timeout = sj_clock + 2;
+            }
+            else if (ttlfocus.probe_timeout < sj_clock)
+            {
+                ttlfocus.status = TTL_UNKNOWN;
+                ttlfocus.sent_probe = 0;
+                ttlfocus.received_probe = 0;
+                ttlfocus.ttl_estimate = 0xFF;
+                ttlfocus.ttl_synack = 0;
+                ttlfocus.next_probe_time = sj_clock + TTLPROBE_RETRY_ON_UNKNOWN;
+            }
+            break;
+        }
+        else
+        {
+            ++ttlfocus.sent_probe;
+            injpkt = new Packet(ttlfocus.probe_dummy);
+            injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
+            injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
+            injpkt->ip->ttl = ttlfocus.sent_probe;
+            injpkt->tcp->source = htons(ttlfocus.puppet_port);
+            injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 
-        injpkt->fixIpTcpSum();
-        p_queue.insert(*injpkt, SEND);
+            injpkt->fixIpTcpSum();
+            p_queue.insert(*injpkt, SEND);
 
-        snprintf(injpkt->debug_buf, sizeof (injpkt->debug_buf), "TTL_BRUTEFORCE probe# %u [ttl_estimate %u]",
-                 ttlfocus.sent_probe, ttlfocus.ttl_estimate);
+            snprintf(injpkt->debug_buf, sizeof (injpkt->debug_buf), "TTL_BRUTEFORCE probe# %u [ttl_estimate %u]",
+                     ttlfocus.sent_probe, ttlfocus.ttl_estimate);
+        }
 
         /* the next ttl probe schedule is forced in the next cycle */
         ttlfocus.next_probe_time = sj_clock;
@@ -772,7 +787,7 @@ void TCPTrack::analyzePacketQueue()
             else if (pkt->proto == TCP)
             {
                 /* analysis of the incoming TCP packet for check if TTL we are receiving is
-                 * changed or not. is not the correct solution for detect network topology
+                 * changed or not. this isn't the correct solution to detect network topology
                  * change, but we need it! */
                 analyzeIncomingTCPTTL(*pkt);
 
@@ -866,8 +881,10 @@ bypass_queue_analysis:
      * KEEP packets will scatter a new ttlfocus at the next.
      */
 
+    /*
     sessiontrack_map.manage();
     ttlfocus_map.manage();
+     */
 
     /*
      * here we verify the need of ttl probes for active destinations
@@ -876,7 +893,7 @@ bypass_queue_analysis:
     {
         TTLFocus &ttlfocus = *((*it).second);
         if ((ttlfocus.status != TTL_KNOWN)
-                && (ttlfocus.access_timestamp > sj_clock - 30)
+                && (ttlfocus.access_timestamp > (sj_clock - 30))
                 && (ttlfocus.next_probe_time <= sj_clock))
         {
             injectTTLProbe(*(*it).second);

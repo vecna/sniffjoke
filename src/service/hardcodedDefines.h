@@ -65,8 +65,9 @@
 // ( http://freeworld.thc.org/root/phun/unmaintain.html )
 
 /* the maximum value of bruteforced TTL */
-#define MAX_TTLPROBE            35
-#define STARTING_ARB_TTL        46
+#define MAX_TTLPROBE                35
+#define STARTING_ARB_TTL            46
+#define TTLPROBE_RETRY_ON_UNKNOWN   600    /* seconds (10 MINUTES) */
 
 /*
   sniffoke make use of two MTU values, one real an one fake

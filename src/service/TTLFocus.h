@@ -44,6 +44,7 @@ public:
     /* timing variables */
     time_t access_timestamp; /* access timestamp used to decretee expiry */
     time_t next_probe_time; /* timeout value used for ttlprobe schedule */
+    time_t probe_timeout;
 
     /* status variables */
     ttlsearch_t status; /* status of the traceroute */
