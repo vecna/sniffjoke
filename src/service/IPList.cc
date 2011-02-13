@@ -45,8 +45,7 @@ IPList::~IPList()
 void IPList::selflog(const char *func, const char *lmsg) const
 {
     LOG_SESSION("%s: IP %s attribute a(%02x) b(%02x) c(%02x)",
-                lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c
-                );
+                lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c);
 }
 
 IPListMap::IPListMap(const char* ipConfFile)
@@ -87,8 +86,7 @@ IPList& IPListMap::add(uint32_t ip, uint8_t a, uint8_t b, uint8_t c)
 
 bool IPListMap::isPresent(uint32_t ip)
 {
-    IPListMap::iterator it = find(ip);
-    return (it != end());
+    return (find(ip) != end());
 }
 
 void IPListMap::load()
@@ -136,9 +134,7 @@ void IPListMap::dump()
     FILE *IPfileP;
 
     if ((IPfileP = fopen(dumpfname, "w")) == NULL)
-    {
         LOG_ALL("unable to open %s: %s", dumpfname, strerror(errno));
-    }
 
     for (IPListMap::iterator it = begin(); it != end(); ++it)
     {

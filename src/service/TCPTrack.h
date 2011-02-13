@@ -56,6 +56,8 @@ private:
     void injectTTLProbe(TTLFocus &);
     void injectHack(Packet &);
     bool lastPktFix(Packet &);
+    
+    void execTTLBruteforces();
 
 public:
 

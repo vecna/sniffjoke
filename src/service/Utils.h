@@ -60,9 +60,9 @@ enum size_buf_t
 #define VERBOSE_LEVEL_NAME  "verbose"
 #define DEBUG_LEVEL         4
 #define DEBUG_LEVEL_NAME    "debug"
-#define SESSION_LEVEL      5
+#define SESSION_LEVEL       5
 #define SESSION_LEVEL_NAME  "sessions"
-#define PACKET_LEVEL       6
+#define PACKET_LEVEL        6
 #define PACKET_LEVEL_NAME  "packets"
 
 /*

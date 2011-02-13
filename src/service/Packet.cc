@@ -524,6 +524,11 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
     return injected;
 }
 
+void Packet::selflog(const char *func) const
+{
+    
+}
+
 void Packet::selflog(const char *func, const char *loginfo) const
 {
     if (debug.level() == SUPPRESS_LEVEL)

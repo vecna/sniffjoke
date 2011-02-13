@@ -149,6 +149,7 @@ public:
     bool Inject_TCPOPT(bool, bool);
 
     /* utilities */
+    void selflog(const char *) const;
     void selflog(const char *, const char *) const;
     char debug_buf[LARGEBUF];
 };

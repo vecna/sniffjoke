@@ -202,7 +202,6 @@ bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
 
             TTLFocus *ttlfocus = it->second;
 
-
             const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
             const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
 
@@ -410,10 +409,28 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         ttlfocus.next_probe_time = sj_clock;
 
         injpkt->selflog(__func__, injpkt->debug_buf);
+        SELFLOG(injpkt, "");
         break;
     case TTL_KNOWN:
         /* TODO: Handle the KNOWN status; find a way to detect network topology changes. */
         break;
+    }
+}
+
+void TCPTrack::execTTLBruteforces()
+{
+    /*
+     * here we verify the need of ttl probes for active destinations
+     */
+    for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it)
+    {
+        TTLFocus &ttlfocus = *((*it).second);
+        if ((ttlfocus.status != TTL_KNOWN)                          /* 1) the ttl is BRUTEFORCE or UNKNOWN */
+                && (ttlfocus.access_timestamp > (sj_clock - 30))    /* 2) the destination it's used in the last 30 seconds */
+                && (ttlfocus.next_probe_time <= sj_clock))          /* 3) the next probe time it's passed */
+        {
+            injectTTLProbe(*(*it).second);
+        }
     }
 }
 
@@ -671,13 +688,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     if (pkt.wtf == GUILTY)
     {
         if (ISSET_CHECKSUM(pkt.choosableScramble))
-        {
             pkt.corruptSum();
-        }
         else
-        {
             goto drop_packet;
-        }
     }
 
     pkt.selflog(__func__, "Packet ready to be send");
@@ -796,7 +809,7 @@ void TCPTrack::analyzePacketQueue()
         }
         else /* pkt->source == TUNNEL */
         {
-            /* the check is based in blacklist, whitelist. the port and protocol is checked inside the
+            /* the check is based  blacklist, whitelist. the port and protocol is checked inside the
              * "Condition(" imported function. so, every session accepted after this point will be 
              * ttl bruteforced and mangled by weird IP/TCP options */
             if (pkt->proto == TCP)
@@ -881,22 +894,8 @@ bypass_queue_analysis:
      * KEEP packets will scatter a new ttlfocus at the next.
      */
 
-    /*
     sessiontrack_map.manage();
     ttlfocus_map.manage();
-     */
 
-    /*
-     * here we verify the need of ttl probes for active destinations
-     */
-    for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it)
-    {
-        TTLFocus &ttlfocus = *((*it).second);
-        if ((ttlfocus.status != TTL_KNOWN)
-                && (ttlfocus.access_timestamp > (sj_clock - 30))
-                && (ttlfocus.next_probe_time <= sj_clock))
-        {
-            injectTTLProbe(*(*it).second);
-        }
-    }
+    execTTLBruteforces();
 }
