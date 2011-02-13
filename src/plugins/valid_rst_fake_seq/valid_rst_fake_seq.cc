@@ -53,7 +53,7 @@ public:
 		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
 		pkt->tcp->psh = 0;
 		
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->tcppayloadResize(0);
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = INNOCENT;

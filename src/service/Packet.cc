@@ -47,8 +47,6 @@ icmp(NULL)
 {
     memcpy(&(pbuf[0]), buff, size);
     updatePacketMetadata();
-
-    memset(debug_buf, 0x00, sizeof (debug_buf));
 }
 
 Packet::Packet(const Packet& pkt) :
@@ -71,7 +69,6 @@ datalen(0),
 icmp(NULL)
 {
     updatePacketMetadata();
-    memset(debug_buf, 0x00, sizeof (debug_buf));
 }
 
 void Packet::mark(source_t source, evilbit_t morality)
@@ -169,7 +166,7 @@ void Packet::updatePacketMetadata()
     }
 }
 
-uint32_t Packet::half_cksum(const void* data, uint16_t len)
+uint32_t Packet::computeHalfSum(const void* data, uint16_t len)
 {
     const uint16_t *usdata = (uint16_t *) data;
     const uint16_t *end = (uint16_t *) data + (len / sizeof (uint16_t));
@@ -184,7 +181,7 @@ uint32_t Packet::half_cksum(const void* data, uint16_t len)
     return sum;
 }
 
-uint16_t Packet::compute_sum(uint32_t sum)
+uint16_t Packet::computeSum(uint32_t sum)
 {
     sum = (sum >> 16) + (sum & 0xFFFF);
     sum += (sum >> 16);
@@ -197,8 +194,8 @@ void Packet::fixIpSum(void)
     uint32_t sum;
 
     ip->check = 0;
-    sum = half_cksum((const void *) ip, iphdrlen);
-    ip->check = compute_sum(sum);
+    sum = computeHalfSum((const void *) ip, iphdrlen);
+    ip->check = computeSum(sum);
 }
 
 void Packet::fixIpTcpSum(void)
@@ -209,18 +206,18 @@ void Packet::fixIpTcpSum(void)
     const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
 
     tcp->check = 0;
-    sum = half_cksum((const void *) &ip->saddr, 8);
+    sum = computeHalfSum((const void *) &ip->saddr, 8);
     sum += htons(IPPROTO_TCP + l4len);
-    sum += half_cksum((const void *) tcp, l4len);
-    tcp->check = compute_sum(sum);
+    sum += computeHalfSum((const void *) tcp, l4len);
+    tcp->check = computeSum(sum);
 }
 
 void Packet::fixSum(void)
 {
-    if (ipfragment == false && proto == TCP)
-        fixIpTcpSum();
-    else
+    if (ipfragment != false || proto != TCP)
         fixIpSum();
+    else
+        fixIpTcpSum();
 }
 
 void Packet::corruptSum(void)
@@ -235,36 +232,33 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 {
     if (wtf == JUDGEUNASSIGNED)
     {
-        LOG_ALL("selfIntegrityCheck: in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+        LOG_ALL("in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
         goto errorinfo;
     }
 
     if (proto == PROTOUNASSIGNED)
     {
-        LOG_ALL("selfIntegrityCheck: in %s not set \"proto\" field, required", pluginName);
+        LOG_ALL("in %s not set \"proto\" field, required", pluginName);
         goto errorinfo;
     }
 
     if (position == POSITIONUNASSIGNED)
     {
-        LOG_ALL("selfIntegrityCheck: in %s not set \"position\" field, required", pluginName);
+        LOG_ALL("in %s not set \"position\" field, required", pluginName);
         goto errorinfo;
     }
 
     return true;
 
 errorinfo:
-    LOG_DEBUG("Documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
+    LOG_DEBUG("documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
     return false;
 }
 
-void Packet::IPHDR_resize(uint8_t size)
+void Packet::iphdrResize(uint8_t size)
 {
     if (size == iphdrlen)
         return;
-
-    if (ipfragment == true)
-        LOG_PACKET("WARNING: it's not possible to call this function on a ip fragment");
 
     const uint16_t pktlen = pbuf.size();
 
@@ -295,15 +289,13 @@ void Packet::IPHDR_resize(uint8_t size)
     updatePacketMetadata();
 }
 
-void Packet::TCPHDR_resize(uint8_t size)
+void Packet::tcphdrResize(uint8_t size)
 {
     if (size == tcphdrlen)
         return;
 
     if (ipfragment == true)
-    {
-        LOG_PACKET("WARNING: it's not possible to call this function on a ip fragment");
-    }
+        RUNTIME_EXCEPTION("it's not possible to call this function on a ip fragment");
 
     const uint16_t pktlen = pbuf.size();
 
@@ -334,7 +326,7 @@ void Packet::TCPHDR_resize(uint8_t size)
     updatePacketMetadata();
 }
 
-void Packet::TCPPAYLOAD_resize(uint16_t size)
+void Packet::tcppayloadResize(uint16_t size)
 {
     if (size == datalen)
         return;
@@ -356,13 +348,13 @@ void Packet::TCPPAYLOAD_resize(uint16_t size)
     updatePacketMetadata();
 }
 
-void Packet::TCPPAYLOAD_fillrandom()
+void Packet::tcppayloadRandomFill()
 {
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(payload, diff);
 }
 
-bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
+bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 {
 
     bool injected = false;
@@ -373,8 +365,7 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
 
     uint8_t target_iphdrlen = MAXIPHEADER;
 
-    snprintf(debug_buf, sizeof (debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
-    selflog(__func__, debug_buf);
+    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
 
     if (strip_previous)
     {
@@ -409,7 +400,7 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
     target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
 
     if (target_iphdrlen != iphdrlen)
-        IPHDR_resize(target_iphdrlen);
+        iphdrResize(target_iphdrlen);
 
     try
     {
@@ -425,7 +416,7 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
     }
     catch (exception &e)
     {
-        selflog(__func__, "ip injection is not possibile");
+        SELFLOG("ip injection is not possibile");
     }
 
     if (target_iphdrlen != actual_iphdrlen)
@@ -433,16 +424,15 @@ bool Packet::Inject_IPOPT(bool corrupt, bool strip_previous)
         /* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
            to inject options not aligned to 4 */
         actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
-        IPHDR_resize(actual_iphdrlen);
+        iphdrResize(actual_iphdrlen);
     }
 
-    snprintf(debug_buf, sizeof (debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
-    selflog(__func__, debug_buf);
+    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
 
     return injected;
 }
 
-bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
+bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
 {
     bool injected = false;
 
@@ -452,8 +442,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
 
     uint8_t target_tcphdrlen = 0;
 
-    snprintf(debug_buf, sizeof (debug_buf), "BEFORE strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
-    selflog(__func__, debug_buf);
+    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
 
     if (strip_previous)
     {
@@ -490,7 +479,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
     target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
 
     if (target_tcphdrlen != tcphdrlen)
-        TCPHDR_resize(target_tcphdrlen);
+        tcphdrResize(target_tcphdrlen);
 
     try
     {
@@ -507,7 +496,7 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
     }
     catch (exception &e)
     {
-        selflog(__func__, "tcp injection is not possibile");
+        SELFLOG("tcp injection is not possibile");
     }
 
     if (target_tcphdrlen != actual_tcphdrlen)
@@ -515,24 +504,24 @@ bool Packet::Inject_TCPOPT(bool corrupt, bool strip_previous)
         /* tcphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
            to inject options not aligned to 4 */
         actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
-        TCPHDR_resize(actual_tcphdrlen);
+        tcphdrResize(actual_tcphdrlen);
     }
 
-    snprintf(debug_buf, sizeof (debug_buf), "AFTER strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
-    selflog(__func__, debug_buf);
+    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
 
     return injected;
 }
 
-void Packet::selflog(const char *func) const
-{
-    
-}
-
-void Packet::selflog(const char *func, const char *loginfo) const
+void Packet::selflog(const char *func, const char *format, ...) const
 {
     if (debug.level() == SUPPRESS_LEVEL)
         return;
+
+    char loginfo[LARGEBUF];
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprintf(loginfo, sizeof (loginfo), format, arguments);
+    va_end(arguments);
 
     const char *evilstr, *wtfstr, *sourcestr, *p;
     char protoinfo[MEDIUMBUF], saddr[MEDIUMBUF], daddr[MEDIUMBUF];
@@ -556,7 +545,7 @@ void Packet::selflog(const char *func, const char *loginfo) const
 
     switch (wtf)
     {
-    case PRESCRIPTION: wtfstr = "TTLexpire";
+    case PRESCRIPTION: wtfstr = "ttlexpire";
         break;
     case INNOCENT: wtfstr = "innocent";
         break;
@@ -570,13 +559,13 @@ void Packet::selflog(const char *func, const char *loginfo) const
 
     switch (source)
     {
-    case TUNNEL: sourcestr = "Tunnel";
+    case TUNNEL: sourcestr = "tunnel";
         break;
-    case LOCAL: sourcestr = "Local";
+    case LOCAL: sourcestr = "local";
         break;
-    case NETWORK: sourcestr = "Network";
+    case NETWORK: sourcestr = "network";
         break;
-    case TTLBFORCE: sourcestr = "TTL Bforce";
+    case TTLBFORCE: sourcestr = "ttl bruteforce";
         break;
     default: case SOURCEUNASSIGNED: sourcestr = "UNASSIGNED-src";
         break;
@@ -609,23 +598,17 @@ void Packet::selflog(const char *func, const char *loginfo) const
                      );
             break;
         case OTHER_IP:
-            snprintf(protoinfo, sizeof (protoinfo), "Other proto: %d", ip->protocol);
+            snprintf(protoinfo, sizeof (protoinfo), "other proto: %d", ip->protocol);
             break;
         case PROTOUNASSIGNED:
             snprintf(protoinfo, sizeof (protoinfo), "protocol unassigned! value %d", ip->protocol);
             break;
         default:
-            LOG_ALL("Invalid and impossibile %s:%d", __FILE__, __LINE__);
-            RUNTIME_EXCEPTION("");
+            RUNTIME_EXCEPTION("BUG: %s:%d", __FILE__, __LINE__);
             break;
         }
 
-        LOG_PACKET("%s %s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-                   func, debug_buf, evilstr, wtfstr, sourcestr,
-                   saddr, daddr,
-                   protoinfo, ip->ttl, loginfo
-                   );
+        LOG_PACKET("%s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+                   func, evilstr, wtfstr, sourcestr, saddr, daddr, protoinfo, ip->ttl, loginfo);
     }
-
-    memset((void*) debug_buf, 0x00, sizeof (debug_buf));
 }

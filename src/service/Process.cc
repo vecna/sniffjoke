@@ -252,7 +252,7 @@ void Process::unlinkPidfile(bool killOther)
 __unlinkPidfile:
 
     if (unlink(SJ_PIDFILE))
-        RUNTIME_EXCEPTION("weird, I'm able to open but not unlink %s: %s", SJ_PIDFILE, strerror(errno));
+        RUNTIME_EXCEPTION("weird, I'm able to open but not to unlink %s: %s", SJ_PIDFILE, strerror(errno));
 
     LOG_DEBUG("pid %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
 }

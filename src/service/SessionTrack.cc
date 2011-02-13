@@ -35,12 +35,32 @@ dport(pkt.tcp->dest),
 packet_number(0),
 injected_pktnumber(0)
 {
-    selflog(__func__, NULL);
+    SELFLOG("");
 }
 
 SessionTrack::~SessionTrack()
 {
-    selflog(__func__, NULL);
+    SELFLOG("");
+}
+
+void SessionTrack::selflog(const char *func, const char *format, ...) const
+{
+    if (debug.level() == SUPPRESS_LEVEL)
+        return;
+
+    char loginfo[LARGEBUF];
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprintf(loginfo, sizeof (loginfo), format, arguments);
+    va_end(arguments);
+
+    LOG_SESSION("%s sport %d saddr %s dport %u, #pkt %d #inj %d: %s",
+                func, ntohs(sport),
+                inet_ntoa(*((struct in_addr *) &daddr)),
+                ntohs(dport),
+                packet_number, injected_pktnumber,
+                loginfo
+                );
 }
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
@@ -63,25 +83,6 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
                 return false;
         }
     }
-}
-
-void SessionTrack::selflog(const char *func, const char *lmsg) const
-{
-    if (debug.level() == SUPPRESS_LEVEL)
-        return;
-
-    LOG_SESSION("%s sport %d saddr %s dport %u, #pkt %d #inj %d: %s",
-                func, ntohs(sport),
-                inet_ntoa(*((struct in_addr *) &daddr)),
-                ntohs(dport),
-                packet_number, injected_pktnumber,
-                lmsg != NULL ? lmsg : "(no message)"
-                );
-}
-
-void SessionTrack::incrementInjected(void)
-{
-    injected_pktnumber++;
 }
 
 SessionTrackMap::SessionTrackMap()
@@ -122,6 +123,7 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
 
 struct sessiontrack_timestamp_comparison
 {
+
     bool operator() (SessionTrack *i, SessionTrack * j)
     {
         return ( i->access_timestamp < j->access_timestamp);
@@ -140,7 +142,9 @@ void SessionTrackMap::manage()
                 erase(it++);
             }
             else
+            {
                 it++;
+            }
         }
     }
 
@@ -176,7 +180,9 @@ void SessionTrackMap::manage()
         while (++index != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2);
 
 
-        do delete tmp[index]; while (++index != map_size);
+        do
+            delete tmp[index];
+        while (++index != map_size);
 
         delete[] tmp;
     }

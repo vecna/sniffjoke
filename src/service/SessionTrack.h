@@ -46,9 +46,7 @@ public:
     ~SessionTrack();
 
     /* utilities */
-    void selflog(const char *, const char *) const;
-    void incrementInjected(void);
-    /* no personal buffer used in selflog, maybe in the future */
+    void selflog(const char *func, const char *format, ...) const;
 };
 
 class SessionTrackKey

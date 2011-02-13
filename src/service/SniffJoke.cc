@@ -170,21 +170,22 @@ void SniffJoke::run()
 
 void SniffJoke::setupDebug()
 {
+        debug.debuglevel = userconf.runconfig.debug_level;
         if (!opts.go_foreground)
         {
             LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles will be used instead.");
 
-            debug.debuglevel = userconf.runconfig.debug_level;
             debug.setLogstream(FILE_LOG);
             debug.setSessionLogstream(FILE_LOG_SESSION);
             debug.setPacketLogstream(FILE_LOG_PACKET);
-            if (!debug.resetLevel())
-                RUNTIME_EXCEPTION("opening log files");
         }
         else
         {
-            LOG_ALL("foreground logging enable, use ^c for quit SniffJoke");
+            LOG_ALL("foreground logging enabled, use ^c for quit SniffJoke");
         }
+
+        if (!debug.resetLevel())
+            RUNTIME_EXCEPTION("executing debug resetLevel");
 }
 
 /* this function must not close the FILE *desc, because in the destructor of the
@@ -222,15 +223,18 @@ void SniffJoke::setupAdminSocket()
     int tmp;
     struct sockaddr_in in_service;
 
-    if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         RUNTIME_EXCEPTION("unable to open UDP socket: %s",
                           strerror(errno));
+    }
 
     memset(&in_service, 0x00, sizeof (in_service));
+
     /* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
-    if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr))
+    if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr)) {
         RUNTIME_EXCEPTION("unable to accept hostname (%s): only IP address allow",
                           userconf.runconfig.admin_address);
+    }
 
     in_service.sin_family = AF_INET;
     in_service.sin_port = htons(userconf.runconfig.admin_port);
@@ -241,6 +245,7 @@ void SniffJoke::setupAdminSocket()
         RUNTIME_EXCEPTION("unable to bind UDP socket %s:%d: %s",
                           userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno));
     }
+
     LOG_VERBOSE("bind %u UDP port in %s ip interface for administration",
                 userconf.runconfig.admin_port, userconf.runconfig.admin_address);
 
@@ -268,9 +273,7 @@ void SniffJoke::handleAdminSocket()
     if ((recvfrom(admin_socket, r_buf, sizeof (r_buf), 0, (sockaddr*) & fromaddr, (socklen_t *) & fromlen)) == -1)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
             return;
-        }
         RUNTIME_EXCEPTION("unable to receive from local socket: %s",
                           strerror(errno));
     }
@@ -297,9 +300,7 @@ void SniffJoke::handleAdminSocket()
         fcntl(admin_socket, F_SETFL, admin_socket_flags_nonblocking);
     }
     else
-    {
-        LOG_ALL("BUG: command handling of [%s] don't return any answer", r_buf);
-    }
+        RUNTIME_EXCEPTION("BUG: command handling of [%s] doesn't return any answer", r_buf);
 
     /* delayed execution of requested commands (only debug level change ATM) */
     if (debug.debuglevel != userconf.runconfig.debug_level)
@@ -308,7 +309,7 @@ void SniffJoke::handleAdminSocket()
         debug.debuglevel = userconf.runconfig.debug_level;
 
         if (!debug.resetLevel())
-            RUNTIME_EXCEPTION("Changing logfile settings");
+            RUNTIME_EXCEPTION("changing logfile settings");
     }
 }
 
@@ -410,7 +411,7 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
     }
     else
     {
-        LOG_ALL("Invalid command received");
+        LOG_ALL("invalid command received");
     }
 
     LOG_ALL("handled command (%s): answer %d bytes length", cmd, *psize);
@@ -586,9 +587,6 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location_name), userconf.runconfig.location_name);
-    /**
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHROOT, strlen(userconf.runconfig.working_dir), userconf.runconfig.working_dir);
-     **/
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = commandReceived;
@@ -607,7 +605,7 @@ void SniffJoke::writeSJTTLmap(uint8_t type)
     {
         if (accumulen > sizeof(io_buf) - sizeof(struct ttl_record))
         {
-            LOG_ALL("Overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
+            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
             break;
         }
 
@@ -632,7 +630,7 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
     {
         if (accumulen > sizeof(io_buf) - sizeof(struct sex_record))
         {
-            LOG_ALL("Overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
+            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
             break;
         }
 

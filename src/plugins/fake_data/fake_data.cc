@@ -79,7 +79,7 @@ public:
 				pkt->tcp->urg = 0;
 			}
 
-			pkt->TCPPAYLOAD_fillrandom();
+			pkt->tcppayloadRandomFill();
 			
 			if(pkts == 2) /* first packet */
 				pkt->position = ANTICIPATION;

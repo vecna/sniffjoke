@@ -76,8 +76,7 @@ public:
     static bool timestampComparison(TTLFocus &i, TTLFocus &j);
 
     /* utilities */
-    void selflog(const char *, const char *) const;
-    char debug_buf[LARGEBUF];
+    void selflog(const char *func, const char *format, ...) const;
 };
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*>

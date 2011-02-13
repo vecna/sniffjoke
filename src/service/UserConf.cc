@@ -225,7 +225,7 @@ void UserConf::autodetectGWMACAddress()
     memset(cmd, 0x00, sizeof (cmd));
     snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50", runconfig.gw_ip_addr);
 
-    LOG_ALL("detecting mac address of gateway with %s", cmd);
+    LOG_ALL("detecting mac address of gateway with [%s]", cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
@@ -270,7 +270,7 @@ void UserConf::autodetectFirstAvailableTunnelInterface()
 /* this method is called by SniffJoke.cc */
 void UserConf::networkSetup(void)
 {
-    LOG_DEBUG("Initializing network for service/child: %d", getpid());
+    LOG_DEBUG("initializing network for service/child: %d", getpid());
 
     /* autodetect is always used, we should not trust the preloaded configuration */
     autodetectLocalInterface();
@@ -283,6 +283,7 @@ void UserConf::networkSetup(void)
     LOG_VERBOSE("* default gateway mac address: %s", runconfig.gw_mac_str);
     LOG_VERBOSE("* default gateway ip address: %s", runconfig.gw_ip_addr);
     LOG_VERBOSE("* first available tunnel interface: tun%d", runconfig.tun_number);
+    sleep(1);
 }
 
 /*

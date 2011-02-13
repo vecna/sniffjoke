@@ -64,10 +64,10 @@ public:
 		
 		if(diff > 200) {
 			diff = random() % 200;
-			pkt->TCPPAYLOAD_resize(diff);
+			pkt->tcppayloadResize(diff);
 		}
 	
-		pkt->TCPPAYLOAD_fillrandom();
+		pkt->tcppayloadRandomFill();
 
 		pkt->position = ANY_POSITION;
 		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);

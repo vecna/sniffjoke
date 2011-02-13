@@ -46,9 +46,9 @@ ttl_estimate(0xff),
 ttl_synack(0),
 probe_dummy(pkt)
 {
-    probe_dummy.IPHDR_resize(sizeof (struct iphdr));
-    probe_dummy.TCPHDR_resize(sizeof (struct tcphdr));
-    probe_dummy.TCPPAYLOAD_resize(0);
+    probe_dummy.iphdrResize(sizeof (struct iphdr));
+    probe_dummy.tcphdrResize(sizeof (struct tcphdr));
+    probe_dummy.tcppayloadResize(0);
     probe_dummy.tcp->fin = 0;
     probe_dummy.tcp->syn = 1;
     probe_dummy.tcp->rst = 0;
@@ -78,12 +78,12 @@ probe_dummy(cpy.probe_dummy, sizeof (cpy.probe_dummy))
 {
     selectPuppetPort();
 
-    selflog(__func__, NULL);
+    SELFLOG("");
 }
 
 TTLFocus::~TTLFocus()
 {
-    selflog(__func__, NULL);
+    SELFLOG("");
 }
 
 void TTLFocus::selectPuppetPort()
@@ -95,31 +95,33 @@ void TTLFocus::selectPuppetPort()
         puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
 }
 
-void TTLFocus::selflog(const char *func, const char *umsg) const
+void TTLFocus::selflog(const char *func, const char *format, ...) const
 {
     if (debug.level() == SUPPRESS_LEVEL)
         return;
 
-    const char *status_name;
+    char loginfo[LARGEBUF];
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprintf(loginfo, sizeof (loginfo), format, arguments);
+    va_end(arguments);
+
+    const char *status_name = "";
 
     switch (status)
     {
-    case TTL_KNOWN: status_name = "TTL known";
+    case TTL_KNOWN: status_name = "KNOWN";
         break;
-    case TTL_BRUTEFORCE: status_name = "BRUTEFORCE running";
+    case TTL_BRUTEFORCE: status_name = "BRUTEFORCE";
         break;
-    case TTL_UNKNOWN: status_name = "TTL UNKNOWN";
-        break;
-    default: status_name = "badly unset TTL status";
+    case TTL_UNKNOWN: status_name = "UNKNOWN";
         break;
     }
 
     LOG_SESSION("%s (%s) [%s] m_sent %d, m_recv %d ttl_estimate %u synackttl %u [%s]",
                 func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe,
-                received_probe, ttl_estimate, ttl_synack, umsg
+                received_probe, ttl_estimate, ttl_synack, loginfo
                 );
-
-    memset((void*) debug_buf, 0x00, sizeof (debug_buf));
 }
 
 TTLFocusMap::TTLFocusMap()
@@ -211,7 +213,8 @@ void TTLFocusMap::manage()
         }
         while (++index != TTLFOCUSMAP_MEMORY_THRESHOLD / 2);
 
-        do delete tmp[index];
+        do
+            delete tmp[index];
         while (++index != map_size);
 
         delete[] tmp;

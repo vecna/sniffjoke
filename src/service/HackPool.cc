@@ -31,9 +31,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
 
     pluginHandler = dlopen(plugabspath, RTLD_NOW);
     if (pluginHandler == NULL)
-    {
         RUNTIME_EXCEPTION("unable to load plugin %s: %s", plugabspath, dlerror());
-    }
 
     /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
 
@@ -113,10 +111,9 @@ runconfig(runcfg)
             RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
         *comma = 0x00;
+        comma++;
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s", INSTALL_LIBDIR, onlyplugin_cpy);
-
-        comma++;
 
         if (!(supportedScramble = parseScrambleList(comma)))
             RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
@@ -129,9 +126,7 @@ runconfig(runcfg)
     }
 
     if (!size())
-    {
         RUNTIME_EXCEPTION("loaded correctly 0 plugins");
-    }
     else
         LOG_ALL("loaded correctly %d plugins", size());
 }
@@ -228,9 +223,7 @@ void HackPool::parseEnablerFile()
     snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
 
     if ((plugfile = fopen(enablerabspath, "r")) == NULL)
-    {
         RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
-    }
 
     uint8_t line = 0;
     do
@@ -270,9 +263,9 @@ void HackPool::parseEnablerFile()
         /* cutted the scramble option list, is copyed the full path of the plugin */
         if (enablerentry[0] == '/')
         {
+            snprintf(plugabspath, sizeof (plugabspath), "%s", enablerentry);
             LOG_ALL("only relative path is ufficially supported, but we are far ahead: 'ur lucky day about %s",
                     enablerentry);
-            snprintf(plugabspath, sizeof (plugabspath), "%s", enablerentry);
         }
         else
         {

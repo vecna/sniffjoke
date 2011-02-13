@@ -128,8 +128,8 @@ public:
     void mark(source_t, judge_t, evilbit_t);
 
     /* IP/TCP checksum functions */
-    uint32_t half_cksum(const void *, uint16_t);
-    uint16_t compute_sum(uint32_t);
+    uint32_t computeHalfSum(const void *, uint16_t);
+    uint16_t computeSum(uint32_t);
     void fixIpSum(void);
     void fixIpTcpSum(void);
     void fixSum(void);
@@ -139,19 +139,17 @@ public:
     bool selfIntegrityCheck(const char *);
 
     /* functions required in TCP/IP packets forging */
-    void IPHDR_resize(uint8_t);
-    void TCPHDR_resize(uint8_t);
-    void TCPPAYLOAD_resize(uint16_t);
-    void TCPPAYLOAD_fillrandom(void);
+    void iphdrResize(uint8_t);
+    void tcphdrResize(uint8_t);
+    void tcppayloadResize(uint16_t);
+    void tcppayloadRandomFill(void);
 
     /* MALFORMED hacks and distortion of INNOCENT packets */
-    bool Inject_IPOPT(bool, bool);
-    bool Inject_TCPOPT(bool, bool);
+    bool injectIPOpts(bool, bool);
+    bool InjectTCPOpts(bool, bool);
 
     /* utilities */
-    void selflog(const char *) const;
-    void selflog(const char *, const char *) const;
-    char debug_buf[LARGEBUF];
+    void selflog(const char *, const char *, ...) const;
 };
 
 /* definition for port Frequency and Aggressiviy, or-red in a 16 bit field 

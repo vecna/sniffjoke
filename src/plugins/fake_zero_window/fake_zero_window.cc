@@ -55,7 +55,7 @@ public:
 		 * with RST and FIN sets, is dropped by a remote Linux OS -- v */
 		pkt->tcp->window = 0;
 
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->tcppayloadResize(0);
 		pkt->tcp->psh = 0;
 
 		pkt->position = ANY_POSITION;

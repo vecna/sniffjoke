@@ -49,7 +49,7 @@ public:
 		pkt->tcp->psh = 0;
 		pkt->tcp->fin = 1;
 
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->tcppayloadResize(0);
 
 		pkt->position = ANTICIPATION;
 		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);

@@ -246,7 +246,7 @@ sniffjoke_help:
     }
     catch (runtime_error &exception)
     {
-        LOG_ALL("Runtime exception, going shutdown: %s", exception.what());
+        LOG_ALL("[runtime exception] going shutdown: %s", exception.what());
 
         sniffjoke.reset();
         return 0;

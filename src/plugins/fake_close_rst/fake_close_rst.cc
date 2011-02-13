@@ -50,7 +50,7 @@ public:
 		pkt->tcp->rst = 1;
 		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
 		
-		pkt->TCPPAYLOAD_resize(0);
+		pkt->tcppayloadResize(0);
 
 		pkt->position = ANTICIPATION;
 		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);

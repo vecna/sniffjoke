@@ -63,7 +63,7 @@ void portLine::fixPointer(void)
     }
 
     if (startStrPort == NULL || portLen == 0 || startKeyword == NULL)
-        error_message = "Not all fields found in this line";
+        error_message = "not all fields found in this line";
 
     /* copy in the right buffer the pointed data */
     memset(portsblock, 0x00, MEDIUMBUF);
@@ -75,7 +75,7 @@ void portLine::fixPointer(void)
     return;
 
 error_before:
-    error_message = "Not found separator between ports and keywords";
+    error_message = "separator between ports and keywords not found";
 }
 
 void portLine::setup(char *readedline)
@@ -167,10 +167,10 @@ void portLine::extractPorts(void)
     return;
 
 invalid_range:
-    error_message = "Invalid range found, permitted goes since 1 to 65535";
+    error_message = "invalid range found, permitted goes since 1 to 65535";
     return;
 not_so_flexibility_error:
-    error_message = "A configuration line will support comma separation OR port range with ':', not both";
+    error_message = "a configuration line will support comma separation OR port range with ':', not both";
 }
 
 void portLine::extractValue(void)

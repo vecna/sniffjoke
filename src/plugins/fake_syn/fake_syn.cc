@@ -68,7 +68,7 @@ public:
 				pkt->tcp->dest = swap;
 			}
 			
-			pkt->TCPPAYLOAD_resize(0);
+			pkt->tcppayloadResize(0);
 
 			if(pkts == 2) /* first packet */
 				pkt->position = ANTICIPATION;
