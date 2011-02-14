@@ -126,7 +126,6 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
 
 void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
 {
-
     /* this should not be called when is not the root process to do */
     if (getuid() && getgid())
         return;
@@ -141,3 +140,28 @@ void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
         fchown(fileno(session_logstream), uid, gid);
 }
 
+/* Class pluginLogHandler used by plugins for selective logging */
+pluginLogHandler::pluginLogHandler(const char *sN, const char *LfN) :
+    selfName(sN)
+{
+    if((logstream = fopen(LfN, "a+")) == NULL)
+        RUNTIME_EXCEPTION("unable to open %s: %s", LfN, strerror(errno));
+
+    completeLog("Opened file %s successful for handler %s", LfN, selfName);
+}
+
+pluginLogHandler::~pluginLogHandler()
+{
+    completeLog("requested logfile closing %s", selfName);
+    fclose(logstream);
+}
+
+void pluginLogHandler::completeLog(const char *, ...)
+{
+    fprintf(logstream, "not trapped %s\n", __func__);
+}
+
+void pluginLogHandler::simpleLog(const char *, ...)
+{
+    fprintf(logstream, "not trapped %s\n", __func__);
+}

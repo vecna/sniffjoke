@@ -25,6 +25,19 @@
 
 #include "Utils.h"
 
+/* Facility to support debug and dumping by the plugins */
+class pluginLogHandler
+{
+private:
+    const char *selfName;
+    FILE *logstream;
+public:
+    pluginLogHandler(const char *, const char *);
+    ~pluginLogHandler();
+    void completeLog(const char *, ...);
+    void simpleLog(const char *, ...);
+};
+
 class Debug
 {
 private:
@@ -50,6 +63,7 @@ public:
     bool resetLevel();
     void log(uint8_t, const char *, const char *, ...);
     void downgradeOpenlog(uid_t, gid_t);
+    
 };
 
 extern Debug debug;

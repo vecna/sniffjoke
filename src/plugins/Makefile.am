@@ -8,5 +8,6 @@ SUBDIRS =	fake_close_fin \
           	fake_zero_window \
           	shift_ack \
           	valid_rst_fake_seq \
-		fragmentation \
-		fragmentation_with_fake_data
+			scatter_packet \
+			fragmentation \
+			fragmentation_with_fake_data

@@ -108,6 +108,7 @@ AC_CONFIG_FILES(
 		src/plugins/fake_zero_window/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
+		src/plugins/scatter_packet/Makefile
 		src/plugins/fragmentation/Makefile
 		src/plugins/fragmentation_with_fake_data/Makefile
 )
