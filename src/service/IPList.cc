@@ -34,18 +34,27 @@ a(a),
 b(b),
 c(c)
 {
-    selflog(__func__, NULL);
+    SELFLOG("");
 }
 
 IPList::~IPList()
 {
-    selflog(__func__, NULL);
+    SELFLOG("");
 }
 
-void IPList::selflog(const char *func, const char *lmsg) const
+void IPList::selflog(const char *func, const char *format, ...) const
 {
-    LOG_SESSION("%s: IP %s attribute a(%02x) b(%02x) c(%02x)",
-                lmsg, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c);
+    if (debug.level() == SUPPRESS_LEVEL)
+        return;
+
+    char loginfo[LARGEBUF];
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprintf(loginfo, sizeof (loginfo), format, arguments);
+    va_end(arguments);
+
+    LOG_SESSION("%s: IP %s attribute a(%02x) b(%02x) c(%02x) %s",
+                func, inet_ntoa(*((struct in_addr *) &(this->ip))), this->a, this->b, this->c, loginfo);
 }
 
 IPListMap::IPListMap(const char* ipConfFile)
@@ -105,6 +114,7 @@ void IPListMap::load()
 
     do
     {
+        memset(record, 0x00, MEDIUMBUF);
         fgets(record, sizeof (record), IPfileP);
 
         if (record[0] == '#' || strlen(record) < 7)
@@ -116,8 +126,6 @@ void IPListMap::load()
         /* the value in tmp_* are not used at the moment */
         add(inet_addr(tmp_ip), (uint8_t) tmp_a, (uint8_t) tmp_b, (uint8_t) tmp_c);
         records_num++;
-
-        memset(record, 0x00, MEDIUMBUF);
     }
     while (!feof(IPfileP));
 

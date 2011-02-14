@@ -221,6 +221,7 @@ void SniffJoke::cleanServerUser()
 void SniffJoke::setupAdminSocket()
 {
     int tmp;
+    
     struct sockaddr_in in_service;
 
     if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -264,11 +265,10 @@ void SniffJoke::setupAdminSocket()
 
 void SniffJoke::handleAdminSocket()
 {
-    char r_buf[MEDIUMBUF];
+    char r_buf[MEDIUMBUF] = {0};
     uint8_t* output_buf = NULL;
     struct sockaddr_in fromaddr;
 
-    memset(r_buf, 0x00, sizeof (r_buf));
     int fromlen = sizeof (struct sockaddr_in);
     if ((recvfrom(admin_socket, r_buf, sizeof (r_buf), 0, (sockaddr*) & fromaddr, (socklen_t *) & fromlen)) == -1)
     {

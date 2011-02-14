@@ -62,7 +62,7 @@ public:
 	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
 		if(!(availableScramble & supportedScramble)) {
-			origpkt.selflog(__func__, "__FILE__");
+			origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
 			return false;
 		}
 		return (
