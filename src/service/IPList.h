@@ -46,8 +46,7 @@ public:
     ~IPList();
 
     /* utilities */
-    void selflog(const char *, const char *) const;
-    /* no personal buffer used in selflog, maybe in the future */
+    void selflog(const char *func, const char *format, ...) const;
 };
 
 class IPListMap : public map<uint32_t, IPList*>

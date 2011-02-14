@@ -33,9 +33,9 @@ runconfig(runcfg)
 {
     LOG_VERBOSE("");
 
-    struct ifreq orig_gw;
     struct ifreq ifr;
     struct ifreq netifr;
+    struct ifreq orig_gw;
     int ret;
     int tmp_flags;
     int tmpfd;
@@ -43,6 +43,12 @@ runconfig(runcfg)
 
     if (getuid() || geteuid())
         RUNTIME_EXCEPTION("required root privileges");
+    
+    
+    memset(&send_ll, 0x00, sizeof (send_ll));
+    memset(&ifr, 0x00, sizeof (ifr));
+    memset(&netifr, 0x00, sizeof (netifr));
+    memset(&orig_gw, 0x00, sizeof (orig_gw));
 
     /* pseudo sanity check of received data, sjconf had already make something */
     if (strlen(runconfig.gw_ip_addr) < 7 || strlen(runconfig.gw_ip_addr) > 17)
@@ -64,9 +70,6 @@ runconfig(runcfg)
         RUNTIME_EXCEPTION("unable to open /dev/net/tun: %s, check the kernel module",
                           strerror(errno));
     }
-
-    memset(&ifr, 0x00, sizeof (ifr));
-    memset(&netifr, 0x00, sizeof (netifr));
 
     /* IFF_TUN is for IP. */
     /* IFF_NO_PI is for not receiving extra meta packet information. */
@@ -93,7 +96,6 @@ runconfig(runcfg)
 
     close(tmpfd);
 
-
     if (((tmp_flags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, tmp_flags | FD_CLOEXEC) != -1))
         LOG_DEBUG("flag FD_CLOEXEC set successfully in tun socket");
     else
@@ -114,9 +116,9 @@ runconfig(runcfg)
     pclose(popen(cmd, "r"));
 
     LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
-    system("route add default gw 1.198.10.5");
+    pclose(popen("route add default gw 1.198.10.5", "r"));
 
-    strcpy(orig_gw.ifr_name, (const char *) runconfig.interface);
+    strncpy(orig_gw.ifr_name, (const char *) runconfig.interface, sizeof(orig_gw.ifr_name));
     tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 
     if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1)
@@ -144,7 +146,7 @@ runconfig(runcfg)
     send_ll.sll_pkttype = PACKET_HOST;
     send_ll.sll_halen = ETH_ALEN;
 
-    memset(send_ll.sll_addr, 0xFF, sizeof (send_ll.sll_addr));
+    memset(&send_ll.sll_addr, 0xFF, sizeof (send_ll.sll_addr));
     memcpy(send_ll.sll_addr, runconfig.gw_mac_addr, ETH_ALEN);
 
     if ((ret = bind(netfd, (struct sockaddr *) &send_ll, sizeof (send_ll))) != -1)

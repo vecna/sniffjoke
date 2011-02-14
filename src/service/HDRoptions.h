@@ -72,22 +72,22 @@ private:
 
 public:
     /* used for internal definition of IP opt functions */
-#define SJ_IPOPT_NOOP            0
-#define SJ_IPOPT_TIMESTAMP        1
-#define SJ_IPOPT_LSRR            2
-#define SJ_IPOPT_RR            3
-#define SJ_IPOPT_RA            4
-#define SJ_IPOPT_CIPSO            5
-#define SJ_IPOPT_SEC            6
-#define SJ_IPOPT_SID            7
+#define SJ_IPOPT_NOOP               0
+#define SJ_IPOPT_TIMESTAMP          1
+#define SJ_IPOPT_LSRR               2
+#define SJ_IPOPT_RR                 3
+#define SJ_IPOPT_RA                 4
+#define SJ_IPOPT_CIPSO              5
+#define SJ_IPOPT_SEC                6
+#define SJ_IPOPT_SID                7
 
-#define SJ_TCPOPT_EOL            0
-#define SJ_TCPOPT_NOP            1
-#define SJ_TCPOPT_TIMESTAMP        2
-#define SJ_TCPOPT_MAXSEG        3
-#define SJ_TCPOPT_WINDOW        4
+#define SJ_TCPOPT_EOL               0
+#define SJ_TCPOPT_NOP               1
+#define SJ_TCPOPT_TIMESTAMP         2
+#define SJ_TCPOPT_MAXSEG            3
+#define SJ_TCPOPT_WINDOW            4
 #define SJ_TCPOPT_SACK_PERMITTED    5
-#define SJ_TCPOPT_SACK            6
+#define SJ_TCPOPT_SACK              6
 
     /* used for internal definition of TCP opt functions */
 

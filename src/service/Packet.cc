@@ -517,14 +517,14 @@ void Packet::selflog(const char *func, const char *format, ...) const
     if (debug.level() == SUPPRESS_LEVEL)
         return;
 
-    char loginfo[LARGEBUF];
+    char loginfo[LARGEBUF] = {0};
     va_list arguments;
     va_start(arguments, format);
     vsnprintf(loginfo, sizeof (loginfo), format, arguments);
     va_end(arguments);
 
     const char *evilstr, *wtfstr, *sourcestr, *p;
-    char protoinfo[MEDIUMBUF], saddr[MEDIUMBUF], daddr[MEDIUMBUF];
+    char protoinfo[MEDIUMBUF] = {0}, saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};
 
     p = inet_ntoa(*((struct in_addr *) &(ip->saddr)));
     strncpy(saddr, p, sizeof (saddr));
@@ -581,7 +581,6 @@ void Packet::selflog(const char *func, const char *format, ...) const
     }
     else
     {
-        memset(protoinfo, 0x0, sizeof (protoinfo));
         switch (proto)
         {
         case TCP:
@@ -604,7 +603,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
             snprintf(protoinfo, sizeof (protoinfo), "protocol unassigned! value %d", ip->protocol);
             break;
         default:
-            RUNTIME_EXCEPTION("BUG: %s:%d", __FILE__, __LINE__);
+            RUNTIME_EXCEPTION("BUG: invalid and impossibile");
             break;
         }
 

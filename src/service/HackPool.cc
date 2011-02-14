@@ -100,11 +100,10 @@ runconfig(runcfg)
     if (runcfg.onlyplugin[0])
     {
         char *comma;
-        char onlyplugin_cpy[MEDIUMBUF];
-        char plugabspath[MEDIUMBUF];
+        char onlyplugin_cpy[MEDIUMBUF] = {0};
+        char plugabspath[MEDIUMBUF] = {0};
         uint8_t supportedScramble;
 
-        memset(plugabspath, 0x00, sizeof (plugabspath));
         snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), runcfg.onlyplugin);
 
         if ((comma = strchr(onlyplugin_cpy, ',')) == NULL)
@@ -216,8 +215,8 @@ uint8_t HackPool::parseScrambleList(const char *list_str)
 
 void HackPool::parseEnablerFile()
 {
-    char enablerabspath[LARGEBUF];
-    char plugabspath[MEDIUMBUF];
+    char enablerabspath[LARGEBUF] = {0};
+    char plugabspath[MEDIUMBUF] = {0};
     FILE *plugfile;
 
     snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
@@ -246,8 +245,6 @@ void HackPool::parseEnablerFile()
             RUNTIME_EXCEPTION("reading %s: imported %d plugins, matched interruption at line %d",
                               FILE_PLUGINSENABLER, size(), line);
         }
-
-        memset(plugabspath, 0x00, MEDIUMBUF);
 
         /* parsing of the file line, finding the first comma and make it a 0x00 */
         if ((comma = strchr(enablerentry, ',')) == NULL)

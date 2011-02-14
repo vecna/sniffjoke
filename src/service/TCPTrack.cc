@@ -562,7 +562,7 @@ void TCPTrack::injectHack(Packet &origpkt)
                     p_queue.insertAfter(injpkt, origpkt);
                 break;
             case POSITIONUNASSIGNED:
-                RUNTIME_EXCEPTION("invalid and impossibile");
+                RUNTIME_EXCEPTION("BUG: invalid and impossibile");
             }
         }
 
@@ -625,14 +625,15 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
     if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
     {
+        pkt.ip->ttl = (*it->second).ttl_estimate;
         if (pkt.wtf == PRESCRIPTION)
-            pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 4) - 1; /* [-1, -5], 5 values */
+            pkt.ip->ttl -= (random() % 4) - 1; /* [-1, -5], 5 values */
         else
-            pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 4); /* [+0, +4], 5 values */
+            pkt.ip->ttl += (random() % 4); /* [+0, +4], 5 values */
     }
     else
     {
-        pkt.ip->ttl += (random() % 20) - 10;
+        pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
     }
 
     /*

@@ -35,12 +35,14 @@
 class NetIO
 {
 private:
+    const struct sj_config &runconfig;
+    TCPTrack *conntrack;
+
     /*
      * these data are required for handle
      * tunnel/ethernet man in the middle
      */
     struct sockaddr_ll send_ll;
-    struct sj_config &runconfig;
 
     /* tunfd/netfd: file descriptor for I/O purpose */
     int tunfd;
@@ -49,8 +51,6 @@ private:
     /* poll variables, two file descriptors */
     struct pollfd fds[2];
     int nfds;
-
-    TCPTrack *conntrack;
 
     unsigned char pktbuf[MTU];
     int size;
