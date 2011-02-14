@@ -130,10 +130,6 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     if (hackFrequency & AGG_ALWAYS)
         return true;
 
-#if 0
-    aggressivity_percentage = (derivePercentage(packet_number, hackFrequency + FREQ_NORMAL) + derivePercentage(packet_number, userFrequency)) / 2;
-#endif
-
     aggressivity_percentage = derivePercentage(packet_number, userFrequency);
     referenceFrequency = userFrequency;
 
@@ -478,7 +474,7 @@ void TCPTrack::injectHack(Packet &origpkt)
      */
     uint8_t availableScramble = discernAvailScramble(origpkt);
 
-    origpkt.SELFLOG("OrigPKT");
+    origpkt.SELFLOG("Original packet - before Hacks inject/eval");
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack want a SYN and the packet is a RST+ACK,
@@ -545,7 +541,8 @@ void TCPTrack::injectHack(Packet &origpkt)
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
 
-            injpkt.SELFLOG("HackPKT (%s)", hppe->selfObj->hackName);
+            injpkt.SELFLOG("New generated packet by [%s], the original will be %s", 
+                hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
 
             switch (injpkt.position)
             {
@@ -578,6 +575,7 @@ void TCPTrack::injectHack(Packet &origpkt)
      */
     if (removeOrig == true)
     {
+        origpkt.SELFLOG("Removing packet as request by the plugin");
         p_queue.remove(origpkt);
         delete &origpkt;
     }

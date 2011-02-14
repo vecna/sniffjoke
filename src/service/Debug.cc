@@ -109,13 +109,12 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
         strftime(time_str, sizeof (time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
         va_start(arguments, msg);
-        fprintf(output_flow, "%s %s: ", time_str, funcname);
 
-        /* the debug level used in development require a pid/uid addictional block */
+        /* the debug level used in development include function/pid/uid addictional infos */
         if (errorlevel == DEBUG_LEVEL)
-            fprintf(output_flow, "%d/%d ", getpid(), getuid());
-        /* yes, if you dig in the github, you will discover that this line has been added
-         * after one year of developing */
+            fprintf(output_flow, "%s %s %d/%d ", time_str, funcname, getpid(), getuid());
+        else
+            fprintf(output_flow, "%s ", time_str);
 
         vfprintf(output_flow, msg, arguments);
         fprintf(output_flow, "\n");
@@ -140,7 +139,8 @@ void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
         fchown(fileno(session_logstream), uid, gid);
 }
 
-/* Class pluginLogHandler used by plugins for selective logging */
+/* -----
+ * Class pluginLogHandler used by plugins for selective logging */
 pluginLogHandler::pluginLogHandler(const char *sN, const char *LfN) :
     selfName(sN)
 {
@@ -156,12 +156,30 @@ pluginLogHandler::~pluginLogHandler()
     fclose(logstream);
 }
 
-void pluginLogHandler::completeLog(const char *, ...)
+void pluginLogHandler::completeLog(const char *msg, ...)
 {
-    fprintf(logstream, "not trapped %s\n", __func__);
+    va_list arguments;
+    time_t now = time(NULL);
+
+    char time_str[sizeof ("YYYY-MM-GG HH:MM:SS")];
+    strftime(time_str, sizeof (time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(logstream, "%s ", time_str);
+
+    va_start(arguments, msg);
+
+    vfprintf(logstream, msg, arguments);
+    fprintf(logstream, "\n");
+    fflush(logstream);
+    va_end(arguments);
 }
 
-void pluginLogHandler::simpleLog(const char *, ...)
+void pluginLogHandler::simpleLog(const char *msg, ...)
 {
-    fprintf(logstream, "not trapped %s\n", __func__);
+    va_list arguments;
+    va_start(arguments, msg);
+
+    vfprintf(logstream, msg, arguments);
+    fprintf(logstream, "\n");
+    fflush(logstream);
+    va_end(arguments);
 }

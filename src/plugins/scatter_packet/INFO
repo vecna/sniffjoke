@@ -1,0 +1,3 @@
+This hack, scatter_packet.cc, in EXPERIMENTAL and doesn't work at the moment.
+
+Is a research in progress based on management of overlapped chunk from different stacks

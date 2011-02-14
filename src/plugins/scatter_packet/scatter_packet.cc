@@ -36,9 +36,9 @@
 
 #include "service/Hack.h"
 
-#define MIN_SCRAMBLE_PACKET 100
-#define MIN_BLOCK_SPLIT     50
-#define OVERLAPPED_SIZE     40
+#define MIN_SCRAMBLE_PACKET 80
+#define MIN_BLOCK_SPLIT     68
+#define OVERLAPPED_SIZE     32
 #define SCATTER_PKT_LOG     "scatterPacket.plugin.log"
 
 class scatter_packet : public Hack
@@ -51,27 +51,67 @@ public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
 		uint8_t pkts, i;
-        uint32_t seqbefore = (ntohl(origpkt.tcp->seq) - origpkt.datalen);
-        uint32_t newsizes = (MIN_BLOCK_SPLIT + OVERLAPPED_SIZE);
+        uint32_t starting_seq = (ntohl(origpkt.tcp->seq) - origpkt.datalen);
         uint32_t currently_send = 0;
 
-        pkts = (origpkt.datalen / MIN_BLOCK_SPLIT) + 1;
+        pkts = (origpkt.datalen / MIN_BLOCK_SPLIT) +1;
+
+        pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk (min pkt %d overlap %d)",
+            origpkt.datalen, starting_seq, ntohs(origpkt.tcp->source), 
+            pkts, MIN_BLOCK_SPLIT, OVERLAPPED_SIZE
+        );
 
 	    for(i = 0; i < pkts; i++)
         {
 			Packet* const pkt = new Packet(origpkt);
-            uint32_t thisdatalen = ((origpkt.datalen - currently_send) % MIN_BLOCK_SPLIT);
+            uint32_t thisdatalen;
 
-            pkt->tcppayloadResize(newsizes);
-            memset(pkt->payload, 'A', newsizes);
+            if( (origpkt.datalen - currently_send) >= MIN_BLOCK_SPLIT )
+            {
+                /* there are the packet large MIN_BLOCK_SPLIT + the overlapping data */
+                thisdatalen = MIN_BLOCK_SPLIT;
+                currently_send += thisdatalen;
 
-            memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
-            currently_send += thisdatalen;
-            pkt->tcp->seq = htonl(seqbefore + currently_send);
+                pkt->tcppayloadResize(thisdatalen + OVERLAPPED_SIZE);
+
+                memset(pkt->payload, '6', thisdatalen + OVERLAPPED_SIZE);
+                memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
+
+                pkt->tcp->seq = htonl( starting_seq + (i * MIN_BLOCK_SPLIT) + OVERLAPPED_SIZE );
+
+                /* the acknowledge is keep for the last packet */
+                pkt->tcp->ack = 0;
+                pkt->tcp->ack_seq = 0;
+            }
+            else
+            {
+                /* this is the packet WITHOUT overlapping data, it bring the carry */
+                thisdatalen = origpkt.datalen - currently_send;
+                currently_send += thisdatalen;
+
+                pkt->tcppayloadResize(thisdatalen);
+                memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
+
+                pkt->tcp->seq = htonl( starting_seq + ( (i - 1) * MIN_BLOCK_SPLIT) + thisdatalen);
+
+                /* temporary check */
+                if(pkt->tcp->seq != origpkt.tcp->seq) 
+                {
+                    pLH->completeLog("ONG! -- an atheist exclamation %u %u (diff %d)", 
+                        ntohl(pkt->tcp->seq), ntohl(origpkt.tcp->seq),
+                        ntohl(pkt->tcp->seq) - ntohl(origpkt.tcp->seq) 
+                    );
+                }
+            }
+
+            pLH->completeLog(
+            " %d) in %d - chunk data %d (seq %u) total injected %d (progressive size %d) TCP source port %u",
+                i, pkts, thisdatalen, ntohl(pkt->tcp->seq), thisdatalen + OVERLAPPED_SIZE, 
+                currently_send, ntohs(pkt->tcp->source) );
 
 			pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-			pkt->position = POSTICIPATION;
+			pkt->position = ANTICIPATION; // POSTICIPATION;
 			pkt->wtf = INNOCENT;
 			pktVector.push_back(pkt);
 		}
@@ -83,10 +123,11 @@ public:
      * overlap the fragment of the same packet */
 	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
+        pLH->completeLog("verifing condition for id %d datalen %d total len %d",
+            origpkt.ip->id, origpkt.datalen, origpkt.pbuf.size());
+
 		if (origpkt.payload != NULL && origpkt.datalen > MIN_SCRAMBLE_PACKET)
-        {
             return true;
-        }
 
         return false;
 	}
