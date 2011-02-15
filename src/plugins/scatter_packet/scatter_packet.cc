@@ -27,8 +27,7 @@
  * This hack scatter one single packet of large payload in a lot of little
  * chunck;
  * this hack represent the base for developing:
- *  1) overlapped chunk hack
- *  2) chained hacks
+ *  1) chained hacks
  * 
  * SOURCE: deduction, 
  * VERIFIED IN:
@@ -40,7 +39,6 @@
 
 #define MIN_BLOCK_SPLIT     28
 #define MIN_SCRAMBLE_PACKET MIN_BLOCK_SPLIT*3
-#define OVERLAPPED_SIZE     0
 
 #define SCATTER_PKT_LOG     "scatterPacket.plugin.log"
 
@@ -63,29 +61,24 @@ public:
         const uint32_t block_split = MIN_BLOCK_SPLIT + (random() % MIN_BLOCK_SPLIT);
         const uint8_t pkts = (origpkt.datalen / block_split) + ((origpkt.datalen % block_split) ? 1 : 0);
 
-        pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes, overlap %d",
+        pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes",
                          origpkt.datalen, starting_seq, ntohs(origpkt.tcp->source),
-                         pkts, block_split, OVERLAPPED_SIZE);
+                         pkts, block_split);
 
         for (uint8_t i = 0; i < pkts; i++)
         {
             Packet * const pkt = new Packet(origpkt);
             uint32_t thisdatalen;
 
-            if (i < (pkts - 1))
+            if (i < (pkts - 1)) /* first (pkt - 1) segments */
             {
-                /* there are the packet large MIN_BLOCK_SPLIT + the overlapping data */
                 thisdatalen = block_split;
 
-                pkt->tcppayloadResize(thisdatalen + OVERLAPPED_SIZE);
+                pkt->tcppayloadResize(thisdatalen);
 
-                memset(pkt->payload + thisdatalen, '6', OVERLAPPED_SIZE);
+                memcpy(pkt->payload, &origpkt.payload[i * block_split], thisdatalen);
 
                 pkt->tcp->seq = htonl(starting_seq + (i * block_split));
-
-                /* the acknowledge is keept only for the last packet */
-                pkt->tcp->ack = 0;
-                pkt->tcp->ack_seq = 0;
 
                 pkt->tcp->fin = 0;
                 pkt->tcp->rst = 0;
@@ -97,9 +90,8 @@ public:
                 pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
             }
-            else
+            else /* last segment */
             {
-                /* this is the packet WITHOUT overlapping data, it brings the carry */
                 thisdatalen = (origpkt.datalen % block_split) ? (origpkt.datalen % block_split) : block_split;
 
                 pkt->tcppayloadResize(thisdatalen);
@@ -108,20 +100,19 @@ public:
 
                 pkt->tcp->seq = htonl(starting_seq + (i * block_split));
 
-                /* marker useful when I feel trunked and confused by tcpdump */
+                /* marker useful when I feel drunk and confused by tcpdump */
                 pkt->ip->id = 1;
 
             }
 
-            pLH->completeLog(" %d) of %d - chunk data %d (seq %u) total injected %d TCP source port %u",
-                             (i + 1), pkts, thisdatalen, ntohl(pkt->tcp->seq),
-                             thisdatalen + ((i < pkts - 1) ? OVERLAPPED_SIZE : 0),
-                             ntohs(pkt->tcp->source));
+            pLH->completeLog(" %d) of %d - chunk data %d (seq %u) TCP source port %u",
+                             (i + 1), pkts, thisdatalen, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
 
-            /* POSTICIPATION sent the packet in reversed order */
             pkt->position = ANTICIPATION;
             pkt->wtf = INNOCENT;
-            pktVector.push_back(pkt);
+
+            /* send in reverse order exploiting one of the most important tcp features */
+            pktVector.insert(pktVector.begin(), pkt);
         }
 
         removeOrigPkt = true;

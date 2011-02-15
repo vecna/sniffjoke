@@ -6,67 +6,68 @@
 # check of sured failure
 
 dump_plugin_file() {
-	cat >> $PLUGINLIST << __EOF__
+    cat >> $PLUGINLIST << __EOF__
 fake_close_fin.so,PRESCRIPTION
 fake_close_fin.so,MALFORMED
 fake_close_fin.so,GUILTY
+fake_close_rst.so,PRESCRIPTION
+fake_close_rst.so,MALFORMED
+fake_close_rst.so,GUILTY
 fake_data.so,PRESCRIPTION
 fake_data.so,MALFORMED
 fake_data.so,GUILTY
 fake_seq.so,PRESCRIPTION
 fake_seq.so,MALFORMED
 fake_seq.so,GUILTY
-valid_rst_fake_seq.so,INNOCENT
-fragmentation.so,INNOCENT
-fragmentation_with_fake_data.so,PRESCRIPTION,INNOCENT
-fake_close_rst.so,PRESCRIPTION
-fake_close_rst.so,MALFORMED
-fake_close_rst.so,GUILTY
 fake_syn.so,PRESCRIPTION
 fake_syn.so,MALFORMED
 fake_syn.so,GUILTY
 fake_zero_window.so,INNOCENT
+fragmentation.so,INNOCENT
+fragmentation_with_fake_data.so,INNOCENT,PRESCRIPTION
+scatter_packet.so,INNOCENT
 shift_ack.so,PRESCRIPTION
 shift_ack.so,MALFORMED
 shift_ack.so,GUILTY
+valid_rst_fake_seq.so,INNOCENT
 __EOF__
 }
 
 start_singletest() {
-	PNAME=`echo $PLUGIN | sed -es/\.so.*//`
-	SCRAMBLE=`echo $PLUGIN | sed -es/.*\.so,//`
-	TESTID=`echo $PLUGIN | tr "," "-"`
-	workingdir="/tmp/$LOCATION/$TESTID"
+    PNAME=`echo $PLUGIN | sed -es/\.so.*//`
+    SCRAMBLE=`echo $PLUGIN | sed -es/.*\.so,//`
+    TESTID=`echo $PLUGIN | tr "," "-"`
+    workingdir="/tmp/$LOCATION/$TESTID"
     echo -e "Plugin Name\t\t[$PNAME]\nScramble\t\t[$SCRAMBLE]\nTestID\t\t\t[$TESTID]\n--dir\t\t\t[$workingdir]\n"
-	mkdir -p $workingdir
-	echo -e "+ Executing sniffjoke with $PLUGIN and $SCRAMBLE, command line:\n"
-	echo "$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
-	$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN 
-	sleep 2
-	$SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log 
-	cd $workingdir
-	# $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
-	INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
-	echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
-	(tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80) &
+    mkdir -p $workingdir
+    echo -e "+ Executing sniffjoke with $PLUGIN and $SCRAMBLE, command line:\n"
+    echo "$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
+    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN
+    sleep 2
+    $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
+    cd $workingdir
+    # $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
+    INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
+    echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
+    (tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80) &
     ps axf > $workingdir/ps-axf.log
     route -n > $workingdir/route-n.log
-	sleep 1
-	curl -m 10 -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
-	sleep 1 
-	$SNIFFJOKECLIBIN quit
-	sleep 2
-	killall -9 tcpdump
-	CHECKSUM=`md5sum "$PNAME-$SCRAMBLE.received" | cut -b -32`
-	cd ..
-	echo "finished test in $TESTID"
-	if [ $VERIFYSUM = $CHECKSUM ]; then
-		echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.working_hacks"
-	else
-		echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
-	fi 
-	echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
-#	clear
+    sleep 1
+    curl -m 10 -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
+    sleep 1
+    $SNIFFJOKECLIBIN quit
+    sleep 2
+    killall -9 tcpdump
+    CHECKSUM=`md5sum "$PNAME-$SCRAMBLE.received" | cut -b -32`
+    cd ..
+    echo "finished test in $TESTID"
+    if [ $VERIFYSUM = $CHECKSUM ]; then
+        echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.working_hacks"
+    else
+        echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
+    fi
+    echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
+#    clear
 # I belive the users like more see what happen
 }
 
@@ -74,45 +75,45 @@ echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
 
 USERID=`id -u`
 if [ $USERID != "0" ]; then
-	echo "- Error, only root should run $0"
-	exit;
+    echo "- Error, only root should run $0"
+    exit;
 fi
 
 if [ -z $1 ]; then
-	echo "Is required as first argument the LOCATION name, eg: office, home, nickhome, starbucks..."
-	echo "sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment"
-	echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
-	echo "will be created a new directory describing your location. after you will customize the options"
-	exit;
+    echo "Is required as first argument the LOCATION name, eg: office, home, nickhome, starbucks..."
+    echo "sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment"
+    echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
+    echo "will be created a new directory describing your location. after you will customize the options"
+    exit;
 fi
 LOCATION=$1
 
 if [ -z $2 ]; then
-	echo "as second argument is the PATH of commonly used working dir, where 'generic' is installed"
+    echo "as second argument is the PATH of commonly used working dir, where 'generic' is installed"
     echo "usually is /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
     echo "been installed in your distro"
-	exit;
+    exit;
 fi
 WORKPATH=$2
 
 if [ ! -d $WORKPATH ]; then
-	echo "the second argument: $WORKPATH is not a directory"
-	echo "as second argument is required the PATH of the generic/plugins_enabled.conf"
-	exit;
+    echo "the second argument: $WORKPATH is not a directory"
+    echo "as second argument is required the PATH of the generic/plugins_enabled.conf"
+    exit;
 fi
 
 
 if [ -d "/tmp/$LOCATION" ]; then
-	echo "- remove your /tmp/$LOCATION directory: already present"
-	# call me old, but I don't put a blind rm -rf on a script run by root :P
-	exit
+    echo "- remove your /tmp/$LOCATION directory: already present"
+    # call me old, but I don't put a blind rm -rf on a script run by root :P
+    exit
 fi
 
 SNIFFJOKEBIN=`which sniffjoke`
 if [ -z $SNIFFJOKEBIN ]; then
-	echo "\"which sniffjoke\" has found nothing"
-	echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
-	exit;
+    echo "\"which sniffjoke\" has found nothing"
+    echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
+    exit;
 fi
 
 SNIFFJOKECLIBIN=`which sniffjokectl`
@@ -136,14 +137,14 @@ rm -f $SERVERFILE
 wget -O $SERVERFILE $FILEURL
 
 if ! [ -e $SERVERFILE ]; then
-	echo "- unable to retriver $SERVERFILE with [$FILEURL]"
-	exit;
+    echo "- unable to retriver $SERVERFILE with [$FILEURL]"
+    exit;
 fi
 
 PLUGINLIST="/tmp/$LOCATION/sniffjoke-testsuite-plugins"
 if ! [ -e $PLUGINLIST ]; then
-	mkdir /tmp/$LOCATION
-	dump_plugin_file
+    mkdir /tmp/$LOCATION
+    dump_plugin_file
 fi
 PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 
@@ -153,22 +154,22 @@ seq 1000 9000 | tr -d [:cntrl:] | strings > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
-	PLUGIN=`tail -$PLUGNDX $PLUGINLIST | head -1`
+    PLUGIN=`tail -$PLUGNDX $PLUGINLIST | head -1`
 
-#	OS="WINDOWS"
-#	SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
-#	echo $SERVER
-#	start_singletest 
+#    OS="WINDOWS"
+#    SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
+#    echo $SERVER
+#    start_singletest
 
-	# those test need to be fixed or be used only where my test script will be hosted
-	OS="LINUX"
-	SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
-	start_singletest 
+    # those test need to be fixed or be used only where my test script will be hosted
+    OS="LINUX"
+    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+    start_singletest
 
-#	OS="OTHER"
-#	SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
-#	echo $SERVER
-#	start_singletest 
+#    OS="OTHER"
+#    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+#    echo $SERVER
+#    start_singletest
 done
 
 # parse analysis output to build a plugins_enabler.conf
@@ -182,17 +183,17 @@ echo -en "\n# this plugins_enabled.conf are dumped for location: $LOCATION" >> $
 echo -en "\n\n" >> $PeL
 
 for hack in $success; do
-	hackName=`basename $hack | sed -es/working_hacks/so/`
-	scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-	echo -en "\n$hackName,$scramble" | sed -es/,\$// >> $PeL
+    hackName=`basename $hack | sed -es/working_hacks/so/`
+    scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
+    echo -en "\n$hackName,$scramble" | sed -es/,\$// >> $PeL
 done
 
 echo -en "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure=`ls /tmp/$LOCATION/*.failed_hacks`
 for hack in $failure ; do
-	hackName=`basename $hack | sed -es/failed_hacks/so/`
-	scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-	echo -en "\n# $hackName,$scramble" | sed -es/,\$// >> $PeL
+    hackName=`basename $hack | sed -es/failed_hacks/so/`
+    scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
+    echo -en "\n# $hackName,$scramble" | sed -es/,\$// >> $PeL
 done
 
 now=`date`
