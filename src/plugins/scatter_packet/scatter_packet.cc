@@ -111,8 +111,7 @@ public:
             pkt->position = ANTICIPATION;
             pkt->wtf = INNOCENT;
 
-            /* send in reverse order exploiting one of the most important tcp features */
-            pktVector.insert(pktVector.begin(), pkt);
+            pktVector.push_back(pkt);
         }
 
         removeOrigPkt = true;
