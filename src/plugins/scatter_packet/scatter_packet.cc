@@ -142,9 +142,9 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        pLH = new pluginLogHandler(const_cast<const char *> (HACK_NAME), SCATTER_PKT_LOG);
+        pLH = new pluginLogHandler(HACK_NAME, SCATTER_PKT_LOG);
 
-        if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
             return false;
