@@ -38,83 +38,92 @@
 
 class fake_syn : public Hack
 {
-#define HACK_NAME	"Fake SYN"
+#define HACK_NAME "Fake SYN"
 public:
-	virtual	void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		uint8_t pkts = 2;
-		while(pkts--) {
-			Packet* const pkt = new Packet(origpkt);
 
-			pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        uint8_t pkts = 2;
+        while (pkts--)
+        {
+            Packet * const pkt = new Packet(origpkt);
 
-			pkt->tcp->psh = 0;
-			pkt->tcp->syn = 1;
+            pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-			pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
+            pkt->tcp->psh = 0;
+            pkt->tcp->syn = 1;
 
-			/* 20% is a SYN ACK */
-			if ((random() % 5) == 0) { 
-				pkt->tcp->ack = 1;
-				pkt->tcp->ack_seq = random();
-			} else {
-				pkt->tcp->ack = pkt->tcp->ack_seq = 0;
-			}
+            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
 
-			/* 20% had source and dest port reversed */
-			if ((random() % 5) == 0) {
-				uint16_t swap = pkt->tcp->source;
-				pkt->tcp->source = pkt->tcp->dest;
-				pkt->tcp->dest = swap;
-			}
-			
-			pkt->tcppayloadResize(0);
+            /* 20% is a SYN ACK */
+            if ((random() % 5) == 0)
+            {
+                pkt->tcp->ack = 1;
+                pkt->tcp->ack_seq = random();
+            }
+            else
+            {
+                pkt->tcp->ack = pkt->tcp->ack_seq = 0;
+            }
 
-			if(pkts == 2) /* first packet */
-				pkt->position = ANTICIPATION;
-			else /* second packet */
-				pkt->position = POSTICIPATION;
-			
-			pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-			pkt->choosableScramble = (availableScramble & supportedScramble);
+            /* 20% had source and dest port reversed */
+            if ((random() % 5) == 0)
+            {
+                uint16_t swap = pkt->tcp->source;
+                pkt->tcp->source = pkt->tcp->dest;
+                pkt->tcp->dest = swap;
+            }
 
-			pktVector.push_back(pkt);
-		}
-	}
-	
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (
-			origpkt.tcp->syn &&
-			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin
-		);
-	}
+            pkt->tcppayloadResize(0);
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		supportedScramble = configuredScramble;
-		return true;
-	}
+            if (pkts == 2) /* first packet */
+                pkt->position = ANTICIPATION;
+            else /* second packet */
+                pkt->position = POSTICIPATION;
 
-	fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE) {};
+            pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+            pkt->choosableScramble = (availableScramble & supportedScramble);
+
+            pktVector.push_back(pkt);
+        }
+    }
+
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (
+                origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin
+                );
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        supportedScramble = configuredScramble;
+        return true;
+    }
+
+    fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE)
+    {
+    };
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_syn(forcedTest);
+    return new fake_syn(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

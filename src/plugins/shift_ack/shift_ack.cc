@@ -41,57 +41,61 @@
 
 class shift_ack : public Hack
 {
-#define HACK_NAME	"unexpected ACK shift"
+#define HACK_NAME "unexpected ACK shift"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		Packet* const pkt = new Packet(origpkt);
-		
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2*MTU);
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        Packet * const pkt = new Packet(origpkt);
 
-		pkt->position = ANY_POSITION;
-		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-		pkt->choosableScramble = (availableScramble & supportedScramble);
+        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pktVector.push_back(pkt);
-	}
+        pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (
-			!origpkt.tcp->syn &&
-			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin &&
-			origpkt.tcp->ack
-		);
-	}
+        pkt->position = ANY_POSITION;
+        pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+        pkt->choosableScramble = (availableScramble & supportedScramble);
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		supportedScramble = configuredScramble;
-		return true;
-	}
+        pktVector.push_back(pkt);
+    }
 
-	shift_ack(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE) {}
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin &&
+                origpkt.tcp->ack
+                );
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        supportedScramble = configuredScramble;
+        return true;
+    }
+
+    shift_ack(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE)
+    {
+    }
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new shift_ack(forcedTest);
+    return new shift_ack(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

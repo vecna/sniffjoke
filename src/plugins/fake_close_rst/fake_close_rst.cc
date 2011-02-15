@@ -38,60 +38,64 @@
 
 class fake_close_rst : public Hack
 {
-#define HACK_NAME	"Fake RST"
+#define HACK_NAME "Fake RST"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		Packet* const pkt = new Packet(origpkt);
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        Packet * const pkt = new Packet(origpkt);
 
-		pkt->tcp->psh = 0;
-		pkt->tcp->rst = 1;
-		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
-		
-		pkt->tcppayloadResize(0);
+        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pkt->position = ANTICIPATION;
-		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-		pkt->choosableScramble = (availableScramble & supportedScramble);
+        pkt->tcp->psh = 0;
+        pkt->tcp->rst = 1;
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
 
-		pktVector.push_back(pkt);
-	}
+        pkt->tcppayloadResize(0);
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (
-			!origpkt.tcp->syn &&
-			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin
-		);
-	}
+        pkt->position = ANTICIPATION;
+        pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+        pkt->choosableScramble = (availableScramble & supportedScramble);
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		supportedScramble = configuredScramble;
-		return true;
-	}
+        pktVector.push_back(pkt);
+    }
 
-	fake_close_rst(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED20S) {};
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin
+                );
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        supportedScramble = configuredScramble;
+        return true;
+    }
+
+    fake_close_rst(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED20S)
+    {
+    };
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_close_rst(forcedTest);
+    return new fake_close_rst(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

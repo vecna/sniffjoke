@@ -38,78 +38,83 @@
 
 class fake_seq : public Hack
 {
-#define HACK_NAME	"Fake SEQ"
+#define HACK_NAME "Fake SEQ"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		Packet* const pkt = new Packet(origpkt);
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        Packet * const pkt = new Packet(origpkt);
 
-		uint8_t what = (random() % 3);
+        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		if (what == 0)
-			what = 2;
+        uint8_t what = (random() % 3);
 
-		if (what == 1) 
-			pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
+        if (what == 0)
+            what = 2;
 
-		if (what == 2)
-			pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
-				
-		pkt->tcp->window = htons((random() % 80) * 64);
-		pkt->tcp->ack = pkt->tcp->ack_seq = 0;
+        if (what == 1)
+            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
 
-		uint16_t diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
-		
-		if(diff > 200) {
-			diff = random() % 200;
-			pkt->tcppayloadResize(diff);
-		}
-	
-		pkt->tcppayloadRandomFill();
+        if (what == 2)
+            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
 
-		pkt->position = ANY_POSITION;
-		pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-		pkt->choosableScramble = availableScramble & supportedScramble;
-		
-		pktVector.push_back(pkt);
-	}
+        pkt->tcp->window = htons((random() % 80) * 64);
+        pkt->tcp->ack = pkt->tcp->ack_seq = 0;
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (
-			!origpkt.tcp->syn &&
-			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin &&
-			origpkt.payload != NULL
-		);
-	}
+        uint16_t diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		supportedScramble = configuredScramble;
-		return true;
-	}
+        if (diff > 200)
+        {
+            diff = random() % 200;
+            pkt->tcppayloadResize(diff);
+        }
 
-	fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED5S) {};
+        pkt->tcppayloadRandomFill();
+
+        pkt->position = ANY_POSITION;
+        pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+        pkt->choosableScramble = availableScramble & supportedScramble;
+
+        pktVector.push_back(pkt);
+    }
+
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin &&
+                origpkt.payload != NULL
+                );
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        supportedScramble = configuredScramble;
+        return true;
+    }
+
+    fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED5S)
+    {
+    };
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_seq(forcedTest);
+    return new fake_seq(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

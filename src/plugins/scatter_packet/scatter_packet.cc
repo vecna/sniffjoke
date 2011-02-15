@@ -25,8 +25,10 @@
  * malfunction, or KILL THE INTERNET :)
  *
  * This hack scatter one single packet of large payload in a lot of little
- * chunck, is the first base for developing: 1) overlapped chunk 
- * 2) chained hacks
+ * chunck;
+ * this hack represent the base for developing:
+ *  1) overlapped chunk hack
+ *  2) chained hacks
  * 
  * SOURCE: deduction, 
  * VERIFIED IN:
@@ -38,7 +40,7 @@
 
 #define MIN_SCRAMBLE_PACKET 80
 #define MIN_BLOCK_SPLIT     68
-#define OVERLAPPED_SIZE     32
+#define OVERLAPPED_SIZE     0
 #define SCATTER_PKT_LOG     "scatterPacket.plugin.log"
 
 class scatter_packet : public Hack
@@ -48,114 +50,116 @@ private:
 
 #define HACK_NAME "Scatter Packet"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		uint8_t pkts, i;
-        uint32_t starting_seq = (ntohl(origpkt.tcp->seq) - origpkt.datalen);
+
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        const uint8_t pkts = (origpkt.datalen / MIN_BLOCK_SPLIT) + ((origpkt.datalen % MIN_BLOCK_SPLIT) ? 1 : 0);
+
+        const uint32_t starting_seq = (ntohl(origpkt.tcp->seq) - origpkt.datalen);
         uint32_t currently_send = 0;
 
-        pkts = (origpkt.datalen / MIN_BLOCK_SPLIT) +1;
-
         pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk (min pkt %d overlap %d)",
-            origpkt.datalen, starting_seq, ntohs(origpkt.tcp->source), 
-            pkts, MIN_BLOCK_SPLIT, OVERLAPPED_SIZE
-        );
+                         origpkt.datalen, starting_seq, ntohs(origpkt.tcp->source),
+                         pkts, MIN_BLOCK_SPLIT, OVERLAPPED_SIZE
+                         );
 
-	    for(i = 0; i < pkts; i++)
+        for (uint8_t i = 0; i < pkts; i++)
         {
-			Packet* const pkt = new Packet(origpkt);
+            Packet * const pkt = new Packet(origpkt);
             uint32_t thisdatalen;
 
-            if( (origpkt.datalen - currently_send) >= MIN_BLOCK_SPLIT )
+            if ((origpkt.datalen - currently_send) >= MIN_BLOCK_SPLIT)
             {
                 /* there are the packet large MIN_BLOCK_SPLIT + the overlapping data */
                 thisdatalen = MIN_BLOCK_SPLIT;
-                currently_send += thisdatalen;
 
                 pkt->tcppayloadResize(thisdatalen + OVERLAPPED_SIZE);
 
                 memset(pkt->payload, '6', thisdatalen + OVERLAPPED_SIZE);
                 memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
 
-                pkt->tcp->seq = htonl( starting_seq + (i * MIN_BLOCK_SPLIT) + OVERLAPPED_SIZE );
+                pkt->tcp->seq = htonl(starting_seq + (i * MIN_BLOCK_SPLIT) + OVERLAPPED_SIZE);
 
-                /* the acknowledge is keep for the last packet */
+                /* the acknowledge is keept only for the last packet */
                 pkt->tcp->ack = 0;
                 pkt->tcp->ack_seq = 0;
             }
             else
             {
-                /* this is the packet WITHOUT overlapping data, it bring the carry */
+                /* this is the packet WITHOUT overlapping data, it brings the carry */
                 thisdatalen = origpkt.datalen - currently_send;
-                currently_send += thisdatalen;
 
                 pkt->tcppayloadResize(thisdatalen);
                 memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
 
-                pkt->tcp->seq = htonl( starting_seq + ( (i - 1) * MIN_BLOCK_SPLIT) + thisdatalen);
+                pkt->tcp->seq = htonl(starting_seq + ((i-1) * MIN_BLOCK_SPLIT) + thisdatalen);
 
                 /* temporary check */
-                if(pkt->tcp->seq != origpkt.tcp->seq) 
+                if (pkt->tcp->seq != origpkt.tcp->seq)
                 {
-                    pLH->completeLog("ONG! -- an atheist exclamation %u %u (diff %d)", 
-                        ntohl(pkt->tcp->seq), ntohl(origpkt.tcp->seq),
-                        ntohl(pkt->tcp->seq) - ntohl(origpkt.tcp->seq) 
-                    );
+                    pLH->completeLog("ONG! -- an atheist exclamation %u %u (diff %d)",
+                                     ntohl(pkt->tcp->seq), ntohl(origpkt.tcp->seq),
+                                     ntohl(pkt->tcp->seq) - ntohl(origpkt.tcp->seq));
                 }
             }
 
-            pLH->completeLog(
-            " %d) in %d - chunk data %d (seq %u) total injected %d (progressive size %d) TCP source port %u",
-                i, pkts, thisdatalen, ntohl(pkt->tcp->seq), thisdatalen + OVERLAPPED_SIZE, 
-                currently_send, ntohs(pkt->tcp->source) );
+            currently_send += thisdatalen;
 
-			pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+            pLH->completeLog(" %d) in %d - chunk data %d (seq %u) total injected %d (progressive size %d) TCP source port %u",
+                             i, pkts, thisdatalen, ntohl(pkt->tcp->seq), thisdatalen + OVERLAPPED_SIZE,
+                             currently_send, ntohs(pkt->tcp->source));
 
-			pkt->position = ANTICIPATION; // POSTICIPATION;
-			pkt->wtf = INNOCENT;
-			pktVector.push_back(pkt);
-		}
+            pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+
+            pkt->position = ANTICIPATION; // POSTICIPATION;
+            pkt->wtf = INNOCENT;
+
+            pktVector.push_back(pkt);
+        }
 
         removeOrigPkt = true;
-	}
+    }
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
         pLH->completeLog("verifing condition for id %d datalen %d total len %d",
-            origpkt.ip->id, origpkt.datalen, origpkt.pbuf.size());
+                         origpkt.ip->id, origpkt.datalen, origpkt.pbuf.size());
 
-		if (origpkt.payload != NULL && origpkt.datalen > MIN_SCRAMBLE_PACKET)
+        if (origpkt.payload != NULL && origpkt.datalen > MIN_SCRAMBLE_PACKET)
             return true;
 
         return false;
-	}
+    }
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-        pLH = new pluginLogHandler( const_cast<const char *>(HACK_NAME), const_cast<const char *>(SCATTER_PKT_LOG));
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        pLH = new pluginLogHandler(const_cast<const char *> (HACK_NAME), const_cast<const char *> (SCATTER_PKT_LOG));
 
-        if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
+        if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
+        {
             LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
         }
-		return true;
-	}
+        return true;
+    }
 
-	scatter_packet(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE ) {};
+    scatter_packet(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE)
+    {
+    };
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new scatter_packet(forcedTest);
+    return new scatter_packet(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

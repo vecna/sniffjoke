@@ -40,68 +40,75 @@
 
 class valid_rst_fake_seq : public Hack
 {
-#define HACK_NAME	"valid RST / fake SEQ"
+#define HACK_NAME "valid RST / fake SEQ"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		Packet* const pkt = new Packet(origpkt);
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        Packet * const pkt = new Packet(origpkt);
 
-		pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
-		pkt->tcp->window = htons((uint16_t)(-1));
-		pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
-		pkt->tcp->psh = 0;
-		
-		pkt->tcppayloadResize(0);
+        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		pkt->position = ANY_POSITION;
-		pkt->wtf = INNOCENT;
-		/* useless because INNOCENT is never downgraded in last_pkt_fix */
-		pkt->choosableScramble = SCRAMBLE_INNOCENT;
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
+        pkt->tcp->window = htons((uint16_t) (-1));
+        pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
+        pkt->tcp->psh = 0;
 
-		pktVector.push_back(pkt);
-	}
+        pkt->tcppayloadResize(0);
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (
-			!origpkt.tcp->syn &&
-			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin &&
-			origpkt.tcp->ack
-		);
-	}
+        pkt->position = ANY_POSITION;
+        pkt->wtf = INNOCENT;
+        /* useless because INNOCENT is never downgraded in last_pkt_fix */
+        pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
-			supportedScramble = configuredScramble;
-			return true;
-		} else {
-			LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
-			return false;
-		}
-	}
+        pktVector.push_back(pkt);
+    }
 
-	valid_rst_fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_STARTPEEK) {}
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin &&
+                origpkt.tcp->ack
+                );
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
+        {
+            supportedScramble = configuredScramble;
+            return true;
+        }
+        else
+        {
+            LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
+            return false;
+        }
+    }
+
+    valid_rst_fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_STARTPEEK)
+    {
+    }
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new valid_rst_fake_seq(forcedTest);
+    return new valid_rst_fake_seq(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

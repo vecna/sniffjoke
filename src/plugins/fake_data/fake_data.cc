@@ -45,83 +45,91 @@ class fake_data : public Hack
 {
 #define HACK_NAME "Fake DATA"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		uint8_t pkts = 2;
-		judge_t selectedScramble;
 
-		/* in fake data I don't use pktRandomDamage because I want the
-		 * same hack for both packets */
-		if(ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
-			selectedScramble = PRESCRIPTION;
-		else if(ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90)) 
-			selectedScramble = MALFORMED;
-		else /* the 99% of the times */
-			selectedScramble = GUILTY;
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        uint8_t pkts = 2;
+        judge_t selectedScramble;
 
-		while(pkts--) {
-			Packet* const pkt = new Packet(origpkt);
+        /* in fake data I don't use pktRandomDamage because I want the
+         * same hack for both packets */
+        if (ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+            selectedScramble = PRESCRIPTION;
+        else if (ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+            selectedScramble = MALFORMED;
+        else /* the 99% of the times */
+            selectedScramble = GUILTY;
 
-			pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+        while (pkts--)
+        {
+            Packet * const pkt = new Packet(origpkt);
 
-			pkt->tcp->rst = 0;
-			pkt->tcp->fin = 0;
-			
-			if(random() % 2)
-				pkt->tcp->psh = 1;
-			else
-				pkt->tcp->psh = 0;
-				
-			if(random() % 2) {
-				pkt->tcp->urg = 1;
-				pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
-			} else {
-				pkt->tcp->urg = 0;
-			}
+            pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-			pkt->tcppayloadRandomFill();
-			
-			if(pkts == 2) /* first packet */
-				pkt->position = ANTICIPATION;
-			else /* second packet */
-				pkt->position = POSTICIPATION;
+            pkt->tcp->rst = 0;
+            pkt->tcp->fin = 0;
 
-			pkt->wtf = selectedScramble;
-			pkt->choosableScramble = availableScramble;
+            if (random() % 2)
+                pkt->tcp->psh = 1;
+            else
+                pkt->tcp->psh = 0;
 
-			pktVector.push_back(pkt);
-		}
-	}
+            if (random() % 2)
+            {
+                pkt->tcp->urg = 1;
+                pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
+            }
+            else
+            {
+                pkt->tcp->urg = 0;
+            }
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (origpkt.payload != NULL);
-	}
+            pkt->tcppayloadRandomFill();
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		supportedScramble = configuredScramble;
-		return true;
-	}
+            if (pkts == 2) /* first packet */
+                pkt->position = ANTICIPATION;
+            else /* second packet */
+                pkt->position = POSTICIPATION;
 
-	fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON) {};
+            pkt->wtf = selectedScramble;
+            pkt->choosableScramble = availableScramble;
+
+            pktVector.push_back(pkt);
+        }
+    }
+
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (origpkt.payload != NULL);
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        supportedScramble = configuredScramble;
+        return true;
+    }
+
+    fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
+    {
+    };
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_data(forcedTest);
+    return new fake_data(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

@@ -37,67 +37,71 @@
 
 class fake_zero_window : public Hack
 {
-#define HACK_NAME	"Fake 0-WINDOW"
+#define HACK_NAME "Fake 0-WINDOW"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		Packet* const pkt = new Packet(origpkt);
 
-		pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        Packet * const pkt = new Packet(origpkt);
 
-		pkt->tcp->ack = 0;
-		pkt->tcp->ack_seq = 0;
+        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-		/* this hack must not used ATM, beside be an assured failure in 
-		 * sniffjoke-autotest (using this hack with INNOCENT scramble) */
-		pkt->tcp->rst = 1;
-		/* trivia: must be explored: using an INNOCENT and totally valid packet
-		 * with RST and FIN sets, is dropped by a remote Linux OS -- v */
-		pkt->tcp->window = 0;
+        pkt->tcp->ack = 0;
+        pkt->tcp->ack_seq = 0;
 
-		pkt->tcppayloadResize(0);
-		pkt->tcp->psh = 0;
+        /* this hack must not used ATM, beside be an assured failure in
+         * sniffjoke-autotest (using this hack with INNOCENT scramble) */
+        pkt->tcp->rst = 1;
+        /* trivia: must be explored: using an INNOCENT and totally valid packet
+         * with RST and FIN sets, is dropped by a remote Linux OS -- v */
+        pkt->tcp->window = 0;
 
-		pkt->position = ANY_POSITION;
-		pkt->wtf = INNOCENT; 
-		pkt->choosableScramble = SCRAMBLE_INNOCENT;
+        pkt->tcppayloadResize(0);
+        pkt->tcp->psh = 0;
 
-		pktVector.push_back(pkt);
-	}
+        pkt->position = ANY_POSITION;
+        pkt->wtf = INNOCENT;
+        pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		return (
-			!origpkt.tcp->syn &&
-			!origpkt.tcp->rst &&
-			!origpkt.tcp->fin
-		);
-	}
+        pktVector.push_back(pkt);
+    }
 
-	virtual bool initializeHack(uint8_t configuredScramble)
-	{
-		supportedScramble = configuredScramble;
-		return true;
-	}
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        return (
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin
+                );
+    }
 
-	fake_zero_window(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS) {};
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        supportedScramble = configuredScramble;
+        return true;
+    }
+
+    fake_zero_window(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS)
+    {
+    };
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new fake_zero_window(forcedTest);
+    return new fake_zero_window(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

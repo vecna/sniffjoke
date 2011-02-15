@@ -37,129 +37,138 @@
 
 #include "service/Hack.h"
 
-class fragmentation_with_fake_data: public Hack
+class fragmentation_with_fake_data : public Hack
 {
-#define HACK_NAME	"Fragmentation With Fake Data"
+#define HACK_NAME "Fragmentation With Fake Data"
 public:
-	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!ISSET_TTL(availableScramble)) {
-			LOG_VERBOSE("TTL/prescription hack not available in %s: loss hack possibility", HACK_NAME);
-			return;
-		}
 
-		uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
-		
-		/* fragment's payload must be multiple of 8 (last fragment excluded of course) */
-		uint16_t fraglen_first = ((uint16_t)((uint16_t)(ip_payload_len / 2) + (uint16_t)(ip_payload_len % 2)) >> 3) << 3;
-		uint16_t fraglen_second = ip_payload_len - fraglen_first;
-		
-		vector<unsigned char> pbufcpy(origpkt.pbuf);
-		vector<unsigned char>::iterator it = pbufcpy.begin();
-		
-		/* pkts's header initialization as origpkt's header copy */
-		vector<unsigned char> pktbuf1(it, it + origpkt.iphdrlen);
-		vector<unsigned char> pktbuf2(it, it + origpkt.iphdrlen);
+    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!ISSET_TTL(availableScramble))
+        {
+            LOG_VERBOSE("TTL/prescription hack not available in %s: loss hack possibility", HACK_NAME);
+            return;
+        }
 
-		it += origpkt.iphdrlen;
-		
-		/* 
-		 * pkts's:
-		 *   - header fixation with correct fraglen and fragoffset
-		 *   - payload fragmentation
-		 */
-		struct iphdr *ip1 = (struct iphdr *)&(pktbuf1[0]);
-		ip1->tot_len = htons(origpkt.iphdrlen + fraglen_first);
-		ip1->frag_off |= htons(IP_MF);	/* set more fragment bit */
+        uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
 
-		struct iphdr *ip2 = (struct iphdr *)&pktbuf2[0];
-		ip2->tot_len = htons(origpkt.iphdrlen + fraglen_second);
-		ip2->frag_off += htons(fraglen_first >> 3);
+        /* fragment's payload must be multiple of 8 (last fragment excluded of course) */
+        uint16_t fraglen_first = ((uint16_t) ((uint16_t) (ip_payload_len / 2) + (uint16_t) (ip_payload_len % 2)) >> 3) << 3;
+        uint16_t fraglen_second = ip_payload_len - fraglen_first;
 
-		pktbuf1.insert(pktbuf1.end(), it, it + fraglen_first);
-		it += fraglen_first;
-		pktbuf2.insert(pktbuf2.end(), it, it + fraglen_second);
+        vector<unsigned char> pbufcpy(origpkt.pbuf);
+        vector<unsigned char>::iterator it = pbufcpy.begin();
 
-		Packet* const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
-		Packet* const frag2 = new Packet(&pktbuf2[0], pktbuf2.size());
+        /* pkts's header initialization as origpkt's header copy */
+        vector<unsigned char> pktbuf1(it, it + origpkt.iphdrlen);
+        vector<unsigned char> pktbuf2(it, it + origpkt.iphdrlen);
 
-		Packet* frag3_fake_overlapped = new Packet(*frag2);
-		struct iphdr *ip3 = (struct iphdr *)&frag3_fake_overlapped->pbuf[0];
-		if((fraglen_first >> 3) > 68) {
-			uint16_t max_slide = (fraglen_first >> 3) - 68;
-			ip3->frag_off = htons(ntohs(ip3->frag_off) - random() % max_slide);
-		}
-		
-		frag1->ip->id = htons(ntohs(frag1->ip->id) - 10 + (random() % 20));
-		frag2->ip->id = htons(ntohs(frag2->ip->id) - 10 + (random() % 20));
-		frag3_fake_overlapped->ip->id = htons(ntohs(frag3_fake_overlapped->ip->id) - 10 + (random() % 20));
-		
-		memset_random((void*)((unsigned char *)ip3 + origpkt.iphdrlen), fraglen_second);
-		
-		frag1->wtf = INNOCENT;
-		frag2->wtf = INNOCENT;
-		frag3_fake_overlapped->wtf = PRESCRIPTION;
-		frag3_fake_overlapped->choosableScramble = PRESCRIPTION;
+        it += origpkt.iphdrlen;
 
-		/*
-		 * randomizing the relative between the three fragments;
-		 * the orig packet is than removed.
-		 */
-		frag1->position = POSITIONUNASSIGNED;
-		frag2->position = POSITIONUNASSIGNED;
-		frag3_fake_overlapped->position = POSITIONUNASSIGNED;
-		
-		pktVector.push_back(frag1);
-		pktVector.push_back(frag2);
-		pktVector.push_back(frag3_fake_overlapped);
+        /*
+         * pkts's:
+         *   - header fixation with correct fraglen and fragoffset
+         *   - payload fragmentation
+         */
+        struct iphdr *ip1 = (struct iphdr *) &(pktbuf1[0]);
+        ip1->tot_len = htons(origpkt.iphdrlen + fraglen_first);
+        ip1->frag_off |= htons(IP_MF); /* set more fragment bit */
 
-		removeOrigPkt = true;
-	}
+        struct iphdr *ip2 = (struct iphdr *) &pktbuf2[0];
+        ip2->tot_len = htons(origpkt.iphdrlen + fraglen_second);
+        ip2->frag_off += htons(fraglen_first >> 3);
 
-	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-	{
-		if(!(availableScramble & supportedScramble)) {
-                        origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-			return false;
-		}
-		/*
-		 *  RFC 791 states:
-		 * 
-		 * "Every internet module must be able to forward a datagram of 68
-		 *  octets without further fragmentation.  This is because an internet
-		 *  header may be up to 60 octets, and the minimum fragment is 8 octets."
-		 * 
-		 */
-		return 	(!(origpkt.ip->frag_off & htons(IP_DF))
-			&& origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen)/ 2) >= 68
-			&& (availableScramble & PRESCRIPTION) );
-	}
+        pktbuf1.insert(pktbuf1.end(), it, it + fraglen_first);
+        it += fraglen_first;
+        pktbuf2.insert(pktbuf2.end(), it, it + fraglen_second);
 
-	virtual bool initializeHack(uint8_t configuredScramble) 
-	{
-		if ( ISSET_TTL(configuredScramble) && ISSET_INNOCENT(configuredScramble) ) {
-			supportedScramble = configuredScramble;
-			return true;
-		} else {
-			LOG_ALL("Fragmentation with fake data require INNOCENT and PRESCRIPTION as option");
-			return false;
-		}
-	}
+        Packet * const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
+        Packet * const frag2 = new Packet(&pktbuf2[0], pktbuf2.size());
 
-	fragmentation_with_fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS) {}
+        Packet* frag3_fake_overlapped = new Packet(*frag2);
+        struct iphdr *ip3 = (struct iphdr *) &frag3_fake_overlapped->pbuf[0];
+        if ((fraglen_first >> 3) > 68)
+        {
+            uint16_t max_slide = (fraglen_first >> 3) - 68;
+            ip3->frag_off = htons(ntohs(ip3->frag_off) - random() % max_slide);
+        }
+
+        frag1->ip->id = htons(ntohs(frag1->ip->id) - 10 + (random() % 20));
+        frag2->ip->id = htons(ntohs(frag2->ip->id) - 10 + (random() % 20));
+        frag3_fake_overlapped->ip->id = htons(ntohs(frag3_fake_overlapped->ip->id) - 10 + (random() % 20));
+
+        memset_random((void*) ((unsigned char *) ip3 + origpkt.iphdrlen), fraglen_second);
+
+        frag1->wtf = INNOCENT;
+        frag2->wtf = INNOCENT;
+        frag3_fake_overlapped->wtf = PRESCRIPTION;
+        frag3_fake_overlapped->choosableScramble = PRESCRIPTION;
+
+        /*
+         * randomizing the relative between the three fragments;
+         * the orig packet is than removed.
+         */
+        frag1->position = POSITIONUNASSIGNED;
+        frag2->position = POSITIONUNASSIGNED;
+        frag3_fake_overlapped->position = POSITIONUNASSIGNED;
+
+        pktVector.push_back(frag1);
+        pktVector.push_back(frag2);
+        pktVector.push_back(frag3_fake_overlapped);
+
+        removeOrigPkt = true;
+    }
+
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+        if (!(availableScramble & supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            return false;
+        }
+        /*
+         *  RFC 791 states:
+         *
+         * "Every internet module must be able to forward a datagram of 68
+         *  octets without further fragmentation.  This is because an internet
+         *  header may be up to 60 octets, and the minimum fragment is 8 octets."
+         *
+         */
+        return (!(origpkt.ip->frag_off & htons(IP_DF))
+                && origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen) / 2) >= 68
+                && (availableScramble & PRESCRIPTION));
+    }
+
+    virtual bool initializeHack(uint8_t configuredScramble)
+    {
+        if (ISSET_TTL(configuredScramble) && ISSET_INNOCENT(configuredScramble))
+        {
+            supportedScramble = configuredScramble;
+            return true;
+        }
+        else
+        {
+            LOG_ALL("fragmentation with fake data require INNOCENT and PRESCRIPTION as option");
+            return false;
+        }
+    }
+
+    fragmentation_with_fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS)
+    {
+    }
 };
 
-extern "C"  Hack* CreateHackObject(bool forcedTest)
+extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-	return new fragmentation_with_fake_data(forcedTest);
+    return new fragmentation_with_fake_data(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
-	delete who;
+    delete who;
 }
 
 extern "C" const char *versionValue()
 {
- 	return SW_VERSION;
+    return SW_VERSION;
 }

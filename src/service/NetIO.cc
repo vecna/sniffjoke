@@ -43,8 +43,8 @@ runconfig(runcfg)
 
     if (getuid() || geteuid())
         RUNTIME_EXCEPTION("required root privileges");
-    
-    
+
+
     memset(&send_ll, 0x00, sizeof (send_ll));
     memset(&ifr, 0x00, sizeof (ifr));
     memset(&netifr, 0x00, sizeof (netifr));
@@ -118,7 +118,7 @@ runconfig(runcfg)
     LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
     pclose(popen("route add default gw 1.198.10.5", "r"));
 
-    strncpy(orig_gw.ifr_name, (const char *) runconfig.interface, sizeof(orig_gw.ifr_name));
+    strncpy(orig_gw.ifr_name, (const char *) runconfig.interface, sizeof (orig_gw.ifr_name));
     tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 
     if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1)
