@@ -83,7 +83,7 @@ public:
                 pkt->tcp->fin = 0;
                 pkt->tcp->rst = 0;
 
-                ///* if the PUSH is present, it's keept only in the lasy data pkt */
+                /* if the PUSH is present, it's keept only in the lasy data pkt */
                 pkt->tcp->psh = 0;
 
                 /* common in my code */
