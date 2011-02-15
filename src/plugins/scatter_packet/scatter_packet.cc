@@ -36,9 +36,8 @@
 
 #include "service/Hack.h"
 
-#define MIN_SCRAMBLE_PACKET 80
-#define MIN_BLOCK_SPLIT     68
-#define OVERLAPPED_SIZE     32
+#define MIN_SCRAMBLE_PACKET 1000
+#define OVERLAPPED_SIZE     50
 #define SCATTER_PKT_LOG     "scatterPacket.plugin.log"
 
 class scatter_packet : public Hack
@@ -53,12 +52,20 @@ public:
 		uint8_t pkts, i;
         uint32_t starting_seq = (ntohl(origpkt.tcp->seq) - origpkt.datalen);
         uint32_t currently_send = 0;
+        uint32_t block_split, carry = 0;
 
-        pkts = (origpkt.datalen / MIN_BLOCK_SPLIT) +1;
+        /* the block split size must not create a last packet of 0 byte! */
+        do
+        {
+            block_split = (((random() % 249) + 50) / 5) * 4;
+            carry = origpkt.datalen % block_split;
+        } while(carry == 0);
 
-        pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk (min pkt %d overlap %d)",
+        pkts = (origpkt.datalen / block_split) +1;
+
+        pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes, overlap %d",
             origpkt.datalen, starting_seq, ntohs(origpkt.tcp->source), 
-            pkts, MIN_BLOCK_SPLIT, OVERLAPPED_SIZE
+            pkts, block_split, OVERLAPPED_SIZE
         );
 
 	    for(i = 0; i < pkts; i++)
@@ -66,22 +73,28 @@ public:
 			Packet* const pkt = new Packet(origpkt);
             uint32_t thisdatalen;
 
-            if( (origpkt.datalen - currently_send) >= MIN_BLOCK_SPLIT )
+            if( (origpkt.datalen - currently_send) > block_split )
             {
                 /* there are the packet large MIN_BLOCK_SPLIT + the overlapping data */
-                thisdatalen = MIN_BLOCK_SPLIT;
+                thisdatalen = block_split;
                 currently_send += thisdatalen;
 
                 pkt->tcppayloadResize(thisdatalen + OVERLAPPED_SIZE);
 
                 memset(pkt->payload, '6', thisdatalen + OVERLAPPED_SIZE);
-                memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
+                memcpy(pkt->payload, &origpkt.payload[i * block_split], thisdatalen);
 
-                pkt->tcp->seq = htonl( starting_seq + (i * MIN_BLOCK_SPLIT) + OVERLAPPED_SIZE );
+                pkt->tcp->seq = htonl( starting_seq + ( (i + 1) * block_split) + OVERLAPPED_SIZE );
 
                 /* the acknowledge is keep for the last packet */
                 pkt->tcp->ack = 0;
                 pkt->tcp->ack_seq = 0;
+
+                /* if the PUSH is present, is put only in the lasy data pkt */
+                pkt->tcp->psh = 0;
+
+                /* common in my code */
+    			pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
             }
             else
             {
@@ -90,28 +103,22 @@ public:
                 currently_send += thisdatalen;
 
                 pkt->tcppayloadResize(thisdatalen);
-                memcpy(pkt->payload, &origpkt.payload[i * MIN_BLOCK_SPLIT], thisdatalen);
+                memcpy(pkt->payload, &origpkt.payload[i * block_split], thisdatalen);
 
-                pkt->tcp->seq = htonl( starting_seq + ( (i - 1) * MIN_BLOCK_SPLIT) + thisdatalen);
+                /* ARE EQUAL! pkt->tcp->seq = origpkt.tcp->seq; */
+                pkt->tcp->seq = htonl( starting_seq + ( i * block_split) + thisdatalen);
 
-                /* temporary check */
-                if(pkt->tcp->seq != origpkt.tcp->seq) 
-                {
-                    pLH->completeLog("ONG! -- an atheist exclamation %u %u (diff %d)", 
-                        ntohl(pkt->tcp->seq), ntohl(origpkt.tcp->seq),
-                        ntohl(pkt->tcp->seq) - ntohl(origpkt.tcp->seq) 
-                    );
-                }
+                /* marker useful when I feel trunked and confused by tcpdump */
+                pkt->ip->id = 1;
             }
 
             pLH->completeLog(
-            " %d) in %d - chunk data %d (seq %u) total injected %d (progressive size %d) TCP source port %u",
-                i, pkts, thisdatalen, ntohl(pkt->tcp->seq), thisdatalen + OVERLAPPED_SIZE, 
+            " %d) of %d - chunk data %d (seq %u) total injected %d (progressive send %d) TCP source port %u",
+                (i + 1), pkts, thisdatalen, ntohl(pkt->tcp->seq), thisdatalen + OVERLAPPED_SIZE, 
                 currently_send, ntohs(pkt->tcp->source) );
 
-			pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
-			pkt->position = ANTICIPATION; // POSTICIPATION;
+            /* POSTICIPATION sent the packet in reversed order */
+			pkt->position = ANTICIPATION; 
 			pkt->wtf = INNOCENT;
 			pktVector.push_back(pkt);
 		}
@@ -123,8 +130,8 @@ public:
      * overlap the fragment of the same packet */
 	virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
 	{
-        pLH->completeLog("verifing condition for id %d datalen %d total len %d",
-            origpkt.ip->id, origpkt.datalen, origpkt.pbuf.size());
+        pLH->completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
+            origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.datalen, origpkt.pbuf.size());
 
 		if (origpkt.payload != NULL && origpkt.datalen > MIN_SCRAMBLE_PACKET)
             return true;
