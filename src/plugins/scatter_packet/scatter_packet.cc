@@ -60,7 +60,7 @@ public:
          * block_split between MIN_BLOCK_SPLIT and ((2 * MIN_BLOCK_SPLIT) - 1);
          * having MIN_SCRAMBLE_PACKET = MIN_BLOCK_SPLIT*3 we will have at least two pkts
          */
-        const uint32_t block_split = MIN_BLOCK_SPLIT; // + (random() % MIN_BLOCK_SPLIT);
+        const uint32_t block_split = MIN_BLOCK_SPLIT + (random() % MIN_BLOCK_SPLIT);
         const uint8_t pkts = (origpkt.datalen / block_split) + ((origpkt.datalen % block_split) ? 1 : 0);
 
         pLH->completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes, overlap %d",
@@ -142,11 +142,12 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        pLH = new pluginLogHandler(const_cast<const char *> (HACK_NAME), const_cast<const char *> (SCATTER_PKT_LOG));
+        pLH = new pluginLogHandler(const_cast<const char *> (HACK_NAME), SCATTER_PKT_LOG);
 
         if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
         {
             LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
+            return false;
         }
         return true;
     }
