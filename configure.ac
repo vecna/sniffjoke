@@ -102,15 +102,15 @@ AC_CONFIG_FILES(
 		src/plugins/Makefile
 		src/plugins/fake_close_fin/Makefile
 		src/plugins/fake_close_rst/Makefile
-		src/plugins/fake_data/Makefile
+		src/plugins/fake_fragment/Makefile
+		src/plugins/fake_segment/Makefile
 		src/plugins/fake_seq/Makefile
 		src/plugins/fake_syn/Makefile
 		src/plugins/fake_zero_window/Makefile
+                src/plugins/fragmentation/Makefile
+                src/plugins/segmentation/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
-		src/plugins/scatter_packet/Makefile
-		src/plugins/fragmentation/Makefile
-		src/plugins/fragmentation_with_fake_data/Makefile
 )
 
 

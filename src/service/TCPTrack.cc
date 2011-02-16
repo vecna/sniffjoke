@@ -110,7 +110,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 }
 
 /*  
- *  this function is used from the inject_hack_in_queue() routine for decretee
+ *  this function is used from the injectHack() routine for decretee
  *  the possibility for an hack to happen.
  *  returns true if it's possibile to forge the hack.
  *  the calculation involves:

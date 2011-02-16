@@ -39,6 +39,7 @@
 class fake_syn : public Hack
 {
 #define HACK_NAME "Fake SYN"
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)

@@ -37,6 +37,7 @@
 class fake_close_fin : public Hack
 {
 #define HACK_NAME "Fake FIN"
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)

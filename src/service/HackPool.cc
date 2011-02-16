@@ -59,7 +59,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
     }
 
     if (pluginOnly)
-        LOG_DEBUG("a single plugin is used and will be force to be apply ALWAYS a session permit");
+        LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
 
     selfObj = fp_CreateHackObj(pluginOnly);
 
