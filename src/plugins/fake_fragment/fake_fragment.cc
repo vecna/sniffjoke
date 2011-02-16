@@ -24,14 +24,14 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  * 
- * the hacks inject two packet (maked as invalid, with TTL expiring or bad
- * checksum) with a fake segment, of the same length of the original packet,
- * one BEFORE and one AFTER the real packet. this cause that the sniffer (that 
- * eventually confirm the readed data when the data was acknowledged), had
- * memorized the first packet or the last only (because they share the same
- * sequence number). the reassembled flow appear override bye the data here
- * injected. should be the leverage for an applicative injection (like a 
- * fake mail instead of the real mail, etc...)
+ * the hack injects two ip fragments (that will be invalidated with TTL expiring or
+ * bad ip options) of the same length of the original packet,
+ * one BEFORE and one AFTER the real packet/fragment. this causes that the sniffer to
+ * memorize the first packet or the last only fragment offset (because they share the
+ * identification number and the fragment offset).
+ * the reassembled flow appears overridden by the data here injected.
+ * shoulds be the leverage for an applicative injection (like a fake mail
+ * instead of the real mail, etc...)
  * 
  * SOURCE: deduction, analysis of libnids
  * VERIFIED IN:
@@ -70,13 +70,16 @@ public:
 
             memset_random((void*) (((unsigned char *) &(pkt->pbuf[0])) + origpkt.iphdrlen), ip_payload);
 
+
+            /* the id of the packet and the offset where no changed to collide with the real one */
+
             if (pkts == 2) /* first packet */
                 pkt->position = ANTICIPATION;
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
             pkt->wtf = selectedScramble;
-             pkt->choosableScramble = (availableScramble & supportedScramble);
+            pkt->choosableScramble = (availableScramble & supportedScramble);
 
             pktVector.push_back(pkt);
         }

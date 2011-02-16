@@ -24,10 +24,8 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  *
- * This hack scatter one single packet of large payload in a lot of little
- * chunck;
- * this hack represent the base for developing:
- *  1) chained hacks
+ * this hack simply splits a tcp packet into tcp segments fragments.
+ * this could help to bypass some simple sniffers.
  * 
  * SOURCE: deduction, 
  * VERIFIED IN:

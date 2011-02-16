@@ -24,13 +24,13 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  * 
- * the hacks inject two packet (maked as invalid, with TTL expiring or bad
- * checksum) with a fake segment, of the same length of the original packet,
- * one BEFORE and one AFTER the real packet. this cause that the sniffer (that 
- * eventually confirm the readed data when the data was acknowledged), had
- * memorized the first packet or the last only (because they share the same
- * sequence number). the reassembled flow appear override bye the data here
- * injected. should be the leverage for an applicative injection (like a 
+ * this hack injects two tcp segments (that will be invalidated with TTL expiring
+ * or bad ip options or bad checksum) of the same length of the original packet,
+ * one BEFORE and one AFTER the real packet. this cause that the sniffer, that
+ * eventually confirms the readed data when the data was acknowledged, to
+ * memorize the first packet or the last only (because they share the same
+ * sequence number). the reassembled flow appears overridden by the data here
+ * injected. shoulds be the leverage for an applicative injection (like a
  * fake mail instead of the real mail, etc...)
  * 
  * SOURCE: deduction, analysis of libnids

@@ -26,7 +26,7 @@
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
  * 
- * this hack simply split a ip packet (or a fragment itself) into two fragments.
+ * this hack simply splits an ip packet (or a fragment itself) into ip fragments.
  * this could help to bypass some simple sniffers.
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
