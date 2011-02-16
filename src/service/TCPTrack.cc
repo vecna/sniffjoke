@@ -582,33 +582,29 @@ void TCPTrack::injectHack(Packet &origpkt)
 }
 
 /* 
- * last_pkt_fix is the last modification applied to packets.
+ * lastPktFix is the last modification applied to packets.
  * Modification involve only TCP packets coming from TUNNEL
- * and hacks injected in the queue.
+ * and hacks injected in the queue to goes on the eth/wifi.
  *
  * p.s. if you are reading this piece of code for fix your sniffer:
  *   we SHALL BE YOUR NIGHTMARE.
  *   we SHALL BE YOUR NIGHTMARE.
  *   we SHALL BE YOUR NIGHTMARE, LOSE ANY HOPE, we HAD THE RANDOMNESS IN OUR SIDE.
  *
- *
  * 
- *   PRESCRIPTION: will EXPIRE BEFORE REACHING destination (due to ttl modification)
- *             could be: ONLY EVIL PACKETS
- *   GUILTY:       will BE DISCARDED by destination (due to some error introduction)
- *                      at the moment the only error applied is the invalidation tcp checksum
- *                      could be: ONLY EVIL PACKETS 
- *   MALFORMED:    will BE DISCARDED by destination due to misuse of ip options
- *               could be: ONLY EVIL PACKETS
- *   INNOCENT:       will BE ACCEPTED, so, INNOCENT but EVIL cause the same treatment of a
- *               GOOD packet.
- *
+ *  PRESCRIPTION: will EXPIRE BEFORE REACHING destination (due to ttl modification)
+ *                could be: ONLY EVIL PACKETS
+ *   GUILTY:      will BE DISCARDED by destination (due to some error introduction)
+ *                at the moment the only error applied is the invalidation tcp checksum
+ *                could be: ONLY EVIL PACKETS 
+ *   MALFORMED:   will BE DISCARDED by destination due to misuse of ip options
+ *                could be: ONLY EVIL PACKETS
+ *   INNOCENT:    will BE ACCEPTED, so, INNOCENT but EVIL cause the same treatment of a
+ *                GOOD packet.
  *
  * Hacks application it's applied in this order: PRESCRIPTION, MALFORMED, GUILTY.
  * A non applicable hack it's degraded to the next;
  * At worst GUILTY it's always applied.
- * 
- *
  */
 bool TCPTrack::lastPktFix(Packet &pkt)
 {
@@ -832,7 +828,7 @@ void TCPTrack::analyzePacketQueue()
             if (pkt->source == NETWORK || pkt->proto != TCP || lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: send a notification to the developers");
         }
     }
 
@@ -846,7 +842,7 @@ void TCPTrack::analyzePacketQueue()
             if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                RUNTIME_EXCEPTION("");
+                RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: send a notification to the developers");
         }
     }
 
