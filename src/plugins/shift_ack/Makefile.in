@@ -32,7 +32,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = src/plugins/fake_segment
+subdir = src/plugins/shift_ack
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -50,12 +50,12 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 pkglibLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-fake_segment_la_LIBADD =
-am_fake_segment_la_OBJECTS = fake_segment.lo
-fake_segment_la_OBJECTS = $(am_fake_segment_la_OBJECTS)
-fake_segment_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+shift_ack_la_LIBADD =
+am_shift_ack_la_OBJECTS = shift_ack.lo
+shift_ack_la_OBJECTS = $(am_shift_ack_la_OBJECTS)
+shift_ack_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(fake_segment_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(CXXFLAGS) $(shift_ack_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -68,8 +68,8 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(fake_segment_la_SOURCES)
-DIST_SOURCES = $(fake_segment_la_SOURCES)
+SOURCES = $(shift_ack_la_SOURCES)
+DIST_SOURCES = $(shift_ack_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -185,9 +185,9 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-pkglib_LTLIBRARIES = fake_segment.la
-fake_segment_la_SOURCES = fake_segment.cc
-fake_segment_la_LDFLAGS = -module -avoid-version
+pkglib_LTLIBRARIES = shift_ack.la
+shift_ack_la_SOURCES = shift_ack.cc
+shift_ack_la_LDFLAGS = -module -avoid-version
 all: all-am
 
 .SUFFIXES:
@@ -201,9 +201,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  src/plugins/fake_segment/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  src/plugins/shift_ack/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu  src/plugins/fake_segment/Makefile
+	  $(AUTOMAKE) --gnu  src/plugins/shift_ack/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -248,8 +248,8 @@ clean-pkglibLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-fake_segment.la: $(fake_segment_la_OBJECTS) $(fake_segment_la_DEPENDENCIES) 
-	$(fake_segment_la_LINK) -rpath $(pkglibdir) $(fake_segment_la_OBJECTS) $(fake_segment_la_LIBADD) $(LIBS)
+shift_ack.la: $(shift_ack_la_OBJECTS) $(shift_ack_la_DEPENDENCIES) 
+	$(shift_ack_la_LINK) -rpath $(pkglibdir) $(shift_ack_la_OBJECTS) $(shift_ack_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -257,7 +257,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fake_segment.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shift_ack.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

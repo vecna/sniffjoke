@@ -1,6 +1,3 @@
-<<<<<<< HEAD:src/plugins/scatter_packet/scatter_packet.cc
-cdcdcd
-=======
 /*
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
@@ -170,4 +167,3 @@ extern "C" const char *versionValue()
 {
     return SW_VERSION;
 }
->>>>>>> evil/master:src/plugins/segmentation/segmentation.cc
