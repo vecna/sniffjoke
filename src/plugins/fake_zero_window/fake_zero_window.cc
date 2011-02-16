@@ -38,6 +38,7 @@
 class fake_zero_window : public Hack
 {
 #define HACK_NAME "Fake 0-WINDOW"
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
@@ -73,10 +74,8 @@ public:
             origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
             return false;
         }
-        return (
-                !origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin
+
+        return (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin
                 );
     }
 

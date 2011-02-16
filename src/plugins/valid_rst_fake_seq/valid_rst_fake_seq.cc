@@ -71,6 +71,7 @@ public:
             origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
             return false;
         }
+
         return (
                 !origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&

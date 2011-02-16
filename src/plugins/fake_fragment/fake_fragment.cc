@@ -24,14 +24,14 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  * 
- * the hacks inject two packet (maked as invalid, with TTL expiring or bad
- * checksum) with a fake data, of the same length of the original packet,
- * one BEFORE and one AFTER the real packet. this cause that the sniffer (that 
- * eventually confirm the readed data when the data was acknowledged), had
- * memorized the first packet or the last only (because they share the same
- * sequence number). the reassembled flow appear override bye the data here
- * injected. should be the leverage for an applicative injection (like a 
- * fake mail instead of the real mail, etc...)
+ * the hack injects two ip fragments (that will be invalidated with TTL expiring or
+ * bad ip options) of the same length of the original packet,
+ * one BEFORE and one AFTER the real packet/fragment. this causes that the sniffer to
+ * memorize the first packet or the last only fragment offset (because they share the
+ * identification number and the fragment offset).
+ * the reassembled flow appears overridden by the data here injected.
+ * shoulds be the leverage for an applicative injection (like a fake mail
+ * instead of the real mail, etc...)
  * 
  * SOURCE: deduction, analysis of libnids
  * VERIFIED IN:
@@ -41,50 +41,37 @@
 
 #include "service/Hack.h"
 
-class fake_data : public Hack
+class fake_fragment : public Hack
 {
-#define HACK_NAME "Fake DATA"
+#define HACK_NAME "Fake Fragment"
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
-        uint8_t pkts = 2;
+        /*
+         * in fake fragment I don't use pktRandomDamage because I want the
+         * same hack for both packets.
+         */
         judge_t selectedScramble;
-
-        /* in fake data I don't use pktRandomDamage because I want the
-         * same hack for both packets */
         if (ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
             selectedScramble = PRESCRIPTION;
-        else if (ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+        else if (ISSET_MALFORMED(availableScramble & supportedScramble))
             selectedScramble = MALFORMED;
-        else /* the 99% of the times */
-            selectedScramble = GUILTY;
+        else
+            return;
 
+        const uint32_t ip_payload = origpkt.pbuf.size() - origpkt.iphdrlen;
+
+        uint8_t pkts = 2;
         while (pkts--)
         {
             Packet * const pkt = new Packet(origpkt);
 
-            pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+            memset_random((void*) (((unsigned char *) &(pkt->pbuf[0])) + origpkt.iphdrlen), ip_payload);
 
-            pkt->tcp->rst = 0;
-            pkt->tcp->fin = 0;
 
-            if (random() % 2)
-                pkt->tcp->psh = 1;
-            else
-                pkt->tcp->psh = 0;
-
-            if (random() % 2)
-            {
-                pkt->tcp->urg = 1;
-                pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
-            }
-            else
-            {
-                pkt->tcp->urg = 0;
-            }
-
-            pkt->tcppayloadRandomFill();
+            /* the id of the packet and the offset where no changed to collide with the real one */
 
             if (pkts == 2) /* first packet */
                 pkt->position = ANTICIPATION;
@@ -92,7 +79,7 @@ public:
                 pkt->position = POSTICIPATION;
 
             pkt->wtf = selectedScramble;
-            pkt->choosableScramble = availableScramble;
+            pkt->choosableScramble = (availableScramble & supportedScramble);
 
             pktVector.push_back(pkt);
         }
@@ -114,14 +101,14 @@ public:
         return true;
     }
 
-    fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
+    fake_fragment(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
     {
     };
 };
 
 extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-    return new fake_data(forcedTest);
+    return new fake_fragment(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

@@ -26,7 +26,7 @@
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
  * 
- * this hack simply split a ip packet (or a fragment itself) into two fragments.
+ * this hack simply splits an ip packet (or a fragment itself) into ip fragments.
  * this could help to bypass some simple sniffers.
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
@@ -39,74 +39,98 @@
 class fragmentation : public Hack
 {
 #define HACK_NAME "Fragmentation"
+#define PKT_LOG "plugin.fragmentation.log"
+#define MIN_BLOCK_SPLIT 48
+#define MIN_IP_PAYLOAD MIN_BLOCK_SPLIT*2
+
+private:
+    pluginLogHandler pLH;
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
-
+        /*
+         * block_split between MIN_BLOCK_SPLIT and ((2 * MIN_BLOCK_SPLIT) - 1);
+         * having MIN_SCRAMBLE_PACKET = MIN_BLOCK_SPLIT*3 we will have at least two fragments
+         */
+        const uint32_t block_split = ((MIN_BLOCK_SPLIT + (random() % MIN_BLOCK_SPLIT)) >> 3) << 3;
         uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
-
-        /* fragment's payload must be multiple of 8 (last fragment excluded of course) */
-        uint16_t fraglen_first = ((uint16_t) ((uint16_t) (ip_payload_len / 2) + (uint16_t) (ip_payload_len % 2)) >> 3) << 3;
-        uint16_t fraglen_second = ip_payload_len - fraglen_first;
+        uint16_t carry = (ip_payload_len % block_split) ? (ip_payload_len % block_split) : block_split;
+        const uint8_t pkts = (ip_payload_len / block_split) + ((ip_payload_len % block_split) ? 1 : 0);
 
         vector<unsigned char> pbufcpy(origpkt.pbuf);
-        vector<unsigned char>::iterator it = pbufcpy.begin();
+        vector<unsigned char>::iterator it = pbufcpy.begin() + origpkt.iphdrlen;
 
-        /* pkts's header initialization as origpkt's header copy */
-        vector<unsigned char> pktbuf1(it, it + origpkt.iphdrlen);
-        vector<unsigned char> pktbuf2(it, it + origpkt.iphdrlen);
+        pLH.completeLog("packet size %d, splitted in %d chunk of %d bytes",
+                        ntohs(origpkt.ip->tot_len), pkts, block_split);
 
-        it += origpkt.iphdrlen;
+        uint16_t offset = ntohs(origpkt.ip->frag_off) & ~htons(IP_MF);
+        bool justfragmented = ntohs(origpkt.ip->frag_off) & htons(IP_MF);
 
-        /*
-         * pkts's:
-         *   - header fixation with correct fraglen and fragoffset
-         *   - payload fragmentation
-         */
-        struct iphdr *ip1 = (struct iphdr *) &(pktbuf1[0]);
-        ip1->tot_len = htons(origpkt.iphdrlen + fraglen_first);
-        ip1->frag_off |= htons(IP_MF); /* set more fragment bit */
-        struct iphdr *ip2 = (struct iphdr *) &pktbuf2[0];
-        ip2->tot_len = htons(origpkt.iphdrlen + fraglen_second);
-        ip2->frag_off += htons(fraglen_first >> 3);
+        for (uint8_t i = 0; i < pkts; i++)
+        {
+            vector<unsigned char> pktbuf(pbufcpy.begin(), pbufcpy.begin() + origpkt.iphdrlen);
 
-        pktbuf1.insert(pktbuf1.end(), it, it + fraglen_first);
-        it += fraglen_first;
-        pktbuf2.insert(pktbuf2.end(), it, it + fraglen_second);
+            struct iphdr *ip = (struct iphdr *) &(pktbuf[0]);
 
-        Packet * const frag1 = new Packet(&pktbuf1[0], pktbuf1.size());
-        Packet * const frag2 = new Packet(&pktbuf2[0], pktbuf2.size());
+            if (i < (pkts - 1)) /* first (pkt - 1) segments */
+            {
+                /* common in my code */
+                ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
 
-        frag1->ip->id = htons(ntohs(frag1->ip->id) - 10 + (random() % 20));
-        frag2->ip->id = htons(ntohs(frag2->ip->id) - 10 + (random() % 20));
+                ip->tot_len = htons(origpkt.iphdrlen + block_split);
+                ip->frag_off = htons(offset | IP_MF); /* set more fragment bit */
+                pktbuf.insert(pktbuf.end(), it, it + block_split);
+                offset += block_split >> 3;
+                it += block_split;
+            }
+            else /* last segment */
+            {
+                /* marker useful when I feel drunk and confused by tcpdump */
+                ip->id = 1;
 
-        frag1->wtf = INNOCENT;
-        frag2->wtf = INNOCENT;
-        /* useless, INNOCENT is never downgraded in last_pkt_fix */
-        frag1->choosableScramble = (availableScramble & supportedScramble);
-        frag2->choosableScramble = (availableScramble & supportedScramble);
+                ip->tot_len = htons(origpkt.iphdrlen + carry);
+                if (justfragmented)
+                    ip->frag_off = htons(offset | IP_MF);
+                else
+                    ip->frag_off = htons(offset);
+                pktbuf.insert(pktbuf.end(), it, it + carry);
+            }
 
-        /*
-         * randomizing the relative between the two fragments;
-         * the orig packet is than removed.
-         */
-        frag1->position = POSITIONUNASSIGNED;
-        frag2->position = POSITIONUNASSIGNED;
+            Packet * const pkt = new Packet(&pktbuf[0], pktbuf.size());
 
-        pktVector.push_back(frag1);
-        pktVector.push_back(frag2);
+            /*
+             * randomizing the relative between the two fragments;
+             * the orig packet is than removed.
+             */
+            pkt->position = ANY_POSITION;
+
+            pkt->wtf = INNOCENT;
+
+            /* useless, INNOCENT is never downgraded in last_pkt_fix */
+            pkt->choosableScramble = (availableScramble & supportedScramble);
+
+            pktVector.push_back(pkt);
+
+            pLH.completeLog(" chunk %d of %d", (i + 1), pkts);
+        }
 
         removeOrigPkt = true;
+
     }
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        pLH.completeLog("verifing condition for id %d datalen %d total len %d",
+                        origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
+
         if (!(availableScramble & supportedScramble))
         {
             origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
             return false;
         }
+
         /*
          *  RFC 791 states:
          *
@@ -121,6 +145,7 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
+
         if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
         {
             supportedScramble = configuredScramble;
@@ -129,22 +154,27 @@ public:
         else
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
+
             return false;
         }
     }
 
-    fragmentation(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS)
+    fragmentation(bool forcedTest) :
+            Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS),
+            pLH(HACK_NAME, PKT_LOG)
     {
     }
 };
 
 extern "C" Hack* CreateHackObject(bool forcedTest)
 {
+
     return new fragmentation(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
+
     delete who;
 }
 

@@ -39,6 +39,7 @@
 class fake_close_rst : public Hack
 {
 #define HACK_NAME "Fake RST"
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)

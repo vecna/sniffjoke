@@ -24,11 +24,16 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  * 
- * a SYN packet, in a sniffer reassembly routine should mean the allocation/
- * opening of a new flow. if this syn packet collide with a previously 
- * allocated tuple, what happen ?
+ * this hack injects two tcp segments (that will be invalidated with TTL expiring
+ * or bad ip options or bad checksum) of the same length of the original packet,
+ * one BEFORE and one AFTER the real packet. this cause that the sniffer, that
+ * eventually confirms the readed data when the data was acknowledged, to
+ * memorize the first packet or the last only (because they share the same
+ * sequence number). the reassembled flow appears overridden by the data here
+ * injected. shoulds be the leverage for an applicative injection (like a
+ * fake mail instead of the real mail, etc...)
  * 
- * SOURCE: deduction
+ * SOURCE: deduction, analysis of libnids
  * VERIFIED IN:
  * KNOW BUGS:
  * WRITTEN IN VERSION: 0.4.0
@@ -36,14 +41,29 @@
 
 #include "service/Hack.h"
 
-class fake_syn : public Hack
+class fake_segment : public Hack
 {
-#define HACK_NAME "Fake SYN"
+#define HACK_NAME "Fake Segment"
 
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
+
+        /*
+         * in fake segment I don't use pktRandomDamage because I want the
+         * same hack for both packets.
+         */
+        judge_t selectedScramble;
+        if (ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+            selectedScramble = PRESCRIPTION;
+        else if (ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+            selectedScramble = MALFORMED;
+        else if (ISSET_CHECKSUM(availableScramble) & supportedScramble) /* the 99% of the times */
+            selectedScramble = GUILTY;
+        else
+            return;
+
         uint8_t pkts = 2;
         while (pkts--)
         {
@@ -51,38 +71,32 @@ public:
 
             pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-            pkt->tcp->psh = 0;
-            pkt->tcp->syn = 1;
+            pkt->tcp->rst = 0;
+            pkt->tcp->fin = 0;
 
-            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
+            if (random() % 2)
+                pkt->tcp->psh = 1;
+            else
+                pkt->tcp->psh = 0;
 
-            /* 20% is a SYN ACK */
-            if ((random() % 5) == 0)
+            if (random() % 2)
             {
-                pkt->tcp->ack = 1;
-                pkt->tcp->ack_seq = random();
+                pkt->tcp->urg = 1;
+                pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
             }
             else
             {
-                pkt->tcp->ack = pkt->tcp->ack_seq = 0;
+                pkt->tcp->urg = 0;
             }
 
-            /* 20% had source and dest port reversed */
-            if ((random() % 5) == 0)
-            {
-                uint16_t swap = pkt->tcp->source;
-                pkt->tcp->source = pkt->tcp->dest;
-                pkt->tcp->dest = swap;
-            }
-
-            pkt->tcppayloadResize(0);
+            pkt->tcppayloadRandomFill();
 
             if (pkts == 2) /* first packet */
                 pkt->position = ANTICIPATION;
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
+            pkt->wtf = selectedScramble;
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
             pktVector.push_back(pkt);
@@ -96,11 +110,8 @@ public:
             origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
             return false;
         }
-        return (
-                origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin
-                );
+
+        return (origpkt.payload != NULL);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
@@ -109,14 +120,14 @@ public:
         return true;
     }
 
-    fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE)
+    fake_segment(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
     {
     };
 };
 
 extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-    return new fake_syn(forcedTest);
+    return new fake_segment(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

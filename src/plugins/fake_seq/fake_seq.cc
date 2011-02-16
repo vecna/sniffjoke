@@ -39,6 +39,7 @@
 class fake_seq : public Hack
 {
 #define HACK_NAME "Fake SEQ"
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
@@ -85,6 +86,7 @@ public:
             origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
             return false;
         }
+
         return (
                 !origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
