@@ -105,12 +105,6 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (!(availableScramble & supportedScramble))
-        {
-            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-            return false;
-        }
-
         return (origpkt.payload != NULL);
     }
 

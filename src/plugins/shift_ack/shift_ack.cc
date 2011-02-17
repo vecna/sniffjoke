@@ -62,18 +62,10 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (!(availableScramble & supportedScramble))
-        {
-            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-            return false;
-        }
-
-        return (
-                !origpkt.tcp->syn &&
+        return (!origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
                 !origpkt.tcp->fin &&
-                origpkt.tcp->ack
-                );
+                origpkt.tcp->ack);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

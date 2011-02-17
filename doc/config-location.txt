@@ -33,9 +33,9 @@ are the shared object contained in src/plugins and installed in
 The configuration file contains these information:
 
 # comment
-plugin_name.so,SCRAMBLETECHSUPPORTED1,SCRAMBLETECHSUPPORTED2,...
+plugin_name,SCRAMBLETECHSUPPORTED1,SCRAMBLETECHSUPPORTED2,...
 
-the plugin_name.so is exposed without path and intended to be found in the 
+the plugin_name is exposed without path and intended to be found in the 
 /usr/local/lib/sniffjoke directory. the scramble technology are separated by
 a comma and without whitespace, where the accepted scramble values are:
 

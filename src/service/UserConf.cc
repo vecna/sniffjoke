@@ -43,7 +43,7 @@
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 cmdline_opts(cmdline_opts)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
     char *selected_basedir = NULL, *selected_location = NULL;
 
     /* generating referringdir and configfile (public) */

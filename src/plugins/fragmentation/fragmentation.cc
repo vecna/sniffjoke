@@ -3,7 +3,7 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
+ *   Copyright (C) 2011 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -26,8 +26,8 @@
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
  * 
- * this hack simply splits an ip packet (or a fragment itself) into ip fragments.
- * this could help to bypass some simple sniffers.
+ * this hack simply do a massive fragmentation of ip packet (or fragment itself).
+ * this could help to bypass some simple sniffers and ids.
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
  * VERIFIED IN:
@@ -101,10 +101,13 @@ public:
             Packet * const pkt = new Packet(&pktbuf[0], pktbuf.size());
 
             /*
-             * randomizing the relative between the two fragments;
-             * the orig packet is than removed.
+             * the orig packet is removed, so the value of the position
+             * has no particular importance for the hack
+             *
+             * by the way setting this to ANTICIPATION it's fundamental
+             * to keep packets trasmission ordered.
              */
-            pkt->position = ANY_POSITION;
+            pkt->position = ANTICIPATION;
 
             pkt->wtf = INNOCENT;
 
@@ -139,24 +142,20 @@ public:
          *  header may be up to 60 octets, and the minimum fragment is 8 octets."
          *
          */
-        return (!(origpkt.ip->frag_off & htons(IP_DF))
-                && origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen) / 2) >= 68);
+        return (!(origpkt.ip->frag_off & htons(IP_DF)) &&
+                origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen) / 2) >= 68);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-
-        if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
-        {
-            supportedScramble = configuredScramble;
-            return true;
-        }
-        else
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
 
             return false;
         }
+
+        return true;
     }
 
     fragmentation(bool forcedTest) :

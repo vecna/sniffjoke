@@ -3,7 +3,7 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
+ *   Copyright (C) 2008 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -35,12 +35,12 @@ sessiontrack_map(sessiontrack_map),
 ttlfocus_map(ttlfocus_map),
 hack_pool(hpp)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 TCPTrack::~TCPTrack(void)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
@@ -428,7 +428,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
      * we will do a a clever study about different OS answer about
      * IP option, for every OS we will have or not the related support
      */
-    uint8_t retval = SCRAMBLE_CHECKSUM | SCRAMBLE_INNOCENT | SCRAMBLE_MALFORMED;
+    uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
     const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
     if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
@@ -481,7 +481,20 @@ void TCPTrack::injectHack(Packet &origpkt)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
     for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
     {
+
         PluginTrack *hppe = *it;
+
+        /*
+         * this representS a preliminar check common to all hacks.
+         * more specific ones related to the origpkt will be checked in
+         * the Condition function implemented by a specific hack.
+         */
+        if (!(availableScramble & hppe->selfObj->supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", hppe->selfObj->hackName);
+            continue;
+        }
+
         bool applicable = true;
         applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
         applicable &= percentage(
@@ -489,6 +502,7 @@ void TCPTrack::injectHack(Packet &origpkt)
                                  hppe->selfObj->hackFrequency,
                                  runconfig.portconf[ntohs(origpkt.tcp->dest)]
                                  );
+
         if (applicable)
             applicable_hacks.push_back(hppe);
     }
@@ -541,8 +555,8 @@ void TCPTrack::injectHack(Packet &origpkt)
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
 
-            injpkt.SELFLOG("New generated packet by [%s], the original will be %s", 
-                hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
+            injpkt.SELFLOG("New generated packet by [%s], the original will be %s",
+                           hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
 
             switch (injpkt.position)
             {
@@ -676,6 +690,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 
     pkt.SELFLOG("packet ready to be send");
     return true;
+
 drop_packet:
     pkt.SELFLOG("packet dropped: unable to apply fix before sending");
     return false;
@@ -724,32 +739,8 @@ Packet* TCPTrack::readpacket(source_t destsource)
     return NULL;
 }
 
-/* 
- *
- * this is an important and critical function for sniffjoke operativity.
- * 
- * analyze_packets_queue is called from the main.cc poll() block
- * 
- * all the functions that are called here inside a p_queue.get() cycle:
- *
- *     COULD  1) extract and delete the argument packet only,
- *            2) insert the argument packet or a new packet into any of the
- *               p_queue list. (because head insertion does not modify iterators)
- * 
- *     MUST:  1) not call functions containing a p_queue.get() as well.
- *
- * as defined in sniffjoke.h, the "status" variable could have these status:
- * YOUNG (packets received, here analyzed for the first time)
- * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
- * SEND (packets marked as sendable)
- * 
- */
-void TCPTrack::analyzePacketQueue()
+void TCPTrack::handleYoungPackets()
 {
-    /* if all queues are empy we have nothing to do */
-    if (!p_queue.size())
-        goto bypass_queue_analysis;
-
     Packet *pkt;
 
     /*
@@ -789,7 +780,7 @@ void TCPTrack::analyzePacketQueue()
         else /* pkt->source == TUNNEL */
         {
             /* the check is based  blacklist, whitelist. the port and protocol is checked inside the
-             * "Condition(" imported function. so, every session accepted after this point will be 
+             * "Condition(" imported function. so, every session accepted after this point will be
              * ttl bruteforced and mangled by weird IP/TCP options */
             if (pkt->proto == TCP)
             {
@@ -828,9 +819,14 @@ void TCPTrack::analyzePacketQueue()
             if (pkt->source == NETWORK || pkt->proto != TCP || lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: send a notification to the developers");
+                RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: please send a notification to the developers");
         }
     }
+}
+
+void TCPTrack::handleKeepPackets()
+{
+    Packet *pkt;
 
     /* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
     p_queue.select(KEEP);
@@ -842,9 +838,15 @@ void TCPTrack::analyzePacketQueue()
             if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: send a notification to the developers");
+                RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
         }
     }
+
+}
+
+void TCPTrack::handleSendPackets()
+{
+    Packet *pkt;
 
     /* for every packet in SEND queue we insert some random hacks */
     p_queue.select(SEND);
@@ -853,6 +855,37 @@ void TCPTrack::analyzePacketQueue()
         if (pkt->source == TUNNEL && pkt->proto == TCP)
             injectHack(*pkt);
     }
+}
+
+/* 
+ *
+ * this is an important and critical function for sniffjoke operativity.
+ * 
+ * analyze_packets_queue is called from the main.cc poll() block
+ * 
+ * all the functions that are called here inside a p_queue.get() cycle:
+ *
+ *     COULD  1) extract and delete the argument packet only,
+ *            2) insert the argument packet or a new packet into any of the
+ *               p_queue list. (because head insertion does not modify iterators)
+ * 
+ *     MUST:  1) not call functions containing a p_queue.get() as well.
+ *
+ * as defined in sniffjoke.h, the "status" variable could have these status:
+ * YOUNG (packets received, here analyzed for the first time)
+ * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
+ * SEND (packets marked as sendable)
+ * 
+ */
+void TCPTrack::analyzePacketQueue()
+{
+    /* if all queues are empy we have nothing to do */
+    if (!p_queue.size())
+        goto bypass_queue_analysis;
+
+    handleYoungPackets();
+    handleKeepPackets();
+    handleSendPackets();
 
 bypass_queue_analysis:
 

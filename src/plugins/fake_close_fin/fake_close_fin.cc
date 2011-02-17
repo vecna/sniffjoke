@@ -27,7 +27,7 @@
  * fake close is used because a sniffer could read a FIN like a session closing
  * tcp-flag, and stop the session monitoring/reassembly.
  *
- * SOURCE: phrack, deduction, 
+ * SOURCE: phrack, deduction
  * VERIFIED IN:
  * KNOW BUGS:
  */
@@ -63,16 +63,9 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (!(availableScramble & supportedScramble))
-        {
-            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-            return false;
-        }
-        return (
-                !origpkt.tcp->syn &&
+        return (!origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
-                !origpkt.tcp->fin
-                );
+                !origpkt.tcp->fin);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

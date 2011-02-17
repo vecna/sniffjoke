@@ -35,7 +35,7 @@ userconf(opts),
 proc(userconf.runconfig),
 service_pid(0)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 SniffJoke::~SniffJoke()
@@ -215,7 +215,7 @@ void SniffJoke::cleanServerRoot()
 
 void SniffJoke::cleanServerUser()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 void SniffJoke::setupAdminSocket()
@@ -404,7 +404,7 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
         int32_t debuglevel;
 
         sscanf(cmd, "debug %d", &debuglevel);
-        if (debuglevel < 0 || debuglevel > PACKET_LEVEL)
+        if (debuglevel < SUPPRESS_LEVEL || debuglevel > TESTING_LEVEL)
             goto handle_error;
 
         handleCmdDebuglevel(debuglevel);

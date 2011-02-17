@@ -37,7 +37,7 @@ runconfig(runcfg),
 userinfo_buf(NULL),
 groupinfo_buf(NULL)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 
     if (getuid() || geteuid())
         RUNTIME_EXCEPTION("required root privileges");

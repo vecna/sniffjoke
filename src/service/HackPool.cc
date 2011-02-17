@@ -112,7 +112,7 @@ runconfig(runcfg)
         *comma = 0x00;
         comma++;
 
-        snprintf(plugabspath, sizeof (plugabspath), "%s%s", INSTALL_LIBDIR, onlyplugin_cpy);
+        snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
 
         if (!(supportedScramble = parseScrambleList(comma)))
             RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
@@ -132,7 +132,7 @@ runconfig(runcfg)
 
 HackPool::~HackPool()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 
     /* call the distructor loaded from the plugins */
     for (vector<PluginTrack *>::iterator it = begin(); it != end(); ++it)
@@ -219,7 +219,7 @@ void HackPool::parseEnablerFile()
     char plugabspath[MEDIUMBUF] = {0};
     FILE *plugfile;
 
-    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
+    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s.so", runconfig.working_dir, FILE_PLUGINSENABLER);
 
     if ((plugfile = fopen(enablerabspath, "r")) == NULL)
         RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
@@ -257,17 +257,7 @@ void HackPool::parseEnablerFile()
         *comma = 0x00;
         comma++;
 
-        /* cutted the scramble option list, is copyed the full path of the plugin */
-        if (enablerentry[0] == '/')
-        {
-            snprintf(plugabspath, sizeof (plugabspath), "%s", enablerentry);
-            LOG_ALL("only relative path is ufficially supported, but we are far ahead: 'ur lucky day about %s",
-                    enablerentry);
-        }
-        else
-        {
-            snprintf(plugabspath, sizeof (plugabspath), "%s%s", INSTALL_LIBDIR, enablerentry);
-        }
+        snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
         if (!(supportedScramble = parseScrambleList(comma)))
         {
