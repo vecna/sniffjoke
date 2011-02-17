@@ -101,8 +101,6 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble)
 	{
-        doneOneTime = false;
-
         if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
             LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
         }
