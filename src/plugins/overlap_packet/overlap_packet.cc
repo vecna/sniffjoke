@@ -41,7 +41,7 @@ class overlap_packet : public Hack
 {
 #define HACK_NAME "Overlap Packet"
 #define PKT_LOG "overlapPacket.plugin.log"
-#define MIN_PACKET_OVERTRY  1000
+#define MIN_PACKET_OVERTRY  300
 
 private:
     pluginLogHandler pLH;
@@ -101,8 +101,6 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble)
 	{
-        doneOneTime = false;
-
         if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
             LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
         }
