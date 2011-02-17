@@ -18,6 +18,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *   this research is dedicated to: http://www.youtube.com/watch?v=63FbXbJEmIs
  */
 
 /*
@@ -25,9 +26,10 @@
  * malfunction, or KILL THE INTERNET :)
  *
  * This hack overlap one fake data sent before a real one, did the remote
- * kernel keep the first or the earliest ? 
+ * kernel keep the first or the earliest ? seem that windows and unix have
+ * different behaviour!
  * 
- * SOURCE: deduction, 
+ * SOURCE: 
  * VERIFIED IN:
  * KNOW BUGS:
  * WRITTEN IN VERSION: 0.4.0
@@ -35,35 +37,56 @@
 
 #include "service/Hack.h"
 
-#define SCATTER_PKT_LOG     "overlapPacket.plugin.log"
-/* is "try" because if the good packet is loss, all the session is it */
-#define MIN_PACKET_OVERTRY  800
-
 class overlap_packet : public Hack
 {
-private:
-    pluginLogHandler *pLH;
-
 #define HACK_NAME "Overlap Packet"
+#define PKT_LOG "overlapPacket.plugin.log"
+#define MIN_PACKET_OVERTRY  1000
+
+private:
+    pluginLogHandler pLH;
+
 public:
 	virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
 	{
         /* the block split size must not create a last packet of 0 byte! */
-        pLH->completeLog("packet size %d faking data with same lenght", origpkt.datalen);
 
-		Packet* const pkt = new Packet(origpkt);
-        /* with posticipation under Linux and Window the FIRST packet is accepted, and
+        /* 
+         * TODO -- 
+         * with posticipation under Linux and Window the FIRST packet is accepted, and
          * the sniffer will keep the first or the last depends from the sniffing tech
          *
 		pkt->position = POSTICIPATION; 
          *
-         * Is explored here the usabilility of some TCPOPT
+         * Is explored here the usabilility of some TCPOPT making the packets unable
+         * to be accepted (PAWS with expired timestamp) --- TODO
          */
+
+        /* this test: a valid packet with a lenght LESS THAN the real size sent by
+         * the kernel, followed by the same packet of good dimension. seem that
+         * windows use the first received packet and unix the last received.
+         */
+
+        Packet* const pkt = new Packet(origpkt);
+        pkt->tcppayloadResize(pkt->datalen - 100); 
+        pLH.completeLog("original pkt size %d faked with %d bytes bad", origpkt.datalen, pkt->datalen);
         memset(pkt->payload, '6', pkt->datalen); 
 
-        pkt->ip->id = 1;
-		pkt->wtf = INNOCENT;
-		pktVector.push_back(pkt);
+        pkt->position = ANTICIPATION; 
+        pkt->wtf = INNOCENT;
+        pkt->tcp->psh = 0;
+        pktVector.push_back(pkt);
+
+        Packet* const pkt2 = new Packet(origpkt);
+        pkt2->tcppayloadResize(pkt2->datalen); 
+        // memset(pkt2->payload, '6', pkt2->datalen);
+        pLH.completeLog("injected packet 2 with all byte good of %d/%d bytes", origpkt.datalen, pkt2->datalen);
+
+        pkt2->position = POSTICIPATION; 
+        pkt2->wtf = INNOCENT;
+        pktVector.push_back(pkt2);
+
+        removeOrigPkt = true;
 	}
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
@@ -78,7 +101,7 @@ public:
 
 	virtual bool initializeHack(uint8_t configuredScramble)
 	{
-        pLH = new pluginLogHandler( const_cast<const char *>(HACK_NAME), const_cast<const char *>(SCATTER_PKT_LOG));
+        doneOneTime = false;
 
         if ( ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble) ) {
             LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
@@ -86,7 +109,11 @@ public:
 		return true;
 	}
 
-	overlap_packet(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE ) {};
+	overlap_packet(bool forcedTest) : 
+        Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE ),
+        pLH(HACK_NAME, PKT_LOG)
+    {
+    }
 };
 
 extern "C"  Hack* CreateHackObject(bool forcedTest)

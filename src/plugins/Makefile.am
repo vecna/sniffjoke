@@ -10,4 +10,5 @@ SUBDIRS =	fake_close_fin \
 		fragmentation \
 		segmentation \
 		shift_ack \
+		overlap_packet \
 		valid_rst_fake_seq
