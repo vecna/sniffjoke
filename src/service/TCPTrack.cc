@@ -725,32 +725,8 @@ Packet* TCPTrack::readpacket(source_t destsource)
     return NULL;
 }
 
-/* 
- *
- * this is an important and critical function for sniffjoke operativity.
- * 
- * analyze_packets_queue is called from the main.cc poll() block
- * 
- * all the functions that are called here inside a p_queue.get() cycle:
- *
- *     COULD  1) extract and delete the argument packet only,
- *            2) insert the argument packet or a new packet into any of the
- *               p_queue list. (because head insertion does not modify iterators)
- * 
- *     MUST:  1) not call functions containing a p_queue.get() as well.
- *
- * as defined in sniffjoke.h, the "status" variable could have these status:
- * YOUNG (packets received, here analyzed for the first time)
- * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
- * SEND (packets marked as sendable)
- * 
- */
-void TCPTrack::analyzePacketQueue()
+void TCPTrack::handleYoungPackets()
 {
-    /* if all queues are empy we have nothing to do */
-    if (!p_queue.size())
-        goto bypass_queue_analysis;
-
     Packet *pkt;
 
     /*
@@ -790,7 +766,7 @@ void TCPTrack::analyzePacketQueue()
         else /* pkt->source == TUNNEL */
         {
             /* the check is based  blacklist, whitelist. the port and protocol is checked inside the
-             * "Condition(" imported function. so, every session accepted after this point will be 
+             * "Condition(" imported function. so, every session accepted after this point will be
              * ttl bruteforced and mangled by weird IP/TCP options */
             if (pkt->proto == TCP)
             {
@@ -832,6 +808,11 @@ void TCPTrack::analyzePacketQueue()
                 RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: please send a notification to the developers");
         }
     }
+}
+
+void TCPTrack::handleKeepPackets()
+{
+    Packet *pkt;
 
     /* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
     p_queue.select(KEEP);
@@ -847,6 +828,12 @@ void TCPTrack::analyzePacketQueue()
         }
     }
 
+}
+
+void TCPTrack::handleSendPackets()
+{
+    Packet *pkt;
+    
     /* for every packet in SEND queue we insert some random hacks */
     p_queue.select(SEND);
     while ((pkt = p_queue.get()) != NULL)
@@ -854,6 +841,37 @@ void TCPTrack::analyzePacketQueue()
         if (pkt->source == TUNNEL && pkt->proto == TCP)
             injectHack(*pkt);
     }
+}
+
+/* 
+ *
+ * this is an important and critical function for sniffjoke operativity.
+ * 
+ * analyze_packets_queue is called from the main.cc poll() block
+ * 
+ * all the functions that are called here inside a p_queue.get() cycle:
+ *
+ *     COULD  1) extract and delete the argument packet only,
+ *            2) insert the argument packet or a new packet into any of the
+ *               p_queue list. (because head insertion does not modify iterators)
+ * 
+ *     MUST:  1) not call functions containing a p_queue.get() as well.
+ *
+ * as defined in sniffjoke.h, the "status" variable could have these status:
+ * YOUNG (packets received, here analyzed for the first time)
+ * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
+ * SEND (packets marked as sendable)
+ * 
+ */
+void TCPTrack::analyzePacketQueue()
+{
+    /* if all queues are empy we have nothing to do */
+    if (!p_queue.size())
+        goto bypass_queue_analysis;
+
+    handleYoungPackets();
+    handleKeepPackets();
+    handleSendPackets();
 
 bypass_queue_analysis:
 

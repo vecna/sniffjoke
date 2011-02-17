@@ -53,6 +53,10 @@ private:
     bool analyzeIncomingTCPRstFin(Packet &);
     bool analyzeOutgoing(Packet &);
 
+    void handleYoungPackets();
+    void handleKeepPackets();
+    void handleSendPackets();
+
     void injectTTLProbe(TTLFocus &);
     void injectHack(Packet &);
     bool lastPktFix(Packet &);
