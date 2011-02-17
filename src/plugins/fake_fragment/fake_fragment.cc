@@ -70,7 +70,6 @@ public:
 
             memset_random((void*) (((unsigned char *) &(pkt->pbuf[0])) + origpkt.iphdrlen), ip_payload);
 
-
             /* the id of the packet and the offset where no changed to collide with the real one */
 
             if (pkts == 2) /* first packet */

@@ -74,6 +74,12 @@ void* memset_random(void *s, size_t n)
      *
      */
 
+    if (debug.level() == TESTING_LEVEL)
+    {
+        memset(s, '6', n);
+        return s;
+    }
+
     size_t longint = n / sizeof (long int);
     size_t finalbytes = n % sizeof (long int);
     unsigned char *cp = (unsigned char*) s;
@@ -113,8 +119,8 @@ static void sj_version(const char *pname)
     " --whitelist\tinject evasion packets only in the specified ip addresses\n"\
     " --blacklist\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
-    " --debug <level 1-6>\tset up verbosoty level [default: %d]\n"\
-    "\t\t\t1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets\n"\
+    " --debug <level %d-%d>\tset up verbosoty level [default: %d]\n"\
+    "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\
     " --foreground\t\trunning in foreground [default:background]\n"\
     " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
     " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
@@ -130,7 +136,8 @@ static void sj_help(const char *pname)
            WORK_DIR,
            DROP_USER, DROP_GROUP,
            DEFAULT_START_STOPPED ? "present" : "not present",
-           DEFAULT_DEBUG_LEVEL,
+           SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
+           SUPPRESS_LEVEL, ALL_LEVEL, VERBOSE_LEVEL, DEBUG_LEVEL, SESSION_LEVEL,PACKET_LEVEL,
            DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
            );
 }
@@ -219,7 +226,7 @@ int main(int argc, char **argv)
             break;
         case 'd':
             useropt.debug_level = atoi(optarg);
-            if (useropt.debug_level < 1 || useropt.debug_level > 6)
+            if (useropt.debug_level < SUPPRESS_LEVEL || useropt.debug_level > TESTING_LEVEL)
                 goto sniffjoke_help;
             break;
         case 'v':

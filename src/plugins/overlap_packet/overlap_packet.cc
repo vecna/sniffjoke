@@ -71,7 +71,7 @@ public:
         Packet * const pkt = new Packet(origpkt);
         pkt->tcppayloadResize(pkt->datalen - 100);
         pLH.completeLog("original pkt size %d faked with %d bytes bad", origpkt.datalen, pkt->datalen);
-        memset(pkt->payload, '6', pkt->datalen);
+        pkt->tcppayloadRandomFill();
 
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;

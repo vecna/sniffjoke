@@ -46,8 +46,8 @@ start_singletest() {
     echo -e "Plugin Name\t\t[$PNAME]\nScramble\t\t[$SCRAMBLE]\nTestID\t\t\t[$TESTID]\n--dir\t\t\t[$workingdir]\n"
     mkdir -p $workingdir
     echo -e "+ Executing sniffjoke with $PLUGIN and $SCRAMBLE, command line:\n"
-    echo "$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
-    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN
+    echo "$SNIFFJOKEBIN --debug 7 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
+    $SNIFFJOKEBIN --debug 7 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN
     sleep 2
     $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
     cd $workingdir
