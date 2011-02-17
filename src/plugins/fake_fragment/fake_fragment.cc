@@ -52,6 +52,10 @@ public:
         /*
          * in fake fragment I don't use pktRandomDamage because I want the
          * same hack for both packets.
+         * this hacks create random ip payloads so there is no need to use a particular
+         * scramble, by the way using a PRESCRIPTION or MALFORMED we assure to not disturb
+         * the session at all.
+         * INNOCENT here is then a valid last resort.
          */
         judge_t selectedScramble;
         if (ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
@@ -59,7 +63,7 @@ public:
         else if (ISSET_MALFORMED(availableScramble & supportedScramble))
             selectedScramble = MALFORMED;
         else
-            return;
+            selectedScramble = INNOCENT;
 
         const uint32_t ip_payload = origpkt.pbuf.size() - origpkt.iphdrlen;
 
@@ -86,11 +90,10 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (!(availableScramble & supportedScramble))
-        {
-            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-            return false;
-        }
+        /*
+         * This hack could work also as INNOCENT, so INNOCENT it's used as last
+         * resort if PRESCRIPTION or MALFORMED are disabled.
+         */
         return (origpkt.payload != NULL);
     }
 

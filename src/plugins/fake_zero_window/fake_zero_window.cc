@@ -69,18 +69,20 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (!(availableScramble & supportedScramble))
-        {
-            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
-            return false;
-        }
-
-        return (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
+        return (!origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        supportedScramble = configuredScramble;
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
+        {
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
+            return false;
+        }
+
+        supportedScramble = SCRAMBLE_INNOCENT;
         return true;
     }
 

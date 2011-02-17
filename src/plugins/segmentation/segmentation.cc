@@ -24,8 +24,9 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  *
- * this hack simply splits a tcp packet into tcp segments fragments.
- * this could help to bypass some simple sniffers.
+ * this hack simply do a massive segment fragmentation of tcp packet.
+ * this could help to bypass some simple sniffers and ids.
+ * 
  * 
  * SOURCE: deduction, 
  * VERIFIED IN:
@@ -100,10 +101,18 @@ public:
             }
 
             /*
-             * randomizing the relative between the two fragments;
-             * the orig packet is than removed.
+             * the orig packet is removed, so the value of the position
+             * has no particular importance for the hack
+             *
+             * by the way setting this to ANTICIPATION it's fundamental
+             * to keep packets trasmission ordered, and her is the reason why:
+             *
+             * ok tcp has sequence number to handle the packet reorder correctly but
+             * we do a massive fragmentation to fight ids so with disordered
+             * packets we would have a too much degraded session due to FAST_RETRASMIT
+             * and others tcp features.
              */
-            pkt->position = ANY_POSITION;
+            pkt->position = ANTICIPATION;
 
             pkt->wtf = INNOCENT;
 
@@ -134,16 +143,15 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
-        {
-            supportedScramble = configuredScramble;
-            return true;
-        }
-        else
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
             return false;
         }
+
+        supportedScramble = SCRAMBLE_INNOCENT;
+
+        return true;
     }
 
     segmentation(bool forcedTest) :

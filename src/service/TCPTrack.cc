@@ -35,12 +35,12 @@ sessiontrack_map(sessiontrack_map),
 ttlfocus_map(ttlfocus_map),
 hack_pool(hpp)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 TCPTrack::~TCPTrack(void)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
@@ -428,7 +428,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
      * we will do a a clever study about different OS answer about
      * IP option, for every OS we will have or not the related support
      */
-    uint8_t retval = SCRAMBLE_CHECKSUM | SCRAMBLE_INNOCENT | SCRAMBLE_MALFORMED;
+    uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
     const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
     if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
@@ -481,7 +481,20 @@ void TCPTrack::injectHack(Packet &origpkt)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
     for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
     {
+
         PluginTrack *hppe = *it;
+
+        /*
+         * this representS a preliminar check common to all hacks.
+         * more specific ones related to the origpkt will be checked in
+         * the Condition function implemented by a specific hack.
+         */
+        if (!(availableScramble & hppe->selfObj->supportedScramble))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", hppe->selfObj->hackName);
+            continue;
+        }
+
         bool applicable = true;
         applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
         applicable &= percentage(
@@ -489,6 +502,7 @@ void TCPTrack::injectHack(Packet &origpkt)
                                  hppe->selfObj->hackFrequency,
                                  runconfig.portconf[ntohs(origpkt.tcp->dest)]
                                  );
+
         if (applicable)
             applicable_hacks.push_back(hppe);
     }

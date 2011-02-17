@@ -1,82 +1,130 @@
 #!/bin/bash 
 
 # if you want modify the test, simply create those file by hands
-# fake_zero_window.so is set INNOCENT and usually is disabled, I've keep
-# INNOCENT fake_zero_window.so to broke the session and use it as 
-# check of sured failure
+
+#default values
+LOCATION=
+CONFPATH=
+TESTN=1
+
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script runs plugins test along different destinations OS
+to determinate the selection of plugins that correctly works
+in the current location.
+
+every plugin it's tested with one of each scrambling tech.
+
+OPTIONS:
+   -h      show this message
+   -l      location name
+   -d      default configuration path
+   -n      number of tests to be passed for the single hack (default 1)
+EOF
+}
 
 dump_plugin_file() {
     cat >> $PLUGINLIST << __EOF__
-fake_close_fin.so,PRESCRIPTION
-fake_close_fin.so,MALFORMED
-fake_close_fin.so,GUILTY
-fake_close_rst.so,PRESCRIPTION
-fake_close_rst.so,MALFORMED
-fake_close_rst.so,GUILTY
-fake_fragment.so,PRESCRIPTION
-fake_fragment.so,MALFORMED
-fake_fragment.so,GUILTY
-fake_segment.so,PRESCRIPTION
-fake_segment.so,MALFORMED
-fake_segment.so,GUILTY
-fake_seq.so,PRESCRIPTION
-fake_seq.so,MALFORMED
-fake_seq.so,GUILTY
-fake_syn.so,PRESCRIPTION
-fake_syn.so,MALFORMED
-fake_syn.so,GUILTY
-fake_zero_window.so,INNOCENT
-fragmentation.so,INNOCENT
-fragmentation.so,MALFORMED
-segmentation.so,INNOCENT
-segmentation.so,MALFORMED
-segmentation.so,GUILTY
-shift_ack.so,PRESCRIPTION
-shift_ack.so,MALFORMED
-shift_ack.so,GUILTY
-valid_rst_fake_seq.so,INNOCENT
+fake_close_fin,PRESCRIPTION
+fake_close_fin,MALFORMED
+fake_close_fin,GUILTY
+fake_close_rst,PRESCRIPTION
+fake_close_rst,MALFORMED
+fake_close_rst,GUILTY
+fake_fragment,PRESCRIPTION
+fake_fragment,MALFORMED
+fake_segment,PRESCRIPTION
+fake_segment,MALFORMED
+fake_segment,GUILTY
+fake_seq,PRESCRIPTION
+fake_seq,MALFORMED
+fake_seq,GUILTY
+fake_syn,PRESCRIPTION
+fake_syn,MALFORMED
+fake_syn,GUILTY
+fake_zero_window,INNOCENT
+fragmentation,INNOCENT
+segmentation,INNOCENT
+shift_ack,PRESCRIPTION
+shift_ack,MALFORMED
+shift_ack,GUILTY
+valid_rst_fake_seq,INNOCENT
 __EOF__
 }
 
-start_singletest() {
-    PNAME=`echo $PLUGIN | sed -es/\.so.*//`
-    SCRAMBLE=`echo $PLUGIN | sed -es/.*\.so,//`
+start_test() {
+    PNAME=`echo $PLUGIN | sed -es/\\,.*//`
+    SCRAMBLE=`echo $PLUGIN | sed -es/.*\,//`
     TESTID=`echo $PLUGIN | tr "," "-"`
     workingdir="/tmp/$LOCATION/$TESTID"
     echo -e "Plugin Name\t\t[$PNAME]\nScramble\t\t[$SCRAMBLE]\nTestID\t\t\t[$TESTID]\n--dir\t\t\t[$workingdir]\n"
     mkdir -p $workingdir
     echo -e "+ Executing sniffjoke with $PLUGIN and $SCRAMBLE, command line:\n"
-    echo "$SNIFFJOKEBIN --debug 7 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
-    $SNIFFJOKEBIN --debug 7 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN
+    echo "$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
+    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN
     sleep 2
     $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
     cd $workingdir
-    # $SERVER is like http://www.delirandom.net/sniffjoke_test/post_echo.php
+    # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
     INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
     echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
     (tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80) &
     ps axf > $workingdir/ps-axf.log
     route -n > $workingdir/route-n.log
     sleep 1
-    curl -m 10 -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$workingdir/$PNAME-$SCRAMBLE.received"
-    sleep 1
+    for i in `seq 1 $TESTN`;
+    do
+        curl -m 10 -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.received"
+        sleep 1
+    done
     $SNIFFJOKECLIBIN quit
     sleep 2
     killall -9 tcpdump
-    CHECKSUM=`md5sum "$PNAME-$SCRAMBLE.received" | cut -b -32`
+    for i in `seq 1 $TESTN`;
+    do
+        CHECKSUM=`md5sum "$PNAME-$SCRAMBLE-$i.received" | cut -b -32`
+        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
+        if [ $VERIFYSUM != $CHECKSUM ];
+        then
+            echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
+            break
+        else
+            echo $i >> "$PNAME-$SCRAMBLE.passed_count"
+        fi
+        if [ $i -eq 3 ];
+        then
+            echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.working_hacks"
+        fi
+    done
     cd ..
     echo "finished test in $TESTID"
-    if [ $VERIFYSUM = $CHECKSUM ]; then
-        echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.working_hacks"
-    else
-        echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
-    fi
-    echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
-#    clear
-# I belive the users like more see what happen
 }
 
-echo "Sniffjoke testsuite test every default plugin with every scrambling tech"
+while getopts “hl:d:n:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         l)
+             LOCATION=$OPTARG
+             ;;
+         d)
+             CONFPATH=$OPTARG
+             ;;
+         n)
+             TESTN=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
 
 USERID=`id -u`
 if [ $USERID != "0" ]; then
@@ -84,29 +132,24 @@ if [ $USERID != "0" ]; then
     exit;
 fi
 
-if [ -z $1 ]; then
-    echo "Is required as first argument the LOCATION name, eg: office, home, nickhome, starbucks..."
+if [ -z $LOCATION ]; then
+    usage
+    echo -en "\n"
+    echo "it's required a LOCATION name, eg: office, home, nickhome, starbucks..."
     echo "sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment"
     echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
     echo "will be created a new directory describing your location. after you will customize the options"
     exit;
 fi
-LOCATION=$1
 
-if [ -z $2 ]; then
-    echo "as second argument is the PATH of commonly used working dir, where 'generic' is installed"
-    echo "usually is /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
+if [ -z $CONFPATH ]; then
+    usage
+    echo -en "\n"
+    echo "it's required the PATH of commonly used working dir, where 'generic' is installed"
+    echo "usually it's /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
     echo "been installed in your distro"
     exit;
 fi
-WORKPATH=$2
-
-if [ ! -d $WORKPATH ]; then
-    echo "the second argument: $WORKPATH is not a directory"
-    echo "as second argument is required the PATH of the generic/plugins_enabled.conf"
-    exit;
-fi
-
 
 if [ -d "/tmp/$LOCATION" ]; then
     echo "- remove your /tmp/$LOCATION directory: already present"
@@ -138,7 +181,6 @@ echo "* using plugin path $PPATH"
 FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
 echo "retrivering multi-OS testing server list ($FILEURL)"
 SERVERFILE="/tmp/testsuite.info"
-rm -f $SERVERFILE
 wget -O $SERVERFILE $FILEURL
 
 if ! [ -e $SERVERFILE ]; then
@@ -159,22 +201,22 @@ seq 1000 9000 | tr -d [:cntrl:] | strings > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
-    PLUGIN=`tail -$PLUGNDX $PLUGINLIST | head -1`
+    PLUGIN=`head -$PLUGNDX $PLUGINLIST | tail -1`
 
 #    OS="WINDOWS"
 #    SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
 #    echo $SERVER
-#    start_singletest
+#    start_test
 
     # those test need to be fixed or be used only where my test script will be hosted
     OS="LINUX"
     SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
-    start_singletest
+    start_test
 
 #    OS="OTHER"
 #    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
 #    echo $SERVER
-#    start_singletest
+#    start_test
 done
 
 # parse analysis output to build a plugins_enabler.conf

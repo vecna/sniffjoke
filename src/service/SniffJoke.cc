@@ -35,7 +35,7 @@ userconf(opts),
 proc(userconf.runconfig),
 service_pid(0)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 SniffJoke::~SniffJoke()
@@ -215,7 +215,7 @@ void SniffJoke::cleanServerRoot()
 
 void SniffJoke::cleanServerUser()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 void SniffJoke::setupAdminSocket()

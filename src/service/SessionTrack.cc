@@ -87,12 +87,12 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 
 SessionTrackMap::SessionTrackMap()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 }
 
 SessionTrackMap::~SessionTrackMap()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
     for (SessionTrackMap::iterator it = begin(); it != end();)
     {
         delete &(*it->second);

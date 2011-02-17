@@ -31,7 +31,7 @@
 NetIO::NetIO(sj_config& runcfg) :
 runconfig(runcfg)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 
     struct ifreq ifr;
     struct ifreq netifr;
@@ -160,7 +160,7 @@ runconfig(runcfg)
 
 NetIO::~NetIO(void)
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 
     char cmd[MEDIUMBUF];
 

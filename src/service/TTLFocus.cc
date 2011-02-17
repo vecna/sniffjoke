@@ -126,14 +126,14 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
 
 TTLFocusMap::TTLFocusMap()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 
     load();
 }
 
 TTLFocusMap::~TTLFocusMap()
 {
-    LOG_VERBOSE("");
+    LOG_DEBUG("");
 
     dump();
 

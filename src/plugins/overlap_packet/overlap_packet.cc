@@ -93,18 +93,19 @@ public:
      * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (origpkt.payload != NULL && origpkt.datalen > MIN_PACKET_OVERTRY)
-            return true;
-
-        return false;
+        return (origpkt.payload != NULL && origpkt.datalen > MIN_PACKET_OVERTRY);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        if (ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble))
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
-            LOG_ALL("%s hack supports only INNOCENT scramble type", HACK_NAME);
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
+            return false;
         }
+
+        supportedScramble = SCRAMBLE_INNOCENT;
+
         return true;
     }
 
