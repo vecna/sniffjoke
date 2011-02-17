@@ -50,7 +50,7 @@ void Debug::setPacketLogstream(const char *lsf)
 
 bool Debug::appendOpen(uint8_t thislevel, const char *fname, FILE **previously)
 {
-    if(*previously == stdout)
+    if (*previously == stdout)
         return true;
 
     if (*previously != NULL)
@@ -77,7 +77,7 @@ bool Debug::resetLevel()
     if (!appendOpen(ALL_LEVEL, logstream_file, &logstream))
         return false;
 
-   if (!appendOpen(SESSION_LEVEL, session_logstream_file, &session_logstream))
+    if (!appendOpen(SESSION_LEVEL, session_logstream_file, &session_logstream))
         return false;
 
     if (!appendOpen(PACKET_LEVEL, packet_logstream_file, &packet_logstream))
@@ -142,9 +142,9 @@ void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
 /* -----
  * Class pluginLogHandler used by plugins for selective logging */
 pluginLogHandler::pluginLogHandler(const char *sN, const char *LfN) :
-    selfName(sN)
+selfName(sN)
 {
-    if((logstream = fopen(LfN, "a+")) == NULL)
+    if ((logstream = fopen(LfN, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s: %s", LfN, strerror(errno));
 
     completeLog("Opened file %s successful for handler %s", LfN, selfName);

@@ -42,7 +42,6 @@ class Debug
 {
 private:
     friend class SniffJoke;
-    bool enabled;
     uint8_t debuglevel;
     const char* logstream_file;
     const char* session_logstream_file;
@@ -63,7 +62,6 @@ public:
     bool resetLevel();
     void log(uint8_t, const char *, const char *, ...);
     void downgradeOpenlog(uid_t, gid_t);
-    
 };
 
 extern Debug debug;

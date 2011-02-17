@@ -27,7 +27,7 @@
  * fake close is used because a sniffer could read a FIN like a session closing
  * tcp-flag, and stop the session monitoring/reassembly.
  *
- * SOURCE: phrack, deduction, 
+ * SOURCE: phrack, deduction 
  * VERIFIED IN:
  * KNOW BUGS: fastweb network (italian wire provider), should not support this hack 
  * 	      because the HAG close the session at the first valid RST exiting

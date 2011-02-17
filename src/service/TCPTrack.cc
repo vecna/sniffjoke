@@ -3,7 +3,7 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
+ *   Copyright (C) 2008 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -541,8 +541,8 @@ void TCPTrack::injectHack(Packet &origpkt)
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
 
-            injpkt.SELFLOG("New generated packet by [%s], the original will be %s", 
-                hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
+            injpkt.SELFLOG("New generated packet by [%s], the original will be %s",
+                           hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
 
             switch (injpkt.position)
             {
@@ -676,6 +676,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 
     pkt.SELFLOG("packet ready to be send");
     return true;
+
 drop_packet:
     pkt.SELFLOG("packet dropped: unable to apply fix before sending");
     return false;
@@ -828,7 +829,7 @@ void TCPTrack::analyzePacketQueue()
             if (pkt->source == NETWORK || pkt->proto != TCP || lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: send a notification to the developers");
+                RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: please send a notification to the developers");
         }
     }
 
@@ -842,7 +843,7 @@ void TCPTrack::analyzePacketQueue()
             if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
             else
-                RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: send a notification to the developers");
+                RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
         }
     }
 

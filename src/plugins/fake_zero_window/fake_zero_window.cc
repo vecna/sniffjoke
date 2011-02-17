@@ -75,8 +75,7 @@ public:
             return false;
         }
 
-        return (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin
-                );
+        return (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
