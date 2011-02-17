@@ -833,7 +833,7 @@ void TCPTrack::handleKeepPackets()
 void TCPTrack::handleSendPackets()
 {
     Packet *pkt;
-    
+
     /* for every packet in SEND queue we insert some random hacks */
     p_queue.select(SEND);
     while ((pkt = p_queue.get()) != NULL)
