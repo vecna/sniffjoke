@@ -52,10 +52,10 @@ private:
         uint32_t cachedData;
 
         /* packet identification */
-        uint32_t seq;
         uint16_t sport;
         uint32_t daddr; 
         uint32_t pluginID;
+        uint8_t cacheID;
     };
     vector<struct cacheRecord> hackCache;
 
@@ -70,14 +70,14 @@ public:
         return retval;
     }
 
-    bool hackCacheCheck(const Packet &oP, uint32_t *dataptr)
+    bool hackCacheCheck(const Packet &oP, uint8_t cacheID, uint32_t *dataptr)
     {
         uint32_t pluginID = generateUniqPluginId();
         vector<struct cacheRecord>::iterator it;
 
         for(it = hackCache.begin(); it != hackCache.end(); it++)
         {
-            if(pluginID == it->pluginID && it->seq == oP.tcp->seq && 
+            if(pluginID == it->pluginID && it->cacheID == cacheID && 
                 it->daddr == oP.ip->daddr && it->sport == oP.tcp->source)
             {
                 memcpy(dataptr, &(it->cachedData), sizeof(uint32_t));
@@ -88,16 +88,16 @@ public:
         return false;
     }
 
-    void hackCacheAdd(const Packet &oP, uint32_t data)
+    void hackCacheAdd(const Packet &oP, uint8_t cacheID, uint32_t data)
     {
         uint32_t pluginID = generateUniqPluginId();
         struct cacheRecord newcache;
 
         newcache.cachedData = data;
         newcache.pluginID = pluginID;
+        newcache.cacheID = cacheID;
         newcache.sport = oP.tcp->source;
         newcache.daddr = oP.ip->daddr;
-        newcache.seq = oP.tcp->seq;
         /* will be fixed in the future */
         newcache.addedtime = 0;
 
@@ -105,20 +105,31 @@ public:
         // hackCache.insert(hackCache.begin(), newcache, hackCache.end() );
     }
 
-    void hackCacheDel(const Packet &oP)
+    void hackCacheDel(const Packet &oP, uint8_t cacheID)
     {
         uint32_t pluginID = generateUniqPluginId();
         vector<struct cacheRecord>::iterator it;
 
         for(it = hackCache.begin(); it != hackCache.end(); it++)
         {
-            if(pluginID == it->pluginID && it->seq == oP.tcp->seq && 
+            if(pluginID == it->pluginID && it->cacheID == cacheID && 
                 it->daddr == oP.ip->daddr && it->sport == oP.tcp->source)
             {
                 hackCache.erase(it);
                 return;
             }
         }
+    }
+
+    /* overloaded without the ID usage */
+    bool hackCacheCheck(const Packet &oP, uint32_t *dataptr) {
+        return hackCacheCheck(oP, 0xff, dataptr);
+    }
+    void hackCacheAdd(const Packet &oP, uint32_t data) {
+        hackCacheAdd(oP, 0xff, data);
+    }
+    void hackCacheDel(const Packet &oP) {
+        hackCacheDel(oP, 0xff);
     }
 
     uint8_t supportedScramble; /* supported by the location, derived

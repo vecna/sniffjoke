@@ -41,7 +41,7 @@ class overlap_packet : public Hack
 {
 #define HACK_NAME "Overlap Packet"
 #define PKT_LOG "plugin.overlap_packet.log"
-#define MIN_PACKET_OVERTRY  400
+#define MIN_PACKET_OVERTRY  600
 
 private:
     pluginLogHandler pLH;
@@ -72,11 +72,24 @@ public:
         uint32_t cachedData;
         Packet * const pkt = new Packet(origpkt);
 
-        if(!(hackCacheCheck(origpkt, &cachedData)))
+        if( !(hackCacheCheck(origpkt, &cachedData)))
         {
             cachedData = (origpkt.datalen / 2);
 
             hackCacheAdd(origpkt, cachedData);
+
+            pkt->tcppayloadResize(cachedData);
+            memcpy(pkt->payload, origpkt.payload, cachedData);
+            pkt->tcp->psh = 0;
+
+            pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)", 
+                origpkt.datalen, origpkt.datalen - cachedData, cachedData, 
+                ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
+            );
+        }
+        else 
+        {
+            hackCacheDel(origpkt);
 
             pkt->tcppayloadRandomFill();
             memcpy(&pkt->payload[cachedData], &origpkt.payload[cachedData], 200);
@@ -85,24 +98,10 @@ public:
                 ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq), 
                 pkt->datalen, cachedData
             );
-
-        }
-        else 
-        {
-            hackCacheDel(origpkt);
-
-            pkt->tcppayloadResize(cachedData);
-
-            pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)", 
-                origpkt.datalen, origpkt.datalen - cachedData, cachedData, 
-                ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
-            );
-            memcpy(pkt->payload, origpkt.payload, cachedData);
-
-            pkt->tcp->psh = 0;
-
         }
 
+        pLH.completeLog("X) sending a packet of %u bytes, cachedData value %u (sport %u seq %u)", 
+                pkt->datalen, cachedData, ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq) );
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
         pktVector.push_back(pkt);
