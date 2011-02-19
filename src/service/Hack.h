@@ -45,7 +45,81 @@ using namespace std;
 
 class Hack
 {
+private:
+    struct cacheRecord 
+    {
+        time_t addedtime;
+        uint32_t cachedData;
+
+        /* packet identification */
+        uint32_t seq;
+        uint16_t sport;
+        uint32_t daddr; 
+        uint32_t pluginID;
+    };
+    vector<struct cacheRecord> hackCache;
+
 public:
+    uint32_t generateUniqPluginId(void)
+    {
+        uint32_t retval = 1;
+
+        for(uint32_t i = 0; i < strlen(hackName); i++)
+            retval *= ( (hackName[i] % 7) + 1 );
+
+        return retval;
+    }
+
+    bool hackCacheCheck(const Packet &oP, uint32_t *dataptr)
+    {
+        uint32_t pluginID = generateUniqPluginId();
+        vector<struct cacheRecord>::iterator it;
+
+        for(it = hackCache.begin(); it != hackCache.end(); it++)
+        {
+            if(pluginID == it->pluginID && it->seq == oP.tcp->seq && 
+                it->daddr == oP.ip->daddr && it->sport == oP.tcp->source)
+            {
+                memcpy(dataptr, &(it->cachedData), sizeof(uint32_t));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void hackCacheAdd(const Packet &oP, uint32_t data)
+    {
+        uint32_t pluginID = generateUniqPluginId();
+        struct cacheRecord newcache;
+
+        newcache.cachedData = data;
+        newcache.pluginID = pluginID;
+        newcache.sport = oP.tcp->source;
+        newcache.daddr = oP.ip->daddr;
+        newcache.seq = oP.tcp->seq;
+        /* will be fixed in the future */
+        newcache.addedtime = 0;
+
+        hackCache.push_back(newcache);
+        // hackCache.insert(hackCache.begin(), newcache, hackCache.end() );
+    }
+
+    void hackCacheDel(const Packet &oP)
+    {
+        uint32_t pluginID = generateUniqPluginId();
+        vector<struct cacheRecord>::iterator it;
+
+        for(it = hackCache.begin(); it != hackCache.end(); it++)
+        {
+            if(pluginID == it->pluginID && it->seq == oP.tcp->seq && 
+                it->daddr == oP.ip->daddr && it->sport == oP.tcp->source)
+            {
+                hackCache.erase(it);
+                return;
+            }
+        }
+    }
 
     uint8_t supportedScramble; /* supported by the location, derived
                                   from plugin_enabler.conf.$location */
@@ -66,9 +140,9 @@ public:
     }
 
     Hack(const char* hackName, uint16_t hackFrequency, bool removeOrigPkt = false) :
-    hackName(hackName),
-    hackFrequency(hackFrequency),
-    removeOrigPkt(removeOrigPkt)
+        hackName(hackName),
+        hackFrequency(hackFrequency),
+        removeOrigPkt(removeOrigPkt)
     {
     };
 

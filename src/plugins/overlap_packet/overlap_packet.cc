@@ -41,7 +41,7 @@ class overlap_packet : public Hack
 {
 #define HACK_NAME "Overlap Packet"
 #define PKT_LOG "plugin.overlap_packet.log"
-#define MIN_PACKET_OVERTRY  1000
+#define MIN_PACKET_OVERTRY  400
 
 private:
     pluginLogHandler pLH;
@@ -68,24 +68,44 @@ public:
          * windows uses the first received packet while unix the last received.
          */
 
+        /* Is cached the amount of data cached in the first segment */
+        uint32_t cachedData;
         Packet * const pkt = new Packet(origpkt);
-        pkt->tcppayloadResize(pkt->datalen - 100);
-        pLH.completeLog("original pkt size %d faked with %d bytes bad", origpkt.datalen, pkt->datalen);
-        pkt->tcppayloadRandomFill();
+
+        if(!(hackCacheCheck(origpkt, &cachedData)))
+        {
+            cachedData = (origpkt.datalen / 2);
+
+            hackCacheAdd(origpkt, cachedData);
+
+            pkt->tcppayloadRandomFill();
+            memcpy(&pkt->payload[cachedData], &origpkt.payload[cachedData], 200);
+
+            pLH.completeLog("2) injected packet (sport %u seq %u) length %d, %d random and the other good", 
+                ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq), 
+                pkt->datalen, cachedData
+            );
+
+        }
+        else 
+        {
+            hackCacheDel(origpkt);
+
+            pkt->tcppayloadResize(cachedData);
+
+            pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)", 
+                origpkt.datalen, origpkt.datalen - cachedData, cachedData, 
+                ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
+            );
+            memcpy(pkt->payload, origpkt.payload, cachedData);
+
+            pkt->tcp->psh = 0;
+
+        }
 
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
-        pkt->tcp->psh = 0;
         pktVector.push_back(pkt);
-
-        Packet * const pkt2 = new Packet(origpkt);
-        pkt2->tcppayloadResize(pkt2->datalen);
-        pLH.completeLog("injected packet 2 with all byte good of %d/%d bytes", origpkt.datalen, pkt2->datalen);
-
-        pkt2->position = POSTICIPATION;
-        pkt2->wtf = INNOCENT;
-        pktVector.push_back(pkt2);
-
         removeOrigPkt = true;
     }
 
@@ -100,7 +120,7 @@ public:
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", hackName);
             return false;
         }
 

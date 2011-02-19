@@ -226,7 +226,7 @@ int main(int argc, char **argv)
             break;
         case 'd':
             useropt.debug_level = atoi(optarg);
-            if (useropt.debug_level < SUPPRESS_LEVEL || useropt.debug_level > TESTING_LEVEL)
+            if (useropt.debug_level > TESTING_LEVEL)
                 goto sniffjoke_help;
             break;
         case 'v':
