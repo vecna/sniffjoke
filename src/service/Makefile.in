@@ -48,8 +48,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_sniffjoke_OBJECTS = Debug.$(OBJEXT) HDRoptions.$(OBJEXT) \
-	Packet.$(OBJEXT) PacketQueue.$(OBJEXT) HackPool.$(OBJEXT) \
-	TTLFocus.$(OBJEXT) SessionTrack.$(OBJEXT) \
+	Packet.$(OBJEXT) PacketQueue.$(OBJEXT) Hack.$(OBJEXT) \
+	HackPool.$(OBJEXT) TTLFocus.$(OBJEXT) SessionTrack.$(OBJEXT) \
 	portConfParsing.$(OBJEXT) TCPTrack.$(OBJEXT) NetIO.$(OBJEXT) \
 	Process.$(OBJEXT) IPList.$(OBJEXT) UserConf.$(OBJEXT) \
 	SniffJoke.$(OBJEXT) main.$(OBJEXT)
@@ -231,6 +231,7 @@ sniffjoke_SOURCES = hardcodedDefines.h \
 			PacketQueue.h \
 			PacketQueue.cc \
 			Hack.h \
+			Hack.cc \
 			HackPool.h \
 			HackPool.cc \
 			TTLFocus.h \
@@ -343,6 +344,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Debug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HDRoptions.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Hack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HackPool.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/IPList.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NetIO.Po@am__quote@

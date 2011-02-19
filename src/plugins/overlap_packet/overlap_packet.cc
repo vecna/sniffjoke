@@ -41,7 +41,7 @@ class overlap_packet : public Hack
 {
 #define HACK_NAME "Overlap Packet"
 #define PKT_LOG "plugin.overlap_packet.log"
-#define MIN_PACKET_OVERTRY  600
+#define MIN_PACKET_OVERTRY 600
 
 private:
     pluginLogHandler pLH;
@@ -50,8 +50,6 @@ public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
-        /* the block split size must not create a last packet of 0 byte! */
-
         /* 
          * TODO -- 
          * with posticipation under Linux and Window the FIRST packet is accepted, and
@@ -63,16 +61,17 @@ public:
          * to be accepted (PAWS with expired timestamp) --- TODO
          */
 
-        /* this tests: a valid packet with a lenght LESS THAN the real size sent by
+        /* the test: a valid packet with a lenght LESS THAN the real size sent by
          * the kernel, followed by the same packet of good dimension. seems that
-         * windows uses the first received packet while unix the last received.
+         * windows uses the first received packet while unix the last one.
          */
 
         /* Is cached the amount of data cached in the first segment */
         uint32_t cachedData;
+
         Packet * const pkt = new Packet(origpkt);
 
-        if( !(hackCacheCheck(origpkt, &cachedData)))
+        if (!(hackCacheCheck(origpkt, &cachedData)))
         {
             cachedData = (origpkt.datalen / 2);
 
@@ -82,30 +81,31 @@ public:
             memcpy(pkt->payload, origpkt.payload, cachedData);
             pkt->tcp->psh = 0;
 
-            pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)", 
-                origpkt.datalen, origpkt.datalen - cachedData, cachedData, 
-                ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
-            );
+            pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)",
+                            origpkt.datalen, origpkt.datalen - cachedData, cachedData,
+                            ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
+                            );
         }
-        else 
+        else
         {
             hackCacheDel(origpkt);
 
             pkt->tcppayloadRandomFill();
             memcpy(&pkt->payload[cachedData], &origpkt.payload[cachedData], 200);
 
-            pLH.completeLog("2) injected packet (sport %u seq %u) length %d, %d random and the other good", 
-                ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq), 
-                pkt->datalen, cachedData
-            );
+            pLH.completeLog("2) injected packet (sport %u seq %u) length %d, %d random and the other good",
+                            ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq),
+                            pkt->datalen, cachedData
+                            );
         }
 
-        pLH.completeLog("X) sending a packet of %u bytes, cachedData value %u (sport %u seq %u)", 
-                pkt->datalen, cachedData, ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq) );
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
         pktVector.push_back(pkt);
         removeOrigPkt = true;
+
+        pLH.completeLog("X) sending a packet of %u bytes, cachedData value %u (sport %u seq %u)",
+                        pkt->datalen, cachedData, ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq));
     }
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on

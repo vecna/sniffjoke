@@ -4,7 +4,7 @@
 
 #default values
 LOCATION=
-CONFPATH=
+WORKPATH=
 TESTN=1
 
 usage()
@@ -114,7 +114,7 @@ do
              LOCATION=$OPTARG
              ;;
          d)
-             CONFPATH=$OPTARG
+             WORKPATH=$OPTARG
              ;;
          n)
              TESTN=$OPTARG
@@ -142,7 +142,7 @@ if [ -z $LOCATION ]; then
     exit;
 fi
 
-if [ -z $CONFPATH ]; then
+if [ -z $WORKPATH ]; then
     usage
     echo -en "\n"
     echo "it's required the PATH of commonly used working dir, where 'generic' is installed"
@@ -230,7 +230,7 @@ echo -en "\n# this plugins_enabled.conf are dumped for location: $LOCATION" >> $
 echo -en "\n\n" >> $PeL
 
 for hack in $success; do
-    hackName=`basename $hack | sed -es/working_hacks/so/`
+    hackName=`basename $hack | sed -es/.working_hacks//`
     scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
     echo -en "\n$hackName,$scramble" | sed -es/,\$// >> $PeL
 done
@@ -238,7 +238,7 @@ done
 echo -en "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure=`ls /tmp/$LOCATION/*.failed_hacks`
 for hack in $failure ; do
-    hackName=`basename $hack | sed -es/failed_hacks/so/`
+    hackName=`basename $hack | sed -es/.failed_hacks//`
     scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
     echo -en "\n# $hackName,$scramble" | sed -es/,\$// >> $PeL
 done

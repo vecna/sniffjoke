@@ -219,7 +219,7 @@ void HackPool::parseEnablerFile()
     char plugabspath[MEDIUMBUF] = {0};
     FILE *plugfile;
 
-    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s.so", runconfig.working_dir, FILE_PLUGINSENABLER);
+    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
 
     if ((plugfile = fopen(enablerabspath, "r")) == NULL)
         RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
@@ -253,7 +253,7 @@ void HackPool::parseEnablerFile()
                               FILE_PLUGINSENABLER, line);
         }
 
-        /* name.so,SCRAMBLE became name.so[NULL]SCRAMBLE, *comma point to "S" */
+        /* name,SCRAMBLE became name[NULL]SCRAMBLE, *comma point to "S" */
         *comma = 0x00;
         comma++;
 
