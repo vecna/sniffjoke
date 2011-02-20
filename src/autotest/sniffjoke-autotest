@@ -21,7 +21,7 @@ every plugin it's tested with one of each scrambling tech.
 OPTIONS:
    -h      show this message
    -l      location name
-   -d      default configuration path
+   -d      path of 'generic/' location, acting as default
    -n      number of tests to be passed for the single hack (default 1)
 EOF
 }
@@ -94,7 +94,7 @@ start_test() {
         else
             echo $i >> "$PNAME-$SCRAMBLE.passed_count"
         fi
-        if [ $i -eq 3 ];
+        if [ $i -eq $TESTN ];
         then
             echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.working_hacks"
         fi
@@ -148,6 +148,21 @@ if [ -z $WORKPATH ]; then
     echo "it's required the PATH of commonly used working dir, where 'generic' is installed"
     echo "usually it's /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
     echo "been installed in your distro"
+    exit;
+fi
+
+if [ ! -d $WORKPATH ]; then
+    usage
+    echo -en "\n"
+    echo "option \"-d\" wrong argument: no such directory exist"
+    exit;
+fi
+
+if [ ! -d "$WORKPATH/generic" ]; then
+    usage
+    echo -en "\n"
+    echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
+    echo "sniffjoke-autotest create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
     exit;
 fi
 

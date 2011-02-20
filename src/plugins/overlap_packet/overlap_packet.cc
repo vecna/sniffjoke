@@ -43,6 +43,7 @@ class overlap_packet : public Hack
 #define PKT_LOG "plugin.overlap_packet.log"
 #define MIN_PACKET_OVERTRY 600
 
+#define SEQINFO 1
 private:
     pluginLogHandler pLH;
 
@@ -76,6 +77,7 @@ public:
             cachedData = (origpkt.datalen / 2);
 
             hackCacheAdd(origpkt, cachedData);
+            hackCacheAdd(origpkt, SEQINFO, ntohl(pkt->tcp->seq) );
 
             pkt->tcppayloadResize(cachedData);
             memcpy(pkt->payload, origpkt.payload, cachedData);
@@ -88,13 +90,18 @@ public:
         }
         else
         {
+            uint32_t previousSeq;
+            hackCacheCheck(origpkt, SEQINFO, &previousSeq);
+            hackCacheDel(origpkt, SEQINFO);
+
             hackCacheDel(origpkt);
 
             pkt->tcppayloadRandomFill();
-            memcpy(&pkt->payload[cachedData], &origpkt.payload[cachedData], 200);
+            memcpy(&pkt->payload[cachedData], &origpkt.payload[cachedData], cachedData);
 
-            pLH.completeLog("2) injected packet (sport %u seq %u) length %d, %d random and the other good",
+            pLH.completeLog("2) injected packet (sport %u seq %u (diff %u) ) length %d, first %d random",
                             ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq),
+                            (ntohl(pkt->tcp->seq) - previousSeq),
                             pkt->datalen, cachedData
                             );
         }

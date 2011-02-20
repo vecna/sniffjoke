@@ -306,7 +306,7 @@ void NetIO::networkIO(void)
             if (runconfig.active == true)
                 conntrack->writepacket(NETWORK, pktbuf, ret);
             else if (write(tunfd, pktbuf, ret) != ret)
-                RUNTIME_EXCEPTION("erro writing in tunnel: %s", strerror(errno));
+                RUNTIME_EXCEPTION("error writing in tunnel: %s", strerror(errno));
         }
 
         if (fds[1].revents & POLLOUT)
