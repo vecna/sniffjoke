@@ -55,6 +55,7 @@ private:
         /* packet identification */
         uint16_t sport;
         uint32_t daddr;
+        uint32_t seq;
         uint32_t pluginID;
         uint8_t cacheID;
     };

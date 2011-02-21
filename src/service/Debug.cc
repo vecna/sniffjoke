@@ -166,7 +166,7 @@ void pluginLogHandler::completeLog(const char *msg, ...)
     char time_str[MEDIUMBUF];
     memset(time_str, 0x00, sizeof(time_str));
 
-    strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
+    strftime(time_str, sizeof (time_str), "%F %T", const_cast<const struct tm *>(localtime(&now)));
     fprintf(logstream, "%s ", time_str);
 
     va_start(arguments, msg);

@@ -41,7 +41,8 @@ bool Hack::hackCacheCheck(const Packet &oP, uint8_t cacheID, uint32_t *dataptr)
     {
         cacheRecord &record = **it;
         if (pluginID == record.pluginID && record.cacheID == cacheID &&
-                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source)
+                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source &&
+                record.seq == oP.tcp->seq )
         {
             memcpy(dataptr, &(record.cachedData), sizeof (dataptr));
             return true;
@@ -61,6 +62,7 @@ void Hack::hackCacheAdd(const Packet &oP, uint8_t cacheID, uint32_t data)
     newcache->cacheID = cacheID;
     newcache->sport = oP.tcp->source;
     newcache->daddr = oP.ip->daddr;
+    newcache->seq = oP.tcp->seq;
     /* will be fixed in the future */
     newcache->addedtime = 0;
 
@@ -76,7 +78,8 @@ void Hack::hackCacheDel(const Packet &oP, uint8_t cacheID)
     {
         cacheRecord &record = **it;
         if (pluginID == record.pluginID && record.cacheID == cacheID &&
-                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source)
+                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source &&
+                record.seq == oP.tcp->seq )
         {
             delete &record;
             hackCache.erase(it++);
