@@ -27,7 +27,11 @@ uint32_t Hack::generateUniqPluginId(void)
     uint32_t retval = 1;
 
     for (uint32_t i = 0; i < strlen(hackName); i++)
+    {
         retval *= ((hackName[i] % 7) + 1);
+        retval += (hackName[i] % 8);
+        retval /= ((hackName[i] % 4) + 1);
+    }
 
     return retval;
 }
@@ -41,8 +45,7 @@ bool Hack::hackCacheCheck(const Packet &oP, uint8_t cacheID, uint32_t *dataptr)
     {
         cacheRecord &record = **it;
         if (pluginID == record.pluginID && record.cacheID == cacheID &&
-                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source &&
-                record.seq == oP.tcp->seq )
+                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source)
         {
             memcpy(dataptr, &(record.cachedData), sizeof (dataptr));
             return true;
@@ -62,7 +65,6 @@ void Hack::hackCacheAdd(const Packet &oP, uint8_t cacheID, uint32_t data)
     newcache->cacheID = cacheID;
     newcache->sport = oP.tcp->source;
     newcache->daddr = oP.ip->daddr;
-    newcache->seq = oP.tcp->seq;
     /* will be fixed in the future */
     newcache->addedtime = 0;
 
@@ -78,8 +80,7 @@ void Hack::hackCacheDel(const Packet &oP, uint8_t cacheID)
     {
         cacheRecord &record = **it;
         if (pluginID == record.pluginID && record.cacheID == cacheID &&
-                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source &&
-                record.seq == oP.tcp->seq )
+                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source)
         {
             delete &record;
             hackCache.erase(it++);
