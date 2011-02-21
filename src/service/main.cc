@@ -116,8 +116,8 @@ static void sj_version(const char *pname)
     "\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
     " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
     " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
-    " --whitelist\tinject evasion packets only in the specified ip addresses\n"\
-    " --blacklist\tinject evasion packet in all session excluding the blacklisted ip address\n"\
+    " --whitelist\t\tinject evasion packets only in the specified ip addresses\n"\
+    " --blacklist\t\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
     " --debug <level %d-%d>\tset up verbosoty level [default: %d]\n"\
     "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\

@@ -251,7 +251,7 @@ void NetIO::networkIO(void)
         {
 
             /*
-             * if there is some data to flush out the poll
+             * if there are not data to flush out the poll
              * timeout is set to 1ms
              */
 
@@ -295,6 +295,15 @@ void NetIO::networkIO(void)
             pkt_net = conntrack->readpacket(NETWORK);
         }
 
+        /* This section of code is not used actively because manage the
+         * traffic sent FROM THE GATEWAY TO THE TUNNEL.
+         * the kernel is received the data without sniffjoke mangling, because
+         * the default gateway is sending the packete to the eth/wifi mac address
+         *
+         * this code is keep because future extension of the Hack Plugin method 
+         * will include the incoming packet segnalation
+         */
+#if 0
         if (fds[1].revents & POLLIN)
         {
             /* it's possible to read from netfd */
@@ -308,6 +317,7 @@ void NetIO::networkIO(void)
             else if (write(tunfd, pktbuf, ret) != ret)
                 RUNTIME_EXCEPTION("error writing in tunnel: %s", strerror(errno));
         }
+#endif
 
         if (fds[1].revents & POLLOUT)
         {
