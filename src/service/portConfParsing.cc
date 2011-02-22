@@ -179,10 +179,13 @@ void portLine::extractValue(void)
     const struct mapTheKeys *mtk;
     bool foundK;
 
-    /* AGG_* and FREQ_* are defined in Packet.h */
+    /* AGG_* are defined in Packet.h */
     const struct mapTheKeys mappedKeywords[] = {
+        { AGG_NONE, AGG_N_NONE},
+        { AGG_VERYRARE, AGG_N_VERYRARE},
         { AGG_RARE, AGG_N_RARE},
         { AGG_COMMON, AGG_N_COMMON},
+        { AGG_HEAVY, AGG_N_HEAVY},
         { AGG_ALWAYS, AGG_N_ALWAYS},
         { AGG_PACKETS10PEEK, AGG_N_PACKETS10PEEK},
         { AGG_PACKETS30PEEK, AGG_N_PACKETS30PEEK},
@@ -190,10 +193,6 @@ void portLine::extractValue(void)
         { AGG_TIMEBASED20S, AGG_N_TIMEBASED20S},
         { AGG_STARTPEEK, AGG_N_STARTPEEK},
         { AGG_LONGPEEK, AGG_N_LONGPEEK},
-        { FREQ_NONE, FREQ_N_NONE},
-        { FREQ_LIGHT, FREQ_N_LIGHT},
-        { FREQ_NORMAL, FREQ_N_NORMAL},
-        { FREQ_HEAVY, FREQ_N_HEAVY},
         { 0, NULL}
     };
 

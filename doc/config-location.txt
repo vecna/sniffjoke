@@ -87,13 +87,17 @@ management-port
 
 debug
     the verbosity level used by sniffjoke:
-	1: suppress log, no one line are provided 
-	2: common, startup info and error reporting
-	3: verbose, description and check of I/O operation
-	4: debug, intensive and complete I/O description
-	5: session, creation of $LOGFILENAME.session and session debug 
-	6: packets, creation of $LOGFILENAME.packet and debug of every packet
-	default: 2
+ 0: suppress log, 1: common, 2: verbose, 3: debug, 4: session 5: packets
+
+	0: suppress log, no one line are provided 
+	1: common, startup info and error reporting, generted the file sniffjoke.log inside
+       the choosed location.
+	2: verbose, description and check of I/O operation, use sniffjoke.log only too
+	3: debug, intensive and complete I/O description, in sniffjoke.log always
+	4: session, creation of sniffjoke.log.session and session debug 
+	5: packets, creation of sniffjoke.log.packet and debug of every packet
+
+	default: 1
 
 foreground
 	it's an optional parameter used to make the sniffjoke service run in foreground
@@ -115,16 +119,13 @@ be hacked.
 this is how the default and simplest section appears:
 
 # this is always on the top of the port definition file, act as default
-1:65535     NORMAL,COMMON
+1:65535     NORMAL
 
 # follow the port rules
-22          RARE,LIGHT
-23,25,110   COMMON,NORMAL
-80,8080     PEEKATSTART,EVERY5SECONDS,HEAVY
-6667,7000   ALWAYS,NORMAL
-
-# edonkey p2p
-4600:4800   EVERY20SECONDS,LIGHT
+22          RARE
+23,25,110   COMMON
+80,8080     PEEKATSTART,EVERY5SECONDS
+6667,7000   ALWAYS
 
 you need to select the destination TCP ports, use as separator "," or ":"
 with the "," you should address the single port and with the ":" a range.
@@ -134,41 +135,21 @@ related to the kind of session (IRC is really different, from sensibiliy of the
 data, amount of bytes and number of packets, from HTTP and peer2peer), those value
 should be mixed togheder, using the ","
 
-RARE
-            every packet has the 24% to be hacked
-COMMON
-            every packet has the 56% to be hacked
-ALWAYS
-            yes, every packet is hacked: 100% not good, but, useful in rare situations
-PACKETS10PEEK
-            when the packets count related to the session if 9, 10 or 11
-            (or 19, 20, 21...) the probability is 80%, the other time, 8%
-PACKETS30PEEK
-            session count 29, 30, 31 (59, 60, 61), are 80%, the other, 8%
-TIMEBASED5S
-            when the absolute time express in seconds is divisible by 5, the probability
-            is 96% the other time, 8%
-TIMEBASED20S
-            absolute timing in seconds divisible by 20, 96%, other time, 8%
-STARTPEEK
-            for the first 20 packets, 80%, since 21 to 40, 40%, after 8%
-LONGPEEK
-            first 60 packets 64%, since 61 to 120 32%, the other until the end 8%
-
-the packets count is related to the original sessions packets, the hacked injected are excluded.
-
-and those value, that REQUIRE to be ONE ALONE IN EVERY LINE, describe the Probability of
-happen (because every think in sniffjoke need to be randomized, also the probability of injection).
-
-NONE
-            multiply by 0 the value returned by Frequency (suppress hacks)
-LIGHT
-            multiply by 4 the value returned by Frequency (you should halve the
-            percentage written before)
-NORMAL
-            multiply by 8 (this is because every number is divisible by eight)
-HEAVY
-            multiply by 12
+#
+# NONE .................. never used the hack (0% probability)
+# VERYRARE .............. 5%
+# RARE .................. 15%
+# COMMON ................ 40%
+# HEAVY ................. 75%
+# ALWAYS ................ 100%
+# PEEK10PKT ............. packer number 9, 10, 11 = 80%, other 2%
+# PEEK30PKT ............. packet number 29, 30, 31, = 90%, other 2%
+# EVERY5SECONDS ......... if the number of seconds are divisibile by 5= 90%
+#                         other moments, 2%
+# EVERY20SECONDS ........ if the number of seconds are divisibile by 20= 90%
+#                         other moment, 2%
+# PEEKATSTART ........... the first 20 packets = 65%, up to the 40th= 20%, after 2%
+# LONGPEEK .............. the first 60 pkts = 65%, up to the 120th= 20%, after 2%
 
 Is a matter of percentage.
 if you don't know what you do, it's suggested to use the default.
@@ -187,33 +168,6 @@ FACTS about injection:
 
 3) Every sniffjoke injected packet will happen and will not, because the SniffJoke strength is based on the randomness. A non random patter will be detected and managed, a random one, will not.
 
-SniffJoke solutions:
-
-SniffJoke for every outgoing packet check:
-
-    if the plugin will inject an hacked-packet: sometimes will and some other not. fake_data in example work only when the packet contains some payload.
-
-    if the "random" choose to inject or not: the "random" is based on the configuration file port-aggressivity.conf
-
 port-aggressivity has a strong influence about the injection happening, and the coder of the plugin too.
-
-WHICH INPUT POINT EXISTS AND HOW THEY ARE MIXED
-
-1) port-aggressivity.conf contains something like:
-
-1:65535     NORMAL,COMMON
-22          RARE,LIGHT
-25,110,143  LONGPEEK,EVERY5SECONDS,NORMAL
-
-2) every plugin is initialized with:
-
-fake_syn(bool forcedTest) 
-{
-    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE);
-}
-
-In short: every Hack specify which kind of frequency is better them use, and this probability is mixed with the probability
-derived by port-aggressivity.conf
-
-The AGG_ALWAYS is used only when the non-documentation option --only-plugin is called, an option used for testing a single
+The ALWAYS is used when the non-documentation option --only-plugin is called, an option used for testing a single
 hack+scramble combination, used in sniffjoke-autotest

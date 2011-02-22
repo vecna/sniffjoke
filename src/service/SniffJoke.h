@@ -100,7 +100,7 @@ private:
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
-    uint32_t appendSJPortBlock(uint8_t *, uint16_t, uint16_t, uint8_t);
+    uint32_t appendSJPortBlock(uint8_t *, uint16_t, uint16_t, uint16_t);
 };
 
 #endif /* SJ_SNIFFJOKE_H */
