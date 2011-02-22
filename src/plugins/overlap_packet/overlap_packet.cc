@@ -115,9 +115,6 @@ public:
         pkt->wtf = INNOCENT;
         pktVector.push_back(pkt);
         removeOrigPkt = true;
-
-        //pLH.completeLog("X) sending a packet of %u bytes, cachedData value %u (sport %u seq %u)",
-        //                pkt->datalen, sentData, ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq));
     }
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on

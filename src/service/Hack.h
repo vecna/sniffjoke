@@ -61,7 +61,7 @@ public:
     access_timestamp(sj_clock),
     cached_packet(pkt)
     {
-        cached_data = malloc(data_size);
+        cached_data = new char[data_size];
         memcpy(cached_data, data, data_size);
     };
 };
