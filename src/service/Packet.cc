@@ -23,8 +23,12 @@
 #include "Packet.h"
 #include "HDRoptions.h"
 
-#define MAXIPHEADER 60
-#define MAXTCPHEADER 60
+#define MAXIPHEADER 60 /* included ip options */
+#define MAXTCPHEADER 60 /* included tcp options */
+#define MINIPOPTION 4 /* excluded NOP/EOL */
+#define MINTCPOPTION 4 /* excluded NOP/EOL */
+#define MAXIPINJITERATIONS 5 /* max number of injected ip options / retries */
+#define MAXTCPINJITERATIONS 5 /* max number of injected tcp options / retries */
 
 Packet::Packet(const unsigned char* buff, uint16_t size) :
 queue(QUEUEUNASSIGNED),
@@ -363,38 +367,31 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint8_t actual_iphdrlen = iphdrlen;
 
-    uint8_t target_iphdrlen = MAXIPHEADER;
+    uint8_t target_iphdrlen = 0;
+
+    uint16_t freespace = 0;
 
     SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
 
     if (strip_previous)
     {
-        const uint16_t freespace = MTU - (pktlen - iphdrlen + sizeof (struct iphdr));
-
-        if (freespace == 0)
-            return false;
+        freespace = MTU - (pktlen - iphdrlen + sizeof (struct iphdr));
 
         actual_iphdrlen = sizeof (struct iphdr);
         target_iphdrlen = sizeof (struct iphdr) + (random() % (MAXIPHEADER - sizeof (struct iphdr)));
-
-        if (freespace < target_iphdrlen)
-            target_iphdrlen = freespace;
     }
-    else if (iphdrlen <= (MAXIPHEADER - 4))
+    else if (MAXIPHEADER - iphdrlen >= MINIPOPTION)
     {
-        const uint16_t freespace = MTU - pktlen;
+        freespace = MTU - pktlen;
 
-        if (freespace == 0)
-            return false;
-        target_iphdrlen = iphdrlen + 3 + (random() % (MAXIPHEADER - iphdrlen - 3));
-
-        if (freespace < target_iphdrlen)
-            target_iphdrlen = freespace;
+        target_iphdrlen = iphdrlen + random() % (MAXIPHEADER - iphdrlen);
     }
-    else
-    {
+
+    if (freespace == 0)
         return false;
-    }
+
+    if (freespace < target_iphdrlen)
+        target_iphdrlen = freespace;
 
     // iphdrlen must be a multiple of 4
     target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
@@ -405,14 +402,14 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
     try
     {
         HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (unsigned char *) ip + sizeof (struct iphdr), actual_iphdrlen, target_iphdrlen);
-        uint8_t MAXITERATION = 5;
+        uint8_t tries = MAXIPINJITERATIONS;
 
         do
         {
             injected |= IPInjector.randomInjector();
 
         }
-        while (target_iphdrlen != actual_iphdrlen && MAXITERATION--);
+        while (target_iphdrlen != actual_iphdrlen && tries--);
     }
     catch (exception &e)
     {
@@ -442,38 +439,29 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
 
     uint8_t target_tcphdrlen = 0;
 
+    uint16_t freespace = 0;
+
     SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
 
     if (strip_previous)
     {
-        uint16_t freespace = MTU - (pktlen - tcphdrlen + sizeof (struct tcphdr));
-
-        if (freespace == 0)
-            return false;
+        freespace = MTU - (pktlen - tcphdrlen + sizeof (struct tcphdr));
 
         actual_tcphdrlen = sizeof (struct tcphdr);
         target_tcphdrlen = sizeof (struct tcphdr) + (random() % (MAXTCPHEADER - sizeof (struct tcphdr)));
-
-        if (freespace < target_tcphdrlen)
-            target_tcphdrlen = freespace;
-
     }
-    else if (tcphdrlen <= (MAXTCPHEADER - 4))
+    else if (MAXTCPHEADER - tcphdrlen >= MINTCPOPTION)
     {
-        uint16_t freespace = MTU - pktlen;
+        freespace = MTU - pktlen;
 
-        if (freespace == 0)
-            return false;
-
-        target_tcphdrlen = tcphdrlen + 3 + (random() % (MAXTCPHEADER - tcphdrlen - 3));
-
-        if (freespace < target_tcphdrlen)
-            target_tcphdrlen = freespace;
+        target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
     }
-    else
-    {
+
+    if (freespace == 0)
         return false;
-    }
+
+    if (freespace < target_tcphdrlen)
+        target_tcphdrlen = freespace;
 
     // tcphdrlen must be a multiple of 4
     target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
@@ -484,14 +472,14 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
     try
     {
         HDRoptions TCPInjector(TCPOPTS_INJECTOR, corrupt, (unsigned char *) tcp + sizeof (struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
-        uint8_t MAXITERATION = 5;
+        uint8_t tries = MAXTCPINJITERATIONS;
 
         do
         {
             injected |= TCPInjector.randomInjector();
 
         }
-        while (target_tcphdrlen != actual_tcphdrlen && MAXITERATION--);
+        while (target_tcphdrlen != actual_tcphdrlen && tries--);
 
     }
     catch (exception &e)

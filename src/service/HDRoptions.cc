@@ -177,10 +177,7 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
 
     if (available_opts_len < size_rr)
         return 0;
-#if 0
-    if (!corrupt)
-        return 0;
-#endif
+
     optptr[0] = IPOPT_RR;
     optptr[1] = size_rr;
 
