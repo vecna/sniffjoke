@@ -22,12 +22,12 @@
 
 #include "Hack.h"
 
-vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const Packet &, const Packet &), const Packet &pkt)
+vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
     for (vector<cacheRecord *>::iterator it = hackCache.begin(); it != hackCache.end(); it++)
     {
         cacheRecord &record = **it;
-        if (filter(pkt, record.cached_packet))
+        if (filter(record, pkt))
             return it;
     }
 

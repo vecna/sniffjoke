@@ -108,7 +108,7 @@ public:
         return true;
     };
 
-    vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const Packet &, const Packet &), const Packet &);
+    vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
     vector<cacheRecord *>::iterator cacheCreate(const Packet &);
     vector<cacheRecord *>::iterator cacheCreate(const Packet &, void* data, size_t data_size);
     void cacheDelete(vector<struct cacheRecord *>::iterator it);
