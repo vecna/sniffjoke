@@ -50,7 +50,8 @@ vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, void *data,
 
 void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
-    delete (*it)->cached_data;
+    if((*it)->cached_data != NULL)
+        delete (*it)->cached_data;
     delete *it;
     hackCache.erase(it);
 }
