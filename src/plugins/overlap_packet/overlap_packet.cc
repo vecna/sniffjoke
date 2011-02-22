@@ -47,6 +47,14 @@ class overlap_packet : public Hack
 private:
     pluginLogHandler pLH;
 
+    static bool filter(const Packet &pkt1, const Packet &pkt2)
+    {
+
+        return (pkt1.ip->daddr == pkt2.ip->daddr &&
+                pkt1.tcp->source == pkt2.tcp->source &&
+                pkt1.tcp->seq == pkt2.tcp->seq);
+    }
+
 public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
@@ -67,42 +75,39 @@ public:
          * windows uses the first received packet while unix the last one.
          */
 
-        /* Is cached the amount of data cached in the first segment */
-        uint32_t cachedData;
-
         Packet * const pkt = new Packet(origpkt);
 
-        if (!(hackCacheCheck(origpkt, &cachedData)))
+        /* Is cached the amount of data cached in the first segment */
+        uint32_t sentData;
+
+        vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
+
+        if (it == hackCache.end())
         {
-            cachedData = (origpkt.datalen / 2);
+            sentData = (origpkt.datalen / 2);
 
-            hackCacheAdd(origpkt, cachedData);
-            hackCacheAdd(origpkt, SEQINFO, ntohl(pkt->tcp->seq) );
+            it = cacheCreate(origpkt, (void*) &sentData, 4);
 
-            pkt->tcppayloadResize(cachedData);
-            memcpy(pkt->payload, origpkt.payload, cachedData);
+            pkt->tcppayloadResize(sentData);
             pkt->tcp->psh = 0;
 
             pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)",
-                            origpkt.datalen, origpkt.datalen - cachedData, cachedData,
+                            origpkt.datalen, origpkt.datalen - sentData, sentData,
                             ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
                             );
         }
         else
         {
-            uint32_t previousSeq;
-            hackCacheCheck(origpkt, SEQINFO, &previousSeq);
-            hackCacheDel(origpkt, SEQINFO);
 
-            hackCacheDel(origpkt);
+            sentData = *(uint32_t*) ((*it)->cached_data);
 
-            pkt->tcppayloadRandomFill();
-            memcpy(&pkt->payload[cachedData], &origpkt.payload[cachedData], cachedData);
+            cacheDelete(it);
 
-            pLH.completeLog("2) injected packet (sport %u seq %u (diff %u) ) length %d, first %d random",
-                            ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq),
-                            (ntohl(pkt->tcp->seq) - previousSeq),
-                            pkt->datalen, cachedData
+            memset_random(pkt->payload, sentData);
+
+            pLH.completeLog("2) injected packet size %d, first %d random (sport %u seq %u)",
+                            pkt->datalen, sentData,
+                            ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
                             );
         }
 
@@ -110,15 +115,13 @@ public:
         pkt->wtf = INNOCENT;
         pktVector.push_back(pkt);
         removeOrigPkt = true;
-
-        pLH.completeLog("X) sending a packet of %u bytes, cachedData value %u (sport %u seq %u)",
-                        pkt->datalen, cachedData, ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq));
     }
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+
         return (origpkt.payload != NULL && origpkt.datalen > MIN_PACKET_OVERTRY);
     }
 
@@ -144,11 +147,13 @@ public:
 
 extern "C" Hack* CreateHackObject(bool forcedTest)
 {
+
     return new overlap_packet(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)
 {
+
     delete who;
 }
 
