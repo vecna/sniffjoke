@@ -76,7 +76,7 @@ struct port_info
 {
     uint16_t start;
     uint16_t end;
-    uint8_t weight;
+    uint16_t weight;
 };
 
 /* this struct is used for Info command handling, 

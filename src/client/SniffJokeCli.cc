@@ -401,6 +401,7 @@ char *SniffJokeCli::resolve_weight(uint32_t weight)
     /* this is taken from portConfParsing.cc */
     const struct mapTheKeys mappedKeywords[] = {
         { AGG_RARE, AGG_N_RARE},
+        { AGG_VERYRARE, AGG_N_VERYRARE},
         { AGG_COMMON, AGG_N_COMMON},
         { AGG_ALWAYS, AGG_N_ALWAYS},
         { AGG_PACKETS10PEEK, AGG_N_PACKETS10PEEK},
@@ -409,10 +410,8 @@ char *SniffJokeCli::resolve_weight(uint32_t weight)
         { AGG_TIMEBASED20S, AGG_N_TIMEBASED20S},
         { AGG_STARTPEEK, AGG_N_STARTPEEK},
         { AGG_LONGPEEK, AGG_N_LONGPEEK},
-        { FREQ_NONE, FREQ_N_NONE},
-        { FREQ_LIGHT, FREQ_N_LIGHT},
-        { FREQ_NORMAL, FREQ_N_NORMAL},
-        { FREQ_HEAVY, FREQ_N_HEAVY},
+        { AGG_NONE, AGG_N_NONE},
+        { AGG_HEAVY, AGG_N_HEAVY},
         { 0, NULL}
     };
 

@@ -520,7 +520,7 @@ void UserConf::loadAggressivity(void)
          * but is not an absolute truth, I like the user that choose for himself
          */
         for (uint16_t i = 0; i < PORTNUMBER; ++i)
-            runconfig.portconf[i] = FREQ_NONE;
+            runconfig.portconf[i] = AGG_NONE;
 
         return;
     }

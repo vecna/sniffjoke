@@ -26,7 +26,7 @@
 
 /* MEDIUMBUF, LARGEBUF, ecc.. and cstdio */
 #include "Utils.h"
-/* FREQ_ and AGG_ defines */
+/* the AGG_ aggrssivity definition */
 #include "Packet.h"
 /* PORTNUMBER */
 #include "UserConf.h"

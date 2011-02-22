@@ -152,37 +152,35 @@ public:
     void selflog(const char *, const char *, ...) const;
 };
 
-/* definition for port Frequency and Aggressiviy, or-red in a 16 bit field 
+/* definition for service Aggressiviy, or-red in a 16 bit field 
  * the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin 
  * they are put here because Packet.h is included in UserConf.h via SessionTrack.h
  * and are used in TCPTrack.cc too. whenever the parsing methodology implemented in 
  * UserConf about the tcp-port files change, those define should be revised */
-#define AGG_RARE            1
+#define AGG_NONE            1
+#define AGG_N_NONE          "NONE"
+#define AGG_VERYRARE        2
+#define AGG_N_VERYRARE      "VERYRARE"
+#define AGG_RARE            4
 #define AGG_N_RARE          "RARE"
-#define AGG_COMMON          2
+#define AGG_COMMON          8
 #define AGG_N_COMMON        "COMMON"
-#define AGG_ALWAYS          4
+#define AGG_HEAVY           16 
+#define AGG_N_HEAVY         "HEAVY"
+#define AGG_ALWAYS          32
 #define AGG_N_ALWAYS        "ALWAYS"
-#define AGG_PACKETS10PEEK   8
+#define AGG_PACKETS10PEEK   64
 #define AGG_N_PACKETS10PEEK "PEEK10PKT"
-#define AGG_PACKETS30PEEK   16
+#define AGG_PACKETS30PEEK   128
 #define AGG_N_PACKETS30PEEK "PEEK30PKT"
-#define AGG_TIMEBASED5S     32
+#define AGG_TIMEBASED5S     256
 #define AGG_N_TIMEBASED5S   "EVERY5SECONDS"
-#define AGG_TIMEBASED20S    64
+#define AGG_TIMEBASED20S    512
 #define AGG_N_TIMEBASED20S  "EVERY20SECONDS"
-#define AGG_STARTPEEK       128
+#define AGG_STARTPEEK       1024
 #define AGG_N_STARTPEEK     "PEEKATSTART"
-#define AGG_LONGPEEK        256
+#define AGG_LONGPEEK        2048
 #define AGG_N_LONGPEEK      "LONGPEEK"
 
-#define FREQ_NONE           512
-#define FREQ_N_NONE         "NONE"
-#define FREQ_LIGHT          1024
-#define FREQ_N_LIGHT        "LIGHT"
-#define FREQ_NORMAL         2048
-#define FREQ_N_NORMAL       "NORMAL"
-#define FREQ_HEAVY          4096
-#define FREQ_N_HEAVY        "HEAVY"
 
 #endif /* SJ_PACKET_H */

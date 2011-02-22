@@ -541,8 +541,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, sizeof(io_buf) );
 
-    /* the first port work as initialization */
-    prev_kind = userconf.runconfig.portconf[0];
+    prev_kind = userconf.runconfig.portconf[1];
 
     for (uint32_t i = 1; i < PORTNUMBER; ++i)
     {
@@ -696,7 +695,7 @@ uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, char v
     return len;
 }
 
-uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP, uint8_t weight)
+uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP, uint16_t weight)
 {
     struct port_info pInfo;
 

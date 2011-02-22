@@ -47,64 +47,74 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 {
     uint32_t freqret = 0;
 
+    if (frequencyValue & AGG_VERYRARE)
+    {
+        freqret += 5;
+    }
     if (frequencyValue & AGG_RARE)
     {
-        freqret += 3;
+        freqret += 15;
     }
     if (frequencyValue & AGG_COMMON)
     {
-        freqret += 7;
+        freqret += 40;
+    }
+    if (frequencyValue & AGG_HEAVY)
+    {
+        freqret += 75;
     }
     if (frequencyValue & AGG_ALWAYS)
     {
-        freqret += 200;
+        freqret += 100;
     }
     if (frequencyValue & AGG_PACKETS10PEEK)
     {
         if (!(++packet_number % 10) || !(--packet_number % 10) || !(--packet_number % 10))
-            freqret += 10;
+            freqret += 80;
         else
-            freqret += 1;
+            freqret += 2;
     }
     if (frequencyValue & AGG_PACKETS30PEEK)
     {
         if (!(++packet_number % 30) || !(--packet_number % 30) || !(--packet_number % 30))
-            freqret += 10;
+            freqret += 90;
         else
-            freqret += 1;
+            freqret += 2;
     }
     if (frequencyValue & AGG_TIMEBASED5S)
     {
         if (!((uint8_t) sj_clock % 5))
-            freqret += 12;
+            freqret += 90;
         else
-            freqret += 1;
+            freqret += 2;
     }
     if (frequencyValue & AGG_TIMEBASED20S)
     {
         if (!((uint8_t) sj_clock % 20))
-            freqret += 12;
+            freqret += 90;
         else
-            freqret += 1;
+            freqret += 2;
     }
     if (frequencyValue & AGG_STARTPEEK)
     {
         if (packet_number < 20)
-            freqret += 10;
+            freqret += 65;
         else if (packet_number < 40)
-            freqret += 5;
+            freqret += 20;
         else
-            freqret += 1;
+            freqret += 2;
     }
     if (frequencyValue & AGG_LONGPEEK)
     {
         if (packet_number < 60)
-            freqret += 8;
+            freqret += 65;
         else if (packet_number < 120)
-            freqret += 4;
+            freqret += 20;
         else
-            freqret += 1;
+            freqret += 2;
     }
+    if (frequencyValue & AGG_NONE)
+        freqret = 0;
 
     return freqret;
 }
@@ -123,7 +133,6 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16_t userFrequency)
 {
     uint32_t this_percentage = 0, aggressivity_percentage = 0;
-    uint16_t referenceFrequency;
 
     /* as first is checked hackFrequency, because will be AGG_ALWAYS and mean that we are in 
      * testing mode with --only-olugin option */
@@ -131,35 +140,6 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
         return true;
 
     aggressivity_percentage = derivePercentage(packet_number, userFrequency);
-    referenceFrequency = userFrequency;
-
-    if (referenceFrequency & FREQ_NONE)
-    {
-        /* when aggressivity match set to "10", now is 0% of probability */
-        this_percentage = aggressivity_percentage * 0;
-    }
-    else if (referenceFrequency & FREQ_LIGHT)
-    {
-        /* with 10 ("common") is 40% of probability */
-        this_percentage = aggressivity_percentage * 4;
-    }
-    else if (referenceFrequency & FREQ_NORMAL)
-    {
-        /* with 10 ("common") is 60% of probability */
-        this_percentage = aggressivity_percentage * 6;
-    }
-    else if (referenceFrequency & FREQ_HEAVY)
-    {
-        /* with 10 ("common") is 80% of probabilty, this was useful when a 
-         * float value was used, better analysis will improve this algoritm */
-        this_percentage = aggressivity_percentage * 8;
-    }
-    else
-    {
-        /* this is happen and I didn't understand why, so, I try to log */
-        LOG_DEBUG("arbitrary added percentage: no FREQ_ are present. (this prcnt %d) user %u hack %u", this_percentage, hackFrequency, userFrequency);
-        this_percentage = aggressivity_percentage * 3;
-    }
 
     return (((uint32_t) (random() % 100) + 1 <= this_percentage));
 }
