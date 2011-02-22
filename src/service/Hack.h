@@ -47,8 +47,9 @@ class cacheRecord
 {
 public:
     time_t access_timestamp;
+
     const Packet cached_packet;
-    void *cached_data;
+    char *cached_data;
 
     cacheRecord(const Packet& pkt) :
     access_timestamp(sj_clock),

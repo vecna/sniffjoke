@@ -27,7 +27,6 @@
 #include "Packet.h"
 
 #include <map>
-#include <memory>
 
 using namespace std;
 
