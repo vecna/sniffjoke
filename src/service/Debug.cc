@@ -149,7 +149,7 @@ selfName(sN)
     if ((logstream = fopen(LfN, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s: %s", LfN, strerror(errno));
 
-    completeLog("Opened file %s successful for handler %s", LfN, selfName);
+    completeLog("opened file %s successful for handler %s", LfN, selfName);
 }
 
 pluginLogHandler::~pluginLogHandler()
@@ -166,7 +166,7 @@ void pluginLogHandler::completeLog(const char *msg, ...)
     char time_str[MEDIUMBUF];
     memset(time_str, 0x00, sizeof(time_str));
 
-    strftime(time_str, sizeof (time_str), "%F %T", const_cast<const struct tm *>(localtime(&now)));
+    strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
     fprintf(logstream, "%s ", time_str);
 
     va_start(arguments, msg);

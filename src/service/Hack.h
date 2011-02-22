@@ -43,24 +43,31 @@ using namespace std;
  *
  */
 
-class Hack
+class cacheRecord
 {
-private:
+public:
+    time_t access_timestamp;
+    const Packet cached_packet;
+    void *cached_data;
 
-    struct cacheRecord
+    cacheRecord(const Packet& pkt) :
+    access_timestamp(sj_clock),
+    cached_packet(pkt),
+    cached_data(NULL)
     {
-        time_t addedtime;
-        uint32_t cachedData;
-
-        /* packet identification */
-        uint16_t sport;
-        uint32_t daddr;
-        uint32_t pluginID;
-        uint8_t cacheID;
     };
 
-    vector<struct cacheRecord*> hackCache;
+    cacheRecord(const Packet& pkt, const void* data, size_t data_size) :
+    access_timestamp(sj_clock),
+    cached_packet(pkt)
+    {
+        cached_data = malloc(data_size);
+        memcpy(cached_data, data, data_size);
+    };
+};
 
+class Hack
+{
 public:
 
     uint8_t supportedScramble; /* supported by the location, derived
@@ -71,6 +78,7 @@ public:
                            needs to remove the original packet */
 
     vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
+    vector<cacheRecord*> hackCache;
 
     judge_t pktRandomDamage(uint8_t scrambles)
     {
@@ -81,10 +89,10 @@ public:
         return GUILTY;
     }
 
-    Hack(const char* hackName, uint16_t hackFrequency, bool removeOrigPkt = false) :
+    Hack(const char* hackName, uint16_t hackFrequency) :
     hackName(hackName),
     hackFrequency(hackFrequency),
-    removeOrigPkt(removeOrigPkt)
+    removeOrigPkt(false)
     {
     };
 
@@ -100,13 +108,11 @@ public:
         return true;
     };
 
-    uint32_t generateUniqPluginId(void);
-    bool hackCacheCheck(const Packet &, uint8_t, uint32_t *);
-    void hackCacheAdd(const Packet&, uint8_t, uint32_t);
-    void hackCacheDel(const Packet&, uint8_t);
-    bool hackCacheCheck(const Packet &, uint32_t *);
-    void hackCacheAdd(const Packet &, uint32_t);
-    void hackCacheDel(const Packet &);
+    vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const Packet &, const Packet &), const Packet &);
+    vector<cacheRecord *>::iterator cacheCreate(const Packet &);
+    vector<cacheRecord *>::iterator cacheCreate(const Packet &, void* data, size_t data_size);
+    void cacheDelete(vector<struct cacheRecord *>::iterator it);
+
 };
 
 #endif /* SJ_HACK_H */

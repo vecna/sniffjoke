@@ -300,7 +300,7 @@ void NetIO::networkIO(void)
          * the kernel is received the data without sniffjoke mangling, because
          * the default gateway is sending the packete to the eth/wifi mac address
          *
-         * this code is keep because future extension of the Hack Plugin method 
+         * this code is kept because future extension of the Hack Plugin method
          * will include the incoming packet segnalation
          */
 #if 0

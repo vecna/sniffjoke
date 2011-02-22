@@ -22,87 +22,35 @@
 
 #include "Hack.h"
 
-uint32_t Hack::generateUniqPluginId(void)
+vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const Packet &, const Packet &), const Packet &pkt)
 {
-    uint32_t retval = 1;
-
-    for (uint32_t i = 0; i < strlen(hackName); i++)
-    {
-        retval *= ((hackName[i] % 7) + 1);
-        retval += (hackName[i] % 8);
-        retval /= ((hackName[i] % 4) + 1);
-    }
-
-    return retval;
-}
-
-bool Hack::hackCacheCheck(const Packet &oP, uint8_t cacheID, uint32_t *dataptr)
-{
-    uint32_t pluginID = generateUniqPluginId();
-    vector<struct cacheRecord *>::iterator it;
-
-    for (it = hackCache.begin(); it != hackCache.end(); it++)
+    for (vector<cacheRecord *>::iterator it = hackCache.begin(); it != hackCache.end(); it++)
     {
         cacheRecord &record = **it;
-        if (pluginID == record.pluginID && record.cacheID == cacheID &&
-                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source)
-        {
-            memcpy(dataptr, &(record.cachedData), sizeof (dataptr));
-            return true;
-        }
+        if (filter(pkt, record.cached_packet))
+            return it;
     }
 
-    return false;
+    return hackCache.end();
 }
 
-void Hack::hackCacheAdd(const Packet &oP, uint8_t cacheID, uint32_t data)
+vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt)
 {
-    uint32_t pluginID = generateUniqPluginId();
-    struct cacheRecord *newcache = new struct cacheRecord;
-
-    newcache->cachedData = data;
-    newcache->pluginID = pluginID;
-    newcache->cacheID = cacheID;
-    newcache->sport = oP.tcp->source;
-    newcache->daddr = oP.ip->daddr;
-    /* will be fixed in the future */
-    newcache->addedtime = 0;
-
-    hackCache.push_back(newcache);
+    cacheRecord *newrecord = new cacheRecord(pkt);
+    hackCache.push_back(newrecord);
+    return hackCache.end() - 1;
 }
 
-void Hack::hackCacheDel(const Packet &oP, uint8_t cacheID)
+vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, void *data, size_t data_size)
 {
-    uint32_t pluginID = generateUniqPluginId();
-    vector<struct cacheRecord *>::iterator it;
-
-    for (it = hackCache.begin(); it != hackCache.end(); it++)
-    {
-        cacheRecord &record = **it;
-        if (pluginID == record.pluginID && record.cacheID == cacheID &&
-                record.daddr == oP.ip->daddr && record.sport == oP.tcp->source)
-        {
-            delete &record;
-            hackCache.erase(it++);
-            return;
-        }
-    }
+    cacheRecord *newrecord = new cacheRecord(pkt, data, data_size);
+    hackCache.push_back(newrecord);
+    return hackCache.end() - 1;
 }
 
-/* overloaded without the ID usage */
-bool Hack::hackCacheCheck(const Packet &oP, uint32_t *dataptr)
+void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
-    return hackCacheCheck(oP, 0xff, dataptr);
+    delete (*it)->cached_data;
+    delete *it;
+    hackCache.erase(it);
 }
-
-void Hack::hackCacheAdd(const Packet &oP, uint32_t data)
-{
-    hackCacheAdd(oP, 0xff, data);
-}
-
-void Hack::hackCacheDel(const Packet &oP)
-{
-    hackCacheDel(oP, 0xff);
-}
-
-
