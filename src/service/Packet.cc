@@ -407,32 +407,31 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint8_t target_iphdrlen = 0;
 
-    uint16_t freespace = 0;
+    uint16_t freespace = MTU - pktlen;;
 
     SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
 
     if (strip_previous)
     {
-        freespace = MTU - (sizeof (struct iphdr) +ippayloadlen);
+        freespace += (iphdrlen - (sizeof (struct iphdr)));
 
         actual_iphdrlen = sizeof (struct iphdr);
-        target_iphdrlen = sizeof (struct iphdr) + (random() % (MAXIPHEADER - sizeof (struct iphdr)));
+        target_iphdrlen = sizeof (struct iphdr) + (random() % (MAXIPHEADER - sizeof (struct iphdr) + 1));
     }
     else if (MAXIPHEADER - iphdrlen >= MINIPOPTION)
     {
-        freespace = MTU - pktlen;
-
-        target_iphdrlen = iphdrlen + random() % (MAXIPHEADER - iphdrlen);
+        target_iphdrlen = iphdrlen + random() % (MAXIPHEADER - iphdrlen + 1);
     }
+
+    // iphdrlen must be a multiple of 4, we decrement by the modulus keeping count of MTU
+    freespace -= freespace % 4;
+    target_iphdrlen -= target_iphdrlen % 4;
 
     if (freespace == 0)
         return false;
 
     if (freespace < target_iphdrlen)
-        target_iphdrlen = freespace;
-
-    // iphdrlen must be a multiple of 4
-    target_iphdrlen += (target_iphdrlen % 4) ? (4 - target_iphdrlen % 4) : 0;
+        target_iphdrlen = actual_iphdrlen + freespace;
 
     if (target_iphdrlen != iphdrlen)
         iphdrResize(target_iphdrlen);
@@ -477,32 +476,31 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
 
     uint8_t target_tcphdrlen = 0;
 
-    uint16_t freespace = 0;
+    uint16_t freespace = MTU - pktlen;
 
     SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
 
     if (strip_previous)
     {
-        freespace = MTU - (sizeof (struct tcphdr) +tcppayloadlen);
+        freespace += (tcphdrlen - (sizeof (struct tcphdr)));
 
         actual_tcphdrlen = sizeof (struct tcphdr);
-        target_tcphdrlen = sizeof (struct tcphdr) + (random() % (MAXTCPHEADER - sizeof (struct tcphdr)));
+        target_tcphdrlen = sizeof (struct tcphdr) + (random() % (MAXTCPHEADER - sizeof (struct tcphdr) + 1));
     }
     else if (MAXTCPHEADER - tcphdrlen >= MINTCPOPTION)
     {
-        freespace = MTU - pktlen;
-
-        target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen));
+        target_tcphdrlen = tcphdrlen + (random() % (MAXTCPHEADER - tcphdrlen + 1));
     }
+
+    // tcphdrlen must be a multiple of 4, we decrement by the modulus keeping count of MTU
+    freespace -= freespace % 4;
+    target_tcphdrlen -= target_tcphdrlen % 4;
 
     if (freespace == 0)
         return false;
 
     if (freespace < target_tcphdrlen)
-        target_tcphdrlen = freespace;
-
-    // tcphdrlen must be a multiple of 4
-    target_tcphdrlen += (target_tcphdrlen % 4) ? (4 - target_tcphdrlen % 4) : 0;
+        target_tcphdrlen = actual_tcphdrlen + freespace;
 
     if (target_tcphdrlen != tcphdrlen)
         tcphdrResize(target_tcphdrlen);
