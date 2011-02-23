@@ -857,8 +857,8 @@ void TCPTrack::handleSendPackets()
         p_queue.select(SEND);
         while ((pkt = p_queue.get()) != NULL)
         {
-            if (pkt->source == TUNNEL && pkt->proto == TCP)
-                injectHack(*pkt);
+            //if (pkt->source == TUNNEL && pkt->proto == TCP)
+            //    injectHack(*pkt);
         }
     }
 }

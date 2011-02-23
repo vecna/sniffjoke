@@ -304,3 +304,6 @@ echo -e " $green $success_count combination of hack+scramble has worked correctl
 
 echo -e "$blue\ncopyed in $WORKPATH/$LOCATION with the other default configuration file. You now could customize your location"
 echo "now you will start sniffjoke with the option --location $LOCATION when you are in this network environment."
+
+# clearing gay colors
+tput sgr0

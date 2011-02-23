@@ -139,7 +139,7 @@ void UserConf::autodetectLocalInterface()
     /* check this command: the flag value, matched in 0003, is derived from:
      *     /usr/src/linux/include/linux/route.h
      */
-    const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7";
+    const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7 2>/dev/null";
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
@@ -168,7 +168,7 @@ void UserConf::autodetectLocalInterfaceIPAddress()
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
-    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21-",
+    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- 2>/dev/null",
              runconfig.interface);
 
     LOG_ALL("detecting interface %s ip address with [%s]", runconfig.interface, cmd);
@@ -185,7 +185,7 @@ void UserConf::autodetectLocalInterfaceIPAddress()
 
 void UserConf::autodetectGWIPAddress()
 {
-    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32";
+    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32 2>/dev/null";
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
@@ -213,7 +213,7 @@ void UserConf::autodetectGWMACAddress()
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
-    snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s", runconfig.gw_ip_addr);
+    snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s 2>/dev/null", runconfig.gw_ip_addr);
 
     LOG_ALL("pinging %s trying to populate ARP table [%s]", runconfig.gw_ip_addr, cmd);
 
@@ -223,7 +223,7 @@ void UserConf::autodetectGWMACAddress()
     pclose(foca);
 
     memset(cmd, 0x00, sizeof (cmd));
-    snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50", runconfig.gw_ip_addr);
+    snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50 2>/dev/null", runconfig.gw_ip_addr);
 
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
 
@@ -248,7 +248,7 @@ void UserConf::autodetectGWMACAddress()
 
 void UserConf::autodetectFirstAvailableTunnelInterface()
 {
-    const char *cmd = "ifconfig -a | grep tun | cut -b -7";
+    const char *cmd = "ifconfig -a | grep tun | cut -b -7 2>/dev/null";
     FILE *foca;
     char imp_str[SMALLBUF];
 
