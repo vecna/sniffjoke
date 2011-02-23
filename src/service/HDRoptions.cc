@@ -605,10 +605,6 @@ bool HDRoptions::randomInjector(void)
     const char* optstr = NULL;
     uint8_t injectetdopt_size = 0;
     uint8_t lprev = actual_opts_len;
-    /*
-     * force next is used in BAD and GOOD condition, when an option may force
-     * the next one, for mayhem reason or for coherence
-     */
 
     if (type == IPOPTS_INJECTOR)
     {
