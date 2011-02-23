@@ -90,8 +90,7 @@ void TTLFocus::selectPuppetPort()
 {
     uint16_t realport = probe_dummy.tcp->source;
     puppet_port = (realport + random()) % 32767 + 1;
-    if (puppet_port > realport - PUPPET_MARGIN
-            && puppet_port < realport + PUPPET_MARGIN)
+    if (puppet_port > realport - PUPPET_MARGIN && puppet_port < realport + PUPPET_MARGIN)
         puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
 }
 
@@ -168,6 +167,7 @@ struct ttlfocus_timestamp_comparison
     {
         return ( i->access_timestamp < j->access_timestamp);
     }
+
 } ttlfocusTimestampComparison;
 
 void TTLFocusMap::manage()

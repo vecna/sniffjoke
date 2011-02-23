@@ -58,7 +58,7 @@ public:
     uint8_t received_probe; /* number of received probes */
 
     /* ttl informations, results of the analysis */
-    uint32_t daddr; /* destination of the traceroute */
+    const uint32_t daddr; /* destination of the traceroute */
     uint8_t ttl_estimate; /* hop count estimate found during ttlbruteforce;
                              on status KNOWN   : represents the min working ttl found
                              on status UNKNOWN : represents the max expired ttl found */

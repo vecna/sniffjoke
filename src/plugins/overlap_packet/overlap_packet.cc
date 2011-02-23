@@ -47,12 +47,14 @@ class overlap_packet : public Hack
 private:
     pluginLogHandler pLH;
 
-    static bool filter(const Packet &pkt1, const Packet &pkt2)
+    static bool filter(const cacheRecord &record, const Packet &pkt)
     {
 
-        return (pkt1.ip->daddr == pkt2.ip->daddr &&
-                pkt1.tcp->source == pkt2.tcp->source &&
-                pkt1.tcp->seq == pkt2.tcp->seq);
+        const Packet &refpkt = record.cached_packet;
+
+        return (refpkt.ip->daddr == pkt.ip->daddr &&
+                refpkt.tcp->source == pkt.tcp->source &&
+                refpkt.tcp->seq == pkt.tcp->seq);
     }
 
 public:
