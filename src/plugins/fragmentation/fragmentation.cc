@@ -155,6 +155,8 @@ public:
             return false;
         }
 
+        supportedScramble = SCRAMBLE_INNOCENT;
+
         return true;
     }
 
