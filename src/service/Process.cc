@@ -278,3 +278,6 @@ void Process::isolation()
     setsid();
     umask(027);
 }
+
+/* Are you happy, gcc ? Process.cc:280:2: warning: no newline at end of file */
+
