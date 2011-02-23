@@ -120,13 +120,13 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
 }
 
 /*  
- *  this function is used from the injectHack() routine for decretee
+ *  this function is used from the injectHack() routine to decretee
  *  the possibility for an hack to happen.
  *  returns true if it's possibile to forge the hack.
  *  the calculation involves:
- *   - the session packet count is a variable inside the equation (some hacks are 
+ *   - the session packet count; a variable inside the equation (some hacks are
  *     configured to act in peek time or packets number relationship)
- *   - the frequency selection provide from the hack programmer: is used when the 
+ *   - the frequency selector provided from the hack developer; used when the
  *     port-aggressivity.conf file don't provide a specific configuration.
  *   - the port configuration settings: derived from 'port-aggressivity.conf' 
  */
@@ -134,8 +134,10 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 {
     uint32_t aggressivity_percentage = 0;
 
-    /* as first is checked hackFrequency, because will be AGG_ALWAYS and mean that we are in 
-     * testing mode with --only-olugin option */
+    /* 
+     * as first is checked hackFrequency, because it could be AGG_ALWAYS
+     * and this means that we are in testing mode with --only-olugin option
+     */
     if (hackFrequency & AGG_ALWAYS)
         return true;
 
@@ -145,9 +147,9 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 }
 
 /*
- * analyze an incoming icmp packet.
+ * analyzes an incoming icmp packet.
  * at the moment, the unique icmp packet analyzed is the ICMP_TIME_EXCEEDED;
- * a TIME_EXCEEDED packet shoulds contain informations to discern HOP distance
+ * a TIME_EXCEEDED packet should contain informations to discern HOP distance
  * from a remote host.
  */
 bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
@@ -170,7 +172,7 @@ bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
          *
          * for example we could start a ttlbrobe also if we receive a syn from the network
          * and our kernel schedule a response packet.
-         * i don't think this a problem due to the strong control implementation on the map size.
+         * I don't think this a problem due to the strong control implementation on the map size.
          */
         TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
         if (it != ttlfocus_map.end())
@@ -190,6 +192,11 @@ bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
 
                     ttlfocus->received_probe++;
 
+                    /*
+                     * every time a time exceded it's received. if the MAXTTLPROBE has
+                     * been reached (ttlfocus->probe_timeout != 0), the probe_timeout
+                     * it's resetted.
+                     */
                     if (ttlfocus->probe_timeout)
                         ttlfocus->probe_timeout = sj_clock + 2;
 
@@ -227,7 +234,7 @@ bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
 void TCPTrack::analyzeIncomingTCPTTL(Packet &pkt)
 {
     /*
-     * Here we call the find() mathod of std::map because
+     * here we call the find() mathod of std::map because
      * we want to test the ttl existence and NEVER NEVER NEVER create a new one
      * to not permit an external packet to force us to activate a ttlbrouteforce session
      */
@@ -317,13 +324,13 @@ bool TCPTrack::analyzeOutgoing(Packet &pkt)
 }
 
 /* 
- * This function is responsible of the ttl bruteforce stage used
- * to detect the hop distance between us and the remote peer
+ * this function is responsible of the ttl bruteforce stage used
+ * to detect the hop distance between us and the remote peer.
  * 
- * Sniffjoke uses the first session packet seen as a starting point
+ * SniffJoke uses the first seen session packet as a starting point
  * for this stage.
  * 
- * Packets generated are a copy of the original (firt seen) packet
+ * packets generated are a copy of the original (first seen) packet
  * with some little modifications to:
  *  - ip->id
  *  - ip->ttl
@@ -405,7 +412,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 {
     /*
      * TODO - when we will integrate passive os fingerprint and
-     * we will do a a clever study about different OS answer about
+     * we will do a a clever study about different OS answers about
      * IP option, for every OS we will have or not the related support
      */
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
@@ -424,9 +431,9 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
  *
  * the hacks are, for the most, three kinds.
  *
- * one kind requires the knowledge of exactly hop distance between the two
- * end points, to forge packets able to expire an hop before the destination IP address;
- * this permit to insert packet accepted in the session tracked by the sniffer.
+ * one kind requires the knowledge of the exact hop distance between the two
+ * end points, to forge packets able to expire an hop before reaching the destination;
+ * this permits to insert packet accepted in the session tracked by the sniffer.
  *
  * the second kind of hack does not have special requirements (as the third), 
  * and it's based on particular malformed ip/tcp options that would lead the real
@@ -457,7 +464,7 @@ void TCPTrack::injectHack(Packet &origpkt)
     origpkt.SELFLOG("Original packet - before Hacks inject and use validation (availScramble %u)", availableScramble);
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
-     * 1) the plugin/hacks detect if the condition exists (eg: the hack want a SYN and the packet is a RST+ACK,
+     * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
     for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
     {
@@ -465,7 +472,7 @@ void TCPTrack::injectHack(Packet &origpkt)
         PluginTrack *hppe = *it;
 
         /*
-         * this representS a preliminar check common to all hacks.
+         * this represents a preliminar check common to all hacks.
          * more specific ones related to the origpkt will be checked in
          * the Condition function implemented by a specific hack.
          */
@@ -535,7 +542,7 @@ void TCPTrack::injectHack(Packet &origpkt)
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
 
-            injpkt.SELFLOG("New generated packet by [%s], the original will be %s",
+            injpkt.SELFLOG("new generated packet by [%s], the original will be %s",
                            hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
 
             switch (injpkt.position)
@@ -564,8 +571,8 @@ void TCPTrack::injectHack(Packet &origpkt)
     }
 
     /*
-     * If almost an hack has requested origpkt deletion we drop it.
-     * This has to be done here, at the end, to maximize the effect.
+     * if almost an hack has requested origpkt deletion we drop it.
+     * this has to be done here, at the end, to maximize the effect.
      */
     if (removeOrig == true)
     {
@@ -577,7 +584,7 @@ void TCPTrack::injectHack(Packet &origpkt)
 
 /* 
  * lastPktFix is the last modification applied to packets.
- * Modification involve only TCP packets coming from TUNNEL
+ * modification involve only TCP packets coming from TUNNEL
  * and hacks injected in the queue to goes on the eth/wifi.
  *
  * p.s. if you are reading this piece of code for fix your sniffer:
@@ -596,9 +603,9 @@ void TCPTrack::injectHack(Packet &origpkt)
  *   INNOCENT:    will BE ACCEPTED, so, INNOCENT but EVIL cause the same treatment of a
  *                GOOD packet.
  *
- * Hacks application it's applied in this order: PRESCRIPTION, MALFORMED, GUILTY.
- * A non applicable hack it's degraded to the next;
- * At worst GUILTY it's always applied.
+ * hacks application it's applied in this order: PRESCRIPTION, MALFORMED, GUILTY.
+ * a non applicable hack it's degraded to the next;
+ * at worst GUILTY it's always applied.
  */
 bool TCPTrack::lastPktFix(Packet &pkt)
 {
@@ -606,7 +613,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     /*
      * here we call the map find();
      * the function returns end() if the ttlfocus it's not present.
-     * In this situation and in situation where the focus status is
+     * in this situation and in situation where the focus status is
      * UNKNOWN or BRUTEFORCE the packet has TTL randomized in order
      * to don't disclose him real hop distance.
      */
@@ -676,7 +683,7 @@ drop_packet:
     return false;
 }
 
-/* the packet is added in the packet queue for be analyzed in a second time */
+/* the packet is added in the packet queue here to be analyzed in a second time */
 void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte)
 {
     try
@@ -721,7 +728,6 @@ Packet* TCPTrack::readpacket(source_t destsource)
 
 void TCPTrack::handleYoungPackets()
 {
-    Packet *pkt;
 
     /*
      * we analyze all YOUNG packets (received from NETWORK and from TUNNEL)
@@ -739,76 +745,85 @@ void TCPTrack::handleYoungPackets()
      *       every packets from the tunnel will be associated to a session (and session counter updated)
      *       and to a ttlfocus (if the ttlfocus does not currently exist a ttlbrouteforce session will start).
      */
+    Packet *pkt = NULL;
     p_queue.select(YOUNG);
     while ((pkt = p_queue.get()) != NULL)
     {
         bool send = true;
-        if (pkt->source == NETWORK)
+        if (runconfig.active)
         {
-            if (pkt->proto == ICMP)
-                send = analyzeIncomingICMP(*pkt);
-            else if (pkt->proto == TCP)
-            {
-                /* analysis of the incoming TCP packet for check if TTL we are receiving is
-                 * changed or not. this isn't the correct solution to detect network topology
-                 * change, but we need it! */
-                analyzeIncomingTCPTTL(*pkt);
 
-                send = analyzeIncomingTCPSynAck(*pkt);
-            }
-        }
-        else /* pkt->source == TUNNEL */
-        {
-            /* the check is based  blacklist, whitelist. the port and protocol is checked inside the
-             * "Condition(" imported function. so, every session accepted after this point will be
-             * ttl bruteforced and mangled by weird IP/TCP options */
-            if (pkt->proto == TCP)
+            if (pkt->source == NETWORK)
             {
-                if (runconfig.use_blacklist)
+                if (pkt->proto == ICMP)
+                    send = analyzeIncomingICMP(*pkt);
+                else if (pkt->proto == TCP)
                 {
-                    if (!(runconfig.blacklist->isPresent(pkt->ip->daddr)))
+                    /* analysis of the incoming TCP packet for check if TTL we are receiving is
+                     * changed or not. this isn't the correct solution to detect network topology
+                     * change, but we need it! */
+                    analyzeIncomingTCPTTL(*pkt);
+
+                    send = analyzeIncomingTCPSynAck(*pkt);
+                }
+            }
+            else /* pkt->source == TUNNEL */
+            {
+                /* the check is based  blacklist, whitelist. the port and protocol is checked inside the
+                 * "Condition(" imported function. so, every session accepted after this point will be
+                 * ttl bruteforced and mangled by weird IP/TCP options */
+                if (pkt->proto == TCP)
+                {
+                    if (runconfig.use_blacklist)
                     {
-                        pkt->SELFLOG("blacklist setting is present: IP address doesn't match");
-                        send = analyzeOutgoing(*pkt);
+                        if (!(runconfig.blacklist->isPresent(pkt->ip->daddr)))
+                        {
+                            pkt->SELFLOG("blacklist setting is present: IP address doesn't match");
+                            send = analyzeOutgoing(*pkt);
+                        }
+                        else
+                            pkt->SELFLOG("blacklist setting is present: IP address matchs and wont be hacked");
+                    }
+                    else if (runconfig.use_whitelist)
+                    {
+                        if (runconfig.whitelist->isPresent(pkt->ip->daddr))
+                        {
+                            pkt->SELFLOG("whitelist setting is present: IP address matchs");
+                            send = analyzeOutgoing(*pkt);
+                        }
+                        else
+                        {
+                            pkt->SELFLOG("whitelist setting is present: IP address doesn't match and wont be hacked");
+                        }
                     }
                     else
-                        pkt->SELFLOG("blacklist setting is present: IP address matchs and wont be hacked");
-                }
-                else if (runconfig.use_whitelist)
-                {
-                    if (runconfig.whitelist->isPresent(pkt->ip->daddr))
                     {
-                        pkt->SELFLOG("whitelist setting is present: IP address matchs");
                         send = analyzeOutgoing(*pkt);
                     }
-                    else
-                    {
-                        pkt->SELFLOG("whitelist setting is present: IP address doesn't match and wont be hacked");
-                    }
                 }
+            }
+
+            if (send == true)
+            {
+                p_queue.remove(*pkt);
+                if (pkt->source == NETWORK || pkt->proto != TCP || lastPktFix(*pkt))
+                    p_queue.insert(*pkt, SEND);
                 else
-                {
-                    send = analyzeOutgoing(*pkt);
-                }
+                    RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: please send a notification to the developers");
             }
         }
-
-        if (send == true)
+        else
         {
             p_queue.remove(*pkt);
-            if (pkt->source == NETWORK || pkt->proto != TCP || lastPktFix(*pkt))
-                p_queue.insert(*pkt, SEND);
-            else
-                RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: please send a notification to the developers");
+            p_queue.insert(*pkt, SEND);
         }
     }
 }
 
 void TCPTrack::handleKeepPackets()
 {
-    Packet *pkt;
-
     /* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
+    Packet *pkt = NULL;
     p_queue.select(KEEP);
     while ((pkt = p_queue.get()) != NULL)
     {
@@ -826,13 +841,12 @@ void TCPTrack::handleKeepPackets()
 
 void TCPTrack::handleSendPackets()
 {
-    Packet *pkt;
-
     /* for every packet in SEND queue we insert some random hacks */
+    Packet *pkt = NULL;
     p_queue.select(SEND);
     while ((pkt = p_queue.get()) != NULL)
     {
-        if (pkt->source == TUNNEL && pkt->proto == TCP)
+        if (runconfig.active && pkt->source == TUNNEL && pkt->proto == TCP)
             injectHack(*pkt);
     }
 }
@@ -870,7 +884,7 @@ void TCPTrack::analyzePacketQueue()
 bypass_queue_analysis:
 
     /*
-     * here we call sessiontrack_map and ttlfocus_map manage routine.
+     * here we call sessiontrack_map and ttlfocus_map manage routines.
      * it's fundamental to do this here after SEND last_packet_fix()
      * and before ttl probes injections.
      * In fact the two routine, in case that their respective memory threshold

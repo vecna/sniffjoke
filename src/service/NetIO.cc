@@ -276,10 +276,7 @@ void NetIO::networkIO(void)
             if (ret == -1)
                 RUNTIME_EXCEPTION("error reading from tunnel: %s", strerror(errno));
 
-            if (runconfig.active == true)
-                conntrack->writepacket(TUNNEL, pktbuf, ret);
-            else if (sendto(netfd, pktbuf, ret, 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll)) != ret)
-                RUNTIME_EXCEPTION("error writing in network: %s", strerror(errno));
+            conntrack->writepacket(TUNNEL, pktbuf, ret);
         }
 
         if (fds[0].revents & POLLOUT)
@@ -300,10 +297,11 @@ void NetIO::networkIO(void)
          * the kernel is received the data without sniffjoke mangling, because
          * the default gateway is sending the packete to the eth/wifi mac address
          *
-         * this code is kept because future extension of the Hack Plugin method
-         * will include the incoming packet segnalation
+         * but this code is require to make the ICMP & SYNACK analyzed 
+         * and the TTL to be discerned. a wise usage of local firewall will
+         * drop all the incoming packet or a different usage of che packet queue
+         * inside conntrack. we are dealing with this.
          */
-#if 1
         if (fds[1].revents & POLLIN)
         {
             /* it's possible to read from netfd */
@@ -312,12 +310,8 @@ void NetIO::networkIO(void)
             if (ret == -1)
                 RUNTIME_EXCEPTION("error reading from network: %s", strerror(errno));
 
-            if (runconfig.active == true)
-                conntrack->writepacket(NETWORK, pktbuf, ret);
-            else if (write(tunfd, pktbuf, ret) != ret)
-                RUNTIME_EXCEPTION("error writing in tunnel: %s", strerror(errno));
+            conntrack->writepacket(NETWORK, pktbuf, ret);
         }
-#endif
 
         if (fds[1].revents & POLLOUT)
         {
