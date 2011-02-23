@@ -72,7 +72,7 @@ public:
         {
             Packet * const pkt = new Packet(origpkt);
 
-            memset_random((void*) (((unsigned char *) &(pkt->pbuf[0])) + origpkt.iphdrlen), ip_payload);
+            pkt->ippayloadRandomFill();
 
             /* the id of the packet and the offset where no changed to collide with the real one */
 
@@ -94,7 +94,7 @@ public:
          * This hack could work also as INNOCENT, so INNOCENT it's used as last
          * resort if PRESCRIPTION or MALFORMED are disabled.
          */
-        return (origpkt.payload != NULL);
+        return (origpkt.tcppayload != NULL);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

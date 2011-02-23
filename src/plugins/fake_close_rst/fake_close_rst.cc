@@ -50,7 +50,7 @@ public:
 
         pkt->tcp->psh = 0;
         pkt->tcp->rst = 1;
-        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
 
         pkt->tcppayloadResize(0);
 
@@ -65,7 +65,7 @@ public:
     {
         return (!origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
-                origpkt.tcp->fin);
+                !origpkt.tcp->fin);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

@@ -84,7 +84,7 @@ public:
         return (!origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
                 !origpkt.tcp->fin &&
-                origpkt.payload != NULL);
+                origpkt.tcppayload != NULL);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

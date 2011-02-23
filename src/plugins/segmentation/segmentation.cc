@@ -55,13 +55,13 @@ public:
          * having MIN_SCRAMBLE_PACKET = MIN_BLOCK_SPLIT*2 we will have at least two segments
          */
         const uint32_t block_split = MIN_BLOCK_SPLIT + (random() % MIN_BLOCK_SPLIT);
-        const uint32_t carry = (origpkt.datalen % block_split) ? (origpkt.datalen % block_split) : block_split;
-        const uint8_t pkts = (origpkt.datalen / block_split) + ((origpkt.datalen % block_split) ? 1 : 0);
+        const uint32_t carry = (origpkt.tcppayloadlen % block_split) ? (origpkt.tcppayloadlen % block_split) : block_split;
+        const uint8_t pkts = (origpkt.tcppayloadlen / block_split) + ((origpkt.tcppayloadlen % block_split) ? 1 : 0);
 
         const uint32_t starting_seq = ntohl(origpkt.tcp->seq);
 
         pLH.completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes",
-                         origpkt.datalen, starting_seq, ntohs(origpkt.tcp->source),
+                         origpkt.tcppayloadlen, starting_seq, ntohs(origpkt.tcp->source),
                          pkts, block_split);
 
         for (uint8_t i = 0; i < pkts; i++)
@@ -73,7 +73,7 @@ public:
 
                 pkt->tcppayloadResize(block_split);
 
-                memcpy(pkt->payload, &origpkt.payload[i * block_split], block_split);
+                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * block_split], block_split);
 
                 pkt->tcp->seq = htonl(starting_seq + (i * block_split));
 
@@ -91,7 +91,7 @@ public:
             {
                 pkt->tcppayloadResize(carry);
 
-                memcpy(pkt->payload, &origpkt.payload[i * block_split], carry);
+                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * block_split], carry);
 
                 pkt->tcp->seq = htonl(starting_seq + (i * block_split));
 
@@ -133,9 +133,9 @@ public:
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
-                         origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.datalen, origpkt.pbuf.size());
+                         origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
 
-        if ((origpkt.payload != NULL) && (origpkt.datalen >= MIN_TCP_PAYLOAD))
+        if ((origpkt.tcppayload != NULL) && (origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD))
             return true;
 
         return false;

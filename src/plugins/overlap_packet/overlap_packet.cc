@@ -86,7 +86,7 @@ public:
 
         if (it == hackCache.end())
         {
-            sentData = (origpkt.datalen / 2);
+            sentData = (origpkt.tcppayloadlen / 2);
 
             it = cacheCreate(origpkt, (void*) &sentData, 4);
 
@@ -94,7 +94,7 @@ public:
             pkt->tcp->psh = 0;
 
             pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)",
-                            origpkt.datalen, origpkt.datalen - sentData, sentData,
+                            origpkt.tcppayloadlen, origpkt.tcppayloadlen - sentData, sentData,
                             ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
                             );
         }
@@ -105,10 +105,10 @@ public:
 
             cacheDelete(it);
 
-            memset_random(pkt->payload, sentData);
+            memset_random(pkt->tcppayload, sentData);
 
             pLH.completeLog("2) injected packet size %d, first %d random (sport %u seq %u)",
-                            pkt->datalen, sentData,
+                            pkt->tcppayloadlen, sentData,
                             ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
                             );
         }
@@ -124,7 +124,7 @@ public:
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
 
-        return (origpkt.payload != NULL && origpkt.datalen > MIN_PACKET_OVERTRY);
+        return (origpkt.tcppayload != NULL && origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

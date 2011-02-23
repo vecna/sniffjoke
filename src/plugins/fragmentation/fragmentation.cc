@@ -95,6 +95,7 @@ public:
                     ip->frag_off = htons(offset | IP_MF);
                 else
                     ip->frag_off = htons(offset);
+
                 pktbuf.insert(pktbuf.end(), it, it + carry);
             }
 
