@@ -747,11 +747,12 @@ void TCPTrack::handleYoungPackets()
      */
     Packet *pkt = NULL;
     p_queue.select(YOUNG);
-    while ((pkt = p_queue.get()) != NULL)
+
+    if (runconfig.active)
     {
-        bool send = true;
-        if (runconfig.active)
+        while ((pkt = p_queue.get()) != NULL)
         {
+            bool send = true;
 
             if (pkt->source == NETWORK)
             {
@@ -812,7 +813,10 @@ void TCPTrack::handleYoungPackets()
                     RUNTIME_EXCEPTION("Fatal code [T4R4NT1N0]: please send a notification to the developers");
             }
         }
-        else
+    }
+    else
+    {
+        while ((pkt = p_queue.get()) != NULL)
         {
             p_queue.remove(*pkt);
             p_queue.insert(*pkt, SEND);
@@ -841,13 +845,16 @@ void TCPTrack::handleKeepPackets()
 
 void TCPTrack::handleSendPackets()
 {
-    /* for every packet in SEND queue we insert some random hacks */
-    Packet *pkt = NULL;
-    p_queue.select(SEND);
-    while ((pkt = p_queue.get()) != NULL)
+    if (runconfig.active)
     {
-        if (runconfig.active && pkt->source == TUNNEL && pkt->proto == TCP)
-            injectHack(*pkt);
+        /* for every packet in SEND queue we insert some random hacks */
+        Packet *pkt = NULL;
+        p_queue.select(SEND);
+        while ((pkt = p_queue.get()) != NULL)
+        {
+            if (pkt->source == TUNNEL && pkt->proto == TCP)
+                injectHack(*pkt);
+        }
     }
 }
 
