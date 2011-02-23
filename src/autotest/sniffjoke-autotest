@@ -2,6 +2,13 @@
 
 # if you want modify the test, simply create those file by hands
 
+red='\e[0;31m'
+black='\e[0;30m'
+blue='\e[1;34m'
+green='\e[1;32m'
+yellow='\e[1;33m'
+white='\e[1;37m'
+
 #default values
 LOCATION=
 WORKPATH=
@@ -20,8 +27,8 @@ every plugin it's tested with one of each scrambling tech.
 
 OPTIONS:
    -h      show this message
-   -l      location name
-   -d      path of 'generic/' location, acting as default
+   -l      location name                                    (required)
+   -d      path of 'generic/' location, acting as default   (required)
    -n      number of tests to be passed for the single hack (default 1)
 EOF
 }
@@ -60,36 +67,49 @@ start_test() {
     SCRAMBLE=`echo $PLUGIN | sed -es/.*\,//`
     TESTID=`echo $PLUGIN | tr "," "-"`
     workingdir="/tmp/$LOCATION/$TESTID"
-    echo -e "Plugin Name\t\t[$PNAME]\nScramble\t\t[$SCRAMBLE]\nTestID\t\t\t[$TESTID]\n--dir\t\t\t[$workingdir]\n"
+    echo -e "\n$green * Next COMBINATION OF TESTS:$blue"
+    echo -e "Plugin Name\t$yellow\t[$PNAME]$blue\nScramble\t$yellow\t[$SCRAMBLE]$blue\nTestID\t\t$yellow\t[$TESTID]$blue\nTest directory\t$yellow\t[$workingdir]"
     mkdir -p $workingdir
-    echo -e "+ Executing sniffjoke with $PLUGIN and $SCRAMBLE, command line:\n"
-    echo "$SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN "
-    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN 2&>$workingdir/binout.log
+    echo $SERVER_IP > "$workingdir/ipwhitelist.conf"
+    echo -e "$red * Executing sniffjoke with $PLUGIN combo, using these options:$yellow"
+    echo -e "sniffjoke --debug 5 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist $white"
+    $SNIFFJOKEBIN --debug 5 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist &>$workingdir/binout.log
     sleep 2
     $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
     cd $workingdir
     # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
     INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
-    echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80"
-    (tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80) &
+    echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80 and host $SERVER_IP or icmp"
+    (tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp) &
     ps axf > $workingdir/ps-axf.log
     route -n > $workingdir/route-n.log
     sleep 1
     for i in `seq 1 $TESTN`;
     do
-        curl -m 10 -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.received"
+        echo "starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring. test number #$i"
+        nohup curl -m 10 --limit-rate 15k --retry 0 --max-time 10 --compressed -o "$PNAME-$SCRAMBLE-$i.received" \
+            -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.curl_output"
         sleep 1
     done
     $SNIFFJOKECLIBIN quit > $workingdir/dumped_quit.log
     sleep 1
-    killall -9 tcpdump
+    killall -TERM tcpdump
     for i in `seq 1 $TESTN`;
     do
-        CHECKSUM=`md5sum "$PNAME-$SCRAMBLE-$i.received" | cut -b -32`
-        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID" >> /tmp/$LOCATION/SjcollectedFeedback
+        if ! [ -e "$PNAME-$SCRAMBLE-$i.received" ]; then
+            CHECKSUM="{unexistent-output-file}"
+        else
+            CHECKSUM=`md5sum "$PNAME-$SCRAMBLE-$i.received" | cut -b -32`
+        fi
+
+        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> /tmp/$LOCATION/SjcollectedFeedback
         if [ $VERIFYSUM != $CHECKSUM ];
         then
+            # the .failed_hacks and the .working_hacks is generated and treated in the same style
             echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
+            # the follow are useful infos for debug
+            echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE-$i" >> "/tmp/$LOCATION/$PNAME.failed_info"
+            cat "$PNAME-$SCRAMBLE-$i.curl_output" >> "/tmp/$LOCATION/$PNAME.failed_info"
             break
         else
             echo $i >> "$PNAME-$SCRAMBLE.passed_count"
@@ -212,7 +232,11 @@ PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 
 # generate the SPAREDATA file to send
 GENERATEDFILE="/tmp/$LOCATION/SPAREDATA.generated"
-seq 1000 9000 | tr -d [:cntrl:] | strings > $GENERATEDFILE
+# the number '6' is not used in the test because sniffjoke, when runned
+# in debug mode (--debug 5) instead of filling the random segment of data
+# inject with random data, use the number '6'. Is useful when debugging 
+# an hack.
+seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
@@ -226,6 +250,8 @@ for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     # those test need to be fixed or be used only where my test script will be hosted
     OS="LINUX"
     SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
+    SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
+    SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
     start_test
 
 #    OS="OTHER"
@@ -252,7 +278,7 @@ for hack in $success; do
     success_count=$(($success_count+1));
 done
 
-echo -en "\n\n# follow the hacks/scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
+echo -en "\n\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure_count=0
 failure=`ls /tmp/$LOCATION/*.failed_hacks`
 for hack in $failure ; do
@@ -263,7 +289,7 @@ for hack in $failure ; do
 done
 
 now=`date`
-echo -en "\n\n# Generated in date: $now" >> $PeL
+echo -en "\n\n# Generated in date: $now\n" >> $PeL
 
 echo "file /tmp/$LOCATION/plugins_enabled.conf has been generated"
 chmod 444 /tmp/$LOCATION/plugins-enabled.conf
@@ -272,9 +298,9 @@ cp $WORKPATH/generic/port-aggressivity.conf $WORKPATH/$LOCATION
 cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
 cp /tmp/$LOCATION/plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
 
-echo -e "\n\nFINISHED!\n\n"
-echo -e "  $failure_count combination of hack+scramble has not worked"
-echo -e "  $success_count combination of hack+scramble has worked correctly"
+echo -e "$yellow \n\nFINISHED!\n"
+echo -e " $red $failure_count combination of hack+scramble has not worked"
+echo -e " $green $success_count combination of hack+scramble has worked correctly"
 
-echo "setted in $WORKPATH/$LOCATION with the other default configuration file. You now could customize your location"
+echo -e "$blue\ncopyed in $WORKPATH/$LOCATION with the other default configuration file. You now could customize your location"
 echo "now you will start sniffjoke with the option --location $LOCATION when you are in this network environment."
