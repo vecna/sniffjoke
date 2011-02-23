@@ -179,6 +179,11 @@ NetIO::~NetIO(void)
         snprintf(cmd, sizeof (cmd), "route add default gw %s", runconfig.gw_ip_addr);
         LOG_VERBOSE("restoring previous default gateway [%s]", cmd);
         pclose(popen(cmd, "r"));
+
+        snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP", runconfig.gw_mac_str);
+        LOG_VERBOSE("deleting the filtering rule: [%s]", cmd);
+        pclose(popen(cmd, "r"));
+
     }
 
     close(tunfd);

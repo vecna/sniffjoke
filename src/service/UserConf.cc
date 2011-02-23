@@ -238,7 +238,7 @@ void UserConf::autodetectGWMACAddress()
         RUNTIME_EXCEPTION("unable to autodetect gateway mac address");
     else
     {
-        LOG_ALL("automatically acquired mac address: %s", runconfig.gw_mac_str);
+        LOG_ALL("acquired mac address from the arp table: %s", runconfig.gw_mac_str);
         uint32_t mac[6];
         sscanf(runconfig.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         for (i = 0; i < 6; ++i)
@@ -267,6 +267,18 @@ void UserConf::autodetectFirstAvailableTunnelInterface()
     LOG_ALL("detected %d as first unused tunnel device", runconfig.tun_number);
 }
 
+void UserConf::dropTrafficFromGateway()
+{
+    char cmd[MEDIUMBUF];
+    memset(cmd, 0x00, sizeof (cmd));
+
+    snprintf(cmd, MEDIUMBUF, "iptables -A INPUT -m mac --mac-source %s -j DROP", runconfig.gw_mac_str);
+
+    LOG_ALL("dropping all traffic from the gateway [%s]", cmd);
+
+    system(cmd);
+}
+
 /* this method is called by SniffJoke.cc */
 void UserConf::networkSetup(void)
 {
@@ -278,11 +290,13 @@ void UserConf::networkSetup(void)
     autodetectGWIPAddress();
     autodetectGWMACAddress();
     autodetectFirstAvailableTunnelInterface();
+    dropTrafficFromGateway();
 
     LOG_VERBOSE("* system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
     LOG_VERBOSE("* default gateway mac address: %s", runconfig.gw_mac_str);
     LOG_VERBOSE("* default gateway ip address: %s", runconfig.gw_ip_addr);
     LOG_VERBOSE("* first available tunnel interface: tun%d", runconfig.tun_number);
+    LOG_VERBOSE("* the traffic from the gateway mac address has been blocked by iptables");
     sleep(1);
 }
 
