@@ -42,11 +42,13 @@ wtf(JUDGEUNASSIGNED),
 pbuf(size),
 ip(NULL),
 iphdrlen(0),
+ippayload(NULL),
+ippayloadlen(0),
 ipfragment(false),
 tcp(NULL),
 tcphdrlen(0),
-payload(NULL),
-datalen(0),
+tcppayload(NULL),
+tcppayloadlen(0),
 icmp(NULL)
 {
     memcpy(&(pbuf[0]), buff, size);
@@ -65,11 +67,13 @@ wtf(pkt.wtf),
 pbuf(pkt.pbuf),
 ip(NULL),
 iphdrlen(0),
+ippayload(NULL),
+ippayloadlen(0),
 ipfragment(false),
 tcp(NULL),
 tcphdrlen(0),
-payload(NULL),
-datalen(0),
+tcppayload(NULL),
+tcppayloadlen(0),
 icmp(NULL)
 {
     updatePacketMetadata();
@@ -94,10 +98,12 @@ void Packet::updatePacketMetadata()
     /* start initial metadata reset */
     ip = NULL;
     iphdrlen = 0;
+    ippayload = NULL;
+    ippayloadlen = 0;
     tcp = NULL;
     tcphdrlen = 0;
-    payload = NULL;
-    datalen = 0;
+    tcppayload = NULL;
+    tcppayloadlen = 0;
     icmp = NULL;
     /* end initial metadata reset */
 
@@ -107,6 +113,10 @@ void Packet::updatePacketMetadata()
 
     ip = (struct iphdr *) &(pbuf[0]);
     iphdrlen = ip->ihl * 4;
+    ippayloadlen = pbuf.size() - iphdrlen;
+    if (ippayloadlen)
+        ippayload = (unsigned char *) ip + iphdrlen;
+
 
     if (pktlen < iphdrlen)
         RUNTIME_EXCEPTION("pktlen < iphdrlen");
@@ -153,9 +163,9 @@ void Packet::updatePacketMetadata()
         if (pktlen < iphdrlen + tcphdrlen)
             RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
 
-        datalen = pktlen - iphdrlen - tcphdrlen;
-        if (datalen)
-            payload = (unsigned char *) tcp + tcphdrlen;
+        tcppayloadlen = pktlen - iphdrlen - tcphdrlen;
+        if (tcppayloadlen)
+            tcppayload = (unsigned char *) tcp + tcphdrlen;
         /* end tcp update */
         break;
     case IPPROTO_ICMP:
@@ -295,11 +305,11 @@ void Packet::iphdrResize(uint8_t size)
 
 void Packet::tcphdrResize(uint8_t size)
 {
-    if (size == tcphdrlen)
-        return;
-
     if (ipfragment == true)
         RUNTIME_EXCEPTION("it's not possible to call this function on a ip fragment");
+
+    if (size == tcphdrlen)
+        return;
 
     const uint16_t pktlen = pbuf.size();
 
@@ -330,19 +340,19 @@ void Packet::tcphdrResize(uint8_t size)
     updatePacketMetadata();
 }
 
-void Packet::tcppayloadResize(uint16_t size)
+void Packet::ippayloadResize(uint16_t size)
 {
-    if (size == datalen)
+    if (size == ippayloadlen)
         return;
 
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - datalen + size > MTU)
+    if (pktlen - ippayloadlen + size > MTU)
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
-    const uint16_t new_total_len = pktlen - datalen + size;
+    const uint16_t new_total_len = pktlen - ippayloadlen + size;
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
     ip->tot_len = htons(new_total_len);
@@ -352,10 +362,38 @@ void Packet::tcppayloadResize(uint16_t size)
     updatePacketMetadata();
 }
 
+void Packet::tcppayloadResize(uint16_t size)
+{
+    if (size == tcppayloadlen)
+        return;
+
+    const uint16_t pktlen = pbuf.size();
+
+    /* begin safety checks */
+    if (pktlen - tcppayloadlen + size > MTU)
+        RUNTIME_EXCEPTION("");
+    /* end safety checks */
+
+    const uint16_t new_total_len = pktlen - tcppayloadlen + size;
+
+    /* its important to update values into hdr before vector insert call because it can cause relocation */
+    ip->tot_len = htons(new_total_len);
+
+    pbuf.resize(new_total_len);
+
+    updatePacketMetadata();
+}
+
+void Packet::ippayloadRandomFill()
+{
+    const uint16_t diff = pbuf.size() - iphdrlen;
+    memset_random(ippayload, diff);
+}
+
 void Packet::tcppayloadRandomFill()
 {
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
-    memset_random(payload, diff);
+    memset_random(tcppayload, diff);
 }
 
 bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
@@ -371,11 +409,11 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = 0;
 
-    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
+    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
 
     if (strip_previous)
     {
-        freespace = MTU - (pktlen - iphdrlen + sizeof (struct iphdr));
+        freespace = MTU - (sizeof (struct iphdr) +ippayloadlen);
 
         actual_iphdrlen = sizeof (struct iphdr);
         target_iphdrlen = sizeof (struct iphdr) + (random() % (MAXIPHEADER - sizeof (struct iphdr)));
@@ -424,7 +462,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
         iphdrResize(actual_iphdrlen);
     }
 
-    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
+    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
 
     return injected;
 }
@@ -441,11 +479,11 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = 0;
 
-    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
+    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
 
     if (strip_previous)
     {
-        freespace = MTU - (pktlen - tcphdrlen + sizeof (struct tcphdr));
+        freespace = MTU - (sizeof (struct tcphdr) +tcppayloadlen);
 
         actual_tcphdrlen = sizeof (struct tcphdr);
         target_tcphdrlen = sizeof (struct tcphdr) + (random() % (MAXTCPHEADER - sizeof (struct tcphdr)));
@@ -495,7 +533,7 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
         tcphdrResize(actual_tcphdrlen);
     }
 
-    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, datalen, (int) pbuf.size());
+    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
 
     return injected;
 }

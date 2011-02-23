@@ -105,7 +105,7 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        return (origpkt.payload != NULL);
+        return (origpkt.tcppayload != NULL);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

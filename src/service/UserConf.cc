@@ -267,18 +267,6 @@ void UserConf::autodetectFirstAvailableTunnelInterface()
     LOG_ALL("detected %d as first unused tunnel device", runconfig.tun_number);
 }
 
-void UserConf::dropTrafficFromGateway()
-{
-    char cmd[MEDIUMBUF];
-    memset(cmd, 0x00, sizeof (cmd));
-
-    snprintf(cmd, MEDIUMBUF, "iptables -A INPUT -m mac --mac-source %s -j DROP", runconfig.gw_mac_str);
-
-    LOG_ALL("dropping all traffic from the gateway [%s]", cmd);
-
-    system(cmd);
-}
-
 /* this method is called by SniffJoke.cc */
 void UserConf::networkSetup(void)
 {
@@ -290,7 +278,6 @@ void UserConf::networkSetup(void)
     autodetectGWIPAddress();
     autodetectGWMACAddress();
     autodetectFirstAvailableTunnelInterface();
-    dropTrafficFromGateway();
 
     LOG_VERBOSE("* system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
     LOG_VERBOSE("* default gateway mac address: %s", runconfig.gw_mac_str);

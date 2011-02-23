@@ -46,7 +46,7 @@ public:
 
         pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->datalen + 1);
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
 
         pkt->tcp->psh = 0;
         pkt->tcp->fin = 1;

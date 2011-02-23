@@ -104,14 +104,15 @@ public:
 
     struct iphdr *ip;
     uint8_t iphdrlen; /* [20 - 60] bytes */
+    unsigned char *ippayload;
+    uint16_t ippayloadlen; /* [0 - 65515] bytes */
 
     bool ipfragment;
 
     struct tcphdr *tcp;
     uint8_t tcphdrlen; /* [20 - 60] bytes */
-
-    unsigned char *payload;
-    uint16_t datalen; /* [0 - 65515] bytes */
+    unsigned char *tcppayload;
+    uint16_t tcppayloadlen; /* [0 - 65515] bytes */
 
     struct icmphdr *icmp;
 
@@ -141,7 +142,9 @@ public:
     /* functions required in TCP/IP packets forging */
     void iphdrResize(uint8_t);
     void tcphdrResize(uint8_t);
+    void ippayloadResize(uint16_t);
     void tcppayloadResize(uint16_t);
+    void ippayloadRandomFill(void);
     void tcppayloadRandomFill(void);
 
     /* MALFORMED hacks and distortion of INNOCENT packets */
