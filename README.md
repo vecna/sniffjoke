@@ -6,7 +6,7 @@ SniffJoke is an application for Linux that handle transparently your TCP connect
     ./configure && make && make install
 
 # Simple immediate execution
-    root@linux# sniffjoke --debug 6 --start --foreground
+    root@linux# sniffjoke --debug 5 --start --foreground
 
 # Requirements
 
@@ -69,7 +69,7 @@ Example of usage, configuration etc..
 TODO, and if you will help, we are glad:
     TODO.txt
 
-# Internal & external links
+# Internal & external links
 
 the files:
     doc/*
@@ -96,7 +96,9 @@ MacOSx ports as kernel module:
 Wireshark thread about Sj 0.3:
     http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
 
-## music compāniōn-, Italian text only:
+# Italian music support
+#
+# music compāniōn-, Italian text only:
     http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
     http://www.youtube.com/watch?v=Hv4PchuPrGc Uochi Toki - i gesti di cattiveria
     http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica

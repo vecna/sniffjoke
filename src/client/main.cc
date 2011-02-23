@@ -47,7 +47,7 @@ static void sjcli_version(const char *pname)
 	" saveconf\t\tdump config file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
-	" ttpmap\t\t\tshow the mapped hop count for destination\n"\
+	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
 	" debug\t\t\t[1-6] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 

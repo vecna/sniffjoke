@@ -437,9 +437,39 @@ bool SniffJokeCli::printSJPort(uint8_t *statblock, int32_t blocklen)
 {
     int32_t parsedlen = 0;
 
-    while (parsedlen < blocklen)
+    /* the first goal is to detect the de-facto default in your conf */
+    uint16_t mostValue = AGG_NONE;
+    uint16_t checkingValue = AGG_NONE;
+    uint16_t occurrence = 0;
+
+    do
+    {
+        uint16_t checking_occ = 0;
+
+        for(parsedlen = 0; parsedlen < blocklen; parsedlen += sizeof (struct port_info) )
+        {
+            struct port_info *pInfo = (struct port_info *) &statblock[parsedlen];
+
+            if (checkingValue == pInfo->weight)
+                checking_occ++;
+        }
+
+        if(checking_occ > occurrence)
+        {
+            mostValue = checkingValue;
+            occurrence = checking_occ;
+        }
+
+        checkingValue *= 2;
+    }
+    while(checkingValue <= AGG_LONGPEEK );
+
+    for(parsedlen = 0; parsedlen < blocklen; parsedlen += sizeof (struct port_info) )
     {
         struct port_info *pInfo = (struct port_info *) &statblock[parsedlen];
+
+        if (pInfo->weight == mostValue)
+            continue;
 
         if (pInfo->start == pInfo->end)
         {
@@ -449,10 +479,9 @@ bool SniffJokeCli::printSJPort(uint8_t *statblock, int32_t blocklen)
         {
             printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolve_weight(pInfo->weight));
         }
-
-        parsedlen += sizeof (struct port_info);
     }
 
+    printf("omitted rule from the list is %s and apply to all ports not present on the list\n", resolve_weight(mostValue));
     return true;
 }
 
