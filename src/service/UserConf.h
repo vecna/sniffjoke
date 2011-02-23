@@ -122,7 +122,6 @@ private:
     void autodetectGWIPAddress(void);
     void autodetectGWMACAddress(void);
     void autodetectFirstAvailableTunnelInterface(void);
-    void dropTrafficFromGateway(void);
 
     void parseOnlyParam(const char*);
 

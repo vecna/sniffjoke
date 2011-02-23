@@ -44,7 +44,6 @@ runconfig(runcfg)
     if (getuid() || geteuid())
         RUNTIME_EXCEPTION("required root privileges");
 
-
     memset(&send_ll, 0x00, sizeof (send_ll));
     memset(&ifr, 0x00, sizeof (ifr));
     memset(&netifr, 0x00, sizeof (netifr));
@@ -109,10 +108,8 @@ runconfig(runcfg)
 
     snprintf(cmd, sizeof (cmd), "ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d",
              runconfig.tun_number, runconfig.local_ip_addr, MTU_FAKE);
-
     LOG_VERBOSE("setting up tun % d with the % s's IP (%s) command [%s]",
                 runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd);
-
     pclose(popen(cmd, "r"));
 
     LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
@@ -154,6 +151,10 @@ runconfig(runcfg)
     else
         RUNTIME_EXCEPTION("unable to bind datalink layer interface: %s", strerror(errno));
 
+    snprintf(cmd, sizeof (cmd), "iptables -A INPUT -m mac --mac-source %s -j DROP", runconfig.gw_mac_str);
+    LOG_ALL("dropping all traffic from the gateway [%s]", cmd);
+    pclose(popen(cmd, "r"));
+
     fds[0].fd = tunfd;
     fds[1].fd = netfd;
 }
@@ -169,7 +170,6 @@ NetIO::~NetIO(void)
     else
     {
         LOG_VERBOSE("deleting our default gw [route del default]");
-
         pclose(popen("route del default", "r"));
 
         snprintf(cmd, sizeof (cmd), "ifconfig tun%d down", runconfig.tun_number);
@@ -183,7 +183,6 @@ NetIO::~NetIO(void)
         snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP", runconfig.gw_mac_str);
         LOG_VERBOSE("deleting the filtering rule: [%s]", cmd);
         pclose(popen(cmd, "r"));
-
     }
 
     close(tunfd);
@@ -241,7 +240,6 @@ void NetIO::networkIO(void)
 
         if (pkt_tun != NULL || pkt_net != NULL)
         {
-
             /*
              * if there is some data to flush out the poll
              * timeout is set to infinite
@@ -254,7 +252,6 @@ void NetIO::networkIO(void)
         }
         else
         {
-
             /*
              * if there are not data to flush out the poll
              * timeout is set to 1ms

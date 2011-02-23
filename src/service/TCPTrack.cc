@@ -757,7 +757,9 @@ void TCPTrack::handleYoungPackets()
             if (pkt->source == NETWORK)
             {
                 if (pkt->proto == ICMP)
+                {
                     send = analyzeIncomingICMP(*pkt);
+                }
                 else if (pkt->proto == TCP)
                 {
                     /* analysis of the incoming TCP packet for check if TTL we are receiving is
