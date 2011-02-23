@@ -132,7 +132,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
  */
 bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16_t userFrequency)
 {
-    uint32_t this_percentage = 0, aggressivity_percentage = 0;
+    uint32_t aggressivity_percentage = 0;
 
     /* as first is checked hackFrequency, because will be AGG_ALWAYS and mean that we are in 
      * testing mode with --only-olugin option */
@@ -141,7 +141,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 
     aggressivity_percentage = derivePercentage(packet_number, userFrequency);
 
-    return (((uint32_t) (random() % 100) + 1 <= this_percentage));
+    return (((uint32_t) (random() % 100) + 1 <= aggressivity_percentage));
 }
 
 /*

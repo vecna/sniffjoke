@@ -265,6 +265,7 @@ void HackPool::parseEnablerFile()
                               line, enablerentry, FILE_PLUGINSENABLER);
         }
 
+        LOG_VERBOSE("Importing plugin [%s] supportedScramble %u", enablerentry, supportedScramble);
         importPlugin(plugabspath, enablerentry, supportedScramble, false);
 
     }
