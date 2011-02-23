@@ -38,7 +38,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
     /*
      * GCC/GXX -> warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
      *
-     * THE IS NO WAY TO AVOID IT!
+     * THERE IS NO WAY TO AVOID IT!
      * for this reason our makefile is without -Werror
      */
 
