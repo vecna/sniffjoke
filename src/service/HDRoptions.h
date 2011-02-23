@@ -49,6 +49,7 @@ private:
      */
     bool opt_ip_timestamp;
     bool opt_ip_rr;
+    bool opt_ip_ra;
 
     uint8_t m_IPOPT_NOOP(void);
     uint8_t m_IPOPT_TIMESTAMP(void);

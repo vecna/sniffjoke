@@ -214,7 +214,15 @@ uint8_t HDRoptions::m_IPOPT_RA(void)
 {
 #define IPOPT_RA_SIZE 4
 
-    if (corrupt) /* this option never corrupts the packet */
+    /*
+     * by literature it's not clear if this option could
+     * corrupt the packet.
+     * studing it we have encontered some icmp errors
+     * probably related to repeatitions of the option.
+     * so we avoid it.
+     */
+
+    if (corrupt || opt_ip_ra)
         return 0;
 
     if (available_opts_len < IPOPT_RA_SIZE)
@@ -222,7 +230,18 @@ uint8_t HDRoptions::m_IPOPT_RA(void)
 
     optptr[0] = IPOPT_RA;
     optptr[1] = IPOPT_RA_SIZE;
+
+    /*
+     * the value of the option by rfc 2113 means:
+     *   0: Router shall examine packet
+     *   1-65535: Reserved
+     *
+     * the kernel linux does handle only the 0 value.
+     * we set this random to see what will happen =)
+     */
     memset_random(&optptr[2], 2);
+
+    opt_ip_ra = true;
 
     return IPOPT_RA_SIZE;
 }
@@ -474,6 +493,9 @@ bool HDRoptions::checkIPOPTINJPossibility(void)
         case IPOPT_RR:
             opt_ip_rr = true; /* on !corrupt : we can't inject record route if just present */
             goto ip_opts_len_check;
+        case IPOPT_RA:
+            opt_ip_ra = true; /* on !corrupt : we can't inject record route if just present */
+            goto ip_opts_len_check;
         case IPOPT_CIPSO:
         case IPOPT_SEC:
         case IPOPT_SID:
@@ -554,7 +576,8 @@ actual_opts_len(actual_opts_len),
 target_opts_len(target_opts_len),
 available_opts_len(target_opts_len - actual_opts_len),
 opt_ip_timestamp(false),
-opt_ip_rr(false)
+opt_ip_rr(false),
+opt_ip_ra(false)
 {
     switch (type)
     {
