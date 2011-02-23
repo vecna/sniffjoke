@@ -87,7 +87,7 @@ start_test() {
     for i in `seq 1 $TESTN`;
     do
         echo "starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring. test number #$i"
-        nohup curl -m 10 --limit-rate 15k --retry 0 --max-time 10 --compressed -o "$PNAME-$SCRAMBLE-$i.received" \
+        nohup curl --limit-rate 15k --retry 0 --max-time 10 --compressed -o "$PNAME-$SCRAMBLE-$i.received" \
             -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.curl_output"
         sleep 1
     done
