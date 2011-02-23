@@ -454,7 +454,7 @@ void TCPTrack::injectHack(Packet &origpkt)
      */
     uint8_t availableScramble = discernAvailScramble(origpkt);
 
-    origpkt.SELFLOG("Original packet - before Hacks inject/eval");
+    origpkt.SELFLOG("Original packet - before Hacks inject and use validation (availScramble %u)", availableScramble);
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack want a SYN and the packet is a RST+ACK,
@@ -471,7 +471,7 @@ void TCPTrack::injectHack(Packet &origpkt)
          */
         if (!(availableScramble & hppe->selfObj->supportedScramble))
         {
-            origpkt.SELFLOG("no scramble avalable for %s", hppe->selfObj->hackName);
+            origpkt.SELFLOG("no scramble available for %s", hppe->selfObj->hackName);
             continue;
         }
 

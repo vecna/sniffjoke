@@ -303,7 +303,7 @@ void NetIO::networkIO(void)
          * this code is kept because future extension of the Hack Plugin method
          * will include the incoming packet segnalation
          */
-#if 0
+#if 1
         if (fds[1].revents & POLLIN)
         {
             /* it's possible to read from netfd */
