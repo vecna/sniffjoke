@@ -81,6 +81,9 @@
  */
 #define MTU                     1500
 #define MTU_FAKE                1420
+/* this is not configurabile anyway in some (wrong) local network the
+ * class 1.0.0.0/8 is used and should be require change this puppet-IP */
+#define DEFAULT_FAKE_IPADDR     "1.198.10.5"
 
 #define MSGBUF                  512
 

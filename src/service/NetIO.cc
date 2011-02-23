@@ -106,14 +106,14 @@ runconfig(runcfg)
     LOG_VERBOSE("deleting default gateway in routing table");
     pclose(popen("route del default", "r"));
 
-    snprintf(cmd, sizeof (cmd), "ifconfig tun%d %s pointopoint 1.198.10.5 mtu %d",
-             runconfig.tun_number, runconfig.local_ip_addr, MTU_FAKE);
+    snprintf(cmd, sizeof (cmd), "ifconfig tun%d %s pointopoint %s mtu %d",
+             runconfig.tun_number, runconfig.local_ip_addr, DEFAULT_FAKE_IPADDR, MTU_FAKE);
     LOG_VERBOSE("setting up tun % d with the % s's IP (%s) command [%s]",
                 runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd);
     pclose(popen(cmd, "r"));
 
-    LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: 1.198.10.5");
-    pclose(popen("route add default gw 1.198.10.5", "r"));
+    LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: "DEFAULT_FAKE_IPADDR);
+    pclose(popen("route add default gw "DEFAULT_FAKE_IPADDR, "r"));
 
     strncpy(orig_gw.ifr_name, (const char *) runconfig.interface, sizeof (orig_gw.ifr_name));
     tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);

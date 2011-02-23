@@ -107,7 +107,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
     if (frequencyValue & AGG_LONGPEEK)
     {
         if (packet_number < 60)
-            freqret += 65;
+            freqret += 55;
         else if (packet_number < 120)
             freqret += 20;
         else
@@ -143,7 +143,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 
     aggressivity_percentage = derivePercentage(packet_number, userFrequency);
 
-    return (((uint32_t) (random() % 100) + 1 <= aggressivity_percentage));
+    return ( ( (uint32_t)random() % 100) < aggressivity_percentage);
 }
 
 /*
@@ -245,8 +245,8 @@ void TCPTrack::analyzeIncomingTCPTTL(Packet &pkt)
         if (ttlfocus->status == TTL_KNOWN && ttlfocus->ttl_synack != pkt.ip->ttl)
         {
             /* probably a topology change has happened - we need a solution wtf!!  */
-            pkt.SELFLOG("probable net topology change! #probe %u [ttl_estimate %u synack ttl %u]",
-                        ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+            pkt.SELFLOG("probable net topology change! #probe %u [ttl_estimate %u synack ttl %u this %u]",
+                        ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->ttl_synack, pkt.ip->ttl);
         }
     }
 }
@@ -737,13 +737,16 @@ void TCPTrack::handleYoungPackets()
      *     - we analyze tcp packet with various aims:
      *         1) acquire informations on possibile variations in ttl hops distance.
      *         2) verify the presence of a synack (related to our ttlprobes).
-     *     - all packets if not destroyed will be marked send.
+     *     - the packets after this analysis will be sent locally, because the packet
+     *       coming from the gateway mac address will be dropped by the firewall rules.
+     *   TODO: notify or actively send those packets to the plugins
+     *
      *
      *   TUNNEL packets:
      *     - we analyze tcp packets to see if the can marked sendable or if they need to be old
      *       in status KEEP waiting for some information.
      *       every packets from the tunnel will be associated to a session (and session counter updated)
-     *       and to a ttlfocus (if the ttlfocus does not currently exist a ttlbrouteforce session will start).
+     *       and to a ttlfocus (if the ttlfocus not exist a ttlbruteforce session will start).
      */
     Packet *pkt = NULL;
     p_queue.select(YOUNG);
