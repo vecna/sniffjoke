@@ -613,7 +613,7 @@ bool HDRoptions::randomInjector(void)
         {
         case SJ_IPOPT_NOOP:
             optstr = "NOOP";
-            //injectetdopt_size = m_IPOPT_NOOP();
+            injectetdopt_size = m_IPOPT_NOOP();
             break;
         case SJ_IPOPT_TIMESTAMP:
             optstr = "TIMESTAMP";
@@ -625,11 +625,11 @@ bool HDRoptions::randomInjector(void)
             break;
         case SJ_IPOPT_RR:
             optstr = "RR";
-            //injectetdopt_size = m_IPOPT_RR();
+            injectetdopt_size = m_IPOPT_RR();
             break;
         case SJ_IPOPT_RA:
             optstr = "RA";
-            //injectetdopt_size = m_IPOPT_RA();
+            injectetdopt_size = m_IPOPT_RA();
             break;
         case SJ_IPOPT_CIPSO:
             optstr = "CIPSO";
