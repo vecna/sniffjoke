@@ -286,9 +286,10 @@ bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
 
                 ttlfocus->status = TTL_KNOWN;
 
-                pkt.SELFLOG("puppet %d Incoming SYN/ACK", ttlfocus->puppet_port);
-                ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK", ttlfocus->puppet_port);
-
+                pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d", 
+                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+                ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d", 
+                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
             }
             /*
              * the syn+ack scattered due to our ttl probes,
