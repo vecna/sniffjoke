@@ -183,7 +183,13 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
 
     if (!corrupt)
     { /* good option */
-        optptr[2] = routes * 4;
+
+        /*
+         * the pointer into the route data indicates the byte which begins the next area
+         * to store a route address. The pointer is relative to this option.
+         * if the pointer is greater than the length, the recorded route data area is full.
+         */
+        optptr[2] = size_rr + 1;
 
     }
     else
@@ -316,7 +322,7 @@ uint8_t HDRoptions::m_IPOPT_SEC(void)
 
     if (available_opts_len < IPOPT_SEC_SIZE)
         return 0;
- 
+
     /* TODO - cohorent data for security OPT */
     /* http://www.faqs.org/rfcs/rfc791.html "Security" */
     optptr[0] = IPOPT_SEC;
@@ -388,6 +394,15 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
     { /* good */
 
         /*
+         * the number of bytes from the beginning of this option to the end
+         * of Timestamp[] plus one (i.e., it points to the byte beginning
+         * the space for next timestamp).
+         * the timestamp area is full when Pointer is greater than Length
+         */
+
+        optptr[2] = size_timestamp + 1;
+
+        /*
          * we set the same IPOPT_TS_TSANDADDR suboption we will
          * set for the corrupted injection.
          * This suboption tells router to register their ip and
@@ -396,7 +411,6 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
          * we does not help the sniffer offering him so precious informations =)
          */
 
-        optptr[2] = size_timestamp + 1;
         optptr[3] = IPOPT_TS_TSANDADDR;
 
     }
