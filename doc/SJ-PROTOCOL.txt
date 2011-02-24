@@ -1,4 +1,12 @@
-SniffJoke management (pseudo) protocol:
+
+  RFCSJ001                                        STATUS: INCOMPLETE
+  IT022011
+   ANTANI
+
+              SNIFFJOKE INTERNAL MANAGEMENT PROTOCOL
+
+                             (SIMP ?)
+
 
 Sniffjoke service is listening in UDP, waiting for:
 

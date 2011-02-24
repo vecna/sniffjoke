@@ -91,4 +91,94 @@ those packets will be handled by sniffjoke and resent to your original default
 gateway. the circle is closed, and sniffjoke will be able to inject the anti-sniffing
 packets between your packets.
 
+                    USAGE OF THE LOCAL FIREWALL RULE
+
+Here is explained how an outgoing packet live with or without sniffjoke:
+
+Without SniffJoke:
+
+ Application -> socket() -> kernel TCP stack -> IPTCP packet to your
+ gateway -> hops (sniffer! :) -> destination.
+
+With SniffJoke:
+
+
+ Application -> socket() -> kernel TCP stack -> IPTCP packet to
+ your gateway that is a VPN endpoint handled by -> SniffJoke ->
+ mangling & hacking -> gateway -> hops -> destination.
+
+What about the return ? Whitout SniffJoke:
+
+ destination sent the answer IPTCP packet -> hops -> your gateway
+ -> you box -> kernel TCP strack -> connect()/recv() -> application.
+
+With SniffJoke:
+
+ destination sent the answer IPTCP packet -> hops -> your gateway
+ -> the packet is read by sniffjoke AND by your box. 
+ (but your box have a firewall rule able to block the packets from
+  your gateway mac address). SniffJoke sent the packet locally and
+ becaming from a different interface is not blocked by the firewall.
+ In this way, SniffJoke is able to modify th
+ -> you box -> kernel TCP strack -> connect()/recv() -> application.
+ 
+
+                TRACKING OF THE Functions IN SEQUENCIAL MODE.
+
+
+SniffJoke main flow:
+
+(main) NetIO::networkIO
+    1 TCPTrack::readpacket
+       11 PacketQueue::select
+       12 PacketQueue::get
+       13 PacketQueue::remove
+    2 TCPTrack::writepacket
+       21 Packet::mark
+       22 PacketQueue::insert
+    3 TCPTrack::analyzePacketQueue
+        4 TCPTrack::handleYoungPackets
+            11, 12, 13, 22
+            41 TCPTrack::analyzeIncomingICMP
+                411 TTLFocusMap::find
+                13
+            42 TCPTrack::analyzeIncomingTCPTTL
+                411, 13
+            43 TCPTrack::analyzeIncomingTCPSynAck
+                411, 13
+            44 IPList::isPresent
+                (self contained)
+            45 TCPTrack::analyzeOutgoing
+                51, 22, 13
+        5 TCPTrack::handleKeepPackets
+            51 TTLFocusMap::get
+            13, 22
+            52 TCPTrack::lastPktFix
+                411, 
+                521 Packet::injectIPOpts
+                522 Packet::fixSum
+                523 Packet::corruptSum
+        6 TCPTrack::handleSendPackets
+            11, 12
+            61 TCPTrack::injectHack
+                611 SessionTrackMap::find
+                612 TCPTrack::percentage
+                613 Hack::Condition
+                614 Hack::createHack
+                615 Packet::selfIntegrityCheck
+                52, 21, 13
+                616 PacketQueue::inserBefore
+                617 PacketQueue::inserAfter
+        7 SessionTrackMap::manage
+        8 TTLFocusMap::manage
+        9 TCPTrack::execTTLBruteforces
+            22
+            91 Packet::fixIpTcpSum
+
+
+
+Triva, Italian language only:
+
+http://www.youtube.com/watch?v=vTbcos3MqrY Pino-holyshit!-Scotto & Caparezza !?
+
 

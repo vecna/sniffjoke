@@ -252,11 +252,16 @@ void TCPTrack::analyzeIncomingTCPTTL(Packet &pkt)
 }
 
 /*
- * this function analyzes the a tcp syn+ack;
- * due to the ttlbruteforce stage a syn + ack will scatter for ttl >= expiring, so if the received packet
- * matches the puppet port used for the current ttlbruteforce session we can discern the ttl as:
+ * this function analyze the TCP syn+ack;
+ * in the ttlbruteforce stage a syn + ack will be bringer of a ttl information.
+ * if the received packet
+ * matches the puppet port used for the current ttlbruteforce session we can 
+ * discern the ttl as:
  *     
  *     unsigned char discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
+ *
+ * this because the sequence number used in the TTL bruteforce has hardcoded the
+ * number of the TTL.
  */
 bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
 {
@@ -305,7 +310,7 @@ bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
 }
 
 /*
- * this function analyzes outgoing packets.
+ * this function analyze outgoing packets.
  * returns:
  *   - true if the packet could be SEND;
  *   - false if the bruteforce stage is active.
@@ -325,7 +330,7 @@ bool TCPTrack::analyzeOutgoing(Packet &pkt)
 }
 
 /* 
- * this function is responsible of the ttl bruteforce stage used
+ * this function is responsable of the ttl bruteforce stage used
  * to detect the hop distance between us and the remote peer.
  * 
  * SniffJoke uses the first seen session packet as a starting point
