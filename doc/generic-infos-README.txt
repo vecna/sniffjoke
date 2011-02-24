@@ -1,4 +1,4 @@
-SniffJoke 0.4 BETA 4 - 25 January 2011
+SniffJoke 0.4 
 
 developed by vecna and evilaliv3
 
@@ -61,15 +61,13 @@ FEW TECHNICAL INFO:
    this condition it requires some weird hack, like creation of a
    fake-tunnel interface and use of the same local IP address. SniffJoke tries
    to be verbose for the user. 
-3) There are some KNOW BUGS, like duplicated ICMP REPLY when using ping with
-   sniffjoke running.
-4) Sniffjoke executes some commands on your box. the code is open, you should detect
+3) Sniffjoke executes some commands on your box. the code is open, you should detect
    how the command line are created grepping for the popen() functions, in the 
    sniffjoke website you should find an exaustive documentation about how does Sj work.
-5) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
+4) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
    and keep track about your ports setting. restaring Sniffjoke resume previously 
    configuration.
-6) the TTL cache is tracked differenty for each network environment you use, and
+5) the TTL cache is tracked differenty for each network environment you use, and
    in some location will neither work. for this reason, when sniffjoke is 
    started in a new location, I suggest to run sniffjoke-autotest (a script
    testing each plugin and each scrambling technology, to detect automatically

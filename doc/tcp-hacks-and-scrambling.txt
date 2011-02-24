@@ -1,20 +1,21 @@
 HACKS & SCAMBLE TECH
 
+THIS FILE IS NOT UPDATED WITH THE RELEASE 0.4 and THEREFORE WILL NOT BE SAFE READ IT!
+
 
 the hacks define type of injected packet in order to cause a desync in the sniffed flow,
-every hacks is implemented in a separate plugin, present in sniffjoke under the hacks/
+every hacks is implemented in a separate plugin, present in sniffjoke under the plugins/
 directory
 
-hacks/fake_close_fin/fake_close_fin.cc
-hacks/fake_close_rst/fake_close_rst.cc
-hacks/fake_data/fake_data.cc
-hacks/fake_seq/fake_seq.cc
-hacks/fake_syn/fake_syn.cc
-hacks/fake_zero_window/fake_zero_window.cc
-hacks/shift_ack/shift_ack.cc
-hacks/valid_rst_fake_seq/valid_rst_fake_seq.cc
+vecna@caturday:~/Desktop/sniffjoke-project/sniffjoke/src$ ls plugins/*/*.cc
+plugins/fake_close_fin/fake_close_fin.cc  plugins/fake_zero_window/fake_zero_window.cc
+plugins/fake_close_rst/fake_close_rst.cc  plugins/fragmentation/fragmentation.cc
+plugins/fake_fragment/fake_fragment.cc    plugins/overlap_packet/overlap_packet.cc
+plugins/fake_segment/fake_segment.cc      plugins/segmentation/segmentation.cc
+plugins/fake_seq/fake_seq.cc              plugins/shift_ack/shift_ack.cc
+plugins/fake_syn/fake_syn.cc              plugins/valid_rst_fake_seq/valid_rst_fake_seq.cc
 
-fake close: hacks that inject a fake signaling that mean the end of the session, the flag
+close: hacks that inject a fake signaling that mean the end of the session, the flag
 	    RST or FIN is used. In some network, the flag RST cause the session kill in some
 	    useful third parts (like a transparent proxy), and you will try to disable this
 	    hacks in your hackfile [info at the end of this file].
@@ -51,12 +52,8 @@ when send a fake packet, the packet must appear acceptable for the sniffer and u
 
 SELECT AND HACKS 
 
-the options --enabler <file> specify a file instlled in your system, containing the list of
-plugins loaded by sniffjooke. 
+SniffJoke search in your location the plugins-enabled.conf file:
 
-	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# ls conf/plugins_enabled.txt 
-	conf/plugins_enabled.txt
-	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# cat conf/plugins_enabled.txt 
 	# SniffJoke plugins enabler file
 	#
 	# comment supported
@@ -70,9 +67,9 @@ plugins loaded by sniffjooke.
 	#shift_ack.so
 	valid_rst_fake_seq.so,TYPEOFSCRAMBLESUPPORTED
 	# regards
-	root@caturday:~/Desktop/sniffjoke-project/sniffjoke# 
 
-this is the default, and the four commented hacks need to be tested. 
+this is the plugins-enalbed.conf file inside the "generic" location, acting as default
+for the user who don't have run sniffjoke-autotest.
 
 the type of scramble depends on your network, because some type of combination
 (like, real RST injection that will expire before reach the remote server, will

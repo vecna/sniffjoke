@@ -11,7 +11,28 @@ and the generic will work instead for the most of the time.
 * WHAT IS sniffjoke-autotest ? 
 
 Is a script performing some sniffjoke tests and verifications to detect which kind of attack
-can be used for be used in your network.
+can be used for be used in your network., this are the parameters required:
+
+usage: /usr/local/bin/sniffjoke-autotest options
+
+This script runs plugins test along different destinations OS
+to determinate the selection of plugins that correctly works
+in the current location.
+
+every plugin it's tested with one of each scrambling tech.
+
+OPTIONS:
+   -h      show this message
+   -l      location name                                    (required)
+   -d      path of 'generic/' location, acting as default   (required)
+   -n      number of tests to be passed for the single hack (default 1)
+
+it's required a LOCATION name, eg: office, home, nickhome, starbucks...
+sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment
+at the end of the tests (that include continuos restarting of sniffjoke with different options)
+will be created a new directory describing your location. after you will customize the options
+
+* WHY sniffjoke-autotest EXISTS ?
 
 The problem solved by the autotest suite arise because not every kind of evasion technology
 can work in every network.
@@ -19,8 +40,8 @@ The script takes as argumet the location name, creates the new directory /usr/lo
 and prepare all the related configuration files inside.
 
 When you need to use a specific locaton, you have to run sniffjoke with --location $LOCATIONNAME and
-the related directory will be used for the chrook; from that time on sniffjoke will use that directory as storage dir for
-logs and caches.
+the related directory will be used for the chrook; from that time on sniffjoke will use that directory as 
+storage dir for logs and caches.
 
 * WHAT THE MEANING OF EVERY SINGLE CONFIG FILE ?
 

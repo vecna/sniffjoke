@@ -1,4 +1,4 @@
-enter in hacks/
+enter in src/plugins/
 mkdir your new-hack-name
 vim Makefile.ac
 	add your new-hack-name
@@ -12,9 +12,7 @@ edit configure.ac and add your entry in AC_CONFIG_FILES
 
 ./autogen.sh
 
-hacks FREQUENCY vs hacks PROBABILITY
-
-an hack will not always be used, for two reasons:
+Default FREQUENCY/AGGRESSIVITY:
 
 1) every hack is bandwitdh usage, and we dislike add proportional overweight
 2) if an hack is used evetytime, will be easily detected by an updated sniffer
@@ -27,4 +25,3 @@ sending of the get, and an email is full of sensibile data send in short time.
 in addiction, some hack is based in sending fake data double time the size of
 the original packet, this is intensive and an user should define the flexibility
 of the injection.
-
