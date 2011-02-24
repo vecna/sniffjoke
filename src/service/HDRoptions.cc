@@ -274,7 +274,7 @@ uint8_t HDRoptions::m_IPOPT_CIPSO(void)
      */
 
 #define IPOPT_CIPSO    (6 |IPOPT_CONTROL|IPOPT_COPY)
-#define IPOPT_CIPSO_SIZE 8
+#define IPOPT_CIPSO_SIZE 10
 
     if (!corrupt) /* this option always corrupts the packet */
         return 0;
@@ -284,7 +284,7 @@ uint8_t HDRoptions::m_IPOPT_CIPSO(void)
 
     optptr[0] = IPOPT_CIPSO;
     optptr[1] = IPOPT_CIPSO_SIZE;
-    memset_random(&optptr[2], 6);
+    memset_random(&optptr[2], 8);
 
     return IPOPT_CIPSO_SIZE;
 }
@@ -316,7 +316,7 @@ uint8_t HDRoptions::m_IPOPT_SEC(void)
 
     if (available_opts_len < IPOPT_SEC_SIZE)
         return 0;
-
+ 
     /* TODO - cohorent data for security OPT */
     /* http://www.faqs.org/rfcs/rfc791.html "Security" */
     optptr[0] = IPOPT_SEC;
@@ -333,7 +333,7 @@ uint8_t HDRoptions::m_IPOPT_SID(void)
 
 #define IPOPT_SID_SIZE 4
 
-    if (!corrupt) /* this option always corrupts the packet */
+    if (corrupt) /* this options does not corrupt the packet */
         return 0;
 
     if (available_opts_len < IPOPT_SID_SIZE)
@@ -396,7 +396,7 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
          * we does not help the sniffer offering him so precious informations =)
          */
 
-        optptr[2] = size_timestamp;
+        optptr[2] = size_timestamp + 1;
         optptr[3] = IPOPT_TS_TSANDADDR;
 
     }
@@ -625,11 +625,11 @@ bool HDRoptions::randomInjector(void)
             break;
         case SJ_IPOPT_RR:
             optstr = "RR";
-            injectetdopt_size = m_IPOPT_RR();
+            //injectetdopt_size = m_IPOPT_RR();
             break;
         case SJ_IPOPT_RA:
             optstr = "RA";
-            injectetdopt_size = m_IPOPT_RA();
+            //injectetdopt_size = m_IPOPT_RA();
             break;
         case SJ_IPOPT_CIPSO:
             optstr = "CIPSO";

@@ -143,7 +143,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 
     aggressivity_percentage = derivePercentage(packet_number, userFrequency);
 
-    return ( ( (uint32_t)random() % 100) < aggressivity_percentage);
+    return ( ((uint32_t) random() % 100) < aggressivity_percentage);
 }
 
 /*
@@ -526,18 +526,21 @@ void TCPTrack::injectHack(Packet &origpkt)
                 continue;
             }
 
+            /*
+             * here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
+             * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too
+             */
+            if (injpkt.wtf != INNOCENT)
+                injpkt.mark(LOCAL, EVIL);
+            else
+                injpkt.mark(LOCAL, GOOD);
+
             if (!lastPktFix(injpkt))
             {
                 injpkt.SELFLOG("unable to scramble (%s)", hppe->selfObj->hackName);
                 delete &injpkt;
                 continue;
             }
-
-            /*
-             * here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
-             * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too
-             */
-            injpkt.mark(LOCAL, EVIL);
 
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
@@ -622,9 +625,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     {
         pkt.ip->ttl = (*it->second).ttl_estimate;
         if (pkt.wtf == PRESCRIPTION)
-            pkt.ip->ttl -= (random() % 4) - 1; /* [-1, -5], 5 values */
+            pkt.ip->ttl -= (random() % 5) + 1; /* [-1, -5], 5 values */
         else
-            pkt.ip->ttl += (random() % 4); /* [+0, +4], 5 values */
+            pkt.ip->ttl += (random() % 5); /* [+0, +4], 5 values */
     }
     else
     {

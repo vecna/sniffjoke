@@ -299,8 +299,8 @@ cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
 cp /tmp/$LOCATION/plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
 
 echo -e "$yellow \n\nFINISHED!\n"
-echo -e " $red $failure_count combination of hack+scramble has not worked"
-echo -e " $green $success_count combination of hack+scramble has worked correctly"
+echo -e " $red $failure_count combinations of hack+scramble have not worked"
+echo -e " $green $success_count combinations of hack+scramble have worked correctly"
 
 echo -e "$blue\ncopyed in $WORKPATH/$LOCATION with the other default configuration file. You now could customize your location"
 echo "now you will start sniffjoke with the option --location $LOCATION when you are in this network environment."

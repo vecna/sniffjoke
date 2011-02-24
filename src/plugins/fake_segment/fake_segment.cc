@@ -65,7 +65,7 @@ public:
             return;
 
         uint8_t pkts = 2;
-        while (pkts--)
+        while (pkts)
         {
             Packet * const pkt = new Packet(origpkt);
 
@@ -100,6 +100,8 @@ public:
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
             pktVector.push_back(pkt);
+
+            pkts--;
         }
     }
 
