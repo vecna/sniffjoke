@@ -433,7 +433,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 }
 
 /* 
- * inject_hack_in_queue is one of the core function in sniffjoke:
+ * injectHack is one of the core function in sniffjoke:
  *
  * the hacks are, for the most, three kinds.
  *
@@ -631,7 +631,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     {
         pkt.ip->ttl = (*it->second).ttl_estimate;
         if (pkt.wtf == PRESCRIPTION)
-            pkt.ip->ttl -= (random() % 5) + 1; /* [-1, -5], 5 values */
+            pkt.ip->ttl -= (1 + (random() % 5)); /* [-1, -5], 5 values */
         else
             pkt.ip->ttl += (random() % 5); /* [+0, +4], 5 values */
     }

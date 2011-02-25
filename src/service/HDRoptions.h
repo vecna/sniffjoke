@@ -47,9 +47,14 @@ private:
      * options we need to check the presence for;
      * some options are good but if repeated may corrupt the packet.
      */
+
     bool opt_ip_timestamp;
+    bool opt_ip_lsrr;
     bool opt_ip_rr;
     bool opt_ip_ra;
+    bool opt_ip_cipso;
+    bool opt_ip_sec;
+    bool opt_ip_sid;
 
     uint8_t m_IPOPT_NOOP(void);
     uint8_t m_IPOPT_TIMESTAMP(void);

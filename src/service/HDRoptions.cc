@@ -63,6 +63,94 @@ uint8_t HDRoptions::m_IPOPT_NOOP(void)
     return IPOPT_NOOP_SIZE;
 }
 
+uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
+{
+    /*
+     * This option it's based on analysis of the linux kernel. (2.6.36)
+     *
+     * Extract from: net/ipv4/ip_options.c
+     *
+     *   if (optptr[2] < 5) {
+     *       pp_ptr = optptr + 2;
+     *       goto error;
+     *   }
+     *
+     *   if (optptr[2] <= optlen) {
+     *       __be32 *timeptr = NULL;
+     *       if (optptr[2]+3 > optptr[1]) {
+     *           pp_ptr = optptr + 2;
+     *           goto error;
+     *       }
+     *
+     *       [...]
+     *
+     *   so here have two conditions we can disattend;
+     *   It's possible to create a unique hack that
+     *   due tu random() exploit one or the other.
+     */
+
+    const uint8_t timestamps = 1 + random() % 5; /* 1 - 5 */
+    const uint8_t size_timestamp = 4 + timestamps * 8;
+
+    if (!corrupt && opt_ip_timestamp) /* corrupts if repeated */
+        return 0;
+
+    if (available_opts_len < size_timestamp)
+        return 0;
+
+    optptr[0] = IPOPT_TIMESTAMP;
+    optptr[1] = size_timestamp;
+
+    if (!corrupt)
+    { /* good */
+
+        /*
+         * the number of bytes from the beginning of this option to the end
+         * of Timestamp[] plus one (i.e., it points to the byte beginning
+         * the space for next timestamp).
+         * the timestamp area is full when pointer is greater than length
+         */
+
+        optptr[2] = size_timestamp + 1;
+
+        /*
+         * we set the same IPOPT_TS_TSANDADDR suboption we will
+         * set for the corrupted injection.
+         * this suboption tells router to register their ip and
+         * to put a timestamp.
+         * we set the pointer (optr[2]) as full because of course
+         * we does not help the sniffer offering him so precious informations =)
+         */
+
+        optptr[3] = IPOPT_TS_TSANDADDR;
+
+    }
+    else
+    { /* corrupted */
+
+        if (RANDOMPERCENT(50))
+        {
+            /* reference code : if (optptr[2] < 5) { */
+            optptr[2] = random() % 5;
+        }
+        else
+        {
+            /* reference code : if (optptr[2] <= optlen) {
+                          and : if (optptr[2]+3 > optptr[1]) { */
+            optptr[2] = optptr[1] - (1 + random() % 2);
+        }
+
+        optptr[3] = random();
+
+    }
+
+    memset_random(&optptr[4], timestamps * 8);
+
+    opt_ip_timestamp = true;
+
+    return size_timestamp;
+}
+
 uint8_t HDRoptions::m_IPOPT_LSRR(void)
 {
     /* http://tools.ietf.org/html/rfc1812
@@ -141,6 +229,8 @@ uint8_t HDRoptions::m_IPOPT_LSRR(void)
     optptr[size_lsrr_1 + 2] = 4;
     memset_random(&optptr[size_lsrr_1 + 3], size_lsrr_2 - 3);
 
+    opt_ip_lsrr = true;
+
     return req_size;
 }
 
@@ -169,11 +259,11 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
      *   due to random() exploits the first or the latter.
      */
 
+    if (!corrupt && opt_ip_rr) /* corrupts if repeated */
+        return 0;
+
     const uint8_t routes = 1 + random() % 5; /* 1 - 5 */
     const uint8_t size_rr = 3 + routes * 4;
-
-    if (!corrupt && opt_ip_rr) /* this option corrupts the packet if repeated */
-        return 0;
 
     if (available_opts_len < size_rr)
         return 0;
@@ -228,7 +318,7 @@ uint8_t HDRoptions::m_IPOPT_RA(void)
      * so we avoid it.
      */
 
-    if (corrupt || opt_ip_ra)
+    if (corrupt)
         return 0;
 
     if (available_opts_len < IPOPT_RA_SIZE)
@@ -292,6 +382,8 @@ uint8_t HDRoptions::m_IPOPT_CIPSO(void)
     optptr[1] = IPOPT_CIPSO_SIZE;
     memset_random(&optptr[2], 8);
 
+    opt_ip_cipso = true;
+
     return IPOPT_CIPSO_SIZE;
 }
 
@@ -317,7 +409,7 @@ uint8_t HDRoptions::m_IPOPT_SEC(void)
 
 #define IPOPT_SEC_SIZE 11
 
-    if (!corrupt) /* this options always corrupts the packet */
+    if (!corrupt)
         return 0;
 
     if (available_opts_len < IPOPT_SEC_SIZE)
@@ -329,17 +421,17 @@ uint8_t HDRoptions::m_IPOPT_SEC(void)
     optptr[1] = IPOPT_SEC_SIZE;
     memset_random(&optptr[2], 9);
 
-    /* NOP not included in the option size */
+    opt_ip_sec = true;
+
     return IPOPT_SEC_SIZE;
 }
 
 uint8_t HDRoptions::m_IPOPT_SID(void)
 {
-    /* for verbose description see the m_IPOPT_SEC comment */
 
 #define IPOPT_SID_SIZE 4
 
-    if (corrupt) /* this options does not corrupt the packet */
+    if (corrupt)
         return 0;
 
     if (available_opts_len < IPOPT_SID_SIZE)
@@ -349,95 +441,9 @@ uint8_t HDRoptions::m_IPOPT_SID(void)
     optptr[1] = IPOPT_SID_SIZE;
     memset_random(&optptr[2], 2);
 
+    opt_ip_sid = true;
+
     return IPOPT_SID_SIZE;
-}
-
-uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
-{
-    /*
-     * This option it's based on analysis of the linux kernel. (2.6.36)
-     *
-     * Extract from: net/ipv4/ip_options.c
-     *
-     *   if (optptr[2] < 5) {
-     *       pp_ptr = optptr + 2;
-     *       goto error;
-     *   }
-     *
-     *   if (optptr[2] <= optlen) {
-     *       __be32 *timeptr = NULL;
-     *       if (optptr[2]+3 > optptr[1]) {
-     *           pp_ptr = optptr + 2;
-     *           goto error;
-     *       }
-     *
-     *       [...]
-     *
-     *   so here have two conditions we can disattend;
-     *   It's possible to create a unique hack that
-     *   due tu random() exploit one or the other.
-     */
-
-    const uint8_t timestamps = 1 + random() % 5; /* 1 - 5 */
-    const uint8_t size_timestamp = 4 + timestamps * 8;
-
-    if (!corrupt && opt_ip_timestamp) /* this option corrupts the packet if repeated */
-        return 0;
-
-    if (available_opts_len < size_timestamp)
-        return 0;
-
-    optptr[0] = IPOPT_TIMESTAMP;
-    optptr[1] = size_timestamp;
-
-    if (!corrupt)
-    { /* good */
-
-        /*
-         * the number of bytes from the beginning of this option to the end
-         * of Timestamp[] plus one (i.e., it points to the byte beginning
-         * the space for next timestamp).
-         * the timestamp area is full when Pointer is greater than Length
-         */
-
-        optptr[2] = size_timestamp + 1;
-
-        /*
-         * we set the same IPOPT_TS_TSANDADDR suboption we will
-         * set for the corrupted injection.
-         * This suboption tells router to register their ip and
-         * to put a timestamp.
-         * we set the pointer (optr[2]) as full because of course
-         * we does not help the sniffer offering him so precious informations =)
-         */
-
-        optptr[3] = IPOPT_TS_TSANDADDR;
-
-    }
-    else
-    { /* corrupted */
-
-        if (RANDOMPERCENT(50))
-        {
-            /* reference code : if (optptr[2] < 5) { */
-            optptr[2] = random() % 5;
-        }
-        else
-        {
-            /* reference code : if (optptr[2] <= optlen) {
-                          and : if (optptr[2]+3 > optptr[1]) { */
-            optptr[2] = optptr[1] - (1 + random() % 2);
-        }
-
-        optptr[3] = random();
-
-    }
-
-    memset_random(&optptr[4], timestamps * 4);
-
-    opt_ip_timestamp = true;
-
-    return size_timestamp;
 }
 
 /*
@@ -511,10 +517,13 @@ bool HDRoptions::checkIPOPTINJPossibility(void)
             opt_ip_ra = true; /* on !corrupt : we can't inject record route if just present */
             goto ip_opts_len_check;
         case IPOPT_CIPSO:
+            opt_ip_cipso = true; /* on !corrupt : we can't inject cipso if just present */
+            goto ip_opts_len_check;
         case IPOPT_SEC:
+            opt_ip_sec = true; /* on !corrupt : we can't inject sec if just present */
+            goto ip_opts_len_check;
         case IPOPT_SID:
-            if (!corrupt) /* on !corrup : we always avoid to inject if this options ar present */
-                return false;
+            opt_ip_sid = true; /* on !corrupt : we can't inject sid if just present */
             goto ip_opts_len_check;
 ip_opts_len_check:
         default:
@@ -590,8 +599,12 @@ actual_opts_len(actual_opts_len),
 target_opts_len(target_opts_len),
 available_opts_len(target_opts_len - actual_opts_len),
 opt_ip_timestamp(false),
+opt_ip_lsrr(false),
 opt_ip_rr(false),
-opt_ip_ra(false)
+opt_ip_ra(false),
+opt_ip_cipso(false),
+opt_ip_sec(false),
+opt_ip_sid(false)
 {
     switch (type)
     {
@@ -631,7 +644,7 @@ bool HDRoptions::randomInjector(void)
             break;
         case SJ_IPOPT_TIMESTAMP:
             optstr = "TIMESTAMP";
-            injectetdopt_size = m_IPOPT_TIMESTAMP();
+            //injectetdopt_size = m_IPOPT_TIMESTAMP();
             break;
         case SJ_IPOPT_LSRR:
             optstr = "LSRR";
