@@ -60,10 +60,10 @@ public:
         judge_t selectedScramble;
         if (ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
             selectedScramble = PRESCRIPTION;
-        else if (ISSET_MALFORMED(availableScramble & supportedScramble))
+        else if (ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90))
             selectedScramble = MALFORMED;
         else
-            selectedScramble = INNOCENT;
+            selectedScramble = GUILTY;
 
         uint8_t pkts = 2;
         while (pkts)
@@ -84,7 +84,7 @@ public:
 
             pktVector.push_back(pkt);
 
-            pkts--;
+            --pkts;
         }
     }
 

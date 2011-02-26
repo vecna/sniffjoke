@@ -56,7 +56,7 @@ void PacketQueue::insert(Packet &pkt, queue_t queue)
             pkt.next == NULL;
      */
 
-    pkt_count++;
+    ++pkt_count;
     pkt.queue = queue;
     if (front[queue] == NULL)
     {
@@ -80,7 +80,7 @@ void PacketQueue::insertBefore(Packet &pkt, Packet &ref)
             pkt.next == NULL;
      */
 
-    pkt_count++;
+    ++pkt_count;
     pkt.queue = ref.queue;
 
     if (front[ref.queue] == &ref)
@@ -194,6 +194,5 @@ Packet* PacketQueue::get()
         next_pkt = next_pkt->next;
         return cur_pkt; /* FOUND */
     }
-
     return NULL; /* NOT FOUND */
 }

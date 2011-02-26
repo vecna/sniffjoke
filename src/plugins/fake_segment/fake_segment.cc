@@ -59,10 +59,8 @@ public:
             selectedScramble = PRESCRIPTION;
         else if (ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90))
             selectedScramble = MALFORMED;
-        else if (ISSET_CHECKSUM(availableScramble) & supportedScramble) /* the 99% of the times */
+        else /* the 99% of the times */
             selectedScramble = GUILTY;
-        else
-            return;
 
         uint8_t pkts = 2;
         while (pkts)
@@ -101,7 +99,7 @@ public:
 
             pktVector.push_back(pkt);
 
-            pkts--;
+            --pkts;
         }
     }
 

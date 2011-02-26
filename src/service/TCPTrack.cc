@@ -467,7 +467,7 @@ void TCPTrack::injectHack(Packet &origpkt)
      */
     uint8_t availableScramble = discernAvailScramble(origpkt);
 
-    origpkt.SELFLOG("Original packet - before Hacks inject and use validation (availScramble %u)", availableScramble);
+    origpkt.SELFLOG("Original packet - before hacks injection (availScramble %u)", availableScramble);
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
@@ -506,6 +506,7 @@ void TCPTrack::injectHack(Packet &origpkt)
     /* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)
     {
+
         PluginTrack *hppe = *it;
 
         hppe->selfObj->createHack(origpkt, availableScramble);
@@ -542,11 +543,7 @@ void TCPTrack::injectHack(Packet &origpkt)
                 injpkt.mark(LOCAL, GOOD);
 
             if (!lastPktFix(injpkt))
-            {
-                injpkt.SELFLOG("unable to scramble (%s)", hppe->selfObj->hackName);
-                delete &injpkt;
                 continue;
-            }
 
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
@@ -627,7 +624,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
      * to don't disclose him real hop distance.
      */
     TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
-    if (it != ttlfocus_map.end() && !((*it->second).status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
+    if (it != ttlfocus_map.end() && (*it->second).status == TTL_KNOWN)
     {
         pkt.ip->ttl = (*it->second).ttl_estimate;
         if (pkt.wtf == PRESCRIPTION)
@@ -689,6 +686,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 
 drop_packet:
     pkt.SELFLOG("packet dropped: unable to apply fix before sending");
+    delete &pkt;
     return false;
 }
 
@@ -845,7 +843,7 @@ void TCPTrack::handleKeepPackets()
     p_queue.select(KEEP);
     while ((pkt = p_queue.get()) != NULL)
     {
-        if (ttlfocus_map.get(*pkt).status == TTL_BRUTEFORCE)
+        if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
         {
             p_queue.remove(*pkt);
             if (lastPktFix(*pkt))
@@ -876,7 +874,7 @@ void TCPTrack::handleSendPackets()
  *
  * this is an important and critical function for sniffjoke operativity.
  * 
- * analyze_packets_queue is called from the main.cc poll() block
+ * analyzePacketQueue is called from the main.cc poll() block
  * 
  * all the functions that are called here inside a p_queue.get() cycle:
  *

@@ -48,7 +48,7 @@ static void sjcli_version(const char *pname)
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
 	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
-	" debug\t\t\t[1-6] change the log debug level\n\n"\
+	" debug\t\t\t[1-5] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sjcli_help(const char *pname)
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 		{ "info",     1 },
 		{ "ttlmap",   1 },
 		{ "saveconf", 1 },
-		{ "debug",    2 }, 	    /* the log debuglevel */
+		{ "debug",    2 }, /* the log debuglevel */
 /*		{ "set",      4 }, */ 	/* set start_port end_port value */
 /* SET is not supported in the 0.4.0 client release because I require implementation
  * of the parsingPortBlah, because via command line is needed use all the keyword usable

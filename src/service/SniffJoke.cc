@@ -515,10 +515,10 @@ void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
 
 void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
 {
-    if (newdebuglevel < SUPPRESS_LEVEL || newdebuglevel > PACKET_LEVEL)
+    if (newdebuglevel < SUPPRESS_LEVEL || newdebuglevel > TESTING_LEVEL)
     {
         LOG_ALL("requested debuglevel %d invalid (>= %d <= %d permitted)",
-                newdebuglevel, SUPPRESS_LEVEL, PACKET_LEVEL);
+                newdebuglevel, SUPPRESS_LEVEL, TESTING_LEVEL);
     }
     else
     {

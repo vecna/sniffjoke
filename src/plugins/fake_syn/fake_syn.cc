@@ -51,9 +51,6 @@ public:
 
             pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-            pkt->tcp->psh = 0;
-            pkt->tcp->syn = 1;
-
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
 
             /* 20% is a SYN ACK */
@@ -64,7 +61,8 @@ public:
             }
             else
             {
-                pkt->tcp->ack = pkt->tcp->ack_seq = 0;
+                pkt->tcp->ack = 0;
+                pkt->tcp->ack_seq = 0;
             }
 
             /* 20% had source and dest port reversed */
@@ -74,8 +72,6 @@ public:
                 pkt->tcp->source = pkt->tcp->dest;
                 pkt->tcp->dest = swap;
             }
-
-            pkt->tcppayloadResize(0);
 
             if (pkts == 2) /* first packet */
                 pkt->position = ANTICIPATION;
@@ -87,7 +83,7 @@ public:
 
             pktVector.push_back(pkt);
 
-            pkts--;
+            --pkts;
         }
     }
 

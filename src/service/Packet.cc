@@ -286,6 +286,7 @@ void Packet::iphdrResize(uint8_t size)
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
     ip->ihl = size / 4;
+    if(size%4) exit(1);
 
     vector<unsigned char>::iterator it = pbuf.begin();
 
@@ -407,9 +408,9 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint8_t target_iphdrlen = 0;
 
-    uint16_t freespace = MTU - pktlen;;
+    uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
+    SELFLOG("before ip injection [strip %u] iphdrlen %u ippayloadlen %u pktlen %u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -446,7 +447,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
             injected |= IPInjector.randomInjector();
 
         }
-        while (target_iphdrlen != actual_iphdrlen && tries--);
+        while ((target_iphdrlen != actual_iphdrlen) && --tries);
     }
     catch (exception &e)
     {
@@ -461,7 +462,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
         iphdrResize(actual_iphdrlen);
     }
 
-    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
+    SELFLOG("after ip injection [strip %u] iphdrlen %u ippayloadlen %u pktlen %u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     return injected;
 }
@@ -478,7 +479,7 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
+    SELFLOG("before tcp injection [strip %u] iphdrlen %u tcphdrlen %u ippayload %u pktlen %u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -515,7 +516,7 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
             injected |= TCPInjector.randomInjector();
 
         }
-        while (target_tcphdrlen != actual_tcphdrlen && tries--);
+        while ((target_tcphdrlen != actual_tcphdrlen) && --tries);
 
     }
     catch (exception &e)
@@ -531,7 +532,7 @@ bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
         tcphdrResize(actual_tcphdrlen);
     }
 
-    SELFLOG("after strip [%d] iphdrlen %d tcphdrlen %d datalen %d pktlen %d", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, (int) pbuf.size());
+    SELFLOG("after tcp injection [strip %u] iphdrlen %u tcphdrlen %u ippayload %u pktlen %u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
     return injected;
 }
