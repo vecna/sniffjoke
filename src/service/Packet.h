@@ -149,7 +149,7 @@ public:
 
     /* MALFORMED hacks and distortion of INNOCENT packets */
     bool injectIPOpts(bool, bool);
-    bool InjectTCPOpts(bool, bool);
+    bool injectTCPOpts(bool, bool);
 
     /* utilities */
     void selflog(const char *, const char *, ...) const;

@@ -467,7 +467,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
     return injected;
 }
 
-bool Packet::InjectTCPOpts(bool corrupt, bool strip_previous)
+bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 {
     bool injected = false;
 

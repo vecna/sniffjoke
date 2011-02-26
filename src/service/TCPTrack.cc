@@ -291,10 +291,10 @@ bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
 
                 ttlfocus->status = TTL_KNOWN;
 
-                pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d", 
-                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
-                ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d", 
-                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+                pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                            ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+                ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                                  ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
             }
             /*
              * the syn+ack scattered due to our ttl probes,
@@ -646,11 +646,24 @@ bool TCPTrack::lastPktFix(Packet &pkt)
      */
     if (pkt.wtf == MALFORMED)
     {
-        /* IP options, every packet subject if possible, and MALFORMED will be applied */
-        if (!(pkt.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+        bool malformed = false;
+        if (pkt.ipfragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
         {
-            pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
+            if (!(pkt.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+                pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
+            else
+                malformed = true;
+        }
+        else
+        {
+            if (!(pkt.injectTCPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+                pkt.SELFLOG("injectTCPOpts failed to corrupt pkt");
+            else
+                malformed = true;
+        }
 
+        if (!malformed)
+        {
             if (ISSET_CHECKSUM(pkt.choosableScramble))
                 pkt.wtf = GUILTY;
             else
@@ -687,6 +700,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 drop_packet:
     pkt.SELFLOG("packet dropped: unable to apply fix before sending");
     delete &pkt;
+
     return false;
 }
 
@@ -702,6 +716,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
     }
     catch (exception &e)
     {
+
         /* anomalous/malformed packets are flushed bypassing the queue */
         LOG_ALL("malformed original packet dropped: %s", e.what());
     }
@@ -726,6 +741,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
         if (pkt->source & mask)
         {
             p_queue.remove(*pkt);
+
             return pkt;
         }
     }
@@ -830,6 +846,7 @@ void TCPTrack::handleYoungPackets()
     {
         while ((pkt = p_queue.get()) != NULL)
         {
+
             p_queue.remove(*pkt);
             p_queue.insert(*pkt, SEND);
         }
@@ -848,6 +865,7 @@ void TCPTrack::handleKeepPackets()
             p_queue.remove(*pkt);
             if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
+
             else
                 RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
         }
@@ -864,6 +882,7 @@ void TCPTrack::handleSendPackets()
         p_queue.select(SEND);
         while ((pkt = p_queue.get()) != NULL)
         {
+
             if (pkt->source == TUNNEL && pkt->proto == TCP)
                 injectHack(*pkt);
         }

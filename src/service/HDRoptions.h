@@ -55,6 +55,8 @@ private:
     bool opt_ip_cipso;
     bool opt_ip_sec;
     bool opt_ip_sid;
+    bool opt_tcp_timestamp;
+    uint32_t* opt_tcp_timestamp_ptr;
 
     uint8_t m_IPOPT_NOOP(void);
     uint8_t m_IPOPT_TIMESTAMP(void);
@@ -65,35 +67,22 @@ private:
     uint8_t m_IPOPT_SEC(void);
     uint8_t m_IPOPT_SID(void);
 
-    uint8_t m_TCPOPT_EOL(void);
-    uint8_t m_TCPOPT_NOP(void);
-    uint8_t m_TCPOPT_TIMESTAMP(void);
-    uint8_t m_TCPOPT_MAXSEG(void);
-    uint8_t m_TCPOPT_WINDOW(void);
-    uint8_t m_TCPOPT_SACK_PERMITTED(void);
-    uint8_t m_TCPOPT_SACK(void);
+    uint8_t m_TCPOPT_PAWSCORRUPT(void);
 
     bool checkIPOPTINJPossibility(void);
     bool checkTCPOPTINJPossibility(void);
 
 public:
     /* used for internal definition of IP opt functions */
-#define SJ_IPOPT_NOOP               0
-#define SJ_IPOPT_TIMESTAMP          1
-#define SJ_IPOPT_LSRR               2
-#define SJ_IPOPT_RR                 3
-#define SJ_IPOPT_RA                 4
-#define SJ_IPOPT_CIPSO              5
-#define SJ_IPOPT_SEC                6
-#define SJ_IPOPT_SID                7
+#define SJ_IPOPT_TIMESTAMP          0
+#define SJ_IPOPT_LSRR               1
+#define SJ_IPOPT_RR                 2
+#define SJ_IPOPT_RA                 3
+#define SJ_IPOPT_CIPSO              4
+#define SJ_IPOPT_SEC                5
+#define SJ_IPOPT_SID                6
 
-#define SJ_TCPOPT_EOL               0
-#define SJ_TCPOPT_NOP               1
-#define SJ_TCPOPT_TIMESTAMP         2
-#define SJ_TCPOPT_MAXSEG            3
-#define SJ_TCPOPT_WINDOW            4
-#define SJ_TCPOPT_SACK_PERMITTED    5
-#define SJ_TCPOPT_SACK              6
+#define SJ_TCPOPT_PAWSCORRUPT       0
 
     /* used for internal definition of TCP opt functions */
 
