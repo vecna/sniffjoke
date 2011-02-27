@@ -114,7 +114,7 @@ void portLine::extractPorts(void)
 
             readedp = atoi(p);
 
-            if (readedp > PORTNUMBER || readedp < 0)
+            if (readedp > PORTSNUMBER || readedp < 0)
                 goto invalid_range;
 
             portSelected[(uint16_t) atoi(p)] = true;
@@ -125,7 +125,7 @@ void portLine::extractPorts(void)
 
         /* the last port, eg, one,two,three, here is trapped "three" because before is not */
         readedp = atoi(p);
-        if (readedp > PORTNUMBER || readedp < 0)
+        if (readedp > PORTSNUMBER || readedp < 0)
             goto invalid_range;
 
         portSelected[(uint16_t) atoi(p)] = true;
@@ -138,14 +138,14 @@ void portLine::extractPorts(void)
 
         readedp = atoi(p);
 
-        if (readedp > PORTNUMBER || readedp < 0)
+        if (readedp > PORTSNUMBER || readedp < 0)
             goto invalid_range;
 
         p = ++dpoints;
 
         readedendp = atoi(p);
 
-        if (readedendp > PORTNUMBER || readedendp < 0)
+        if (readedendp > PORTSNUMBER || readedendp < 0)
             goto invalid_range;
 
         while (readedp < readedendp)
@@ -158,7 +158,7 @@ void portLine::extractPorts(void)
     {
         readedp = atoi(p);
 
-        if (readedp > PORTNUMBER || readedp < 0)
+        if (readedp > PORTSNUMBER || readedp < 0)
             goto invalid_range;
 
         portSelected[(uint16_t) readedp] = true;
@@ -230,6 +230,6 @@ keyword_not_found:
 
 void portLine::mergeLine(uint16_t *portarray)
 {
-    for (uint32_t i = 0; i < PORTNUMBER; ++i)
+    for (uint32_t i = 0; i < PORTSNUMBER; ++i)
         if (portSelected[i]) portarray[i] = OrValue;
 }

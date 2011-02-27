@@ -124,12 +124,6 @@ public:
 
     }
 
-    virtual void mangleIncoming(const Packet &incompkt)
-    {
-        /* used as testing */
-        incompkt.ip->id = 1;
-    }
-
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
         pLH.completeLog("verifing condition for id %d datalen %d total len %d",

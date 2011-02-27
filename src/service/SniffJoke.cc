@@ -385,7 +385,7 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
 
         sscanf(cmd, "set %u %u %u", &start_port, &end_port, &value);
 
-        if (start_port < 0 || start_port > PORTNUMBER || end_port < 0 || end_port > PORTNUMBER)
+        if (start_port < 0 || start_port > PORTSNUMBER || end_port < 0 || end_port > PORTSNUMBER)
             goto handle_error;
 
         if (start_port > end_port)
@@ -396,7 +396,7 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
     else if (!memcmp(cmd, "clear", strlen("clear")))
     {
         uint8_t clearPortValue = FREQ_NONE;
-        handleCmdSet(0, PORTNUMBER, clearPortValue);
+        handleCmdSet(0, PORTSNUMBER, clearPortValue);
     }
 #endif
     else if (!memcmp(cmd, "debug", strlen("debug")))
@@ -501,9 +501,9 @@ void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
 {
     LOG_VERBOSE("set TCP ports from %d to %d at %d strenght level", start, end, what);
 
-    if (end == PORTNUMBER)
+    if (end == PORTSNUMBER)
     {
-        userconf.runconfig.portconf[PORTNUMBER - 1] = what;
+        userconf.runconfig.portconf[PORTSNUMBER - 1] = what;
         --end;
     }
 
@@ -543,11 +543,11 @@ void SniffJoke::writeSJPortStat(uint8_t type)
 
     prev_kind = userconf.runconfig.portconf[1];
 
-    for (uint32_t i = 1; i < PORTNUMBER; ++i)
+    for (uint32_t i = 0; i < PORTSNUMBER; ++i)
     {
         if (userconf.runconfig.portconf[i] != prev_kind)
         {
-            accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
+            accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i, prev_kind);
 
             if (accumulen > sizeof(io_buf) )
                 RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
@@ -557,7 +557,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
         }
     }
 
-    accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, PORTNUMBER, prev_kind);
+    accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, PORTSNUMBER, prev_kind);
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;

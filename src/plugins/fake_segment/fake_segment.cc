@@ -103,15 +103,10 @@ public:
         }
     }
 
-    virtual void mangleIncoming(const Packet &incompkt)
-    {
-        /* used as testing */
-        incompkt.ip->id = 1;
-    }
-
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        return (origpkt.tcppayload != NULL);
+        return (origpkt.proto == TCP &&
+                origpkt.tcppayload != NULL);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

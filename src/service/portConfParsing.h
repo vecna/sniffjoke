@@ -45,7 +45,7 @@ private:
     uint32_t linelen;
 
     uint16_t OrValue;
-    bool portSelected[PORTNUMBER];
+    bool portSelected[PORTSNUMBER];
 
     void fixPointer(void);
 

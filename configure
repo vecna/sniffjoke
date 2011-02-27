@@ -16651,7 +16651,7 @@ ac_config_files="$ac_config_files Makefile src/Makefile src/service/Makefile src
 
 
 
-CFLAGS="-O3 -ansi -pedantic -Wall -Wno-variadic-macros"
+CFLAGS="-g -ansi -pedantic -Wall -Wno-variadic-macros"
 CXXFLAGS="$CFLAGS"
 
 cat >confcache <<\_ACEOF

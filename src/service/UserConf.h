@@ -58,7 +58,7 @@ struct sj_cmdline_opts
 };
 
 /* those are the value used for track port strength of TCP coverage */
-#define PORTNUMBER          65535
+#define PORTSNUMBER          65535
 
 #define SCRAMBLE_TTL        1
 #define SCRAMBLE_CHECKSUM   2
@@ -98,7 +98,7 @@ struct sj_config
     /* END OF COMMON PART WITH sj_cmdline_opt */
 
     /* mangling policies */
-    uint16_t portconf[PORTNUMBER];
+    uint16_t portconf[PORTSNUMBER];
     IPListMap *whitelist;
     IPListMap *blacklist;
 

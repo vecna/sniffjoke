@@ -98,7 +98,6 @@ public:
     };
 
     virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
-    virtual void mangleIncoming(const Packet &) = 0;
 
     virtual bool Condition(const Packet &, uint8_t availableScramble)
     {
@@ -109,6 +108,19 @@ public:
     {
         return true;
     };
+
+    virtual void mangleIncoming(Packet &pkt)
+    {
+        /* used as testing */
+        pkt.ip->id = 1;
+        pkt.fixSum();
+    };
+
+    virtual void reset(void)
+    {
+        removeOrigPkt = false;
+        pktVector.clear();
+    }
 
     vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
     vector<cacheRecord *>::iterator cacheCreate(const Packet &);

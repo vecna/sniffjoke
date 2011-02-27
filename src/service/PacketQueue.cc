@@ -205,7 +205,7 @@ Packet* PacketQueue::getSource(source_t requestSrc)
         next_pkt = next_pkt->next;
 
         if(cur_pkt->source == requestSrc)
-            return cur_pkt;
+            return cur_pkt; /* FOUND */
     }
-    return NULL;
+    return NULL; /* NOT FOUND */
 }

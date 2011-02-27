@@ -87,15 +87,10 @@ public:
         }
     }
 
-    virtual void mangleIncoming(const Packet &incompkt)
-    {
-        /* used as testing */
-        incompkt.ip->id = 1;
-    }
-
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        return (origpkt.tcp->syn &&
+        return (origpkt.proto == TCP &&
+                origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
                 !origpkt.tcp->fin);
     }

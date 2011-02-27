@@ -157,8 +157,7 @@ bool TCPTrack::analyzeOutgoing(Packet &pkt)
 {
     ++(sessiontrack_map.get(pkt).packet_number);
 
-    /* reming: TTL_BRUTEGORCE is the default for every ttlfocus obj */
-    if (ttlfocus_map.get(pkt).status == TTL_BRUTEFORCE)
+    if (pkt.proto == TCP && ttlfocus_map.get(pkt).status == TTL_BRUTEFORCE)
     {
         p_queue.remove(pkt);
         p_queue.insert(pkt, KEEP);
@@ -262,10 +261,13 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
      */
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
-    const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-    if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
+    if (pkt.proto == TCP)
     {
-        retval |= SCRAMBLE_TTL;
+        const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
+        if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
+        {
+            retval |= SCRAMBLE_TTL;
+        }
     }
 
     return retval;
@@ -332,7 +334,7 @@ void TCPTrack::injectHack(Packet &origpkt)
         applicable &= percentage(
                                  sessiontrack.packet_number,
                                  hppe->selfObj->hackFrequency,
-                                 runconfig.portconf[ntohs(origpkt.tcp->dest)]
+                                 origpkt.proto == TCP ? runconfig.portconf[ntohs(origpkt.tcp->dest)] : AGG_ALWAYS
                                  );
 
         if (applicable)
@@ -410,13 +412,9 @@ void TCPTrack::injectHack(Packet &origpkt)
         }
 
         if (hppe->selfObj->removeOrigPkt == true)
-        {
             removeOrig = true;
-            /* reset the shared variable to the default */
-            hppe->selfObj->removeOrigPkt = false;
-        }
 
-        hppe->selfObj->pktVector.clear();
+        hppe->selfObj->reset();
     }
 
     /*
@@ -578,8 +576,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
 
     Packet *pkt;
 
-    p_queue.select(SEND);
-    while ((pkt = p_queue.get()) != NULL)
+    for (p_queue.select(SEND); ((pkt = p_queue.get()) != NULL);)
     {
         if (pkt->source & mask)
         {
@@ -596,19 +593,19 @@ bool TCPTrack::notifyIncoming(Packet &incompkt)
 {
     bool removeOrig = false;
 
-    /* SessionTrack &sessiontrack = sessiontrack_map.get(incompkt); */
+    incompkt.SELFLOG("Original packet - before incoming mangle");
 
-    incompkt.SELFLOG("Original packet - before incoming Mangle");
-
-    /* All the plugin have notified the incoming packet, simply, if 
-     * the plugin don't need to check them, it return immediatly */
+    /*
+     * All plugins are notified at the arrival of an incoming packet;
+     * if a plugin does not need this notification simply can return immediatly.
+     */
     for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
     {
         PluginTrack *hppe = *it;
 
         hppe->selfObj->mangleIncoming(incompkt);
 
-        /* will be rare that mangleIncoming generare one or more packet, anyway is possibile */
+        /* it will be rare for a hack mangleIncoming to generate one or more packet, anyway we keep this possibility possible */
         for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
         {
             Packet &injpkt = **hack_it;
@@ -648,13 +645,9 @@ bool TCPTrack::notifyIncoming(Packet &incompkt)
         }
 
         if (hppe->selfObj->removeOrigPkt == true)
-        {
             removeOrig = true;
-            /* reset the shared variable to the default */
-            hppe->selfObj->removeOrigPkt = false;
-        }
 
-        hppe->selfObj->pktVector.clear();
+        hppe->selfObj->reset();
     }
 
     /*
@@ -663,11 +656,14 @@ bool TCPTrack::notifyIncoming(Packet &incompkt)
      */
     if (removeOrig == true)
     {
-        incompkt.SELFLOG("Removing packet as request by the incoming manlger");
+        incompkt.SELFLOG("removing packet as requested by the incoming mangler");
         return false;
     }
     else
+    {
+        incompkt.SELFLOG("original packet - after incoming mangle");
         return true;
+    }
 }
 
 /*
@@ -692,7 +688,7 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
             return true;
 
         /* if is not tracked, the user is making a tcptraceroute */
-        if( (it = ttlfocus_map.find(badiph->daddr)) == ttlfocus_map.end() )
+        if ((it = ttlfocus_map.find(badiph->daddr)) == ttlfocus_map.end())
             return true;
 
         ttlfocus = it->second;
@@ -735,23 +731,18 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
         }
     }
 
-    /* if is not a TCP packet will not be useful for our */
-    if(pkt.proto != TCP)
-        return true;
-
-    /* if is a TCP packet will contain important TTL information: 
-     * ONLY if is already tracked */
-    if( (it = ttlfocus_map.find(pkt.ip->daddr)) == ttlfocus_map.end() )
+    /* a tracked TCP packet contains important TTL informations */
+    if ((pkt.proto != TCP || (it = ttlfocus_map.find(pkt.ip->daddr)) == ttlfocus_map.end()))
         return true;
 
     ttlfocus = it->second;
 
     /* a SYN ACK will be the answer at our probe! */
-    if (pkt.tcp->syn && pkt.tcp->ack && (pkt.tcp->dest == htons(ttlfocus->puppet_port)) )
+    if (pkt.tcp->syn && pkt.tcp->ack && (pkt.tcp->dest == htons(ttlfocus->puppet_port)))
     {
         if (ttlfocus->status != TTL_BRUTEFORCE)
         {
-            pkt.SELFLOG("weird: SYN+ACK from the puppet port in a session outside BForce");
+            pkt.SELFLOG("weird: SYN+ACK from the puppet port in a session outside ttl bruteforce");
             return false;
         }
         /*
@@ -777,10 +768,10 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
 
         ttlfocus->status = TTL_KNOWN;
 
-        pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d", 
-            ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
-        ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d", 
-            ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+        pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+        ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                          ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
 
         return false;
     }
@@ -821,7 +812,7 @@ void TCPTrack::handleYoungPackets()
 
     if (runconfig.active)
     {
-        for( p_queue.select(YOUNG); ((pkt = p_queue.getSource(NETWORK)) != NULL); )
+        for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(NETWORK)) != NULL);)
         {
             /*
              * If is a packet triggered by the TTL_BRUTEFORCE's probe
@@ -829,19 +820,18 @@ void TCPTrack::handleYoungPackets()
              * Every incoming packet will have TTL information to update,
              * extractTTLinfo is a static member fixing the internal MAP
              */
-            if(!extractTTLinfo(*pkt))
+            if (!extractTTLinfo(*pkt))
             {
                 p_queue.remove(*pkt);
-                delete &pkt;
+                delete pkt;
                 continue;
             }
 
-            /* handling of mangleIncoming, is like the injectHack but
-             * related to incoming packet */
-            if(!notifyIncoming(*pkt))
+            /* here we notify each plugin of the arrival of a packet */
+            if (!notifyIncoming(*pkt))
             {
                 p_queue.remove(*pkt);
-                delete &pkt;
+                delete pkt;
                 continue;
             }
 
@@ -849,20 +839,20 @@ void TCPTrack::handleYoungPackets()
             p_queue.insert(*pkt, SEND);
         }
 
-        for( p_queue.select(YOUNG); ((pkt = p_queue.getSource(TUNNEL)) != NULL); )
+        for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
         {
-            /* the packet of a session under bruteforce is switched in KEEP queue */
-            if (pkt->proto != TCP)
+
+            if (runconfig.use_blacklist && runconfig.blacklist->isPresent(pkt->ip->daddr))
                 continue;
 
-            if (runconfig.use_blacklist && runconfig.blacklist->isPresent(pkt->ip->daddr) )
+            if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr))
                 continue;
 
-            if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr) )
-                continue;
-
-            /* return true when the packet is ready to be SEND */
-            if(analyzeOutgoing(*pkt))
+            /*
+             * return true when the packet is ready to be SEND;
+             * the packet of a session under bruteforce is switched in KEEP queue.
+             */
+            if (analyzeOutgoing(*pkt))
             {
                 /* change the TTL and fix the checksum */
                 lastPktFix(*pkt);
@@ -871,7 +861,7 @@ void TCPTrack::handleYoungPackets()
     }
 
     /* calling again the same p_queue.select act as "rewind" in the queue index */
-    for( p_queue.select(YOUNG); ((pkt = p_queue.get()) != NULL); )
+    for (p_queue.select(YOUNG); ((pkt = p_queue.get()) != NULL);)
     {
         p_queue.remove(*pkt);
         p_queue.insert(*pkt, SEND);
@@ -882,15 +872,13 @@ void TCPTrack::handleKeepPackets()
 {
     /* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
     Packet *pkt = NULL;
-    p_queue.select(KEEP);
-    while ((pkt = p_queue.get()) != NULL)
+    for (p_queue.select(KEEP); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
         {
             p_queue.remove(*pkt);
             if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
-
             else
                 RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
         }
@@ -904,17 +892,12 @@ void TCPTrack::handleSendPackets()
     {
         /* for every packet in SEND queue we insert some random hacks */
         Packet *pkt = NULL;
-
-        p_queue.select(SEND);
-        while ((pkt = p_queue.getSource(TUNNEL)) != NULL)
+        for (p_queue.select(SEND); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
         {
-            if (pkt->proto != TCP)
+            if (runconfig.use_blacklist && runconfig.blacklist->isPresent(pkt->ip->daddr))
                 continue;
 
-            if (runconfig.use_blacklist && runconfig.blacklist->isPresent(pkt->ip->daddr) )
-                continue;
-
-            if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr) )
+            if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr))
                 continue;
 
             injectHack(*pkt);
@@ -949,7 +932,7 @@ void TCPTrack::analyzePacketQueue()
 
     handleYoungPackets();
     handleKeepPackets();
-    handleSendPackets();
+    //handleSendPackets();
 
 bypass_queue_analysis:
 

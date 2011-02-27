@@ -35,9 +35,9 @@ class SessionTrack
 public:
     time_t access_timestamp; /* access timestamp used to decretee expiry */
 
-    const uint32_t daddr;
-    const uint16_t sport;
-    const uint16_t dport;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
 
     uint32_t packet_number;
     uint32_t injected_pktnumber;
@@ -52,9 +52,9 @@ public:
 class SessionTrackKey
 {
 public:
-    const uint32_t daddr;
-    const uint16_t sport;
-    const uint16_t dport;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
 
     bool operator<(SessionTrackKey) const;
 };

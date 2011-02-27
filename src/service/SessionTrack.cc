@@ -30,12 +30,21 @@ using namespace std;
 SessionTrack::SessionTrack(const Packet &pkt) :
 access_timestamp(0),
 daddr(pkt.ip->daddr),
-sport(pkt.tcp->source),
-dport(pkt.tcp->dest),
 packet_number(0),
 injected_pktnumber(0)
 {
     SELFLOG("");
+
+    if (pkt.proto == TCP)
+    {
+        sport = pkt.tcp->source;
+        dport = pkt.tcp->dest;
+    }
+    else
+    {
+        sport = 0;
+        dport = 0;
+    }
 }
 
 SessionTrack::~SessionTrack()
@@ -106,7 +115,16 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
     SessionTrack *sessiontrack;
 
     /* create map key */
-    const SessionTrackKey key = {pkt.ip->daddr, pkt.tcp->source, pkt.tcp->dest};
+    SessionTrackKey key;
+    key.daddr = pkt.ip->daddr;
+    if (pkt.proto == TCP)
+    {
+        key.sport = pkt.tcp->source;
+        key.dport = pkt.tcp->dest;
+    } else {
+        key.sport = 0;
+        key.dport = 0;
+    }
 
     /* check if the key it's already present */
     SessionTrackMap::iterator it = find(key);

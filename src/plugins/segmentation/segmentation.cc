@@ -128,12 +128,6 @@ public:
         removeOrigPkt = true;
     }
 
-    virtual void mangleIncoming(const Packet &incompkt)
-    {
-        /* used as testing */
-        incompkt.ip->id = 1;
-    }
-
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
@@ -141,7 +135,9 @@ public:
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
                          origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
 
-        if ((origpkt.tcppayload != NULL) && (origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD))
+        if (origpkt.proto == TCP &&
+            origpkt.tcppayload != NULL &&
+            origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
             return true;
 
         return false;
