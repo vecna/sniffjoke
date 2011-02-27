@@ -48,21 +48,6 @@
 #include "Packet.h"
 #include "Debug.h"
 
-uint8_t HDRoptions::m_IPOPT_NOOP(void)
-{
-#define IPOPT_NOOP_SIZE 1
-
-    if (corrupt) /* this option never corrupts the packet */
-        return 0;
-
-    if (available_opts_len < IPOPT_NOOP_SIZE)
-        return 0;
-
-    optptr[0] = IPOPT_NOOP;
-
-    return IPOPT_NOOP_SIZE;
-}
-
 uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
 {
     /*
@@ -474,39 +459,24 @@ uint8_t HDRoptions::m_IPOPT_SID(void)
  * TCP OPTIONS 
  */
 
-uint8_t HDRoptions::m_TCPOPT_TIMESTAMP(void)
+uint8_t HDRoptions::m_TCPOPT_PAWSCORRUPT(void)
 {
-    return 0;
-}
+#define TCPOPT_TIMESTAMP_SIZE 10
 
-uint8_t HDRoptions::m_TCPOPT_EOL(void)
-{
-    return 0;
-}
+    if (!corrupt)
+        return 0;
 
-uint8_t HDRoptions::m_TCPOPT_NOP(void)
-{
-    return 0;
-}
+    if (available_opts_len < TCPOPT_TIMESTAMP_SIZE)
+        return 0;
 
-uint8_t HDRoptions::m_TCPOPT_MAXSEG(void)
-{
-    return 0;
-}
+    optptr[0] = TCPOPT_TIMESTAMP;
+    optptr[1] = TCPOPT_TIMESTAMP_SIZE;
 
-uint8_t HDRoptions::m_TCPOPT_WINDOW(void)
-{
-    return 0;
-}
+    *(uint32_t *) &optptr[2] = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
 
-uint8_t HDRoptions::m_TCPOPT_SACK_PERMITTED(void)
-{
-    return 0;
-}
+    memset_random(&optptr[6], 4);
 
-uint8_t HDRoptions::m_TCPOPT_SACK(void)
-{
-    return 0;
+    return TCPOPT_TIMESTAMP_SIZE;
 }
 
 /*
@@ -524,30 +494,27 @@ bool HDRoptions::checkIPOPTINJPossibility(void)
         switch (*option)
         {
         case IPOPT_END:
-            if (corrupt) /* on corrupt : end can be stripped off */
-                *option = IPOPT_NOOP;
-            ++i;
-            continue;
+            break;
         case IPOPT_NOOP:
             ++i;
             continue;
         case IPOPT_TIMESTAMP:
-            opt_ip_timestamp = true; /* on !corrupt : we can't inject timestamp if just present */
+            opt_ip_timestamp = true;
             goto ip_opts_len_check;
         case IPOPT_RR:
-            opt_ip_rr = true; /* on !corrupt : we can't inject record route if just present */
+            opt_ip_rr = true;
             goto ip_opts_len_check;
         case IPOPT_RA:
-            opt_ip_ra = true; /* on !corrupt : we can't inject record route if just present */
+            opt_ip_ra = true;
             goto ip_opts_len_check;
         case IPOPT_CIPSO:
-            opt_ip_cipso = true; /* on !corrupt : we can't inject cipso if just present */
+            opt_ip_cipso = true;
             goto ip_opts_len_check;
         case IPOPT_SEC:
-            opt_ip_sec = true; /* on !corrupt : we can't inject sec if just present */
+            opt_ip_sec = true;
             goto ip_opts_len_check;
         case IPOPT_SID:
-            opt_ip_sid = true; /* on !corrupt : we can't inject sid if just present */
+            opt_ip_sid = true;
             goto ip_opts_len_check;
 ip_opts_len_check:
         default:
@@ -581,19 +548,12 @@ bool HDRoptions::checkTCPOPTINJPossibility(void)
         switch (*option)
         {
         case TCPOPT_EOL:
-            if (corrupt) /* on corrupt : eol can be stripped off */
-                *option = TCPOPT_NOP;
-            ++i;
-            continue;
+            break;
         case TCPOPT_NOP:
             ++i;
             continue;
-        case TCPOPT_MAXSEG:
-        case TCPOPT_WINDOW:
-        case TCPOPT_SACK_PERMITTED:
-        case TCPOPT_SACK:
-            if (!corrupt) /* on !corrupt : we always avoid to inject if this options ar present */
-                return false;
+        case TCPOPT_TIMESTAMP:
+            opt_ip_timestamp = true;
             goto tcp_opts_len_check;
 tcp_opts_len_check:
         default:
@@ -659,13 +619,9 @@ bool HDRoptions::randomInjector(void)
 
     if (type == IPOPTS_INJECTOR)
     {
-        /* random value between 0 and SJ_IPOPT_SID (last option) */
+        /* random value between 0 and last option */
         switch (random() % (SJ_IPOPT_SID + 1))
         {
-        case SJ_IPOPT_NOOP:
-            optstr = "NOOP";
-            injectetdopt_size = m_IPOPT_NOOP();
-            break;
         case SJ_IPOPT_TIMESTAMP:
             optstr = "TIMESTAMP";
             injectetdopt_size = m_IPOPT_TIMESTAMP();
@@ -699,29 +655,12 @@ bool HDRoptions::randomInjector(void)
     }
     else
     {
-        /* random value between 0 and SJ_TCPOPT_SACK (last option) */
-        switch (random() % (SJ_TCPOPT_SACK + 1))
+        /* random value between 0 and last option */
+        switch (random() % (SJ_TCPOPT_PAWSCORRUPT + 1))
         {
-        case SJ_TCPOPT_EOL:
-            injectetdopt_size = m_TCPOPT_EOL();
-            break;
-        case SJ_TCPOPT_NOP:
-            injectetdopt_size = m_TCPOPT_NOP();
-            break;
-        case SJ_TCPOPT_TIMESTAMP:
-            injectetdopt_size = m_TCPOPT_TIMESTAMP();
-            break;
-        case SJ_TCPOPT_MAXSEG:
-            injectetdopt_size = m_TCPOPT_MAXSEG();
-            break;
-        case SJ_TCPOPT_WINDOW:
-            injectetdopt_size = m_TCPOPT_WINDOW();
-            break;
-        case SJ_TCPOPT_SACK_PERMITTED:
-            injectetdopt_size = m_TCPOPT_SACK_PERMITTED();
-            break;
-        case SJ_TCPOPT_SACK:
-            injectetdopt_size = m_TCPOPT_SACK();
+        case SJ_TCPOPT_PAWSCORRUPT:
+            optstr = "PAWSCORRUPT";
+            injectetdopt_size = m_TCPOPT_PAWSCORRUPT();
             break;
         }
     }

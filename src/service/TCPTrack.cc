@@ -147,7 +147,174 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
 }
 
 /*
+<<<<<<< HEAD:src/service/TCPTrack.cc
  * this function analyze outgoing packets.returns:
+=======
+ * analyzes an incoming icmp packet.
+ * at the moment, the unique icmp packet analyzed is the ICMP_TIME_EXCEEDED;
+ * a TIME_EXCEEDED packet should contain informations to discern HOP distance
+ * from a remote host.
+ */
+bool TCPTrack::analyzeIncomingICMP(Packet &pkt)
+{
+    if (pkt.icmp->type != ICMP_TIME_EXCEEDED)
+        return true;
+
+    const struct iphdr * const badiph = (struct iphdr *) ((unsigned char *) pkt.icmp + sizeof (struct icmphdr));
+    const struct tcphdr * const badtcph = (struct tcphdr *) ((unsigned char *) badiph + (badiph->ihl * 4));
+
+    if (badiph->protocol == IPPROTO_TCP)
+    {
+        /*
+         * here we call the find() method of std::map because
+         * we want to test the ttl existence and NEVER NEVER NEVER create a new one
+         * to not permit an external packet to force us to activate a ttlbrouteforce session.
+         * This is not a real sentence, due to the reason to have a stateless
+         * behaviour we can start a ttlprobe stage (and also initialize a session)
+         * for every packets we will output (not input);
+         *
+         * for example we could start a ttlbrobe also if we receive a syn from the network
+         * and our kernel schedule a response packet.
+         * I don't think this a problem due to the strong control implementation on the map size.
+         */
+        TTLFocusMap::iterator it = ttlfocus_map.find(badiph->daddr);
+        if (it != ttlfocus_map.end())
+        {
+
+            TTLFocus *ttlfocus = it->second;
+
+            const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
+            const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
+
+            if (expired_ttl == exp_double_check)
+            {
+                if (ttlfocus->status == TTL_BRUTEFORCE)
+                {
+                    pkt.SELFLOG("puppet %d Incoming ICMP EXPIRED, generated from %d",
+                                ttlfocus->puppet_port, expired_ttl);
+
+                    ttlfocus->received_probe++;
+
+                    /*
+                     * every time a time exceded it's received. if the MAXTTLPROBE has
+                     * been reached (ttlfocus->probe_timeout != 0), the probe_timeout
+                     * it's resetted.
+                     */
+                    if (ttlfocus->probe_timeout)
+                        ttlfocus->probe_timeout = sj_clock + 2;
+
+                    if (expired_ttl >= ttlfocus->ttl_estimate)
+                    {
+                        /*
+                         * if we are changing our estimation due to an expired
+                         * we have to set status = TTL_UNKNOWN
+                         * this is important to permit recalibration.
+                         */
+                        ttlfocus->status = TTL_UNKNOWN;
+                        ttlfocus->ttl_estimate = expired_ttl + 1;
+                    }
+                }
+
+                /*
+                 * the expired icmp scattered due to our ttl probes,
+                 * so we can trasparently remove it.
+                 */
+                p_queue.remove(pkt);
+                delete &pkt;
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+/*
+ * this function analyzes the ttl of an incoming tcp packet to discriminate
+ * a topology hop change;
+ * at the time it's only used for stat's reasons.
+ */
+void TCPTrack::analyzeIncomingTCPTTL(Packet &pkt)
+{
+    /*
+     * here we call the find() mathod of std::map because
+     * we want to test the ttl existence and NEVER NEVER NEVER create a new one
+     * to not permit an external packet to force us to activate a ttlbrouteforce session
+     */
+    TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
+    if (it != ttlfocus_map.end())
+    {
+        TTLFocus *ttlfocus = it->second;
+        if (ttlfocus->status == TTL_KNOWN && ttlfocus->ttl_synack != pkt.ip->ttl)
+        {
+            /* probably a topology change has happened - we need a solution wtf!!  */
+            pkt.SELFLOG("probable net topology change! #probe %u [ttl_estimate %u synack ttl %u this %u]",
+                        ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->ttl_synack, pkt.ip->ttl);
+        }
+    }
+}
+
+/*
+ * this function analyze the TCP syn+ack;
+ * in the ttlbruteforce stage a syn + ack will be bringer of a ttl information.
+ * if the received packet
+ * matches the puppet port used for the current ttlbruteforce session we can 
+ * discern the ttl as:
+ *     
+ *     unsigned char discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
+ *
+ * this because the sequence number used in the TTL bruteforce has hardcoded the
+ * number of the TTL.
+ */
+bool TCPTrack::analyzeIncomingTCPSynAck(Packet &pkt)
+{
+    /*
+     * here we call the find() mathod of std::map for the same reason as for
+     * the analyze_incoming_icmp() routine.
+     * refer to comments inside analyze_incoming_icmp().
+     */
+    TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->saddr);
+    if (it != ttlfocus_map.end())
+    {
+        TTLFocus * const ttlfocus = it->second;
+
+        if (pkt.tcp->dest == htons(ttlfocus->puppet_port))
+        {
+            if (ttlfocus->status == TTL_BRUTEFORCE)
+            {
+                uint8_t discern_ttl = ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
+
+                ++ttlfocus->received_probe;
+
+                if (discern_ttl < ttlfocus->ttl_estimate)
+                {
+                    ttlfocus->ttl_estimate = discern_ttl;
+                    ttlfocus->ttl_synack = pkt.ip->ttl;
+                }
+
+                ttlfocus->status = TTL_KNOWN;
+
+                pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                            ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+                ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                                  ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+            }
+            /*
+             * the syn+ack scattered due to our ttl probes,
+             * so we can trasparently remove it
+             */
+            p_queue.remove(pkt);
+            delete &pkt;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/*
+ * this function analyze outgoing packets.
+ * returns:
  *   - true if the packet could be SEND;
  *   - false if the bruteforce stage is active.
  *     in this case, the packet is mark as KEEP
@@ -484,11 +651,24 @@ bool TCPTrack::lastPktFix(Packet &pkt)
      */
     if (pkt.wtf == MALFORMED)
     {
-        /* IP options, every packet subject if possible, and MALFORMED will be applied */
-        if (!(pkt.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+        bool malformed = false;
+        if (pkt.ipfragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
         {
-            pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
+            if (!(pkt.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+                pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
+            else
+                malformed = true;
+        }
+        else
+        {
+            if (!(pkt.injectTCPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+                pkt.SELFLOG("injectTCPOpts failed to corrupt pkt");
+            else
+                malformed = true;
+        }
 
+        if (!malformed)
+        {
             if (ISSET_CHECKSUM(pkt.choosableScramble))
                 pkt.wtf = GUILTY;
             else
@@ -525,6 +705,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 drop_packet:
     pkt.SELFLOG("packet dropped: unable to apply fix before sending");
     delete &pkt;
+
     return false;
 }
 
@@ -540,6 +721,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
     }
     catch (exception &e)
     {
+
         /* anomalous/malformed packets are flushed bypassing the queue */
         LOG_ALL("malformed original packet dropped: %s", e.what());
     }
@@ -564,6 +746,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
         if (pkt->source & mask)
         {
             p_queue.remove(*pkt);
+
             return pkt;
         }
     }
@@ -796,6 +979,7 @@ void TCPTrack::handleKeepPackets()
             p_queue.remove(*pkt);
             if (lastPktFix(*pkt))
                 p_queue.insert(*pkt, SEND);
+
             else
                 RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
         }
