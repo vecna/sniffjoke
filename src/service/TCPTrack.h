@@ -45,12 +45,7 @@ private:
 
     uint8_t discernAvailScramble(Packet &);
 
-    /* this functions are called inside analyze_packets_queue;
-     * boolean functions return true if the packet must be sended */
-    bool analyzeIncomingICMP(Packet &);
-    void analyzeIncomingTCPTTL(Packet &);
-    bool analyzeIncomingTCPSynAck(Packet &);
-    bool analyzeIncomingTCPRstFin(Packet &);
+    bool extractTTLinfo(Packet &);
     bool analyzeOutgoing(Packet &);
 
     void handleYoungPackets();
@@ -59,6 +54,7 @@ private:
 
     void injectTTLProbe(TTLFocus &);
     void injectHack(Packet &);
+    bool notifyIncoming(Packet &);
     bool lastPktFix(Packet &);
     
     void execTTLBruteforces();

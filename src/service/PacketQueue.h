@@ -49,6 +49,7 @@ public:
     void remove(Packet &);
     void select(queue_t);
     Packet* get();
+    Packet* getSource(source_t);
     uint32_t size() { return pkt_count; };
 };
 
