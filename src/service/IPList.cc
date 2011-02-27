@@ -114,14 +114,18 @@ void IPListMap::load()
 
     do
     {
+        tmp_a = tmp_b = tmp_c = 0;
         memset(record, 0x00, MEDIUMBUF);
+
         fgets(record, sizeof (record), IPfileP);
 
         if (record[0] == '#' || strlen(record) < 7)
             continue;
 
-        sscanf(record, "%s,%2x,%2x,%2x\n", tmp_ip, &tmp_a, &tmp_b, &tmp_c);
-        LOG_VERBOSE("importing record %d: %s,%02x,%02x,%02x", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
+        printf("[%s]\n", record);
+        sscanf(record, "%s %u,%u,%u", tmp_ip, &tmp_a, &tmp_b, &tmp_c);
+        LOG_VERBOSE("importing record %d: %s %u,%u,%u", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
+        printf("XXXX record %d: {%s %u,%u,%u}\n", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
 
         /* the value in tmp_* are not used at the moment */
         add(inet_addr(tmp_ip), (uint8_t) tmp_a, (uint8_t) tmp_b, (uint8_t) tmp_c);
@@ -148,7 +152,7 @@ void IPListMap::dump()
     {
         IPList *tmp = &(*it->second);
 
-        snprintf(record, sizeof (record), "%s,%02x,%02x,%02x\n", inet_ntoa(*((struct in_addr *) &(tmp->ip))), tmp->a, tmp->b, tmp->c);
+        snprintf(record, sizeof (record), "%s %u,%u,%u\n", inet_ntoa(*((struct in_addr *) &(tmp->ip))), tmp->a, tmp->b, tmp->c);
 
         if (fwrite(&record, strlen(record), 1, IPfileP) != 1)
         {

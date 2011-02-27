@@ -48,8 +48,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
 
     if (fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL)
     {
-        RUNTIME_EXCEPTION("hack plugin %s lack of packet mangling object",
-                          plugabspath);
+        RUNTIME_EXCEPTION("hack plugin %s lack of packet mangling object", plugabspath);
     }
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))

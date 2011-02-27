@@ -98,6 +98,7 @@ public:
     };
 
     virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
+    virtual void mangleIncoming(const Packet &) = 0;
 
     virtual bool Condition(const Packet &, uint8_t availableScramble)
     {

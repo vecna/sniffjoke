@@ -119,6 +119,12 @@ public:
         removeOrigPkt = true;
     }
 
+    virtual void mangleIncoming(const Packet &incompkt)
+    {
+        /* used as testing */
+        incompkt.ip->id = 1;
+    }
+
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)

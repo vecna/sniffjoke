@@ -61,6 +61,12 @@ public:
         pktVector.push_back(pkt);
     }
 
+    virtual void mangleIncoming(const Packet &incompkt)
+    {
+        /* used as testing */
+        incompkt.ip->id = 1;
+    }
+
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
         return (!origpkt.tcp->syn &&
