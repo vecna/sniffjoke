@@ -73,7 +73,7 @@ enum size_buf_t
  */
 extern time_t sj_clock;
 
-#define RANDOMPERCENT(percent) (random() % 100 <= percent)
+#define RANDOMPERCENT(percent) ( (uint32_t)random() % 100 <= percent)
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 #define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
 std::runtime_error runtime_exception(const char *, const char *, int32_t, const char *, ...);
