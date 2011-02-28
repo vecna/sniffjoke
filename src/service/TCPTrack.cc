@@ -146,32 +146,25 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     return ( ((uint32_t) random() % 100) < aggressivity_percentage);
 }
 
-/*
- * this function analyze outgoing packets.
- * returns:
- *   - true if the packet could be SEND;
- *   - false if the bruteforce stage is active.
- *     in this case, the packet is mark as KEEP
- */
-bool TCPTrack::analyzeOutgoing(Packet &pkt)
+uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 {
-    ++(sessiontrack_map.get(pkt).packet_number);
-
-
     /*
-     * FIXME: analyzeOutgoing it's called on TCP and UDP,
-     * but ATM we can put TCP only in KEEP status because
-     * due to the actual ttlbruteforce implementation a
-     * pure UDP flaw could go in starvation.
+     * TODO - when we will integrate passive os fingerprint and
+     * we will do a a clever study about different OS answers about
+     * IP option, for every OS we will have or not the related support
      */
-    if (pkt.proto == TCP && ttlfocus_map.get(pkt).status == TTL_BRUTEFORCE)
+    uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
+
+    if (pkt.proto == TCP)
     {
-        p_queue.remove(pkt);
-        p_queue.insert(pkt, KEEP);
-        return false;
+        const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
+        if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
+        {
+            retval |= SCRAMBLE_TTL;
+        }
     }
 
-    return true;
+    return retval;
 }
 
 /* 
@@ -227,7 +220,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
             injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 
             injpkt->fixIpTcpSum();
-            p_queue.insert(*injpkt, SEND);
+            p_queue.insert(*injpkt, HACK);
 
             /* the next ttl probe schedule is forced in the next cycle */
             ttlfocus.next_probe_time = sj_clock;
@@ -241,6 +234,129 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         break;
     }
 }
+
+/*
+ * in extraceTTLinfo we call the find() mathod of std::map because
+ * we want to test the ttl existence and NEVER NEVER NEVER create a new one
+ * to not permit an external packet to force us to activate a ttlbrouteforce session
+ */
+bool TCPTrack::extractTTLinfo(Packet &pkt)
+{
+    TTLFocusMap::iterator it;
+    TTLFocus *ttlfocus;
+
+    /* if the pkt is an ICMP TIME_EXCEEDED should contain informations useful for
+     * discern HOP distance from a remote host.  */
+    if (pkt.proto == ICMP && pkt.icmp->type != ICMP_TIME_EXCEEDED)
+    {
+        const struct iphdr * const badiph = (struct iphdr *) ((unsigned char *) pkt.icmp + sizeof (struct icmphdr));
+        const struct tcphdr * const badtcph = (struct tcphdr *) ((unsigned char *) badiph + (badiph->ihl * 4));
+
+        /* we are looking only for our TCP expired pkts */
+        if (badiph->protocol != IPPROTO_TCP)
+            return true;
+
+        /* if is not tracked, the user is making a tcptraceroute */
+        if ((it = ttlfocus_map.find(badiph->daddr)) == ttlfocus_map.end())
+            return true;
+
+        ttlfocus = it->second;
+
+        const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
+        const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
+
+        if (expired_ttl == exp_double_check)
+        {
+            if (ttlfocus->status == TTL_BRUTEFORCE)
+            {
+                pkt.SELFLOG("puppet %d Incoming ICMP EXPIRED, generated from %d",
+                            ttlfocus->puppet_port, expired_ttl);
+
+                ttlfocus->received_probe++;
+
+                /*
+                 * every time a time exceded it's received. if the MAXTTLPROBE has
+                 * been reached (ttlfocus->probe_timeout != 0), the probe_timeout
+                 * it's resetted.
+                 */
+                if (ttlfocus->probe_timeout)
+                    ttlfocus->probe_timeout = sj_clock + 2;
+
+                if (expired_ttl >= ttlfocus->ttl_estimate)
+                {
+                    /*
+                     * if we are changing our estimation due to an expired
+                     * we have to set status = TTL_UNKNOWN
+                     * this is important to permit recalibration.
+                     */
+                    ttlfocus->status = TTL_UNKNOWN;
+                    ttlfocus->ttl_estimate = expired_ttl + 1;
+                }
+            }
+
+            /* the expired icmp scattered due to our ttl probes,
+             * so we can trasparently remove it. */
+            return false;
+        }
+    }
+
+    /* a tracked TCP packet contains important TTL informations */
+    if ((pkt.proto != TCP || (it = ttlfocus_map.find(pkt.ip->daddr)) == ttlfocus_map.end()))
+        return true;
+
+    ttlfocus = it->second;
+
+    /* a SYN ACK will be the answer at our probe! */
+    if (pkt.tcp->syn && pkt.tcp->ack && (pkt.tcp->dest == htons(ttlfocus->puppet_port)))
+    {
+        if (ttlfocus->status != TTL_BRUTEFORCE)
+        {
+            pkt.SELFLOG("weird: SYN+ACK from the puppet port in a session outside ttl bruteforce");
+            return false;
+        }
+        /*
+         * this section analyze the TCP syn+ack:
+         * in the ttlbruteforce stage a syn + ack will be bringer of a ttl information.
+         * if the received packet matches the puppet port used for the current
+         * ttlbruteforce session we can discern the ttl as:
+         *
+         *     unsigned char discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
+         *
+         * this because the sequence number used in the TTL bruteforce has hardcoded the
+         * number of the TTL.
+         */
+        uint8_t discern_ttl = ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
+
+        ++ttlfocus->received_probe;
+
+        if (discern_ttl < ttlfocus->ttl_estimate)
+        {
+            ttlfocus->ttl_estimate = discern_ttl;
+            ttlfocus->ttl_synack = pkt.ip->ttl;
+        }
+
+        ttlfocus->status = TTL_KNOWN;
+
+        pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+        ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
+                          ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
+
+        return false;
+    }
+    else
+    {
+        if (ttlfocus->status == TTL_KNOWN && ttlfocus->ttl_synack != pkt.ip->ttl)
+        {
+
+            /* probably a topology change has happened - we need a solution wtf!!  */
+            pkt.SELFLOG("probable net topology change! #probe %u [ttl_estimate %u synack ttl %u this %u]",
+                        ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->ttl_synack, pkt.ip->ttl);
+        }
+        return true;
+    }
+}
+
 
 void TCPTrack::execTTLBruteforces()
 {
@@ -259,26 +375,81 @@ void TCPTrack::execTTLBruteforces()
     }
 }
 
-uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
+bool TCPTrack::notifyIncoming(Packet &origpkt)
 {
-    /*
-     * TODO - when we will integrate passive os fingerprint and
-     * we will do a a clever study about different OS answers about
-     * IP option, for every OS we will have or not the related support
-     */
-    uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
+    bool removeOrig = false;
 
-    if (pkt.proto == TCP)
+    origpkt.SELFLOG("original packet - before incoming mangle");
+
+    /*
+     * All plugins are notified at the arrival of an incoming packet;
+     * if a plugin does not need this notification simply can return immediatly.
+     */
+    for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
     {
-        const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-        if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
+        PluginTrack *hppe = *it;
+
+        hppe->selfObj->mangleIncoming(origpkt);
+
+        /* it will be rare for a hack mangleIncoming to generate one or more packet, anyway we keep this possibility possible */
+        for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
         {
-            retval |= SCRAMBLE_TTL;
+            Packet &injpkt = **hack_it;
+
+            if (!injpkt.selfIntegrityCheck(hppe->selfObj->hackName))
+            {
+                LOG_ALL("invalid packet generated by hack %s", hppe->selfObj->hackName);
+
+                injpkt.SELFLOG("bad integrity from: %s", hppe->selfObj->hackName);
+
+                /* if you are running with --debug 6, I suppose you are the developing the plugins */
+                if (runconfig.debug_level == PACKET_LEVEL)
+                    RUNTIME_EXCEPTION("invalid packet generated from the hack");
+
+                /* otherwise, the error was reported and sniffjoke continue to work */
+                delete &injpkt;
+                continue;
+            }
+
+            injpkt.mark(LOCAL, GOOD);
+
+            /* lastPktHACK is called because the checksum will not be correct */
+            if (!lastPktFix(injpkt))
+                continue;
+
+            injpkt.SELFLOG("new generated packet from the Incoming of [%s], the original will be %s",
+                           hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
+
+            /* injpkt.position) is ignored in this section because mangleIncoming
+             * is called on the YOUNG queue, and the current queue is YOUNG. a packet
+             * generated from LOCAL is not handled, and, for the moment, is better
+             * force the new queue of the injected packet in HACK. this cause that
+             * every packet generated in mangleIncoming is equal to be POSTICIPATION */
+            p_queue.insert(injpkt, HACK);
         }
+
+        if (hppe->selfObj->removeOrigPkt == true)
+            removeOrig = true;
+
+        hppe->selfObj->reset();
     }
 
-    return retval;
+    /*
+     * if almost an hack has requested incompkt deletion we drop it.
+     * this has to be done here, at the end, to maximize the effect.
+     */
+    if (removeOrig == true)
+    {
+        origpkt.SELFLOG("removing orig packet as requested by the incoming mangler");
+        return false;
+    }
+    else
+    {
+        origpkt.SELFLOG("original packet - after incoming mangle");
+        return true;
+    }
 }
+
 
 /* 
  * injectHack is one of the core function in sniffjoke:
@@ -296,7 +467,7 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
  * the latter kind of attack works forging packets with a bad tcp checksum.
  *
  */
-void TCPTrack::injectHack(Packet &origpkt)
+bool TCPTrack::injectHack(Packet &origpkt)
 {
     bool removeOrig = false;
 
@@ -361,7 +532,7 @@ void TCPTrack::injectHack(Packet &origpkt)
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
 
-    /* -- FINALLY, SEND THE CHOOSEN PACKET(S) */
+    /* -- FINALLY, HACK THE CHOOSEN PACKET(S) */
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)
     {
 
@@ -434,24 +605,25 @@ void TCPTrack::injectHack(Packet &origpkt)
         hppe->selfObj->reset();
     }
 
-    /*
-     * if almost an hack has requested origpkt deletion we drop it.
-     * this has to be done here, at the end, to maximize the effect.
-     */
+    /* if almost an hack has requested origpkt deletion we drop it. */
     if (removeOrig == true)
     {
-        origpkt.SELFLOG("Removing packet as request by the plugin");
-        p_queue.remove(origpkt);
-        delete &origpkt;
+        origpkt.SELFLOG("removing original packet as requested by an injected hack");
+        return false;
+    }
+    else
+    {
+        origpkt.SELFLOG("original packet - after hacks injection (availScramble %u)", availableScramble);
+        return true;
     }
 }
 
 /* 
- * lastPktFix is the last modification applied to packets.
+ * lastPktHACK is the last modification applied to packets.
  * modification involve only TCP packets coming from TUNNEL
  * and hacks injected in the queue to goes on the eth/wifi.
  *
- * p.s. if you are reading this piece of code for fix your sniffer:
+ * p.s. if you are reading this piece of code for HACK your sniffer:
  *   we SHALL BE YOUR NIGHTMARE.
  *   we SHALL BE YOUR NIGHTMARE.
  *   we SHALL BE YOUR NIGHTMARE, LOSE ANY HOPE, we HAD THE RANDOMNESS IN OUR SIDE.
@@ -536,7 +708,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             pkt.injectIPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
     }
 
-    /* fixing the mangled packet */
+    /* HACKing the mangled packet */
     pkt.fixSum();
 
     /*
@@ -556,7 +728,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     return true;
 
 drop_packet:
-    pkt.SELFLOG("packet dropped: unable to apply fix before sending");
+    pkt.SELFLOG("packet dropped: unable to apply HACK before sending");
     delete &pkt;
 
     return false;
@@ -565,23 +737,51 @@ drop_packet:
 /* the packet is added in the packet queue here to be analyzed in a second time */
 void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte)
 {
+    Packet * pkt;
+
     try
     {
-        Packet * const pkt = new Packet(buff, nbyte);
-        pkt->mark(source, INNOCENT, GOOD);
-
-        p_queue.insert(*pkt, YOUNG);
+        pkt = new Packet(buff, nbyte);
     }
     catch (exception &e)
     {
-
         /* anomalous/malformed packets are flushed bypassing the queue */
         LOG_ALL("malformed original packet dropped: %s", e.what());
     }
+
+    pkt->mark(source, INNOCENT, GOOD);
+
+    if (runconfig.active)
+    {
+        if (runconfig.use_blacklist)
+        {
+
+            if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
+                    runconfig.blacklist->isPresent(pkt->ip->saddr))
+            {
+                p_queue.insert(*pkt, SEND);
+                return;
+            }
+        }
+        else if (runconfig.use_whitelist)
+        {
+            if (!runconfig.blacklist->isPresent(pkt->ip->daddr) ||
+                    !runconfig.blacklist->isPresent(pkt->ip->saddr))
+            {
+                p_queue.insert(*pkt, SEND);
+                return;
+            }
+        }
+
+        p_queue.insert(*pkt, YOUNG);
+        return;
+    }
+
+    p_queue.insert(*pkt, SEND);
 }
 
 /* 
- * this functions returns a packet from the SEND queue given a specific source
+ * this functions returns a packet from the HACK queue given a specific source
  */
 Packet* TCPTrack::readpacket(source_t destsource)
 {
@@ -604,202 +804,6 @@ Packet* TCPTrack::readpacket(source_t destsource)
     }
 
     return NULL;
-}
-
-bool TCPTrack::notifyIncoming(Packet &incompkt)
-{
-    bool removeOrig = false;
-
-    incompkt.SELFLOG("Original packet - before incoming mangle");
-
-    /*
-     * All plugins are notified at the arrival of an incoming packet;
-     * if a plugin does not need this notification simply can return immediatly.
-     */
-    for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
-    {
-        PluginTrack *hppe = *it;
-
-        hppe->selfObj->mangleIncoming(incompkt);
-
-        /* it will be rare for a hack mangleIncoming to generate one or more packet, anyway we keep this possibility possible */
-        for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
-        {
-            Packet &injpkt = **hack_it;
-
-            if (!injpkt.selfIntegrityCheck(hppe->selfObj->hackName))
-            {
-                LOG_ALL("invalid packet generated by hack %s", hppe->selfObj->hackName);
-
-                injpkt.SELFLOG("bad integrity from: %s", hppe->selfObj->hackName);
-
-                /* if you are running with --debug 6, I suppose you are the developing the plugins */
-                if (runconfig.debug_level == PACKET_LEVEL)
-                    RUNTIME_EXCEPTION("invalid packet generated from the hack");
-
-                /* otherwise, the error was reported and sniffjoke continue to work */
-                delete &injpkt;
-                continue;
-            }
-
-            injpkt.mark(LOCAL, GOOD);
-
-            /* lastPktFix is called because the checksum will not be correct */
-            if (!lastPktFix(injpkt))
-                continue;
-
-            injpkt.SELFLOG("new generated packet from the Incoming of [%s], the original will be %s",
-                           hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
-
-            /* injpkt.position) is ignored in this section because mangleIncoming
-             * is called on the YOUNG queue, and the current queue is YOUNG. a packet
-             * generated from LOCAL is not handled, and, for the moment, is better
-             * force the new queue of the injected packet in SEND. this cause that
-             * every packet generated in mangleIncoming is equal to be POSTICIPATION */
-            p_queue.insert(injpkt, SEND);
-        }
-
-        if (hppe->selfObj->removeOrigPkt == true)
-            removeOrig = true;
-
-        hppe->selfObj->reset();
-    }
-
-    /*
-     * if almost an hack has requested incompkt deletion we drop it.
-     * this has to be done here, at the end, to maximize the effect.
-     */
-    if (removeOrig == true)
-    {
-        incompkt.SELFLOG("removing packet as requested by the incoming mangler");
-        return false;
-    }
-    else
-    {
-        incompkt.SELFLOG("original packet - after incoming mangle");
-        return true;
-    }
-}
-
-/*
- * in extraceTTLinfo we call the find() mathod of std::map because
- * we want to test the ttl existence and NEVER NEVER NEVER create a new one
- * to not permit an external packet to force us to activate a ttlbrouteforce session
- */
-bool TCPTrack::extractTTLinfo(Packet &pkt)
-{
-    TTLFocusMap::iterator it;
-    TTLFocus *ttlfocus;
-
-    /* if the pkt is an ICMP TIME_EXCEEDED should contain informations useful for 
-     * discern HOP distance from a remote host.  */
-    if (pkt.proto == ICMP && pkt.icmp->type != ICMP_TIME_EXCEEDED)
-    {
-        const struct iphdr * const badiph = (struct iphdr *) ((unsigned char *) pkt.icmp + sizeof (struct icmphdr));
-        const struct tcphdr * const badtcph = (struct tcphdr *) ((unsigned char *) badiph + (badiph->ihl * 4));
-
-        /* we are looking only for our TCP expired pkts */
-        if (badiph->protocol != IPPROTO_TCP)
-            return true;
-
-        /* if is not tracked, the user is making a tcptraceroute */
-        if ((it = ttlfocus_map.find(badiph->daddr)) == ttlfocus_map.end())
-            return true;
-
-        ttlfocus = it->second;
-
-        const uint8_t expired_ttl = ntohs(badiph->id) - (ttlfocus->rand_key % 64);
-        const uint8_t exp_double_check = ntohl(badtcph->seq) - ttlfocus->rand_key;
-
-        if (expired_ttl == exp_double_check)
-        {
-            if (ttlfocus->status == TTL_BRUTEFORCE)
-            {
-                pkt.SELFLOG("puppet %d Incoming ICMP EXPIRED, generated from %d",
-                            ttlfocus->puppet_port, expired_ttl);
-
-                ttlfocus->received_probe++;
-
-                /*
-                 * every time a time exceded it's received. if the MAXTTLPROBE has
-                 * been reached (ttlfocus->probe_timeout != 0), the probe_timeout
-                 * it's resetted.
-                 */
-                if (ttlfocus->probe_timeout)
-                    ttlfocus->probe_timeout = sj_clock + 2;
-
-                if (expired_ttl >= ttlfocus->ttl_estimate)
-                {
-                    /*
-                     * if we are changing our estimation due to an expired
-                     * we have to set status = TTL_UNKNOWN
-                     * this is important to permit recalibration.
-                     */
-                    ttlfocus->status = TTL_UNKNOWN;
-                    ttlfocus->ttl_estimate = expired_ttl + 1;
-                }
-            }
-
-            /* the expired icmp scattered due to our ttl probes,
-             * so we can trasparently remove it. */
-            return false;
-        }
-    }
-
-    /* a tracked TCP packet contains important TTL informations */
-    if ((pkt.proto != TCP || (it = ttlfocus_map.find(pkt.ip->daddr)) == ttlfocus_map.end()))
-        return true;
-
-    ttlfocus = it->second;
-
-    /* a SYN ACK will be the answer at our probe! */
-    if (pkt.tcp->syn && pkt.tcp->ack && (pkt.tcp->dest == htons(ttlfocus->puppet_port)))
-    {
-        if (ttlfocus->status != TTL_BRUTEFORCE)
-        {
-            pkt.SELFLOG("weird: SYN+ACK from the puppet port in a session outside ttl bruteforce");
-            return false;
-        }
-        /*
-         * this section analyze the TCP syn+ack:
-         * in the ttlbruteforce stage a syn + ack will be bringer of a ttl information.
-         * if the received packet matches the puppet port used for the current 
-         * ttlbruteforce session we can discern the ttl as:
-         *     
-         *     unsigned char discern_ttl =  ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
-         *
-         * this because the sequence number used in the TTL bruteforce has hardcoded the
-         * number of the TTL.
-         */
-        uint8_t discern_ttl = ntohl(pkt.tcp->ack_seq) - ttlfocus->rand_key - 1;
-
-        ++ttlfocus->received_probe;
-
-        if (discern_ttl < ttlfocus->ttl_estimate)
-        {
-            ttlfocus->ttl_estimate = discern_ttl;
-            ttlfocus->ttl_synack = pkt.ip->ttl;
-        }
-
-        ttlfocus->status = TTL_KNOWN;
-
-        pkt.SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
-                    ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
-        ttlfocus->SELFLOG("puppet %d Incoming SYN/ACK, estimated ttl %d received value %d",
-                          ttlfocus->puppet_port, ttlfocus->ttl_estimate, ttlfocus->ttl_synack);
-
-        return false;
-    }
-    else
-    {
-        if (ttlfocus->status == TTL_KNOWN && ttlfocus->ttl_synack != pkt.ip->ttl)
-        {
-            /* probably a topology change has happened - we need a solution wtf!!  */
-            pkt.SELFLOG("probable net topology change! #probe %u [ttl_estimate %u synack ttl %u this %u]",
-                        ttlfocus->sent_probe, ttlfocus->ttl_estimate, ttlfocus->ttl_synack, pkt.ip->ttl);
-        }
-        return true;
-    }
 }
 
 void TCPTrack::handleYoungPackets()
@@ -825,58 +829,56 @@ void TCPTrack::handleYoungPackets()
      */
     Packet *pkt = NULL;
 
-    if (runconfig.active)
+    for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(NETWORK)) != NULL);)
     {
-        for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(NETWORK)) != NULL);)
+        p_queue.remove(*pkt);
+        /*
+         * If is a packet triggered by the TTL_BRUTEFORCE's probe
+         * If is a simple incoming packet:
+         * Every incoming packet will have TTL information to update,
+         * extractTTLinfo is a static member HACKing the internal MAP
+         */
+        if (!extractTTLinfo(*pkt))
         {
-            /*
-             * If is a packet triggered by the TTL_BRUTEFORCE's probe
-             * If is a simple incoming packet:
-             * Every incoming packet will have TTL information to update,
-             * extractTTLinfo is a static member fixing the internal MAP
-             */
-            if (!extractTTLinfo(*pkt))
-            {
-                p_queue.remove(*pkt);
-                delete pkt;
-                continue;
-            }
-
-            /* here we notify each plugin of the arrival of a packet */
-            if (!notifyIncoming(*pkt))
-            {
-                p_queue.remove(*pkt);
-                delete pkt;
-                continue;
-            }
-
-            p_queue.remove(*pkt);
-            p_queue.insert(*pkt, SEND);
+            delete pkt;
+            continue;
         }
 
-        for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
+        /* here we notify each plugin of the arrival of a packet */
+        if (!notifyIncoming(*pkt))
         {
+            delete pkt;
+            continue;
+        }
 
-            if (runconfig.use_blacklist && runconfig.blacklist->isPresent(pkt->ip->daddr))
-                continue;
+        /* packets received from network does not need to be hacked */
+        p_queue.insert(*pkt, SEND);
+    }
 
-            if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr))
-                continue;
+    for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
+    {
+        /* SniffJoke ATM does apply to TCP/UDP traffic only */
+        if (pkt->proto & (TCP || UDP))
+        {
+            p_queue.remove(*pkt);
+
+            ++(sessiontrack_map.get(*pkt).packet_number);
 
             /*
-             * return true when the packet is ready to be SEND;
-             * the packet of a session under bruteforce is switched in KEEP queue.
+             * ATM we can put TCP only in KEEP status because
+             * due to the actual ttl bruteforce implementation a
+             * pure UDP flaw could go in starvation.
              */
-
-            if ((pkt->proto & (TCP || UDP)) && analyzeOutgoing(*pkt))
+            if (pkt->proto == TCP && ttlfocus_map.get(*pkt).status == TTL_BRUTEFORCE)
             {
-                /* change the TTL and fix the checksum */
-                lastPktFix(*pkt);
+                p_queue.insert(*pkt, KEEP);
+            } else {
+                p_queue.insert(*pkt, HACK);
             }
         }
     }
 
-    /* calling again the same p_queue.select act as "rewind" in the queue index */
+    /* all the remaining YOUNG packets are marked SEND */
     for (p_queue.select(YOUNG); ((pkt = p_queue.get()) != NULL);)
     {
         p_queue.remove(*pkt);
@@ -886,39 +888,40 @@ void TCPTrack::handleYoungPackets()
 
 void TCPTrack::handleKeepPackets()
 {
-    /* we analyze every packet in KEEP queue to see if some can now be inserted in SEND queue */
+    /* we analyze every packet in KEEP queue to see if some can now be inserted in HACK queue */
     Packet *pkt = NULL;
     for (p_queue.select(KEEP); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
         {
             p_queue.remove(*pkt);
-            if (lastPktFix(*pkt))
-                p_queue.insert(*pkt, SEND);
-            else
-                RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
+            p_queue.insert(*pkt, HACK);
         }
     }
 
 }
 
-void TCPTrack::handleSendPackets()
+void TCPTrack::handleHackPackets()
 {
-    if (runconfig.active)
+    /* for every packet in HACK queue we insert some random hacks */
+    Packet *pkt = NULL;
+    for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
-        /* for every packet in SEND queue we insert some random hacks */
-        Packet *pkt = NULL;
-        for (p_queue.select(SEND); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
+        p_queue.remove(*pkt);
+        if(!lastPktFix(*pkt)) {
+            RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
+        }
+
+        /*
+         * the real pkt must be fixed and inserted into SEND queue
+         * before hack injection to permit ANTICIPATION / POSTICIPATION
+         */
+        p_queue.insert(*pkt, SEND);
+
+        if (!injectHack(*pkt))
         {
-            if (runconfig.use_blacklist && runconfig.blacklist->isPresent(pkt->ip->daddr))
-                continue;
-
-            if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr))
-                continue;
-
-            /* SniffJoke does apply to TCP/UDP traffic only */
-            if (pkt->proto & (TCP | UDP))
-                injectHack(*pkt);
+            p_queue.remove(*pkt);
+            delete pkt;
         }
     }
 }
@@ -940,7 +943,7 @@ void TCPTrack::handleSendPackets()
  * as defined in sniffjoke.h, the "status" variable could have these status:
  * YOUNG (packets received, here analyzed for the first time)
  * KEEP  (packets to keep in queue for some reason (for example until ttl brouteforce it's complete)
- * SEND (packets marked as sendable)
+ * HACK (packets marked as sendable)
  */
 void TCPTrack::analyzePacketQueue()
 {
@@ -950,17 +953,17 @@ void TCPTrack::analyzePacketQueue()
 
     handleYoungPackets();
     handleKeepPackets();
-    handleSendPackets();
+    handleHackPackets();
 
 bypass_queue_analysis:
 
     /*
      * here we call sessiontrack_map and ttlfocus_map manage routines.
-     * it's fundamental to do this here after SEND last_packet_fix()
+     * it's fundamental to do this here after HACK last_packet_HACK()
      * and before ttl probes injections.
      * In fact the two routine, in case that their respective memory threshold
      * limits are passed, will delete the oldest records.
-     * This is completely safe because send packets are just fixed and there
+     * This is completely safe because send packets are just HACKed and there
      * is no problem if we does not schedule a ttlprobe for a cycle;
      * KEEP packets will scatter a new ttlfocus at the next.
      */

@@ -42,22 +42,19 @@ private:
 
     uint32_t derivePercentage(uint32_t, uint16_t);
     bool percentage(uint32_t, uint16_t, uint16_t);
-
     uint8_t discernAvailScramble(Packet &);
 
+    void injectTTLProbe(TTLFocus &);
     bool extractTTLinfo(Packet &);
-    bool analyzeOutgoing(Packet &);
+    void execTTLBruteforces();
+
+    bool notifyIncoming(Packet &);
+    bool injectHack(Packet &);
+    bool lastPktFix(Packet &);
 
     void handleYoungPackets();
     void handleKeepPackets();
-    void handleSendPackets();
-
-    void injectTTLProbe(TTLFocus &);
-    void injectHack(Packet &);
-    bool notifyIncoming(Packet &);
-    bool lastPktFix(Packet &);
-    
-    void execTTLBruteforces();
+    void handleHackPackets();
 
 public:
 

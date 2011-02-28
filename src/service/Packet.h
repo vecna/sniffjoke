@@ -43,7 +43,7 @@ using namespace std;
 /* queue_t is a a reflection variable used by packet to know in what queue it's inserted */
 enum queue_t
 {
-    QUEUEUNASSIGNED = 0, YOUNG = 1, KEEP = 2, SEND = 4
+    QUEUEUNASSIGNED = 0, YOUNG = 1, KEEP = 2, HACK = 4, SEND = 8
 };
 
 /* if the packet is inject from sniffjoke is marked with the evilbit */
