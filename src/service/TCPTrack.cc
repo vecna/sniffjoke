@@ -210,7 +210,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         {
             if (!ttlfocus.probe_timeout)
             {
-                ttlfocus.probe_timeout = sj_clock + 20;
+                ttlfocus.probe_timeout = sj_clock + 2;
             }
             else if (ttlfocus.probe_timeout < sj_clock)
             {
@@ -294,7 +294,7 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
                  * it's resetted.
                  */
                 if (ttlfocus->probe_timeout)
-                    ttlfocus->probe_timeout = sj_clock + 20;
+                    ttlfocus->probe_timeout = sj_clock + 2;
 
                 if (expired_ttl >= ttlfocus->ttl_estimate)
                 {
