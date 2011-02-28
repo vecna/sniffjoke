@@ -80,6 +80,7 @@ public:
 
     vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
     vector<cacheRecord*> hackCache;
+    uint32_t hackCacheTimeout;
 
     judge_t pktRandomDamage(uint8_t scrambles)
     {
@@ -93,7 +94,8 @@ public:
     Hack(const char* hackName, uint16_t hackFrequency) :
     hackName(hackName),
     hackFrequency(hackFrequency),
-    removeOrigPkt(false)
+    removeOrigPkt(false),
+    hackCacheTimeout(HACKCACHE_EXPIRYTIME)
     {
     };
 

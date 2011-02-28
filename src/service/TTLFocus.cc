@@ -127,6 +127,7 @@ TTLFocusMap::TTLFocusMap()
 {
     LOG_DEBUG("");
 
+    manage_timeout = sj_clock;
     load();
 }
 
@@ -172,8 +173,10 @@ struct ttlfocus_timestamp_comparison
 
 void TTLFocusMap::manage()
 {
-    if (!(sj_clock % TTLFOCUSMAP_MANAGE_ROUTINE_TIMER))
+    /* timeout check */
+    if (manage_timeout < sj_clock - TTLFOCUSMAP_MANAGE_ROUTINE_TIMER)
     {
+        manage_timeout = sj_clock; /* update the next manage timeout */
         for (TTLFocusMap::iterator it = begin(); it != end();)
         {
             if ((*it).second->access_timestamp + TTLFOCUS_EXPIRYTIME < sj_clock)
@@ -183,18 +186,19 @@ void TTLFocusMap::manage()
         }
     }
 
+    /* size check */
     uint32_t map_size = size();
     uint32_t index;
     if (map_size > TTLFOCUSMAP_MEMORY_THRESHOLD)
     {
         /*
-         * We are forced to make a map cleanup.
-         * In solve this critical condition we decide to reset half
+         * we are forced to make a map cleanup.
+         * to solve this critical condition we decide to reset half
          * of the map, and to do the best selection we reorder
          * the map by the access timestamp.
-         * The complexity cost of this operation is O(NLogN)
+         * the complexity cost of this operation is O(NLogN)
          * due to the sort algorithm.
-         * This is the worst case; (others operations are linear
+         * this is the worst case; (others operations are linear
          */
         TTLFocus** tmp = new TTLFocus*[map_size];
 

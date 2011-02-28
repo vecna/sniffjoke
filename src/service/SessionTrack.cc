@@ -97,11 +97,14 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
 SessionTrackMap::SessionTrackMap()
 {
     LOG_DEBUG("");
+
+    manage_timeout = sj_clock;
 }
 
 SessionTrackMap::~SessionTrackMap()
 {
     LOG_DEBUG("");
+
     for (SessionTrackMap::iterator it = begin(); it != end();)
     {
         delete &(*it->second);
@@ -152,8 +155,10 @@ struct sessiontrack_timestamp_comparison
 
 void SessionTrackMap::manage()
 {
-    if (!(sj_clock % SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER))
+    /* timeout check */
+    if (manage_timeout < sj_clock - SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)
     {
+        manage_timeout = sj_clock; /* update the next manage timeout */
         for (SessionTrackMap::iterator it = begin(); it != end();)
         {
             if ((*it).second->access_timestamp + SESSIONTRACK_EXPIRYTIME < sj_clock)
@@ -168,18 +173,19 @@ void SessionTrackMap::manage()
         }
     }
 
+    /* size check */
     uint32_t map_size = size();
     uint32_t index;
     if (map_size > SESSIONTRACKMAP_MEMORY_THRESHOLD)
     {
         /*
-         * We are forced to make a map cleanup.
-         * In solve this critical condition we decide to reset half
+         * we are forced to make a map cleanup.
+         * to solve this critical condition we decide to reset half
          * of the map, and to do the best selection we reorder
          * the map by the access timestamp.
-         * The complexity cost of this operation is O(NLogN)
+         * the complexity cost of this operation is O(NLogN)
          * due to the sort algorithm.
-         * This is the worst case; (others operations are linear
+         * this is the worst case; (others operations are linear)
          */
         SessionTrack** tmp = new SessionTrack*[map_size];
 
