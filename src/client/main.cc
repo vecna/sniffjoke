@@ -45,6 +45,7 @@ static void sjcli_version(const char *pname)
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
 	" saveconf\t\tdump config file\n"\
+	" showport\t\t\tshow the running port-aggressivity configuration\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
 	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
