@@ -119,13 +119,15 @@ void IPListMap::load()
 
         fgets(record, sizeof (record), IPfileP);
 
-        if (record[0] == '#' || strlen(record) < 7)
+        if (record[0] == '#' || record[0] == '\n' || record[0] == ' ' || strlen(record) < 7)
             continue;
 
-        printf("[%s]\n", record);
+        /* C's chop() */
+        if (record[strlen(record) - 1] == '\n')
+            record[strlen(record) - 1] = 0x00;
+
         sscanf(record, "%s %u,%u,%u", tmp_ip, &tmp_a, &tmp_b, &tmp_c);
         LOG_VERBOSE("importing record %d: %s %u,%u,%u", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
-        printf("XXXX record %d: {%s %u,%u,%u}\n", records_num, tmp_ip, tmp_a, tmp_b, tmp_c);
 
         /* the value in tmp_* are not used at the moment */
         add(inet_addr(tmp_ip), (uint8_t) tmp_a, (uint8_t) tmp_b, (uint8_t) tmp_c);

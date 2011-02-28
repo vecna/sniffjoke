@@ -47,7 +47,7 @@ private:
     {
         const Packet &refpkt = record.cached_packet;
 
-        return ( refpkt.ip->daddr == pkt.ip->daddr &&
+        return (refpkt.ip->daddr == pkt.ip->daddr &&
                 refpkt.tcp->source == pkt.tcp->source &&
                 refpkt.tcp->dest == pkt.tcp->dest);
     }
@@ -75,8 +75,8 @@ public:
         pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
         /* we have two guess: 
-         * 1) the sniffer trust the FIN because has the last sequence number +1
-         * 2) the sniffer trust the FIN because see a coherent ack_seq in answer */
+         * 1) the sniffer trust the FIN because has the last sequence number + 1
+         * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
         if (RANDOMPERCENT(50))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
         /* else, the sequence number is not changed and will be acked after,
@@ -97,18 +97,17 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        uint32_t *previouslyInjected;
-        bool ret;
-
-        ret = origpkt.fragment == false &&
+        /* preliminar condition */
+        bool ret = origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
                 !origpkt.tcp->fin;
 
         if (!ret)
-            return ret;
+            return false;
 
+        uint32_t *previouslyInjected;
         vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
 
         if (it == hackCache.end())
@@ -119,22 +118,25 @@ public:
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
 
             cacheCreate(origpkt, (void*) &firstCached, sizeof (uint32_t));
-            return ret;
+        }
+        else
+        {
+            /* an hack like Fake FIN will be useful few times, not for all the
+             * connections: we are keeping a cache record to count every injected FIN and after
+             * a randomic number (between a min of 4 and 12), the FIN is not injected again */
+            previouslyInjected = (uint32_t*) ((*it)->cached_data);
+
+            /* we use the pointer to updat the cached data directly */
+            ++(*previouslyInjected);
+
+            ret = inverseProportionality(*previouslyInjected);
+
+            pLH.completeLog("cache present for %s:%u value of %d Condition return %s",
+                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
+                            *previouslyInjected, ret ? "TRUE" : "FALSE");
         }
 
-        /* else, an hack like Fake FIN will be useful few times, not for all the
-         * connection: we are caching every time is inject a FIN and after a
-         * randomic (between 5 and 12) amount of time, the FIN is not injected again */
-        previouslyInjected = (uint32_t*) ((*it)->cached_data);
-
-        /* updating the pointer we update directly the cache vector */
-        ++(*previouslyInjected);
-
-        ret = inverseProportionality(*previouslyInjected);
-
-        pLH.completeLog("cache present for %s:%u value of %d Condition return %s",
-                        inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
-                        *previouslyInjected, ret ? "TRUE" : "FALSE");
+        return true;
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

@@ -80,6 +80,8 @@ public:
 
 class TTLFocusMap : public map<const uint32_t, TTLFocus*>
 {
+private:
+    uint32_t manage_timeout;
 public:
     TTLFocusMap();
     ~TTLFocusMap();

@@ -61,6 +61,8 @@ public:
 
 class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*>
 {
+private:
+    uint32_t manage_timeout;
 public:
     SessionTrackMap();
     ~SessionTrackMap();

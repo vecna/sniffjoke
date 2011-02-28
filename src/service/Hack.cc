@@ -24,11 +24,23 @@
 
 vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
-    for (vector<cacheRecord *>::iterator it = hackCache.begin(); it != hackCache.end(); it++)
+    for (vector<cacheRecord *>::iterator it = hackCache.begin(); it != hackCache.end();)
     {
         cacheRecord &record = **it;
-        if (filter(record, pkt))
+        if (filter(record, pkt)) {
+            record.access_timestamp = sj_clock; /* update the access timestamp */
             return it;
+        }
+
+        if (record.access_timestamp < sj_clock - hackCacheTimeout)
+        {
+            cacheDelete(it); /* the ++ is done internally by the cacheDelete
+                                to keep the iterator valid */
+        }
+        else
+        {
+            it++;
+        }
     }
 
     return hackCache.end();
@@ -50,8 +62,8 @@ vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, void *data,
 
 void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
-    if((*it)->cached_data != NULL)
+    if ((*it)->cached_data != NULL)
         delete (*it)->cached_data;
     delete *it;
-    hackCache.erase(it);
+    hackCache.erase(it++);
 }
