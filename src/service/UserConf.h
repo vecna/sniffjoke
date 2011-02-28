@@ -51,6 +51,7 @@ struct sj_cmdline_opts
     bool go_foreground;
     bool use_whitelist;
     bool use_blacklist;
+    bool chaining;
     uint16_t max_ttl_probe;
     /* END OF COMMON PART WITH sj_config */
 
@@ -94,6 +95,7 @@ struct sj_config
     bool go_foreground;
     bool use_whitelist;
     bool use_blacklist;
+    bool chaining;
     uint16_t max_ttl_probe;
     /* END OF COMMON PART WITH sj_cmdline_opt */
 
