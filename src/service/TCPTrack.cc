@@ -146,17 +146,17 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     return ( ((uint32_t) random() % 100) < aggressivity_percentage);
 }
 
-uint16_t TCPTrack::get_userFrequency(Packet &pkt)
+uint16_t TCPTrack::getUserFrequency(Packet &pkt)
 {
     /* the UDP traffic is for the most a data-apply hacks, because no flag gaming
      * nor sequence hack exist. when a service is request to be ALWAYS hacked, we
      * accept this choose in UDP too. otherwise, is better use a costant noise
      * using AGG_COMMON */
-    if(pkt.proto == TCP)
+    if (pkt.proto == TCP)
         return runconfig.portconf[ntohs(pkt.tcp->dest)];
 
     /* else, no other proto other than UDP will reach here */
-    if(runconfig.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
+    if (runconfig.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
         return AGG_ALWAYS;
 
     return AGG_COMMON;
@@ -522,7 +522,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
         applicable &= percentage(
                                  sessiontrack.packet_number,
                                  hppe->selfObj->hackFrequency,
-                                 get_userFrequency(origpkt)
+                                 getUserFrequency(origpkt)
                                  );
 
         if (applicable)
@@ -737,7 +737,7 @@ drop_packet:
 /* the packet is added in the packet queue here to be analyzed in a second time */
 void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte)
 {
-    Packet * pkt;
+    Packet *pkt;
 
     try
     {
@@ -759,7 +759,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
             if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
                     runconfig.blacklist->isPresent(pkt->ip->saddr))
             {
-                p_queue.insert(*pkt, SEND);;
+                p_queue.insert(*pkt, SEND);
                 return;
             }
         }
@@ -798,7 +798,6 @@ Packet* TCPTrack::readpacket(source_t destsource)
         if (pkt->source & mask)
         {
             p_queue.remove(*pkt);
-
             return pkt;
         }
     }
@@ -855,11 +854,11 @@ void TCPTrack::handleYoungPackets()
 
     for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
-        /* SniffJoke ATM does apply to TCP/UDP traffic only */
-        if (pkt->proto == TCP || pkt->proto == UDP)
-        {
-            p_queue.remove(*pkt);
+        p_queue.remove(*pkt);
 
+        /* SniffJoke ATM does apply to TCP/UDP traffic only */
+        if (pkt->proto & (TCP | UDP))
+        {
             ++(sessiontrack_map.get(*pkt).packet_number);
 
             /*
@@ -876,13 +875,10 @@ void TCPTrack::handleYoungPackets()
                 p_queue.insert(*pkt, HACK);
             }
         }
-    }
-
-    /* all the remaining YOUNG packets are marked SEND */
-    for (p_queue.select(YOUNG); ((pkt = p_queue.get()) != NULL);)
-    {
-        p_queue.remove(*pkt);
-        p_queue.insert(*pkt, SEND);
+        else
+        {
+            p_queue.insert(*pkt, SEND);
+        }
     }
 }
 

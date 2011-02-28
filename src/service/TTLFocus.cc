@@ -117,7 +117,7 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
         break;
     }
 
-    LOG_SESSION("%s (%s) [%s] m_sent %d, m_recv %d ttl_estimate %u synackttl %u %s",
+    LOG_SESSION("%s D|%s %s m_sent %d, m_recv %d ttl_estimate %u synackttl %u %s",
                 func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe,
                 received_probe, ttl_estimate, ttl_synack, loginfo
                 );

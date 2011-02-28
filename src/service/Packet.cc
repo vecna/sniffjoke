@@ -294,7 +294,6 @@ void Packet::iphdrResize(uint8_t size)
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
     ip->ihl = size / 4;
-    if (size % 4) exit(1);
 
     vector<unsigned char>::iterator it = pbuf.begin();
 
@@ -606,7 +605,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
 
     if (fragment)
     {
-        LOG_PACKET("%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %u [%s]",
+        LOG_PACKET("%s: (E|%s) (WTF|%s) (src %s) %s->%s FRAGMENT (%u) ttl %u [%s]",
                    func, evilstr, wtfstr, sourcestr,
                    saddr, daddr, ntohs(ip->frag_off),
                    ip->ttl, loginfo
@@ -646,7 +645,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-        LOG_PACKET("%s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
+        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s [%s] ttl %d %s",
                    func, evilstr, wtfstr, sourcestr, saddr, daddr, protoinfo, ip->ttl, loginfo);
     }
 }

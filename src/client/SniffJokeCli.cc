@@ -303,8 +303,8 @@ bool SniffJokeCli::printSJSessionInfo(uint8_t *received, uint32_t rcvdlen)
     while (i < rcvdlen)
     {
         sr = (struct sex_record *) &received[i];
-        printf(" %02d) %u -> %s:%u #%d (injected %d)\n",
-               cnt, ntohs(sr->sport),
+        printf(" %02d) %s %u -> %s:%u #%d (injected %d)\n",
+               cnt, sr->proto == IPPROTO_TCP ? "TCP" : "UDP", ntohs(sr->sport),
                inet_ntoa(*((struct in_addr *) &(sr->daddr))),
                ntohs(sr->dport), sr->packet_number, sr->injected_pktnumber
                );
@@ -390,7 +390,7 @@ char *SniffJokeCli::fillWithSpace(uint16_t s, uint16_t e)
     return &spaces[0];
 }
 
-char *SniffJokeCli::resolve_weight(uint32_t weight)
+char *SniffJokeCli::resolveWeight(uint32_t weight)
 {
     static char resolvedInfo[MEDIUMBUF];
     const struct mapTheKeys *mtk;
@@ -473,15 +473,15 @@ bool SniffJokeCli::printSJPort(uint8_t *statblock, int32_t blocklen)
 
         if (pInfo->start == pInfo->end)
         {
-            printf("%d%s%s\n", pInfo->start, fillWithSpace(pInfo->start), resolve_weight(pInfo->weight));
+            printf("%d%s%s\n", pInfo->start, fillWithSpace(pInfo->start), resolveWeight(pInfo->weight));
         }
         else
         {
-            printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolve_weight(pInfo->weight));
+            printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolveWeight(pInfo->weight));
         }
     }
 
-    printf("omitted rule from the list is %s and apply to all ports not present on the list\n", resolve_weight(mostValue));
+    printf("omitted rule from the list is %s and apply to all ports not present on the list\n", resolveWeight(mostValue));
     return true;
 }
 
