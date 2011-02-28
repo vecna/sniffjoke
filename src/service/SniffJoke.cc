@@ -544,7 +544,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, sizeof(io_buf) );
 
-    for (uint16_t i = 1; i < (PORTSNUMBER - 1); ++i)
+    for (int32_t i = 1; i < PORTSNUMBER; ++i)
     {
         if (userconf.runconfig.portconf[i] != prev_kind)
         {

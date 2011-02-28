@@ -510,8 +510,6 @@ void UserConf::loadAggressivity(void)
 
     if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
     {
-        uint16_t defFreq = AGG_NONE;
-        
         LOG_ALL("port aggrssivity specifications in %s/%s: %s, using defaults",
                 runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno));
 
@@ -522,8 +520,10 @@ void UserConf::loadAggressivity(void)
          *
          * but is not an absolute truth, I like the user that choose for himself
          */
-         memset(runconfig.portconf, (int32_t)&defFreq, (sizeof(uint16_t) * PORTSNUMBER) );
-         return;
+        for(int32_t i = 0; i < PORTSNUMBER; i++)
+            runconfig.portconf[i] = AGG_NONE;
+
+        return;
     }
 
     /* the classes portLine has been written specifically for parse
