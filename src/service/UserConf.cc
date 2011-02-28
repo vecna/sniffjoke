@@ -510,20 +510,20 @@ void UserConf::loadAggressivity(void)
 
     if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
     {
-        LOG_ALL("port aggrssivity specifications in %s/%s: %s, loading defaults",
+        uint16_t defFreq = AGG_NONE;
+        
+        LOG_ALL("port aggrssivity specifications in %s/%s: %s, using defaults",
                 runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno));
 
         /* the default is NONE. in the file port-aggrssivity.conf
-         * the default is:
+         * the configured default is:
          *
-         * 1:65535      NORMAL,COMMON
+         * 1:65535      RARE
          *
          * but is not an absolute truth, I like the user that choose for himself
          */
-        for (uint16_t i = 0; i < PORTSNUMBER; ++i)
-            runconfig.portconf[i] = AGG_NONE;
-
-        return;
+         memset(runconfig.portconf, (int32_t)&defFreq, (sizeof(uint16_t) * PORTSNUMBER) );
+         return;
     }
 
     /* the classes portLine has been written specifically for parse

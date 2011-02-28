@@ -42,6 +42,7 @@ private:
 
     uint32_t derivePercentage(uint32_t, uint16_t);
     bool percentage(uint32_t, uint16_t, uint16_t);
+    uint16_t get_userFrequency(Packet &);
     uint8_t discernAvailScramble(Packet &);
 
     void injectTTLProbe(TTLFocus &);
