@@ -33,6 +33,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
 using namespace std;
@@ -70,7 +71,7 @@ enum judge_t
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
 enum proto_t
 {
-    PROTOUNASSIGNED = 0, TCP = 1, ICMP = 2, OTHER_IP = 4
+    PROTOUNASSIGNED = 0, TCP = 1, UDP = 2, ICMP = 4, OTHER_IP = 8
 };
 
 /* a sniffjoke packet should be send before the original packet or after the original packet */
@@ -107,14 +108,31 @@ public:
     unsigned char *ippayload;
     uint16_t ippayloadlen; /* [0 - 65515] bytes */
 
-    bool ipfragment;
+    bool fragment;
 
-    struct tcphdr *tcp;
-    uint8_t tcphdrlen; /* [20 - 60] bytes */
-    unsigned char *tcppayload;
-    uint16_t tcppayloadlen; /* [0 - 65515] bytes */
+    union {
+        struct tcphdr *tcp;
+        struct udphdr *udp;
+        struct icmphdr *icmp;
+    };
 
-    struct icmphdr *icmp;
+    union {
+        uint8_t tcphdrlen; /* [20 - 60] bytes */
+        uint8_t udphdrlen; /* fixed: 8 bytes*/
+        uint8_t icmphdrlen; /* fixed: 8 bytes*/
+    };
+
+    union {
+        unsigned char *tcppayload;
+        unsigned char *udppayload;
+        unsigned char *icmppayload; /* always NULL */
+    };
+
+    union {
+        uint16_t tcppayloadlen; /* [0 - 65515] bytes */
+        uint16_t udppayloadlen; /* [0 - 65527] bytes */
+        uint16_t icmppayloadlen; /* always 0 */
+    };
 
     Packet(const unsigned char *, uint16_t);
     Packet(const Packet &);

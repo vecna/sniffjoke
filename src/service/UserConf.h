@@ -58,7 +58,7 @@ struct sj_cmdline_opts
 };
 
 /* those are the value used for track port strength of TCP coverage */
-#define PORTSNUMBER          65535
+#define PORTSNUMBER          65536
 
 #define SCRAMBLE_TTL        1
 #define SCRAMBLE_CHECKSUM   2

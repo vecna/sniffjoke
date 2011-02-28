@@ -157,6 +157,13 @@ bool TCPTrack::analyzeOutgoing(Packet &pkt)
 {
     ++(sessiontrack_map.get(pkt).packet_number);
 
+
+    /*
+     * FIXME: analyzeOutgoing it's called on TCP and UDP,
+     * but ATM we can put TCP only in KEEP status because
+     * due to the actual ttlbruteforce implementation a
+     * pure UDP flaw could go in starvation.
+     */
     if (pkt.proto == TCP && ttlfocus_map.get(pkt).status == TTL_BRUTEFORCE)
     {
         p_queue.remove(pkt);
@@ -291,9 +298,6 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
  */
 void TCPTrack::injectHack(Packet &origpkt)
 {
-    if (origpkt.ipfragment == true)
-        return;
-
     bool removeOrig = false;
 
     SessionTrack &sessiontrack = sessiontrack_map.get(origpkt);
@@ -330,12 +334,25 @@ void TCPTrack::injectHack(Packet &origpkt)
         }
 
         bool applicable = true;
+
         applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
-        applicable &= percentage(
-                                 sessiontrack.packet_number,
-                                 hppe->selfObj->hackFrequency,
-                                 origpkt.proto == TCP ? runconfig.portconf[ntohs(origpkt.tcp->dest)] : AGG_ALWAYS
-                                 );
+
+        if (origpkt.proto == TCP)
+        {
+            applicable &= percentage(
+                                     sessiontrack.packet_number,
+                                     hppe->selfObj->hackFrequency,
+                                     runconfig.portconf[ntohs(origpkt.tcp->dest)]
+                                     );
+        }
+        else /* UDP */
+        {
+            applicable &= percentage(
+                                     sessiontrack.packet_number,
+                                     hppe->selfObj->hackFrequency,
+                                     runconfig.portconf[ntohs(origpkt.udp->dest)]
+                                     );
+        }
 
         if (applicable)
             applicable_hacks.push_back(hppe);
@@ -488,7 +505,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     if (pkt.wtf == MALFORMED)
     {
         bool malformed = false;
-        if (pkt.ipfragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
+        if (pkt.fragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
         {
             if (!(pkt.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
                 pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
@@ -630,8 +647,6 @@ bool TCPTrack::notifyIncoming(Packet &incompkt)
             /* lastPktFix is called because the checksum will not be correct */
             if (!lastPktFix(injpkt))
                 continue;
-
-            /* sessiontrack.injected_pktnumber++; */
 
             injpkt.SELFLOG("new generated packet from the Incoming of [%s], the original will be %s",
                            hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEEP");
@@ -852,7 +867,8 @@ void TCPTrack::handleYoungPackets()
              * return true when the packet is ready to be SEND;
              * the packet of a session under bruteforce is switched in KEEP queue.
              */
-            if (analyzeOutgoing(*pkt))
+
+            if ((pkt->proto & (TCP || UDP)) && analyzeOutgoing(*pkt))
             {
                 /* change the TTL and fix the checksum */
                 lastPktFix(*pkt);
@@ -900,7 +916,9 @@ void TCPTrack::handleSendPackets()
             if (runconfig.use_whitelist && !runconfig.whitelist->isPresent(pkt->ip->daddr))
                 continue;
 
-            injectHack(*pkt);
+            /* SniffJoke does apply to TCP/UDP traffic only */
+            if (pkt->proto & (TCP | UDP))
+                injectHack(*pkt);
         }
     }
 }
@@ -932,7 +950,7 @@ void TCPTrack::analyzePacketQueue()
 
     handleYoungPackets();
     handleKeepPackets();
-    //handleSendPackets();
+    handleSendPackets();
 
 bypass_queue_analysis:
 

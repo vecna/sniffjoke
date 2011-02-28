@@ -40,10 +40,10 @@ injected_pktnumber(0)
         sport = pkt.tcp->source;
         dport = pkt.tcp->dest;
     }
-    else
+    else /* pkt.proto == UDP */
     {
-        sport = 0;
-        dport = 0;
+        sport = pkt.udp->source;
+        dport = pkt.udp->source;
     }
 }
 
@@ -121,9 +121,11 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
     {
         key.sport = pkt.tcp->source;
         key.dport = pkt.tcp->dest;
-    } else {
-        key.sport = 0;
-        key.dport = 0;
+    }
+    else /* (pkt.proto == UDP) */
+    {
+        key.sport = pkt.udp->source;
+        key.dport = pkt.udp->dest;
     }
 
     /* check if the key it's already present */

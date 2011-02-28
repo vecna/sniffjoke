@@ -534,20 +534,19 @@ void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
  */
 void SniffJoke::writeSJPortStat(uint8_t type)
 {
-    uint16_t prev_port = 1, prev_kind;
+    uint16_t prev_port = 0;
+    uint16_t prev_kind = userconf.runconfig.portconf[0];
     struct command_ret retInfo;
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, sizeof(io_buf) );
 
-    prev_kind = userconf.runconfig.portconf[1];
-
-    for (uint32_t i = 0; i < PORTSNUMBER; ++i)
+    for (uint16_t i = 1; i < (PORTSNUMBER - 1); ++i)
     {
         if (userconf.runconfig.portconf[i] != prev_kind)
         {
-            accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i, prev_kind);
+            accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
             if (accumulen > sizeof(io_buf) )
                 RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
@@ -557,7 +556,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
         }
     }
 
-    accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, PORTSNUMBER, prev_kind);
+    accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, PORTSNUMBER - 1, prev_kind);
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;

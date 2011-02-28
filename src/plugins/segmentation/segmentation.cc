@@ -135,7 +135,8 @@ public:
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
                          origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
 
-        if (origpkt.proto == TCP &&
+        if (origpkt.fragment == false &&
+            origpkt.proto == TCP &&
             origpkt.tcppayload != NULL &&
             origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
             return true;

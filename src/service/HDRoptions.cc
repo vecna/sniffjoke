@@ -660,7 +660,8 @@ bool HDRoptions::randomInjector(void)
         {
         case SJ_TCPOPT_PAWSCORRUPT:
             optstr = "PAWSCORRUPT";
-            injectetdopt_size = m_TCPOPT_PAWSCORRUPT();
+            /* FIXME: this option does not work ATM */
+            // injectetdopt_size = m_TCPOPT_PAWSCORRUPT();
             break;
         }
     }

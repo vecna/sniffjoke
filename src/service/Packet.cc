@@ -40,16 +40,7 @@ proto(PROTOUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
 pbuf(size),
-ip(NULL),
-iphdrlen(0),
-ippayload(NULL),
-ippayloadlen(0),
-ipfragment(false),
-tcp(NULL),
-tcphdrlen(0),
-tcppayload(NULL),
-tcppayloadlen(0),
-icmp(NULL)
+fragment(false)
 {
     memcpy(&(pbuf[0]), buff, size);
     updatePacketMetadata();
@@ -65,16 +56,7 @@ proto(pkt.proto),
 position(pkt.position),
 wtf(pkt.wtf),
 pbuf(pkt.pbuf),
-ip(NULL),
-iphdrlen(0),
-ippayload(NULL),
-ippayloadlen(0),
-ipfragment(false),
-tcp(NULL),
-tcphdrlen(0),
-tcppayload(NULL),
-tcppayloadlen(0),
-icmp(NULL)
+fragment(false)
 {
     updatePacketMetadata();
 }
@@ -96,15 +78,18 @@ void Packet::updatePacketMetadata()
     uint16_t pktlen = pbuf.size();
 
     /* start initial metadata reset */
+
     ip = NULL;
     iphdrlen = 0;
     ippayload = NULL;
     ippayloadlen = 0;
-    tcp = NULL;
-    tcphdrlen = 0;
-    tcppayload = NULL;
-    tcppayloadlen = 0;
-    icmp = NULL;
+
+    /* unions initialization; one for all */
+    tcp = NULL;         /* udp, icmp */
+    tcphdrlen = 0;      /* udphdrlen, icmphdrlen */
+    tcppayload = NULL;  /* udppayload, icmppayload */
+    tcppayloadlen = 0;  /* udppayloadlen, icmppayloadlen */
+
     /* end initial metadata reset */
 
     /* start ip update */
@@ -116,7 +101,6 @@ void Packet::updatePacketMetadata()
     ippayloadlen = pbuf.size() - iphdrlen;
     if (ippayloadlen)
         ippayload = (unsigned char *) ip + iphdrlen;
-
 
     if (pktlen < iphdrlen)
         RUNTIME_EXCEPTION("pktlen < iphdrlen");
@@ -131,6 +115,9 @@ void Packet::updatePacketMetadata()
     case IPPROTO_TCP:
         proto = TCP;
         break;
+    case IPPROTO_UDP:
+        proto = UDP;
+        break;
     case IPPROTO_ICMP:
         proto = ICMP;
         break;
@@ -140,13 +127,12 @@ void Packet::updatePacketMetadata()
     }
 
     /*
-     * at the time sniffjoke does not handle hacks on ip fragments.
-     * so we use a fragment variable to deny hacks application.
-     * there is also the need to bypass some checks in this function.
+     * if the packet it's a fragment sniffjoke does treat it
+     * as a pure ip packet.
      */
     if (ip->frag_off & htons(0x3FFF))
     {
-        ipfragment = true;
+        fragment = true;
         return;
     }
 
@@ -168,12 +154,34 @@ void Packet::updatePacketMetadata()
             tcppayload = (unsigned char *) tcp + tcphdrlen;
         /* end tcp update */
         break;
+    case IPPROTO_UDP:
+        /* start tcp update */
+        if (pktlen < iphdrlen + sizeof (struct udphdr))
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct udphdr)");
+
+        udp = (struct udphdr *) ((unsigned char *) (ip) + iphdrlen);
+        udphdrlen = sizeof (struct udphdr);
+
+        if (pktlen < iphdrlen + udphdrlen)
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + udphdrlen");
+
+        udppayloadlen = pktlen - iphdrlen - udphdrlen;
+        if (udppayloadlen)
+            udppayload = (unsigned char *) tcp + udphdrlen;
+        /* end tcp update */
+        break;
     case IPPROTO_ICMP:
         /* start icmp update */
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
         icmp = (struct icmphdr *) ((unsigned char *) (ip) + iphdrlen);
+        icmphdrlen = sizeof (struct icmphdr);
+
+        if (pktlen < iphdrlen + icmphdrlen)
+            RUNTIME_EXCEPTION("pktlen < iphdrlen + icmphdrlen");
+
+        icmppayloadlen = 0;
         /* end icmp update */
 
         break;
@@ -228,7 +236,7 @@ void Packet::fixIpTcpSum(void)
 
 void Packet::fixSum(void)
 {
-    if (ipfragment != false || proto != TCP)
+    if (fragment != false || proto != TCP)
         fixIpSum();
     else
         fixIpTcpSum();
@@ -236,7 +244,7 @@ void Packet::fixSum(void)
 
 void Packet::corruptSum(void)
 {
-    if (ipfragment == false && proto == TCP)
+    if (fragment == false && proto == TCP)
         tcp->check += 0xd34d;
     else
         ip->check += 0xd34d;
@@ -286,7 +294,7 @@ void Packet::iphdrResize(uint8_t size)
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
     ip->ihl = size / 4;
-    if(size%4) exit(1);
+    if (size % 4) exit(1);
 
     vector<unsigned char>::iterator it = pbuf.begin();
 
@@ -306,7 +314,7 @@ void Packet::iphdrResize(uint8_t size)
 
 void Packet::tcphdrResize(uint8_t size)
 {
-    if (ipfragment == true)
+    if (fragment == true)
         RUNTIME_EXCEPTION("it's not possible to call this function on a ip fragment");
 
     if (size == tcphdrlen)
@@ -596,9 +604,9 @@ void Packet::selflog(const char *func, const char *format, ...) const
         break;
     }
 
-    if (ipfragment)
+    if (fragment)
     {
-        LOG_PACKET("%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %d [%s]",
+        LOG_PACKET("%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %u [%s]",
                    func, evilstr, wtfstr, sourcestr,
                    saddr, daddr, ntohs(ip->frag_off),
                    ip->ttl, loginfo
@@ -609,16 +617,22 @@ void Packet::selflog(const char *func, const char *format, ...) const
         switch (proto)
         {
         case TCP:
-            snprintf(protoinfo, sizeof (protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %d(%d) seq %x ack_seq %x",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %u(%u) seq %x ack_seq %x",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
-                     tcp->rst, (int) pbuf.size(), (int) (pbuf.size() - iphdrlen - tcphdrlen),
+                     tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
                      ntohl(tcp->seq), ntohl(tcp->ack_seq)
                      );
             break;
+        case UDP:
+            snprintf(protoinfo, sizeof (protoinfo), "UDP sp %u dp %u len %u(%u)",
+                     ntohs(udp->source), ntohs(udp->dest),
+                     (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - udphdrlen)
+                     );
+            break;
         case ICMP:
-            snprintf(protoinfo, sizeof (protoinfo), "ICMP type %d code %d len %d(%d)",
+            snprintf(protoinfo, sizeof (protoinfo), "ICMP type %d code %d len %u(%u)",
                      icmp->type, icmp->code,
-                     (int) pbuf.size(), (int) (pbuf.size() - iphdrlen - sizeof (struct icmphdr))
+                     (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - sizeof (struct icmphdr))
                      );
             break;
         case OTHER_IP:

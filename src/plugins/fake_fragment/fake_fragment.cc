@@ -90,11 +90,7 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        /*
-         * This hack could work also as INNOCENT, so INNOCENT it's used as last
-         * resort if PRESCRIPTION or MALFORMED are disabled.
-         */
-        return (origpkt.tcppayload != NULL);
+        return true;
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

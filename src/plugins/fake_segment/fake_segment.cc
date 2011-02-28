@@ -105,7 +105,8 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        return (origpkt.proto == TCP &&
+        return (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
                 origpkt.tcppayload != NULL);
     }
 
