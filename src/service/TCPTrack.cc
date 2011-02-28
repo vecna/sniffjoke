@@ -759,15 +759,14 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
             if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
                     runconfig.blacklist->isPresent(pkt->ip->saddr))
             {
-                p_queue.insert(*pkt, SEND);
-                exit(1);
+                p_queue.insert(*pkt, SEND);;
                 return;
             }
         }
         else if (runconfig.use_whitelist)
         {
-            if (!runconfig.blacklist->isPresent(pkt->ip->daddr) ||
-                    !runconfig.blacklist->isPresent(pkt->ip->saddr))
+            if (!runconfig.whitelist->isPresent(pkt->ip->daddr) &&
+                    !runconfig.whitelist->isPresent(pkt->ip->saddr))
             {
                 p_queue.insert(*pkt, SEND);
                 return;

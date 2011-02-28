@@ -49,7 +49,7 @@ public:
     void selflog(const char *func, const char *format, ...) const;
 };
 
-class IPListMap : public map<uint32_t, IPList*>
+class IPListMap : public map<const uint32_t, IPList*>
 {
 private:
     const char *dumpfname;
