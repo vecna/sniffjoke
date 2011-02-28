@@ -10,7 +10,7 @@ interface present, and every session started from your box generate a verbose lo
 
 Give ^c to block foreground mode, and lets a correct use begin:
 
-# sniffjoke-autotest office /usr/local/var/sniffjoke
+# sniffjoke-autotest -l office -d /usr/local/var/sniffjoke
 
 1) "office" is the name of your location, will be home, antanix, everything you will use to describe your network place.
 2) /usr/local/var/sniffjoke is the directory where the 'generic/' directory is present. 'generic/' represent the default (and generic) network place where sniffjoke is runned. It will be a good choice in your network environment and will not. sniffjoke-autotest generate a new location directory copying some of the file contained in 'generic/'

@@ -357,7 +357,6 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
     }
 }
 
-
 void TCPTrack::execTTLBruteforces()
 {
     /*
@@ -449,7 +448,6 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
         return true;
     }
 }
-
 
 /* 
  * injectHack is one of the core function in sniffjoke:
@@ -872,7 +870,9 @@ void TCPTrack::handleYoungPackets()
             if (pkt->proto == TCP && ttlfocus_map.get(*pkt).status == TTL_BRUTEFORCE)
             {
                 p_queue.insert(*pkt, KEEP);
-            } else {
+            }
+            else
+            {
                 p_queue.insert(*pkt, HACK);
             }
         }
@@ -908,7 +908,8 @@ void TCPTrack::handleHackPackets()
     for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         p_queue.remove(*pkt);
-        if(!lastPktFix(*pkt)) {
+        if (!lastPktFix(*pkt))
+        {
             RUNTIME_EXCEPTION("Fatal code [M4CH3T3]: please send a notification to the developers");
         }
 
