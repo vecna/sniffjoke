@@ -155,13 +155,11 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
      */
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
-    if (pkt.proto == TCP)
+    const TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
+
+    if (it != ttlfocus_map.end() && !(it->second->status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
     {
-        const TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-        if (!(ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
-        {
-            retval |= SCRAMBLE_TTL;
-        }
+        retval |= SCRAMBLE_TTL;
     }
 
     return retval;
@@ -196,7 +194,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         {
             if (!ttlfocus.probe_timeout)
             {
-                ttlfocus.probe_timeout = sj_clock + 2;
+                ttlfocus.probe_timeout = sj_clock + 20;
             }
             else if (ttlfocus.probe_timeout < sj_clock)
             {
@@ -214,13 +212,13 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
             ++ttlfocus.sent_probe;
             injpkt = new Packet(ttlfocus.probe_dummy);
             injpkt->mark(TTLBFORCE, INNOCENT, GOOD);
-            injpkt->ip->id = (ttlfocus.rand_key % 64) + ttlfocus.sent_probe;
+            injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
             injpkt->ip->ttl = ttlfocus.sent_probe;
             injpkt->tcp->source = htons(ttlfocus.puppet_port);
             injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 
             injpkt->fixIpTcpSum();
-            p_queue.insert(*injpkt, HACK);
+            p_queue.insert(*injpkt, SEND);
 
             /* the next ttl probe schedule is forced in the next cycle */
             ttlfocus.next_probe_time = sj_clock;
@@ -247,7 +245,7 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
 
     /* if the pkt is an ICMP TIME_EXCEEDED should contain informations useful for
      * discern HOP distance from a remote host.  */
-    if (pkt.proto == ICMP && pkt.icmp->type != ICMP_TIME_EXCEEDED)
+    if (pkt.proto == ICMP && pkt.icmp->type == ICMP_TIME_EXCEEDED)
     {
         const struct iphdr * const badiph = (struct iphdr *) ((unsigned char *) pkt.icmp + sizeof (struct icmphdr));
         const struct tcphdr * const badtcph = (struct tcphdr *) ((unsigned char *) badiph + (badiph->ihl * 4));
@@ -280,7 +278,7 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
                  * it's resetted.
                  */
                 if (ttlfocus->probe_timeout)
-                    ttlfocus->probe_timeout = sj_clock + 2;
+                    ttlfocus->probe_timeout = sj_clock + 20;
 
                 if (expired_ttl >= ttlfocus->ttl_estimate)
                 {
@@ -301,7 +299,7 @@ bool TCPTrack::extractTTLinfo(Packet &pkt)
     }
 
     /* a tracked TCP packet contains important TTL informations */
-    if ((pkt.proto != TCP || (it = ttlfocus_map.find(pkt.ip->daddr)) == ttlfocus_map.end()))
+    if ((pkt.proto != TCP || (it = ttlfocus_map.find(pkt.ip->saddr)) == ttlfocus_map.end()))
         return true;
 
     ttlfocus = it->second;
@@ -758,6 +756,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
                     runconfig.blacklist->isPresent(pkt->ip->saddr))
             {
                 p_queue.insert(*pkt, SEND);
+                exit(1);
                 return;
             }
         }
@@ -831,10 +830,8 @@ void TCPTrack::handleYoungPackets()
     {
         p_queue.remove(*pkt);
         /*
-         * If is a packet triggered by the TTL_BRUTEFORCE's probe
-         * If is a simple incoming packet:
-         * Every incoming packet will have TTL information to update,
-         * extractTTLinfo is a static member HACKing the internal MAP
+         * every incoming packet, triggered or not by our TTLBRUTEFORCE routine
+         * will have useful informations for TTL stats.
          */
         if (!extractTTLinfo(*pkt))
         {
