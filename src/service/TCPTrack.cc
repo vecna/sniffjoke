@@ -146,6 +146,22 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     return ( ((uint32_t) random() % 100) < aggressivity_percentage);
 }
 
+uint16_t TCPTrack::get_userFrequency(Packet &pkt)
+{
+    /* the UDP traffic is for the most a data-apply hacks, because no flag gaming
+     * nor sequence hack exist. when a service is request to be ALWAYS hacked, we
+     * accept this choose in UDP too. otherwise, is better use a costant noise
+     * using AGG_COMMON */
+    if(pkt.proto == TCP)
+        return runconfig.portconf[ntohs(pkt.tcp->dest)];
+
+    /* else, no other proto other than UDP will reach here */
+    if(runconfig.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
+        return AGG_ALWAYS;
+
+    return AGG_COMMON;
+}
+
 uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
 {
     /*
@@ -503,23 +519,11 @@ bool TCPTrack::injectHack(Packet &origpkt)
         bool applicable = true;
 
         applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
-
-        if (origpkt.proto == TCP)
-        {
-            applicable &= percentage(
-                                     sessiontrack.packet_number,
-                                     hppe->selfObj->hackFrequency,
-                                     runconfig.portconf[ntohs(origpkt.tcp->dest)]
-                                     );
-        }
-        else /* UDP */
-        {
-            applicable &= percentage(
-                                     sessiontrack.packet_number,
-                                     hppe->selfObj->hackFrequency,
-                                     runconfig.portconf[ntohs(origpkt.udp->dest)]
-                                     );
-        }
+        applicable &= percentage(
+                                 sessiontrack.packet_number,
+                                 hppe->selfObj->hackFrequency,
+                                 get_userFrequency(origpkt)
+                                 );
 
         if (applicable)
             applicable_hacks.push_back(hppe);
@@ -853,7 +857,7 @@ void TCPTrack::handleYoungPackets()
     for (p_queue.select(YOUNG); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         /* SniffJoke ATM does apply to TCP/UDP traffic only */
-        if (pkt->proto & (TCP || UDP))
+        if (pkt->proto == TCP || pkt->proto == UDP)
         {
             p_queue.remove(*pkt);
 

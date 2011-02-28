@@ -510,13 +510,13 @@ void UserConf::loadAggressivity(void)
 
     if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
     {
-        LOG_ALL("port aggrssivity specifications in %s/%s: %s, loading defaults",
+        LOG_ALL("port aggrssivity specifications in %s/%s: %s, using defaults",
                 runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno));
 
         /* the default is NONE. in the file port-aggrssivity.conf
-         * the default is:
+         * the configured default is:
          *
-         * 1:65535      NORMAL,COMMON
+         * 1:65535      RARE
          *
          * but is not an absolute truth, I like the user that choose for himself
          */

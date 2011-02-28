@@ -497,11 +497,12 @@ void SniffJoke::handleCmdShowport(void)
     writeSJPortStat(SHOWPORT_COMMAND_TYPE);
 }
 
+#if 0
 void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
 {
     LOG_VERBOSE("set TCP ports from %d to %d at %d strenght level", start, end, what);
 
-    if (end == PORTSNUMBER)
+    if (end == (PORTSNUMBER -1) )
     {
         userconf.runconfig.portconf[PORTSNUMBER - 1] = what;
         --end;
@@ -512,6 +513,7 @@ void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
 
     writeSJPortStat(SETPORT_COMMAND_TYPE);
 }
+#endif
 
 void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
 {
@@ -542,7 +544,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
     /* clean the buffer and fix the starting pointer */
     memset(io_buf, 0x00, sizeof(io_buf) );
 
-    for (uint16_t i = 1; i < (PORTSNUMBER - 1); ++i)
+    for (int32_t i = 1; i < PORTSNUMBER; ++i)
     {
         if (userconf.runconfig.portconf[i] != prev_kind)
         {

@@ -215,7 +215,7 @@ int main(int argc, char **argv)
                 *port = 0x00;
                 int checked_port = atoi(++port);
 
-                if (checked_port > PORTSNUMBER || checked_port < 0)
+                if (checked_port >= PORTSNUMBER || checked_port < 0)
                     goto sniffjoke_help;
 
                 useropt.admin_port = (uint16_t) checked_port;
