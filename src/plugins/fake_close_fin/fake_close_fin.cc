@@ -135,7 +135,6 @@ public:
         pLH.completeLog("cache present for %s:%u value of %d Condition return %s",
                         inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
                         *previouslyInjected, ret ? "TRUE" : "FALSE");
-        >> >> >> > upstream / master
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
