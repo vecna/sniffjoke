@@ -40,7 +40,7 @@ class fragmentation : public Hack
 {
 #define HACK_NAME "Fragmentation"
 #define PKT_LOG "plugin.fragmentation.log"
-#define MIN_BLOCK_SPLIT 48
+#define MIN_BLOCK_SPLIT 100
 #define MIN_IP_PAYLOAD MIN_BLOCK_SPLIT*2
 
 private:

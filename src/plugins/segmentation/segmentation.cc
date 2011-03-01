@@ -40,7 +40,7 @@ class segmentation : public Hack
 {
 #define HACK_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
-#define MIN_BLOCK_SPLIT 28
+#define MIN_BLOCK_SPLIT 100
 #define MIN_TCP_PAYLOAD MIN_BLOCK_SPLIT*2
 
 private:
