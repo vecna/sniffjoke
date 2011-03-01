@@ -847,6 +847,17 @@ void TCPTrack::handleYoungPackets()
                 continue;
             }
 
+            /*
+             * FIXME: the received ICMP due to PRESCRIPTION and MALFORMED can
+             *        corrupt the connection.
+             *        ATM  we have no choice, we have to drop incoming ICMP traffic
+             */
+            if (pkt->proto == ICMP)
+            {
+                delete pkt;
+                continue;
+            }
+
             /* here we notify each plugin of the arrival of a packet */
             if (notifyIncoming(*pkt))
             {

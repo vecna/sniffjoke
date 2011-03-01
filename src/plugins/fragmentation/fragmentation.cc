@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
+ *
  *   Copyright (C) 2011 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
@@ -21,11 +21,11 @@
  */
 
 /*
- * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * HACK COMMENT:, every hacks require intensive comments because should cause
  * malfunction, or KILL THE INTERNET :)
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
- * 
+ *
  * this hack simply do a massive fragmentation of ip packet (or fragment itself).
  * this could help to bypass some simple sniffers and ids.
  *
@@ -40,8 +40,9 @@ class fragmentation : public Hack
 {
 #define HACK_NAME "Fragmentation"
 #define PKT_LOG "plugin.fragmentation.log"
-#define MIN_BLOCK_SPLIT 100
-#define MIN_IP_PAYLOAD MIN_BLOCK_SPLIT*2
+#define MIN_SPLIT_PAYLOAD 16                    /* 16 bytes */
+#define MIN_IP_PAYLOAD    2*MIN_SPLIT_PAYLOAD   /* 32 bytes */
+#define MAX_SPLIT_PKTS    5                     /*  5 pkts  */
 
 private:
     pluginLogHandler pLH;
@@ -51,21 +52,22 @@ public:
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
         /*
-         * block_split between MIN_BLOCK_SPLIT and ((2 * MIN_BLOCK_SPLIT) - 1);
-         * having MIN_SCRAMBLE_PACKET = MIN_BLOCK_SPLIT*3 we will have at least two fragments
+         * due to the ratio between MIN_SPLIT_PAYLOAD and MIN_IP_PAYLOAD
+         * the hack will produce a min number of 2 pkts and a max of 5 pkt
          */
-        const uint32_t block_split = ((MIN_BLOCK_SPLIT + (random() % MIN_BLOCK_SPLIT)) >> 3) << 3;
-        uint16_t ip_payload_len = ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen;
-        uint16_t carry = (ip_payload_len % block_split) ? (ip_payload_len % block_split) : block_split;
-        const uint8_t pkts = (ip_payload_len / block_split) + ((ip_payload_len % block_split) ? 1 : 0);
+        uint32_t split_size = (origpkt.ippayloadlen / MAX_SPLIT_PKTS) + ((origpkt.ippayloadlen % MAX_SPLIT_PKTS) ? 1 : 0);
+        split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
+        split_size = (split_size >> 3) << 3; /* we need an offset multiple */
+        const uint8_t pkts = (origpkt.ippayloadlen / split_size) + ((origpkt.ippayloadlen % split_size) ? 1 : 0);
+        const uint32_t carry = (origpkt.ippayloadlen % split_size) ? (origpkt.ippayloadlen % split_size) : split_size;
 
         vector<unsigned char> pbufcpy(origpkt.pbuf);
         vector<unsigned char>::iterator it = pbufcpy.begin() + origpkt.iphdrlen;
 
         pLH.completeLog("packet size %d, splitted in %d chunk of %d bytes",
-                        ntohs(origpkt.ip->tot_len), pkts, block_split);
+                        ntohs(origpkt.ip->tot_len), pkts, split_size);
 
-        uint16_t offset = ntohs(origpkt.ip->frag_off) & ~htons(IP_MF);
+        uint16_t offset = ntohs(origpkt.ip->frag_off) & ~htons(~IP_DF | ~IP_MF);
         bool justfragmented = ntohs(origpkt.ip->frag_off) & htons(IP_MF);
 
         for (uint8_t i = 0; i < pkts; i++)
@@ -79,11 +81,11 @@ public:
                 /* common in my code */
                 ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
 
-                ip->tot_len = htons(origpkt.iphdrlen + block_split);
-                ip->frag_off = htons(offset | IP_MF); /* set more fragment bit */
-                pktbuf.insert(pktbuf.end(), it, it + block_split);
-                offset += block_split >> 3;
-                it += block_split;
+                ip->tot_len = htons(origpkt.iphdrlen + split_size);
+                ip->frag_off = htons(offset | IP_MF);
+                pktbuf.insert(pktbuf.end(), it, it + split_size);
+                offset += split_size >> 3;
+                it += split_size;
             }
             else /* last segment */
             {
@@ -144,7 +146,7 @@ public:
          *
          */
         return (!(origpkt.ip->frag_off & htons(IP_DF)) &&
-                origpkt.iphdrlen + ((ntohs(origpkt.ip->tot_len) - origpkt.iphdrlen) / 2) >= 68);
+                origpkt.ippayloadlen > MIN_IP_PAYLOAD);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
@@ -162,8 +164,8 @@ public:
     }
 
     fragmentation(bool forcedTest) :
-            Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS),
-            pLH(HACK_NAME, PKT_LOG)
+    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS),
+    pLH(HACK_NAME, PKT_LOG)
     {
     }
 };
