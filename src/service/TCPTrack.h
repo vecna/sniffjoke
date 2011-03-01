@@ -46,8 +46,8 @@ private:
     uint8_t discernAvailScramble(Packet &);
 
     void injectTTLProbe(TTLFocus &);
-    bool extractTTLinfo(Packet &);
     void execTTLBruteforces();
+    bool extractTTLinfo(Packet &);
 
     bool notifyIncoming(Packet &);
     bool injectHack(Packet &);

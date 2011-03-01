@@ -196,16 +196,3 @@ Packet* PacketQueue::get()
     }
     return NULL; /* NOT FOUND */
 }
-
-Packet* PacketQueue::getSource(source_t requestSrc)
-{
-    while(next_pkt != NULL)
-    {
-        cur_pkt = next_pkt;
-        next_pkt = next_pkt->next;
-
-        if(cur_pkt->source == requestSrc)
-            return cur_pkt; /* FOUND */
-    }
-    return NULL; /* NOT FOUND */
-}

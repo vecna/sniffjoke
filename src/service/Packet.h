@@ -144,7 +144,7 @@ public:
     void updatePacketMetadata(void);
 
     void mark(source_t, evilbit_t);
-    void mark(source_t, judge_t, evilbit_t);
+    void mark(source_t, evilbit_t, judge_t);
 
     /* IP/TCP checksum functions */
     uint32_t computeHalfSum(const void *, uint16_t);

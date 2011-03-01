@@ -67,7 +67,7 @@ void Packet::mark(source_t source, evilbit_t morality)
     this->evilbit = morality;
 }
 
-void Packet::mark(source_t source, judge_t wtf, evilbit_t morality)
+void Packet::mark(source_t source, evilbit_t morality, judge_t wtf)
 {
     this->wtf = wtf;
     mark(source, morality);
@@ -85,10 +85,10 @@ void Packet::updatePacketMetadata()
     ippayloadlen = 0;
 
     /* unions initialization; one for all */
-    tcp = NULL;         /* udp, icmp */
-    tcphdrlen = 0;      /* udphdrlen, icmphdrlen */
-    tcppayload = NULL;  /* udppayload, icmppayload */
-    tcppayloadlen = 0;  /* udppayloadlen, icmppayloadlen */
+    tcp = NULL; /* udp, icmp */
+    tcphdrlen = 0; /* udphdrlen, icmphdrlen */
+    tcppayload = NULL; /* udppayload, icmppayload */
+    tcppayloadlen = 0; /* udppayloadlen, icmppayloadlen */
 
     /* end initial metadata reset */
 
@@ -417,7 +417,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before ip injection [strip %u] iphdrlen %u ippayloadlen %u pktlen %u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
+    SELFLOG("before ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -458,7 +458,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
     }
     catch (exception &e)
     {
-        SELFLOG("ip injection is not possibile");
+        SELFLOG("IPOpts injection not possible");
     }
 
     if (target_iphdrlen != actual_iphdrlen)
@@ -469,7 +469,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
         iphdrResize(actual_iphdrlen);
     }
 
-    SELFLOG("after ip injection [strip %u] iphdrlen %u ippayloadlen %u pktlen %u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
+    SELFLOG("after ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     return injected;
 }
@@ -486,7 +486,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before tcp injection [strip %u] iphdrlen %u tcphdrlen %u ippayload %u pktlen %u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
+    SELFLOG("before TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -528,7 +528,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
     }
     catch (exception &e)
     {
-        SELFLOG("tcp injection is not possibile");
+        SELFLOG("TCPOpts injection not possibile");
     }
 
     if (target_tcphdrlen != actual_tcphdrlen)
@@ -539,7 +539,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
         tcphdrResize(actual_tcphdrlen);
     }
 
-    SELFLOG("after tcp injection [strip %u] iphdrlen %u tcphdrlen %u ippayload %u pktlen %u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
+    SELFLOG("after TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
     return injected;
 }
@@ -603,33 +603,25 @@ void Packet::selflog(const char *func, const char *format, ...) const
         break;
     }
 
-    if (fragment)
-    {
-        LOG_PACKET("%s: (E|%s) (WTF|%s) (src %s) %s->%s FRAGMENT (%u) ttl %u [%s]",
-                   func, evilstr, wtfstr, sourcestr,
-                   saddr, daddr, ntohs(ip->frag_off),
-                   ip->ttl, loginfo
-                   );
-    }
-    else
+    if (!fragment)
     {
         switch (proto)
         {
         case TCP:
-            snprintf(protoinfo, sizeof (protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %u(%u) seq %x ack_seq %x",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP sp|%u dp|%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
                      tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
                      ntohl(tcp->seq), ntohl(tcp->ack_seq)
                      );
             break;
         case UDP:
-            snprintf(protoinfo, sizeof (protoinfo), "UDP sp %u dp %u len %u(%u)",
+            snprintf(protoinfo, sizeof (protoinfo), "UDP sp|%u dp|%u len|%u(%u)",
                      ntohs(udp->source), ntohs(udp->dest),
                      (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - udphdrlen)
                      );
             break;
         case ICMP:
-            snprintf(protoinfo, sizeof (protoinfo), "ICMP type %d code %d len %u(%u)",
+            snprintf(protoinfo, sizeof (protoinfo), "ICMP type|%d code|%d len|%u(%u)",
                      icmp->type, icmp->code,
                      (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - sizeof (struct icmphdr))
                      );
@@ -637,15 +629,24 @@ void Packet::selflog(const char *func, const char *format, ...) const
         case OTHER_IP:
             snprintf(protoinfo, sizeof (protoinfo), "other proto: %d", ip->protocol);
             break;
-        case PROTOUNASSIGNED:
-            snprintf(protoinfo, sizeof (protoinfo), "protocol unassigned! value %d", ip->protocol);
-            break;
         default:
-            RUNTIME_EXCEPTION("BUG: invalid and impossibile");
+            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", proto);
             break;
         }
 
-        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s [%s] ttl %d %s",
-                   func, evilstr, wtfstr, sourcestr, saddr, daddr, protoinfo, ip->ttl, loginfo);
+        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s [%s] ttl|%d %s",
+                   func, evilstr, wtfstr, sourcestr,
+                   saddr, daddr,
+                   protoinfo,
+                   ip->ttl, loginfo);
+    }
+    else
+    {
+        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s FRAGMENT (%u) ttl|%u %s",
+                   func, evilstr, wtfstr, sourcestr,
+                   saddr, daddr,
+                   ntohs(ip->frag_off),
+                   ip->ttl, loginfo
+                   );
     }
 }
