@@ -65,7 +65,7 @@ void SessionTrack::selflog(const char *func, const char *format, ...) const
     vsnprintf(loginfo, sizeof (loginfo), format, arguments);
     va_end(arguments);
 
-    LOG_SESSION("%s %s S|-:%u D|%s:%d #pkta|%d #inja|%d %s",
+    LOG_SESSION("%s %s S|-:%u D|%s:%d #pkts|%d #injs|%d %s",
                 func, proto == IPPROTO_TCP ? "TCP" : "UDP",
                 ntohs(sport),
                 inet_ntoa(*((struct in_addr *) &daddr)), ntohs(dport),

@@ -16647,7 +16647,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/service/Makefile src/client/Makefile src/plugins/Makefile src/plugins/fake_close_fin/Makefile src/plugins/fake_close_rst/Makefile src/plugins/fake_fragment/Makefile src/plugins/fake_segment/Makefile src/plugins/fake_seq/Makefile src/plugins/fake_syn/Makefile src/plugins/fake_zero_window/Makefile src/plugins/fragmentation/Makefile src/plugins/segmentation/Makefile src/plugins/overlap_packet/Makefile src/plugins/shift_ack/Makefile src/plugins/valid_rst_fake_seq/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/service/Makefile src/client/Makefile src/plugins/Makefile src/plugins/fake_close_fin/Makefile src/plugins/fake_close_rst/Makefile src/plugins/fake_data/Makefile src/plugins/fake_seq/Makefile src/plugins/fake_syn/Makefile src/plugins/fake_zero_window/Makefile src/plugins/fragmentation/Makefile src/plugins/segmentation/Makefile src/plugins/overlap_packet/Makefile src/plugins/shift_ack/Makefile src/plugins/valid_rst_fake_seq/Makefile"
 
 
 
@@ -17766,8 +17766,7 @@ do
     "src/plugins/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/Makefile" ;;
     "src/plugins/fake_close_fin/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_close_fin/Makefile" ;;
     "src/plugins/fake_close_rst/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_close_rst/Makefile" ;;
-    "src/plugins/fake_fragment/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_fragment/Makefile" ;;
-    "src/plugins/fake_segment/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_segment/Makefile" ;;
+    "src/plugins/fake_data/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_data/Makefile" ;;
     "src/plugins/fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_seq/Makefile" ;;
     "src/plugins/fake_syn/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_syn/Makefile" ;;
     "src/plugins/fake_zero_window/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_zero_window/Makefile" ;;

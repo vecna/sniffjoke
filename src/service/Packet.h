@@ -162,8 +162,10 @@ public:
     void tcphdrResize(uint8_t);
     void ippayloadResize(uint16_t);
     void tcppayloadResize(uint16_t);
+    void udppayloadResize(uint16_t);
     void ippayloadRandomFill(void);
     void tcppayloadRandomFill(void);
+    void udppayloadRandomFill(void);
 
     /* MALFORMED hacks and distortion of INNOCENT packets */
     bool injectIPOpts(bool, bool);

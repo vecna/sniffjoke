@@ -102,8 +102,7 @@ AC_CONFIG_FILES(
 		src/plugins/Makefile
 		src/plugins/fake_close_fin/Makefile
 		src/plugins/fake_close_rst/Makefile
-		src/plugins/fake_fragment/Makefile
-		src/plugins/fake_segment/Makefile
+		src/plugins/fake_data/Makefile
 		src/plugins/fake_seq/Makefile
 		src/plugins/fake_syn/Makefile
 		src/plugins/fake_zero_window/Makefile

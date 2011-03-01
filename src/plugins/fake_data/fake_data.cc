@@ -41,9 +41,55 @@
 
 #include "service/Hack.h"
 
-class fake_segment : public Hack
+class fake_data : public Hack
 {
-#define HACK_NAME "Fake Segment"
+#define HACK_NAME "Fake Data"
+private:
+
+    static Packet* fake_fragment(const Packet &origpkt)
+    {
+        Packet * const pkt = new Packet(origpkt);
+
+        pkt->ippayloadRandomFill();
+
+        return pkt;
+    }
+
+    static Packet* fake_segment(const Packet &origpkt)
+    {
+        Packet * const pkt = new Packet(origpkt);
+
+        pkt->tcp->rst = 0;
+        pkt->tcp->fin = 0;
+
+        if (random() % 2)
+            pkt->tcp->psh = 1;
+        else
+            pkt->tcp->psh = 0;
+
+        if (random() % 2)
+        {
+            pkt->tcp->urg = 1;
+            pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
+        }
+        else
+        {
+            pkt->tcp->urg = 0;
+        }
+
+        pkt->tcppayloadRandomFill();
+
+        return pkt;
+    }
+
+    static Packet* fake_datagram(const Packet &origpkt)
+    {
+        Packet * const pkt = new Packet(origpkt);
+
+        pkt->udppayloadRandomFill();
+
+        return pkt;
+    }
 
 public:
 
@@ -62,32 +108,28 @@ public:
         else /* the 99% of the times */
             selectedScramble = GUILTY;
 
+        Packet * (*fun)(const Packet &);
+
+        if (origpkt.fragment == false)
+        {
+            if (origpkt.proto == TCP && origpkt.tcppayload != NULL)
+                fun = fake_segment;
+            else if (origpkt.proto == UDP && origpkt.udppayload != NULL)
+                fun = fake_datagram;
+            else
+                fun = fake_fragment;
+        }
+        else
+        {
+            fun = fake_fragment;
+        }
+
         uint8_t pkts = 2;
         while (pkts)
         {
-            Packet * const pkt = new Packet(origpkt);
+            Packet* pkt = (*fun)(origpkt);
 
             pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
-            pkt->tcp->rst = 0;
-            pkt->tcp->fin = 0;
-
-            if (random() % 2)
-                pkt->tcp->psh = 1;
-            else
-                pkt->tcp->psh = 0;
-
-            if (random() % 2)
-            {
-                pkt->tcp->urg = 1;
-                pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
-            }
-            else
-            {
-                pkt->tcp->urg = 0;
-            }
-
-            pkt->tcppayloadRandomFill();
 
             if (pkts == 2) /* first packet */
                 pkt->position = ANTICIPATION;
@@ -103,27 +145,20 @@ public:
         }
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
-    {
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                origpkt.tcppayload != NULL);
-    }
-
     virtual bool initializeHack(uint8_t configuredScramble)
     {
         supportedScramble = configuredScramble;
         return true;
     }
 
-    fake_segment(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
+    fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
     {
     };
 };
 
 extern "C" Hack* CreateHackObject(bool forcedTest)
 {
-    return new fake_segment(forcedTest);
+    return new fake_data(forcedTest);
 }
 
 extern "C" void DeleteHackObject(Hack *who)

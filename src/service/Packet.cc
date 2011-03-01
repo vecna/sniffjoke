@@ -105,7 +105,6 @@ void Packet::updatePacketMetadata()
     if (pktlen < iphdrlen)
         RUNTIME_EXCEPTION("pktlen < iphdrlen");
 
-
     if (pktlen < ntohs(ip->tot_len))
         RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
     /* end ip update */
@@ -143,7 +142,7 @@ void Packet::updatePacketMetadata()
         if (pktlen < iphdrlen + sizeof (struct tcphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
-        tcp = (struct tcphdr *) ((unsigned char *) (ip) + iphdrlen);
+        tcp = (struct tcphdr *)(ippayload);
         tcphdrlen = tcp->doff * 4;
 
         if (pktlen < iphdrlen + tcphdrlen)
@@ -155,35 +154,40 @@ void Packet::updatePacketMetadata()
         /* end tcp update */
         break;
     case IPPROTO_UDP:
-        /* start tcp update */
+        /* start udp update */
         if (pktlen < iphdrlen + sizeof (struct udphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct udphdr)");
 
-        udp = (struct udphdr *) ((unsigned char *) (ip) + iphdrlen);
+        udp = (struct udphdr *)(ippayload);
         udphdrlen = sizeof (struct udphdr);
 
         if (pktlen < iphdrlen + udphdrlen)
             RUNTIME_EXCEPTION("pktlen < iphdrlen + udphdrlen");
 
+        if (pktlen < iphdrlen + ntohs(udp->len))
+            RUNTIME_EXCEPTION("pktlen != iphdrlen + ntohs(udp->len) %u %u %u", pktlen, iphdrlen, ntohs(udp->len));
+
+
         udppayloadlen = pktlen - iphdrlen - udphdrlen;
         if (udppayloadlen)
             udppayload = (unsigned char *) tcp + udphdrlen;
-        /* end tcp update */
+        /* end udp update */
         break;
     case IPPROTO_ICMP:
         /* start icmp update */
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
-        icmp = (struct icmphdr *) ((unsigned char *) (ip) + iphdrlen);
+        icmp = (struct icmphdr *)(ippayload);
         icmphdrlen = sizeof (struct icmphdr);
 
         if (pktlen < iphdrlen + icmphdrlen)
-            RUNTIME_EXCEPTION("pktlen < iphdrlen + icmphdrlen");
+            RUNTIME_EXCEPTION("pktlen != iphdrlen + icmphdrlen");
 
-        icmppayloadlen = 0;
+        icmppayloadlen = pktlen - iphdrlen - icmphdrlen;
+        if (icmppayloadlen)
+            icmppayload = (unsigned char *) icmp + icmphdrlen;
         /* end icmp update */
-
         break;
     }
 }
@@ -300,7 +304,7 @@ void Packet::iphdrResize(uint8_t size)
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
-        pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
+        pbuf.insert(it + iphdrlen, size - iphdrlen, 0);//IPOPT_NOOP);
     }
     else
     { /* iphdrlen > size */
@@ -392,6 +396,32 @@ void Packet::tcppayloadResize(uint16_t size)
     updatePacketMetadata();
 }
 
+void Packet::udppayloadResize(uint16_t size)
+{
+    if (size == udppayloadlen)
+        return;
+
+    const uint16_t pktlen = pbuf.size();
+
+    /* begin safety checks */
+    if (pktlen - udppayloadlen + size > MTU)
+        RUNTIME_EXCEPTION("");
+    /* end safety checks */
+
+    const uint16_t new_total_len = pktlen - udppayloadlen + size;
+
+    /* its important to update values into hdr before vector insert call because it can cause relocation */
+    ip->tot_len = htons(new_total_len);
+
+    /* in udp we have also to correct the len field */
+    udp->len = htons(udphdrlen + size);
+
+
+    pbuf.resize(new_total_len);
+
+    updatePacketMetadata();
+}
+
 void Packet::ippayloadRandomFill()
 {
     const uint16_t diff = pbuf.size() - iphdrlen;
@@ -402,6 +432,12 @@ void Packet::tcppayloadRandomFill()
 {
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
+}
+
+void Packet::udppayloadRandomFill()
+{
+    const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
+    memset_random(udppayload, diff);
 }
 
 bool Packet::injectIPOpts(bool corrupt, bool strip_previous)

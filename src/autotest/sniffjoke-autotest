@@ -41,11 +41,9 @@ fake_close_fin,GUILTY
 fake_close_rst,PRESCRIPTION
 fake_close_rst,MALFORMED
 fake_close_rst,GUILTY
-fake_fragment,PRESCRIPTION
-fake_fragment,MALFORMED
-fake_segment,PRESCRIPTION
-fake_segment,MALFORMED
-fake_segment,GUILTY
+fake_data,PRESCRIPTION
+fake_data,MALFORMED
+fake_data,GUILTY
 fake_seq,PRESCRIPTION
 fake_seq,MALFORMED
 fake_seq,GUILTY
