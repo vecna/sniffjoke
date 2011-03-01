@@ -24,7 +24,7 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  * 
- * this hack injects two tcp segments (that will be invalidated with TTL expiring
+ * this hack injects two packets (that will be invalidated with TTL expiring
  * or bad ip options or bad checksum) of the same length of the original packet,
  * one BEFORE and one AFTER the real packet. this cause that the sniffer, that
  * eventually confirms the readed data when the data was acknowledged, to
@@ -32,6 +32,12 @@
  * sequence number). the reassembled flow appears overridden by the data here
  * injected. shoulds be the leverage for an applicative injection (like a
  * fake mail instead of the real mail, etc...)
+ *
+ * the hack varies in relation to the packet trying to achive the maximum effect.
+ *
+ *  1) if the packet is an ip fragment applies fake_fragment();
+ *  2) if the packet is a tcp segment applies fake_segment();
+ *  3) if the packet is a udp datagram applies fake_datagram();
  * 
  * SOURCE: deduction, analysis of libnids
  * VERIFIED IN:
