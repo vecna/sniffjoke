@@ -35,6 +35,7 @@ class SessionTrack
 public:
     time_t access_timestamp; /* access timestamp used to decretee expiry */
 
+    uint8_t proto;
     uint32_t daddr;
     uint16_t sport;
     uint16_t dport;
@@ -52,6 +53,7 @@ public:
 class SessionTrackKey
 {
 public:
+    uint8_t proto;
     uint32_t daddr;
     uint16_t sport;
     uint16_t dport;

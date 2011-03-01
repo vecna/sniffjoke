@@ -37,11 +37,13 @@ injected_pktnumber(0)
 
     if (pkt.proto == TCP)
     {
+        proto = IPPROTO_TCP;
         sport = pkt.tcp->source;
         dport = pkt.tcp->dest;
     }
     else /* pkt.proto == UDP */
     {
+        proto = IPPROTO_UDP;
         sport = pkt.udp->source;
         dport = pkt.udp->source;
     }
@@ -63,10 +65,10 @@ void SessionTrack::selflog(const char *func, const char *format, ...) const
     vsnprintf(loginfo, sizeof (loginfo), format, arguments);
     va_end(arguments);
 
-    LOG_SESSION("%s sport %d saddr %s dport %u, #pkt %d #inj %d: %s",
-                func, ntohs(sport),
-                inet_ntoa(*((struct in_addr *) &daddr)),
-                ntohs(dport),
+    LOG_SESSION("%s %s S|-:%u D|%s:%d #pkts|%d #injs|%d %s",
+                func, proto == IPPROTO_TCP ? "TCP" : "UDP",
+                ntohs(sport),
+                inet_ntoa(*((struct in_addr *) &daddr)), ntohs(dport),
                 packet_number, injected_pktnumber,
                 loginfo
                 );
@@ -74,22 +76,29 @@ void SessionTrack::selflog(const char *func, const char *format, ...) const
 
 bool SessionTrackKey::operator<(SessionTrackKey comp) const
 {
-    if (daddr < comp.daddr)
+    if (proto < comp.proto)
         return true;
-    else if (daddr > comp.daddr)
+    else if (proto > comp.proto)
         return false;
     else
     {
-        if (sport < comp.sport)
+        if (daddr < comp.daddr)
             return true;
-        else if (sport > comp.sport)
+        else if (daddr > comp.daddr)
             return false;
         else
         {
-            if (dport < comp.dport)
+            if (sport < comp.sport)
                 return true;
-            else
+            else if (sport > comp.sport)
                 return false;
+            else
+            {
+                if (dport < comp.dport)
+                    return true;
+                else
+                    return false;
+            }
         }
     }
 }
@@ -122,11 +131,13 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
     key.daddr = pkt.ip->daddr;
     if (pkt.proto == TCP)
     {
+        key.proto = IPPROTO_TCP;
         key.sport = pkt.tcp->source;
         key.dport = pkt.tcp->dest;
     }
     else /* (pkt.proto == UDP) */
     {
+        key.proto = IPPROTO_UDP;
         key.sport = pkt.udp->source;
         key.dport = pkt.udp->dest;
     }
@@ -146,7 +157,6 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
 
 struct sessiontrack_timestamp_comparison
 {
-
     bool operator() (SessionTrack *i, SessionTrack * j)
     {
         return ( i->access_timestamp < j->access_timestamp);
@@ -204,7 +214,6 @@ void SessionTrackMap::manage()
             insert(pair<SessionTrackKey, SessionTrack *>(key, tmp[index]));
         }
         while (++index != SESSIONTRACKMAP_MEMORY_THRESHOLD / 2);
-
 
         do
             delete tmp[index];

@@ -615,7 +615,7 @@ bool HDRoptions::randomInjector(void)
 
     const char* optstr = NULL;
     uint8_t injectetdopt_size = 0;
-    uint8_t lprev = actual_opts_len;
+    uint8_t prev_opts_len = actual_opts_len;
 
     if (type == IPOPTS_INJECTOR)
     {
@@ -671,9 +671,9 @@ bool HDRoptions::randomInjector(void)
         optptr += injectetdopt_size;
         actual_opts_len += injectetdopt_size;
         available_opts_len = (target_opts_len - actual_opts_len);
-        LOG_PACKET("injected %s %sOPT %s added %u previous len %u actual %u",
+        LOG_PACKET("injected %s %sOPT %s len|%u prevlen|%u actuallen|%u",
                    corrupt ? "CORRUPT" : "VALID",
-                   type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, lprev, actual_opts_len);
+                   type == IPOPTS_INJECTOR ? "IP" : "TCP", optstr, injectetdopt_size, prev_opts_len, actual_opts_len);
 
         return true;
     }

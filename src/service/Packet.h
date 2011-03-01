@@ -144,7 +144,7 @@ public:
     void updatePacketMetadata(void);
 
     void mark(source_t, evilbit_t);
-    void mark(source_t, judge_t, evilbit_t);
+    void mark(source_t, evilbit_t, judge_t);
 
     /* IP/TCP checksum functions */
     uint32_t computeHalfSum(const void *, uint16_t);
@@ -162,8 +162,10 @@ public:
     void tcphdrResize(uint8_t);
     void ippayloadResize(uint16_t);
     void tcppayloadResize(uint16_t);
+    void udppayloadResize(uint16_t);
     void ippayloadRandomFill(void);
     void tcppayloadRandomFill(void);
+    void udppayloadRandomFill(void);
 
     /* MALFORMED hacks and distortion of INNOCENT packets */
     bool injectIPOpts(bool, bool);

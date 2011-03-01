@@ -4,8 +4,7 @@ SUBDIRS =	fragmentation \
                 segmentation \
 		fake_close_fin \
 		fake_close_rst \
-		fake_fragment \
-		fake_segment \
+		fake_data \
 		fake_seq \
 		fake_syn \
 		fake_zero_window \

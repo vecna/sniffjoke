@@ -40,31 +40,33 @@ using namespace std;
 #define DEFAULT_PORT	8844
 #define DEFAULT_TIMEOUT	500
 
-struct command {
-	const char *cmd;
-	int related_args;
+struct command
+{
+    const char *cmd;
+    int related_args;
 };
 
-class SniffJokeCli {
+class SniffJokeCli
+{
 private:
-	const char *serveraddr;
-	uint16_t serverport;
-	uint32_t ms_timeout;
-	const char *cmd_buffer;
-	bool parse_SjinternalProto(uint8_t *, int32_t);
-	bool printSJStat(uint8_t *, int32_t);
-	bool printSJPort(uint8_t *, int32_t);
-	bool printSJError(uint8_t *, int32_t);
+    const char *serveraddr;
+    uint16_t serverport;
+    uint32_t ms_timeout;
+    const char *cmd_buffer;
+    bool parse_SjinternalProto(uint8_t *, int32_t);
+    bool printSJStat(uint8_t *, int32_t);
+    bool printSJPort(uint8_t *, int32_t);
+    bool printSJError(uint8_t *, int32_t);
     bool printSJSessionInfo(uint8_t*, uint32_t);
     bool printSJTTL(uint8_t *, uint32_t);
 
     char *fillWithSpace(uint16_t);
     char *fillWithSpace(uint16_t, uint16_t);
-    char *resolve_weight(uint32_t);
+    char *resolveWeight(uint32_t);
 
 public:
-	SniffJokeCli(char *, uint16_t, uint32_t);
-	void send_command(const char *cmdstring);
+    SniffJokeCli(char *, uint16_t, uint32_t);
+    void send_command(const char *cmdstring);
 };
 
 #endif /* SJ_SNIFFJOKECLI_H */

@@ -28,7 +28,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-SniffJoke::SniffJoke(struct sj_cmdline_opts &opts) :
+SniffJoke::SniffJoke(const struct sj_cmdline_opts &opts) :
 alive(true),
 opts(opts),
 userconf(opts),
@@ -154,7 +154,6 @@ void SniffJoke::run()
         /* main block */
         while (alive)
         {
-
             sj_clock = time(NULL);
 
             proc.sigtrapDisable();
@@ -679,7 +678,7 @@ uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, bool v
     return len + sizeof (singleData);
 }
 
-uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, char value[MEDIUMBUF])
+uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, const char* value)
 {
     if (len)
     {
@@ -708,25 +707,7 @@ uint32_t SniffJoke::appendSJPortBlock(uint8_t *p, uint16_t startP, uint16_t endP
     return (sizeof (pInfo));
 }
 
-uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, SessionTrack & SexToDump)
-{
-    struct sex_record sr;
-
-    if (!SexToDump.packet_number)
-        return 0;
-
-    sr.daddr = SexToDump.daddr;
-    sr.dport = SexToDump.dport;
-    sr.sport = SexToDump.sport;
-    sr.packet_number = SexToDump.packet_number;
-    sr.injected_pktnumber = SexToDump.injected_pktnumber;
-
-    memcpy((void *) p, (void *) &sr, sizeof (sr));
-
-    return sizeof (sr);
-}
-
-uint32_t SniffJoke::appendSJTTLInfo(uint8_t *p, TTLFocus & TT)
+uint32_t SniffJoke::appendSJTTLInfo(uint8_t *p, const TTLFocus &TT)
 {
     struct ttl_record ttlr;
 
@@ -741,4 +722,23 @@ uint32_t SniffJoke::appendSJTTLInfo(uint8_t *p, TTLFocus & TT)
     memcpy((void *) p, (void *) &ttlr, sizeof (ttlr));
 
     return sizeof (ttlr);
+}
+
+uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, const SessionTrack &SexToDump)
+{
+    struct sex_record sr;
+
+    if (!SexToDump.packet_number)
+        return 0;
+
+    sr.proto = SexToDump.proto;
+    sr.daddr = SexToDump.daddr;
+    sr.dport = SexToDump.dport;
+    sr.sport = SexToDump.sport;
+    sr.packet_number = SexToDump.packet_number;
+    sr.injected_pktnumber = SexToDump.injected_pktnumber;
+
+    memcpy((void *) p, (void *) &sr, sizeof (sr));
+
+    return sizeof (sr);
 }

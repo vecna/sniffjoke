@@ -38,14 +38,14 @@ class SniffJoke
 {
 public:
     bool alive;
-    SniffJoke(struct sj_cmdline_opts &);
+    SniffJoke(const struct sj_cmdline_opts &);
     ~SniffJoke();
     void run();
 
 private:
-    sj_cmdline_opts &opts;
+    const sj_cmdline_opts &opts;
     /* used to copy structs for command I/O */
-    uint8_t io_buf[HUGEBUF * 4]; 
+    uint8_t io_buf[HUGEBUF * 4];
     UserConf userconf;
     Process proc;
     auto_ptr<NetIO> mitm;
@@ -72,7 +72,7 @@ private:
     void handleAdminSocket();
 
     /* internalProtocol handling */
-    int recvCommand(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg);
+    int recvCommand(int sock, char *, int, struct sockaddr *, FILE *, const char *);
     uint8_t* handleCmd(const char *);
 
     /* single command management */
@@ -95,12 +95,12 @@ private:
     void writeSJProtoError(void);
 
     /* called by writeSJ* functions = answer building */
-    uint32_t appendSJSessionInfo(uint8_t *, SessionTrack &);
-    uint32_t appendSJTTLInfo(uint8_t *, TTLFocus &);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, uint16_t);
     uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, bool);
-    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, char *);
+    uint32_t appendSJStatus(uint8_t *, int32_t, uint32_t, const char *);
     uint32_t appendSJPortBlock(uint8_t *, uint16_t, uint16_t, uint16_t);
+    uint32_t appendSJSessionInfo(uint8_t *, const SessionTrack &);
+    uint32_t appendSJTTLInfo(uint8_t *, const TTLFocus &);
 };
 
 #endif /* SJ_SNIFFJOKE_H */

@@ -67,7 +67,7 @@ void Packet::mark(source_t source, evilbit_t morality)
     this->evilbit = morality;
 }
 
-void Packet::mark(source_t source, judge_t wtf, evilbit_t morality)
+void Packet::mark(source_t source, evilbit_t morality, judge_t wtf)
 {
     this->wtf = wtf;
     mark(source, morality);
@@ -85,10 +85,10 @@ void Packet::updatePacketMetadata()
     ippayloadlen = 0;
 
     /* unions initialization; one for all */
-    tcp = NULL;         /* udp, icmp */
-    tcphdrlen = 0;      /* udphdrlen, icmphdrlen */
-    tcppayload = NULL;  /* udppayload, icmppayload */
-    tcppayloadlen = 0;  /* udppayloadlen, icmppayloadlen */
+    tcp = NULL; /* udp, icmp */
+    tcphdrlen = 0; /* udphdrlen, icmphdrlen */
+    tcppayload = NULL; /* udppayload, icmppayload */
+    tcppayloadlen = 0; /* udppayloadlen, icmppayloadlen */
 
     /* end initial metadata reset */
 
@@ -104,7 +104,6 @@ void Packet::updatePacketMetadata()
 
     if (pktlen < iphdrlen)
         RUNTIME_EXCEPTION("pktlen < iphdrlen");
-
 
     if (pktlen < ntohs(ip->tot_len))
         RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
@@ -143,7 +142,7 @@ void Packet::updatePacketMetadata()
         if (pktlen < iphdrlen + sizeof (struct tcphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
-        tcp = (struct tcphdr *) ((unsigned char *) (ip) + iphdrlen);
+        tcp = (struct tcphdr *)(ippayload);
         tcphdrlen = tcp->doff * 4;
 
         if (pktlen < iphdrlen + tcphdrlen)
@@ -155,35 +154,40 @@ void Packet::updatePacketMetadata()
         /* end tcp update */
         break;
     case IPPROTO_UDP:
-        /* start tcp update */
+        /* start udp update */
         if (pktlen < iphdrlen + sizeof (struct udphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct udphdr)");
 
-        udp = (struct udphdr *) ((unsigned char *) (ip) + iphdrlen);
+        udp = (struct udphdr *)(ippayload);
         udphdrlen = sizeof (struct udphdr);
 
         if (pktlen < iphdrlen + udphdrlen)
             RUNTIME_EXCEPTION("pktlen < iphdrlen + udphdrlen");
 
+        if (pktlen < iphdrlen + ntohs(udp->len))
+            RUNTIME_EXCEPTION("pktlen != iphdrlen + ntohs(udp->len) %u %u %u", pktlen, iphdrlen, ntohs(udp->len));
+
+
         udppayloadlen = pktlen - iphdrlen - udphdrlen;
         if (udppayloadlen)
             udppayload = (unsigned char *) tcp + udphdrlen;
-        /* end tcp update */
+        /* end udp update */
         break;
     case IPPROTO_ICMP:
         /* start icmp update */
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
-        icmp = (struct icmphdr *) ((unsigned char *) (ip) + iphdrlen);
+        icmp = (struct icmphdr *)(ippayload);
         icmphdrlen = sizeof (struct icmphdr);
 
         if (pktlen < iphdrlen + icmphdrlen)
-            RUNTIME_EXCEPTION("pktlen < iphdrlen + icmphdrlen");
+            RUNTIME_EXCEPTION("pktlen != iphdrlen + icmphdrlen");
 
-        icmppayloadlen = 0;
+        icmppayloadlen = pktlen - iphdrlen - icmphdrlen;
+        if (icmppayloadlen)
+            icmppayload = (unsigned char *) icmp + icmphdrlen;
         /* end icmp update */
-
         break;
     }
 }
@@ -294,14 +298,13 @@ void Packet::iphdrResize(uint8_t size)
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
     ip->ihl = size / 4;
-    if (size % 4) exit(1);
 
     vector<unsigned char>::iterator it = pbuf.begin();
 
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
-        pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
+        pbuf.insert(it + iphdrlen, size - iphdrlen, 0);//IPOPT_NOOP);
     }
     else
     { /* iphdrlen > size */
@@ -393,6 +396,32 @@ void Packet::tcppayloadResize(uint16_t size)
     updatePacketMetadata();
 }
 
+void Packet::udppayloadResize(uint16_t size)
+{
+    if (size == udppayloadlen)
+        return;
+
+    const uint16_t pktlen = pbuf.size();
+
+    /* begin safety checks */
+    if (pktlen - udppayloadlen + size > MTU)
+        RUNTIME_EXCEPTION("");
+    /* end safety checks */
+
+    const uint16_t new_total_len = pktlen - udppayloadlen + size;
+
+    /* its important to update values into hdr before vector insert call because it can cause relocation */
+    ip->tot_len = htons(new_total_len);
+
+    /* in udp we have also to correct the len field */
+    udp->len = htons(udphdrlen + size);
+
+
+    pbuf.resize(new_total_len);
+
+    updatePacketMetadata();
+}
+
 void Packet::ippayloadRandomFill()
 {
     const uint16_t diff = pbuf.size() - iphdrlen;
@@ -403,6 +432,12 @@ void Packet::tcppayloadRandomFill()
 {
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
+}
+
+void Packet::udppayloadRandomFill()
+{
+    const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
+    memset_random(udppayload, diff);
 }
 
 bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
@@ -418,7 +453,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before ip injection [strip %u] iphdrlen %u ippayloadlen %u pktlen %u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
+    SELFLOG("before ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -459,7 +494,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
     }
     catch (exception &e)
     {
-        SELFLOG("ip injection is not possibile");
+        SELFLOG("IPOpts injection not possible");
     }
 
     if (target_iphdrlen != actual_iphdrlen)
@@ -470,7 +505,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
         iphdrResize(actual_iphdrlen);
     }
 
-    SELFLOG("after ip injection [strip %u] iphdrlen %u ippayloadlen %u pktlen %u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
+    SELFLOG("after ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     return injected;
 }
@@ -487,7 +522,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before tcp injection [strip %u] iphdrlen %u tcphdrlen %u ippayload %u pktlen %u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
+    SELFLOG("before TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -529,7 +564,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
     }
     catch (exception &e)
     {
-        SELFLOG("tcp injection is not possibile");
+        SELFLOG("TCPOpts injection not possibile");
     }
 
     if (target_tcphdrlen != actual_tcphdrlen)
@@ -540,7 +575,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
         tcphdrResize(actual_tcphdrlen);
     }
 
-    SELFLOG("after tcp injection [strip %u] iphdrlen %u tcphdrlen %u ippayload %u pktlen %u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
+    SELFLOG("after TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
     return injected;
 }
@@ -604,33 +639,25 @@ void Packet::selflog(const char *func, const char *format, ...) const
         break;
     }
 
-    if (fragment)
-    {
-        LOG_PACKET("%s: (E|%s) (WTF|%s) (src|%s) %s->%s FRAGMENT (%u) ttl %u [%s]",
-                   func, evilstr, wtfstr, sourcestr,
-                   saddr, daddr, ntohs(ip->frag_off),
-                   ip->ttl, loginfo
-                   );
-    }
-    else
+    if (!fragment)
     {
         switch (proto)
         {
         case TCP:
-            snprintf(protoinfo, sizeof (protoinfo), "TCP sp %u dp %u SAFR{%d%d%d%d} len %u(%u) seq %x ack_seq %x",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP sp|%u dp|%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
                      tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
                      ntohl(tcp->seq), ntohl(tcp->ack_seq)
                      );
             break;
         case UDP:
-            snprintf(protoinfo, sizeof (protoinfo), "UDP sp %u dp %u len %u(%u)",
+            snprintf(protoinfo, sizeof (protoinfo), "UDP sp|%u dp|%u len|%u(%u)",
                      ntohs(udp->source), ntohs(udp->dest),
                      (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - udphdrlen)
                      );
             break;
         case ICMP:
-            snprintf(protoinfo, sizeof (protoinfo), "ICMP type %d code %d len %u(%u)",
+            snprintf(protoinfo, sizeof (protoinfo), "ICMP type|%d code|%d len|%u(%u)",
                      icmp->type, icmp->code,
                      (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - sizeof (struct icmphdr))
                      );
@@ -638,15 +665,24 @@ void Packet::selflog(const char *func, const char *format, ...) const
         case OTHER_IP:
             snprintf(protoinfo, sizeof (protoinfo), "other proto: %d", ip->protocol);
             break;
-        case PROTOUNASSIGNED:
-            snprintf(protoinfo, sizeof (protoinfo), "protocol unassigned! value %d", ip->protocol);
-            break;
         default:
-            RUNTIME_EXCEPTION("BUG: invalid and impossibile");
+            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", proto);
             break;
         }
 
-        LOG_PACKET("%s: E|%s WTF|%s src %s|%s->%s proto [%s] ttl %d %s",
-                   func, evilstr, wtfstr, sourcestr, saddr, daddr, protoinfo, ip->ttl, loginfo);
+        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s [%s] ttl|%d %s",
+                   func, evilstr, wtfstr, sourcestr,
+                   saddr, daddr,
+                   protoinfo,
+                   ip->ttl, loginfo);
+    }
+    else
+    {
+        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s FRAGMENT (%u) ttl|%u %s",
+                   func, evilstr, wtfstr, sourcestr,
+                   saddr, daddr,
+                   ntohs(ip->frag_off),
+                   ip->ttl, loginfo
+                   );
     }
 }
