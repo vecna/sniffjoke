@@ -149,8 +149,9 @@ public:
     /* IP/TCP checksum functions */
     uint32_t computeHalfSum(const void *, uint16_t);
     uint16_t computeSum(uint32_t);
-    void fixIpSum(void);
-    void fixIpTcpSum(void);
+    void fixIPSum(void);
+    void fixIPTCPSum(void);
+    void fixIPUDPSum(void);
     void fixSum(void);
     void corruptSum(void);
 
