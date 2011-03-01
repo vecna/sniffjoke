@@ -34,7 +34,7 @@ EOF
 }
 
 dump_plugin_file() {
-    cat >> $PLUGINLIST << __EOF__
+cat >> $PLUGINLIST << __EOF__
 fake_close_fin,PRESCRIPTION
 fake_close_fin,MALFORMED
 fake_close_fin,GUILTY
@@ -65,11 +65,11 @@ start_test() {
     SCRAMBLE=`echo $PLUGIN | sed -es/.*\,//`
     TESTID=`echo $PLUGIN | tr "," "-"`
     workingdir="/tmp/$LOCATION/$TESTID"
-    echo -e "\n$green * Next COMBINATION OF TESTS:$blue"
+    echo -e "\n$green* COMBINATION OF TESTS ($yellow$PLUGNDX/$PLUGIN_NUMBER$green)$blue"
     echo -e "Plugin Name\t$yellow\t[$PNAME]$blue\nScramble\t$yellow\t[$SCRAMBLE]$blue\nTestID\t\t$yellow\t[$TESTID]$blue\nTest directory\t$yellow\t[$workingdir]"
     mkdir -p $workingdir
     echo $SERVER_IP > "$workingdir/ipwhitelist.conf"
-    echo -e "$red * Executing sniffjoke with $PLUGIN combo, using these options:$yellow"
+    echo -e "$red* Executing sniffjoke with $PLUGIN combo, using these options:$yellow"
     echo -e "sniffjoke --debug 5 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist $white"
     $SNIFFJOKEBIN --debug 5 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist &>$workingdir/binout.log
     sleep 2
