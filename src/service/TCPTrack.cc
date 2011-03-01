@@ -237,7 +237,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
             injpkt->tcp->source = htons(ttlfocus.puppet_port);
             injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 
-            injpkt->fixIpTcpSum();
+            injpkt->fixIPTCPSum();
             p_queue.insert(*injpkt, SEND);
 
             /* the next ttl probe schedule is forced in the next cycle */
@@ -808,7 +808,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
  *
  *   NETWORK packets:
  *     - we analyze them searching ttl informations.
-       - we handle the removal of the orig packet if identified as an answer to ttlbruteforce.
+ *     - we handle the removal of the orig packet if identified as an answer to ttlbruteforce.
  *     - we notify all plugins of the arrival of the packet;
  *       the packets are passed to the plugin because they will need to check
  *       or modify some information in them, or eventually also remove them.

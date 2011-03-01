@@ -142,7 +142,7 @@ void Packet::updatePacketMetadata()
         if (pktlen < iphdrlen + sizeof (struct tcphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
 
-        tcp = (struct tcphdr *)(ippayload);
+        tcp = (struct tcphdr *) (ippayload);
         tcphdrlen = tcp->doff * 4;
 
         if (pktlen < iphdrlen + tcphdrlen)
@@ -158,7 +158,7 @@ void Packet::updatePacketMetadata()
         if (pktlen < iphdrlen + sizeof (struct udphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct udphdr)");
 
-        udp = (struct udphdr *)(ippayload);
+        udp = (struct udphdr *) (ippayload);
         udphdrlen = sizeof (struct udphdr);
 
         if (pktlen < iphdrlen + udphdrlen)
@@ -178,7 +178,7 @@ void Packet::updatePacketMetadata()
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
 
-        icmp = (struct icmphdr *)(ippayload);
+        icmp = (struct icmphdr *) (ippayload);
         icmphdrlen = sizeof (struct icmphdr);
 
         if (pktlen < iphdrlen + icmphdrlen)
@@ -215,7 +215,7 @@ uint16_t Packet::computeSum(uint32_t sum)
     return ~sum;
 }
 
-void Packet::fixIpSum(void)
+void Packet::fixIPSum(void)
 {
     uint32_t sum;
 
@@ -224,9 +224,9 @@ void Packet::fixIpSum(void)
     ip->check = computeSum(sum);
 }
 
-void Packet::fixIpTcpSum(void)
+void Packet::fixIPTCPSum(void)
 {
-    fixIpSum();
+    fixIPSum();
 
     uint32_t sum;
     const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
@@ -238,20 +238,62 @@ void Packet::fixIpTcpSum(void)
     tcp->check = computeSum(sum);
 }
 
+void Packet::fixIPUDPSum(void)
+{
+    fixIPSum();
+
+    uint32_t sum;
+    const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
+
+    udp->check = 0;
+    sum = computeHalfSum((const void *) &ip->saddr, 8);
+    sum += htons(IPPROTO_UDP + l4len);
+    sum += computeHalfSum((const void *) udp, l4len);
+    udp->check = computeSum(sum);
+}
+
 void Packet::fixSum(void)
 {
-    if (fragment != false || proto != TCP)
-        fixIpSum();
+    if (fragment == false)
+    {
+        switch (proto)
+        {
+        case TCP:
+            fixIPTCPSum();
+            break;
+        case UDP:
+            fixIPUDPSum();
+            break;
+        default:
+            fixIPSum();
+        }
+    }
     else
-        fixIpTcpSum();
+    {
+        fixIPSum();
+    }
 }
 
 void Packet::corruptSum(void)
 {
-    if (fragment == false && proto == TCP)
-        tcp->check += 0xd34d;
+    if (fragment == false)
+    {
+        switch (proto)
+        {
+        case TCP:
+            tcp->check += 0xd34d;
+            break;
+        case UDP:
+            udp->check += 0xd34d;
+            break;
+        default:
+            ip->check += 0xd34d;
+        }
+    }
     else
+    {
         ip->check += 0xd34d;
+    }
 }
 
 bool Packet::selfIntegrityCheck(const char *pluginName)
@@ -304,7 +346,7 @@ void Packet::iphdrResize(uint8_t size)
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
-        pbuf.insert(it + iphdrlen, size - iphdrlen, 0);//IPOPT_NOOP);
+        pbuf.insert(it + iphdrlen, size - iphdrlen, 0); //IPOPT_NOOP);
     }
     else
     { /* iphdrlen > size */
