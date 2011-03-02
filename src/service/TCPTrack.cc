@@ -823,7 +823,7 @@ Packet* TCPTrack::readpacket(source_t destsource)
  *
  *   any other pkt->source does scatter a fatal exception.
  */
-void TCPTrack::handleYoungPackets()
+void TCPTrack::handleYoungPackets(void)
 {
     Packet *pkt = NULL;
 
@@ -916,7 +916,7 @@ void TCPTrack::handleYoungPackets()
  *
  *   any other pkt->source does scatter a fatal exception.
  */
-void TCPTrack::handleKeepPackets()
+void TCPTrack::handleKeepPackets(void)
 {
     Packet *pkt = NULL;
     for (p_queue.select(KEEP); ((pkt = p_queue.get()) != NULL);)
@@ -953,7 +953,7 @@ void TCPTrack::handleKeepPackets()
  *
  *   any other pkt->source does scatter a fatal exception.
  */
-void TCPTrack::handleHackPackets()
+void TCPTrack::handleHackPackets(void)
 {
     /* for every packet in HACK queue we insert some random hacks */
     Packet *pkt = NULL;
@@ -991,7 +991,7 @@ void TCPTrack::handleHackPackets()
     }
 }
 
-void TCPTrack::analyzePacketQueue()
+void TCPTrack::analyzePacketQueue(void)
 {
     /* if all queues are empy we have nothing to do */
     if (!p_queue.size())
@@ -1018,4 +1018,9 @@ bypass_queue_analysis:
     ttlfocus_map.manage();
 
     execTTLBruteforces();
+}
+
+bool TCPTrack::isQueueFull(void)
+{
+    return p_queue.size() < TCPTRACK_QUEUE_MAX_LEN;
 }

@@ -227,15 +227,15 @@ void NetIO::networkIO(void)
     {
         if (max_cycle != 0) max_cycle--;
 
-        if (conntrack->p_queue.size() < TCPTRACK_QUEUE_MAX_LEN)
-        {
-            fds[0].events = POLLIN;
-            fds[1].events = POLLIN;
-        }
-        else
+        if (conntrack->isQueueFull())
         {
             fds[0].events = 0;
             fds[1].events = 0;
+        }
+        else
+        {
+            fds[0].events = POLLIN;
+            fds[1].events = POLLIN;
         }
 
         if (pkt_tun != NULL || pkt_net != NULL)

@@ -40,33 +40,34 @@ private:
     TTLFocusMap &ttlfocus_map;
     HackPool &hack_pool;
 
+    PacketQueue p_queue;
+
     uint32_t derivePercentage(uint32_t, uint16_t);
     bool percentage(uint32_t, uint16_t, uint16_t);
     uint16_t getUserFrequency(Packet &);
     uint8_t discernAvailScramble(Packet &);
 
     void injectTTLProbe(TTLFocus &);
-    void execTTLBruteforces();
+    void execTTLBruteforces(void);
     bool extractTTLinfo(Packet &);
 
     bool notifyIncoming(Packet &);
     bool injectHack(Packet &);
     bool lastPktFix(Packet &);
 
-    void handleYoungPackets();
-    void handleKeepPackets();
-    void handleHackPackets();
+    void handleYoungPackets(void);
+    void handleKeepPackets(void);
+    void handleHackPackets(void);
 
 public:
-
-    PacketQueue p_queue;
 
     TCPTrack(const sj_config &, HackPool &, SessionTrackMap &, TTLFocusMap &);
     ~TCPTrack(void);
 
     void writepacket(source_t, const unsigned char *, int);
     Packet* readpacket(source_t);
-    void analyzePacketQueue();
+    void analyzePacketQueue(void);
+    bool isQueueFull(void);
 };
 
 #endif /* SJ_TCPTRACK_H */
