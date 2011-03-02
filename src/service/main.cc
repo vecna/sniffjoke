@@ -119,6 +119,7 @@ static void sj_version(const char *pname)
     " --whitelist\t\tinject evasion packets only in the specified ip addresses\n"\
     " --blacklist\t\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
+    " --chain\t\tenable chained hacking, powerful and entropic effects [default: %s]\n"\
     " --debug <level %d-%d>\tset up verbosoty level [default: %d]\n"\
     "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\
     " --foreground\t\trunning in foreground [default:background]\n"\
@@ -136,6 +137,7 @@ static void sj_help(const char *pname)
            WORK_DIR,
            DROP_USER, DROP_GROUP,
            DEFAULT_START_STOPPED ? "present" : "not present",
+           DEFAULT_CHAINING ? "enabled" : "disabled",
            SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
            SUPPRESS_LEVEL, ALL_LEVEL, VERBOSE_LEVEL, DEBUG_LEVEL, SESSION_LEVEL,PACKET_LEVEL,
            DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
@@ -161,6 +163,7 @@ int main(int argc, char **argv)
         { "force", no_argument, NULL, 'r'},
         { "whitelist", no_argument, NULL, 'w'},
         { "blacklist", no_argument, NULL, 'b'},
+        { "chain", no_argument, NULL, 'c'},
         { "admin", required_argument, NULL, 'a'},
         { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
         { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
@@ -171,7 +174,7 @@ int main(int argc, char **argv)
     };
 
     int charopt;
-    while ((charopt = getopt_long(argc, argv, "i:o:u:g:sxrwba:p:m:d:vh", sj_option, NULL)) != -1)
+    while ((charopt = getopt_long(argc, argv, "i:o:u:g:sxrwbca:p:m:d:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
@@ -197,6 +200,9 @@ int main(int argc, char **argv)
             break;
         case 'b':
             useropt.use_blacklist = true;
+            break;
+        case 'c':
+            useropt.chaining = true;
             break;
         case 's':
             useropt.active = true;

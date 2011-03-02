@@ -129,6 +129,7 @@ public:
     vector<cacheRecord *>::iterator cacheCreate(const Packet &, void* data, size_t data_size);
     void cacheDelete(vector<struct cacheRecord *>::iterator it);
 
+    void upgradeChainFlag(Packet *);
 };
 
 #endif /* SJ_HACK_H */

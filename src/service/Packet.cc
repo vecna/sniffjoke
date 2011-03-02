@@ -30,6 +30,8 @@
 #define MAXIPINJITERATIONS 5 /* max number of injected ip options / retries */
 #define MAXTCPINJITERATIONS 5 /* max number of injected tcp options / retries */
 
+static uint32_t PacketIdCounter;
+
 Packet::Packet(const unsigned char* buff, uint16_t size) :
 queue(QUEUEUNASSIGNED),
 prev(NULL),
@@ -39,6 +41,8 @@ source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
+chainflag(HACKUNASSIGNED),
+SjPacketId(++PacketIdCounter),
 pbuf(size),
 fragment(false)
 {
@@ -55,6 +59,8 @@ source(LOCAL),
 proto(pkt.proto),
 position(pkt.position),
 wtf(pkt.wtf),
+chainflag(pkt.chainflag),
+SjPacketId(++PacketIdCounter),
 pbuf(pkt.pbuf),
 fragment(false)
 {
@@ -315,10 +321,16 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
         goto errorinfo;
     }
 
+    if (chainflag == HACKUNASSIGNED)
+    {
+        LOG_ALL("in %s not set \"chainflag\" field, required", pluginName);
+        goto errorinfo;
+    }
+
     return true;
 
 errorinfo:
-    LOG_DEBUG("documentation about plugins development: http://www.sniffjoke.net/delirandom/plugins");
+    LOG_DEBUG("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
     return false;
 }
 
@@ -685,14 +697,14 @@ void Packet::selflog(const char *func, const char *format, ...) const
         switch (proto)
         {
         case TCP:
-            snprintf(protoinfo, sizeof (protoinfo), "TCP sp|%u dp|%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
                      tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
                      ntohl(tcp->seq), ntohl(tcp->ack_seq)
                      );
             break;
         case UDP:
-            snprintf(protoinfo, sizeof (protoinfo), "UDP sp|%u dp|%u len|%u(%u)",
+            snprintf(protoinfo, sizeof (protoinfo), "UDP %u->%u len|%u(%u)",
                      ntohs(udp->source), ntohs(udp->dest),
                      (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - udphdrlen)
                      );
@@ -711,7 +723,8 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s [%s] ttl|%d %s",
+        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%d %s",
+                   SjPacketId,
                    func, evilstr, wtfstr, sourcestr,
                    saddr, daddr,
                    protoinfo,
@@ -719,11 +732,11 @@ void Packet::selflog(const char *func, const char *format, ...) const
     }
     else
     {
-        LOG_PACKET("%s: E|%s WTF|%s SRC|%s S|%s D|%s FRAGMENT (%u) ttl|%u %s",
-                   func, evilstr, wtfstr, sourcestr,
+        LOG_PACKET("%s: i%u %s|%s|%s %s->%s FRAGMENT:%u ttl:%u %s",
+                   func, SjPacketId,
+                   evilstr, wtfstr, sourcestr,
                    saddr, daddr,
                    ntohs(ip->frag_off),
-                   ip->ttl, loginfo
-                   );
+                   ip->ttl, loginfo);
     }
 }

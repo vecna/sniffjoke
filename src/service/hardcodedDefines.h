@@ -63,6 +63,7 @@
 // sniffjoke start stopped
 // and is false to be true
 // ( http://freeworld.thc.org/root/phun/unmaintain.html )
+#define DEFAULT_CHAINING        false
 
 /* the maximum value of bruteforced TTL */
 #define MAX_TTLPROBE                35

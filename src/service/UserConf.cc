@@ -476,6 +476,7 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runconfig.use_whitelist, "whitelist", loadstream, cmdline_opts.use_whitelist, false);
     parseMatch(runconfig.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, false);
     parseMatch(runconfig.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, false);
+    parseMatch(runconfig.chaining, "chain", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
     parseMatch(runconfig.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
 
     parseMatch(runconfig.user, "user", loadstream, cmdline_opts.user, DROP_USER);
@@ -520,7 +521,7 @@ void UserConf::loadAggressivity(void)
          *
          * but is not an absolute truth, I like the user that choose for himself
          */
-        for (uint32_t i = 0; i < PORTSNUMBER; ++i)
+        for(int32_t i = 0; i < PORTSNUMBER; i++)
             runconfig.portconf[i] = AGG_NONE;
 
         return;

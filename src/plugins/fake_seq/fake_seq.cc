@@ -48,15 +48,9 @@ public:
 
         pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-        uint8_t what = (random() % 3);
-
-        if (what == 0)
-            what = 2;
-
-        if (what == 1)
+        if ( RANDOMPERCENT(33) )
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
-
-        if (what == 2)
+        else
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
 
         pkt->tcp->window = htons((random() % 80) * 64);
@@ -73,6 +67,8 @@ public:
         pkt->tcppayloadRandomFill();
 
         pkt->position = ANY_POSITION;
+
+        upgradeChainFlag(pkt);
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = availableScramble & supportedScramble;
 
@@ -81,6 +77,9 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        if( origpkt.chainflag == FINALHACK)
+            return false;
+
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&

@@ -113,6 +113,7 @@ public:
                             );
         }
 
+        upgradeChainFlag(pkt);
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
         pktVector.push_back(pkt);
@@ -123,6 +124,8 @@ public:
      * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        if ( origpkt.chainflag != HACKUNASSIGNED)
+            return false;
 
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&

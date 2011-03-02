@@ -53,6 +53,7 @@ public:
 
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
+        upgradeChainFlag(pkt);
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = (availableScramble & supportedScramble);
@@ -62,6 +63,9 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+            
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&

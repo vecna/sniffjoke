@@ -60,6 +60,7 @@ public:
         pkt->tcppayloadResize(0);
         pkt->tcp->psh = 0;
 
+        upgradeChainFlag(pkt);
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
         pkt->choosableScramble = SCRAMBLE_INNOCENT;
@@ -69,6 +70,9 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        if (origpkt.chainflag != HACKUNASSIGNED )
+            return false;
+
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&

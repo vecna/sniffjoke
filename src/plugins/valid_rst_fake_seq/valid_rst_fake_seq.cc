@@ -56,6 +56,10 @@ public:
 
         pkt->tcppayloadResize(0);
 
+        /* this packet will became dangerous if hacked again...
+         * is an INNOCENT RST based on the seq... */
+        pkt->chainflag = FINALHACK;
+
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
         /* useless because INNOCENT is never downgraded in last_pkt_fix */
@@ -66,6 +70,9 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        if( origpkt.chainflag != HACKUNASSIGNED)
+            return false;
+
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&

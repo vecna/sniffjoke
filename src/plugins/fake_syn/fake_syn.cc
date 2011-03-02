@@ -78,6 +78,8 @@ public:
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
+            upgradeChainFlag(pkt);
+
             pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
@@ -89,6 +91,9 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 origpkt.tcp->syn &&

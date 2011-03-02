@@ -88,6 +88,7 @@ public:
         pkt->tcppayloadResize(0);
 
         pkt->position = ANTICIPATION;
+        pkt->chainflag = FINALHACK;
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = (availableScramble & supportedScramble);
         pkt->proto = TCP;
@@ -97,6 +98,10 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
+
+        if(origpkt.chainflag == FINALHACK)
+            return false;
+
         /* preliminar condition */
         bool ret = origpkt.fragment == false &&
                 origpkt.proto == TCP &&
