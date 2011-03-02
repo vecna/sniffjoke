@@ -40,8 +40,9 @@ class segmentation : public Hack
 {
 #define HACK_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
-#define MIN_BLOCK_SPLIT 100
-#define MIN_TCP_PAYLOAD MIN_BLOCK_SPLIT*2
+#define MIN_SPLIT_PAYLOAD 10                    /* 10 bytes */
+#define MIN_TCP_PAYLOAD   2*MIN_SPLIT_PAYLOAD   /* 20 bytes */
+#define MAX_SPLIT_PKTS    5                     /*  5 pkts  */
 
 private:
     pluginLogHandler pLH;
@@ -50,19 +51,21 @@ public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
+
         /*
-         * block_split between MIN_BLOCK_SPLIT and ((2 * MIN_BLOCK_SPLIT) - 1);
-         * having MIN_SCRAMBLE_PACKET = MIN_BLOCK_SPLIT*2 we will have at least two segments
+         * due to the ratio between MIN_SPLIT_PAYLOAD and MIN_TCP_PAYLOAD
+         * the hack will produce a min number of 2 pkts and a max of 5 pkt
          */
-        const uint32_t block_split = MIN_BLOCK_SPLIT + (random() % MIN_BLOCK_SPLIT);
-        const uint32_t carry = (origpkt.tcppayloadlen % block_split) ? (origpkt.tcppayloadlen % block_split) : block_split;
-        const uint8_t pkts = (origpkt.tcppayloadlen / block_split) + ((origpkt.tcppayloadlen % block_split) ? 1 : 0);
+        uint32_t split_size = (origpkt.tcppayloadlen / MAX_SPLIT_PKTS) + ((origpkt.tcppayloadlen % MAX_SPLIT_PKTS) ? 1 : 0);
+        split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
+        const uint8_t pkts = (origpkt.tcppayloadlen / split_size) + ((origpkt.tcppayloadlen % split_size) ? 1 : 0);
+        const uint32_t carry = (origpkt.tcppayloadlen % split_size) ? (origpkt.tcppayloadlen % split_size) : split_size;
 
         const uint32_t starting_seq = ntohl(origpkt.tcp->seq);
 
         pLH.completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes",
-                         origpkt.tcppayloadlen, starting_seq, ntohs(origpkt.tcp->source),
-                         pkts, block_split);
+                        origpkt.tcppayloadlen, starting_seq, ntohs(origpkt.tcp->source),
+                        pkts, split_size);
 
         for (uint8_t i = 0; i < pkts; i++)
         {
@@ -71,11 +74,11 @@ public:
             if (i < (pkts - 1)) /* first (pkt - 1) segments */
             {
 
-                pkt->tcppayloadResize(block_split);
+                pkt->tcppayloadResize(split_size);
 
-                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * block_split], block_split);
+                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * split_size], split_size);
 
-                pkt->tcp->seq = htonl(starting_seq + (i * block_split));
+                pkt->tcp->seq = htonl(starting_seq + (i * split_size));
 
                 pkt->tcp->fin = 0;
                 pkt->tcp->rst = 0;
@@ -91,9 +94,9 @@ public:
             {
                 pkt->tcppayloadResize(carry);
 
-                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * block_split], carry);
+                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * split_size], carry);
 
-                pkt->tcp->seq = htonl(starting_seq + (i * block_split));
+                pkt->tcp->seq = htonl(starting_seq + (i * split_size));
 
                 /* marker useful when I feel drunk and confused by tcpdump */
                 pkt->ip->id = 1;
@@ -122,7 +125,7 @@ public:
             pktVector.push_back(pkt);
 
             pLH.completeLog(" chunk %d of %d - (seq %u) TCP source port %u",
-                (i + 1), pkts, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
+                            (i + 1), pkts, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
         }
 
         removeOrigPkt = true;
@@ -133,12 +136,12 @@ public:
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
-                         origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
+                        origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
 
         if (origpkt.fragment == false &&
-            origpkt.proto == TCP &&
-            origpkt.tcppayload != NULL &&
-            origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
+                origpkt.proto == TCP &&
+                origpkt.tcppayload != NULL &&
+                origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
             return true;
 
         return false;
@@ -158,8 +161,8 @@ public:
     }
 
     segmentation(bool forcedTest) :
-            Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE),
-            pLH(HACK_NAME, PKT_LOG)
+    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE),
+    pLH(HACK_NAME, PKT_LOG)
     {
     };
 };
