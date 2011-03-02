@@ -45,7 +45,7 @@ public:
 class FilterMultiset
 {
 private:
-    constuint32_t timeout_len;
+    const uint32_t timeout_len;
     uint32_t manage_timeout;
     multiset<FilterEntry> fm[2];
     multiset<FilterEntry> &first;
