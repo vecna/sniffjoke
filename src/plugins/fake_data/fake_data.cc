@@ -128,7 +128,7 @@ public:
             perProtoFunction = fake_fragment;
         }
 
-        if (fun == NULL)
+        if (perProtoFunction == NULL)
             return;
 
         uint8_t pkts = 2;
