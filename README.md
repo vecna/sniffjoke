@@ -8,7 +8,7 @@ SniffJoke is an application for Linux that handle transparently your TCP connect
 # Simple immediate execution
     root@linux# sniffjoke --debug 5 --start --foreground
 
-# Requirements
+#Requirements
 
 Linux OS (>=2.6.19) with tun kernel module;
 
@@ -71,23 +71,23 @@ TODO, and if you will help, we are glad:
 
 # Internal & external links
 
-the files:
+The files:
     doc/*
 
-official sniffjoke page:
+Official sniffjoke page:
     http://www.delirandom.net/sniffjoke
 
-binary installed:
+Binary installed:
     sniffjoke
     sniffjokectl
 
-script installed:
+Script installed:
     sniffjoke-autotest
 
 (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
-hacker's bread:
+Hacker's bread:
     http://www.phrack.org/issues.html?issue=54&id=10#article
 
 MacOSx ports as kernel module:
@@ -97,8 +97,6 @@ Wireshark thread about Sj 0.3:
     http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
 
 # Italian music support
-#
-# music compāniōn-, Italian text only:
     http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
-    http://www.youtube.com/watch?v=Hv4PchuPrGc Uochi Toki - i gesti di cattiveria
     http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica
+

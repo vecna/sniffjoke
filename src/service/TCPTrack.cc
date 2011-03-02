@@ -1046,5 +1046,5 @@ bypass_queue_analysis:
 
 bool TCPTrack::isQueueFull(void)
 {
-    return p_queue.size() < TCPTRACK_QUEUE_MAX_LEN;
+    return p_queue.size() > TCPTRACK_QUEUE_MAX_LEN;
 }
