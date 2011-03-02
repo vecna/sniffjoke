@@ -165,8 +165,7 @@ void Packet::updatePacketMetadata()
             RUNTIME_EXCEPTION("pktlen < iphdrlen + udphdrlen");
 
         if (pktlen < iphdrlen + ntohs(udp->len))
-            RUNTIME_EXCEPTION("pktlen != iphdrlen + ntohs(udp->len) %u %u %u", pktlen, iphdrlen, ntohs(udp->len));
-
+            RUNTIME_EXCEPTION("pktlen != iphdrlen + ntohs(udp->len)");
 
         udppayloadlen = pktlen - iphdrlen - udphdrlen;
         if (udppayloadlen)

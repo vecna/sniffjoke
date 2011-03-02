@@ -57,6 +57,8 @@ private:
         Packet * const pkt = new Packet(origpkt);
 
         pkt->ippayloadRandomFill();
+        
+        LOG_ALL("\n\n\ntcp %u %u %u %u\n\n\n", pkt->tcppayloadlen, pkt->pbuf.size(), pkt->iphdrlen, pkt->tcphdrlen);
 
         return pkt;
     }
@@ -122,13 +124,14 @@ public:
                 fun = fake_segment;
             else if (origpkt.proto == UDP && origpkt.udppayload != NULL)
                 fun = fake_datagram;
-            else
-                fun = fake_fragment;
         }
         else
         {
             fun = fake_fragment;
         }
+        
+        if(fun == NULL)
+            return;
 
         uint8_t pkts = 2;
         while (pkts)
