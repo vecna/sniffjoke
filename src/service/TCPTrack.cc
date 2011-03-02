@@ -583,6 +583,8 @@ bool TCPTrack::injectHack(Packet &origpkt)
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
 
+            packet_filter.addFilter(injpkt);
+
             injpkt.SELFLOG("%s: generated pkt, the original will be %s",
                            hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
@@ -850,13 +852,9 @@ void TCPTrack::handleYoungPackets(void)
                 continue;
             }
 
-            /*
-             * FIXME: the received ICMP due to PRESCRIPTION and MALFORMED can
-             *        corrupt the connection.
-             *        ATM  we have no choice, we have to drop incoming ICMP traffic
-             */
-            if (pkt->proto == ICMP)
+            if (packet_filter.matchFilter(*pkt))
             {
+                pkt->SELFLOG("removal requested by PacketFilter");
                 delete pkt;
                 continue;
             }
@@ -931,7 +929,6 @@ void TCPTrack::handleKeepPackets(void)
 
             if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
             {
-
                 p_queue.remove(*pkt);
                 p_queue.insert(*pkt, HACK);
             }
@@ -980,7 +977,6 @@ void TCPTrack::handleHackPackets(void)
 
             if (injectHack(*pkt))
             {
-
                 pkt->SELFLOG("removal requested by injectHack");
                 p_queue.remove(*pkt);
                 delete pkt;
