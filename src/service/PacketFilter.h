@@ -32,10 +32,10 @@ using namespace std;
 class FilterEntry
 {
 public:
-    uint16_t ip_id;
-    uint16_t ip_totallen;
-    uint32_t ip_saddr;
-    uint32_t ip_daddr;
+    const uint16_t ip_id;
+    const uint16_t ip_totallen;
+    const uint32_t ip_saddr;
+    const uint32_t ip_daddr;
 
     FilterEntry(uint16_t, uint16_t, uint32_t, uint32_t);
     FilterEntry(const Packet &);
@@ -45,7 +45,7 @@ public:
 class FilterMultiset
 {
 private:
-    uint32_t timeout_len;
+    constuint32_t timeout_len;
     uint32_t manage_timeout;
     multiset<FilterEntry> fm[2];
     multiset<FilterEntry> &first;
