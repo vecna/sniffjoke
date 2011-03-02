@@ -30,6 +30,7 @@
 #include "SessionTrack.h"
 #include "TTLFocus.h"
 #include "HackPool.h"
+#include "PacketFilter.h"
 
 class TCPTrack
 {
@@ -40,6 +41,7 @@ private:
     TTLFocusMap &ttlfocus_map;
     HackPool &hack_pool;
 
+    PacketFilter packet_filter;
     PacketQueue p_queue;
 
     uint32_t derivePercentage(uint32_t, uint16_t);

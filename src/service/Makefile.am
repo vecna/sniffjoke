@@ -18,8 +18,8 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			TTLFocus.cc \
 			SessionTrack.h \
 			SessionTrack.cc \
-			portConfParsing.h \
-			portConfParsing.cc \
+			PacketFilter.h \
+			PacketFilter.cc \
 			TCPTrack.h \
 			TCPTrack.cc \
 			NetIO.h \
@@ -28,6 +28,8 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			Process.cc \
 			IPList.h \
 			IPList.cc \
+                        portConfParsing.h \
+                        portConfParsing.cc \
 			UserConf.h \
 			UserConf.cc \
 			SniffJoke.cc \
