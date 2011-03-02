@@ -80,6 +80,12 @@ enum position_t
     POSITIONUNASSIGNED = 0, ANY_POSITION = 1, ANTICIPATION = 2, POSTICIPATION = 4
 };
 
+/* a packet will be rehacked or will not, these value are used in chaining mode */
+enum chaining_t
+{
+    HACKUNASSIGNED = 0, FINALHACK = 1, REHACKABLE = 2
+};
+
 class Packet
 {
 private:
@@ -100,6 +106,9 @@ public:
     /* this is what's the packet will accept if the 'wtf'
      * will not be used, (rarely will happen) */
     uint8_t choosableScramble;
+
+    chaining_t chainflag;
+    uint32_t SjPacketId;
 
     vector<unsigned char> pbuf;
 

@@ -114,26 +114,26 @@ public:
         else /* the 99% of the times */
             selectedScramble = GUILTY;
 
-        Packet * (*fun)(const Packet &);
+        Packet * (*perProtoFunction)(const Packet &);
 
         if (origpkt.fragment == false)
         {
             if (origpkt.proto == TCP && origpkt.tcppayload != NULL)
-                fun = fake_segment;
+                perProtoFunction = fake_segment;
             else if (origpkt.proto == UDP && origpkt.udppayload != NULL)
-                fun = fake_datagram;
+                perProtoFunction = fake_datagram;
             else
-                fun = fake_fragment;
+                perProtoFunction = fake_fragment;
         }
         else
         {
-            fun = fake_fragment;
+            perProtoFunction = fake_fragment;
         }
 
         uint8_t pkts = 2;
         while (pkts)
         {
-            Packet* pkt = (*fun)(origpkt);
+            Packet* pkt = (*perProtoFunction)(origpkt);
 
             pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
@@ -142,6 +142,9 @@ public:
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
+            /* a Packet created from a Packet inheriet the chainflag */
+            upgradeChainFlag(pkt);
+
             pkt->wtf = selectedScramble;
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
@@ -149,6 +152,22 @@ public:
 
             --pkts;
         }
+    }
+
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    {
+
+        if(origpkt.chainflag == FINALHACK)
+            return false;
+
+        /* a fake data apply only if a data exists */
+        if(origpkt.proto == UDP && origpkt.udppayloadlen > 0)
+            return true;
+
+        if(origpkt.proto == TCP && origpkt.tcppayloadlen > 0)
+            return true;
+
+        return false;
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)

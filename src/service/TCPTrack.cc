@@ -557,7 +557,10 @@ bool TCPTrack::injectHack(Packet &origpkt)
                 injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->hackName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
+#if 0
+/* remove this condition when chaining is finisced */
                 if (runconfig.debug_level == PACKET_LEVEL)
+#endif
                     RUNTIME_EXCEPTION("%s invalid pkt generated", hppe->selfObj->hackName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
@@ -988,6 +991,27 @@ void TCPTrack::handleHackPackets(void)
 
             RUNTIME_EXCEPTION("FATAL CODE [4NT4N1]: please send a notification to the developers (%u)", pkt->source);
         }
+    }
+
+    if(runconfig.chaining == true)
+    {
+        /* the packet injected by createHack stay in HACK queue */
+        for (p_queue.select(SEND); ((pkt = p_queue.getSource(LOCAL)) != NULL);)
+        {
+            if(pkt->chainflag == REHACKABLE)
+            {
+                pkt->SELFLOG("proposing the packet for the second round: chaining hack");
+
+                if (injectHack(*pkt))
+                {
+
+                    pkt->SELFLOG("removal requested by injectHack in the second round");
+                    p_queue.remove(*pkt);
+                    delete pkt;
+                }
+            }
+        }
+        /* only the second generation hack are used */
     }
 }
 

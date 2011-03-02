@@ -103,6 +103,7 @@ public:
 
             Packet * const pkt = new Packet(&pktbuf[0], pktbuf.size());
 
+
             /*
              * the orig packet is removed, so the value of the position
              * has no particular importance for the hack
@@ -113,6 +114,10 @@ public:
             pkt->position = ANTICIPATION;
 
             pkt->wtf = INNOCENT;
+
+            /* we need to force inheriet of chainflag */
+            pkt->chainflag = origpkt.chainflag;
+            upgradeChainFlag(pkt);
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
             pkt->choosableScramble = (availableScramble & supportedScramble);
@@ -130,6 +135,9 @@ public:
     {
         pLH.completeLog("verifing condition for id %d datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
+
+        if ( origpkt.chainflag == FINALHACK )
+            return false;
 
         if (!(availableScramble & supportedScramble))
         {

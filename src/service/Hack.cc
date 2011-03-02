@@ -67,3 +67,19 @@ void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
     delete *it;
     hackCache.erase(it++);
 }
+
+void Hack::upgradeChainFlag(Packet *pkt)
+{
+    switch(pkt->chainflag)
+    {
+        case HACKUNASSIGNED:
+            pkt->chainflag = REHACKABLE;
+            break;
+        case REHACKABLE:
+            pkt->chainflag = FINALHACK;
+        case FINALHACK:
+            LOG_ALL("Warning: a non hackable-again packet has requested an increment status: check packet_id %u",
+                pkt->SjPacketId);
+            pkt->chainflag = FINALHACK;
+    }
+}
