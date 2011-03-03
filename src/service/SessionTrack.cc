@@ -155,14 +155,6 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
     return *sessiontrack;
 }
 
-struct sessiontrack_timestamp_comparison
-{
-    bool operator() (SessionTrack *i, SessionTrack * j)
-    {
-        return ( i->access_timestamp < j->access_timestamp);
-    }
-} sessiontrackTimestampComparison;
-
 void SessionTrackMap::manage()
 {
     /* timeout check */

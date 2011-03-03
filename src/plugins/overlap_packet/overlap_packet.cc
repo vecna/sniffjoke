@@ -88,7 +88,7 @@ public:
         {
             sentData = (origpkt.tcppayloadlen / 2);
 
-            it = cacheCreate(origpkt, (void*) &sentData, 4);
+            it = cacheCreate(origpkt, (const unsigned char*) &sentData, 4);
 
             pkt->tcppayloadResize(sentData);
             pkt->tcp->psh = 0;
@@ -101,7 +101,7 @@ public:
         else
         {
 
-            sentData = *(uint32_t*) ((*it)->cached_data);
+            sentData = *(uint32_t*)&((*it)->cached_data[0]);
 
             cacheDelete(it);
 

@@ -118,14 +118,14 @@ public:
             pLH.completeLog("creating cache for %s:%u",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
 
-            cacheCreate(origpkt, (void*) &firstCached, sizeof (uint32_t));
+            cacheCreate(origpkt, (const unsigned char*)&firstCached, sizeof (uint32_t));
         }
         else
         {
             /* an hack like Fake FIN will be useful few times, not for all the
              * connections: we are keeping a cache record to count every injected FIN and after
              * a randomic number (between a min of 4 and 12), the FIN is not injected again */
-            previouslyInjected = (uint32_t*) ((*it)->cached_data);
+            previouslyInjected = (uint32_t*)&((*it)->cached_data[0]);
 
             /* we use the pointer to updat the cached data directly */
             ++(*previouslyInjected);

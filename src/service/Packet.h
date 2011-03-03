@@ -151,7 +151,7 @@ public:
     };
 
     Packet(const unsigned char *, uint16_t);
-    Packet(const Packet &);
+    explicit Packet(const Packet &);
 
     virtual ~Packet(void)
     {
@@ -163,7 +163,7 @@ public:
     void mark(source_t, evilbit_t, judge_t);
 
     /* IP/TCP checksum functions */
-    uint32_t computeHalfSum(const void *, uint16_t);
+    uint32_t computeHalfSum(const unsigned char*, uint16_t);
     uint16_t computeSum(uint32_t);
     void fixIPSum(void);
     void fixIPTCPSum(void);

@@ -197,7 +197,7 @@ void Packet::updatePacketMetadata()
     }
 }
 
-uint32_t Packet::computeHalfSum(const void* data, uint16_t len)
+uint32_t Packet::computeHalfSum(const unsigned char* data, uint16_t len)
 {
     const uint16_t *usdata = (uint16_t *) data;
     const uint16_t *end = (uint16_t *) data + (len / sizeof (uint16_t));
@@ -225,7 +225,7 @@ void Packet::fixIPSum(void)
     uint32_t sum;
 
     ip->check = 0;
-    sum = computeHalfSum((const void *) ip, iphdrlen);
+    sum = computeHalfSum((const unsigned char *) ip, iphdrlen);
     ip->check = computeSum(sum);
 }
 
@@ -237,9 +237,9 @@ void Packet::fixIPTCPSum(void)
     const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
 
     tcp->check = 0;
-    sum = computeHalfSum((const void *) &ip->saddr, 8);
+    sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
     sum += htons(IPPROTO_TCP + l4len);
-    sum += computeHalfSum((const void *) tcp, l4len);
+    sum += computeHalfSum((const unsigned char *) tcp, l4len);
     tcp->check = computeSum(sum);
 }
 
@@ -251,9 +251,9 @@ void Packet::fixIPUDPSum(void)
     const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
 
     udp->check = 0;
-    sum = computeHalfSum((const void *) &ip->saddr, 8);
+    sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
     sum += htons(IPPROTO_UDP + l4len);
-    sum += computeHalfSum((const void *) udp, l4len);
+    sum += computeHalfSum((const unsigned char *) udp, l4len);
     udp->check = computeSum(sum);
 }
 

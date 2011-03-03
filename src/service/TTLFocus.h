@@ -82,6 +82,17 @@ class TTLFocusMap : public map<const uint32_t, TTLFocus*>
 {
 private:
     uint32_t manage_timeout;
+
+    struct ttlfocus_timestamp_comparison
+    {
+
+        bool operator() (const TTLFocus *i, const TTLFocus * j)
+        {
+            return ( i->access_timestamp < j->access_timestamp);
+        }
+
+    } ttlfocusTimestampComparison;
+
 public:
     TTLFocusMap();
     ~TTLFocusMap();

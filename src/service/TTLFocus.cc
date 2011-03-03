@@ -161,16 +161,6 @@ TTLFocus& TTLFocusMap::get(const Packet &pkt)
     return *ttlfocus;
 }
 
-struct ttlfocus_timestamp_comparison
-{
-
-    bool operator() (TTLFocus *i, TTLFocus * j)
-    {
-        return ( i->access_timestamp < j->access_timestamp);
-    }
-
-} ttlfocusTimestampComparison;
-
 void TTLFocusMap::manage()
 {
     /* timeout check */

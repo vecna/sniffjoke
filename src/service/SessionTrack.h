@@ -59,15 +59,28 @@ public:
     uint16_t dport;
 
     bool operator<(SessionTrackKey) const;
+
 };
 
 class SessionTrackMap : public map<const SessionTrackKey, SessionTrack*>
 {
 private:
     uint32_t manage_timeout;
+
+    struct sessiontrack_timestamp_comparison
+    {
+
+        bool operator() (const SessionTrack *i, const SessionTrack * j)
+        {
+            return ( i->access_timestamp < j->access_timestamp);
+        }
+
+    } sessiontrackTimestampComparison;
+
 public:
     SessionTrackMap();
     ~SessionTrackMap();
+
     SessionTrack& get(const Packet &);
     void manage();
 };
