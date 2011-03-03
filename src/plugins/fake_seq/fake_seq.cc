@@ -48,7 +48,7 @@ public:
 
         pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-        if ( RANDOMPERCENT(33) )
+        if (RANDOMPERCENT(33))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
         else
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
@@ -77,7 +77,7 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if( origpkt.chainflag == FINALHACK)
+        if (origpkt.chainflag == FINALHACK)
             return false;
 
         return (origpkt.fragment == false &&

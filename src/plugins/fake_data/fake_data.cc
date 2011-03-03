@@ -143,9 +143,7 @@ public:
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            /* a Packet created from a Packet inheriet the chainflag */
             upgradeChainFlag(pkt);
-
             pkt->wtf = selectedScramble;
             pkt->choosableScramble = (availableScramble & supportedScramble);
 

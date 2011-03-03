@@ -79,7 +79,6 @@ public:
                 pkt->position = POSTICIPATION;
 
             upgradeChainFlag(pkt);
-
             pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
             pkt->choosableScramble = (availableScramble & supportedScramble);
 

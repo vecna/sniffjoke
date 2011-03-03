@@ -558,7 +558,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
 #if 0
-/* remove this condition when chaining is finisced */
+                /* remove this condition when chaining is finished */
                 if (runconfig.debug_level == PACKET_LEVEL)
 #endif
                     RUNTIME_EXCEPTION("%s invalid pkt generated", hppe->selfObj->hackName);
@@ -732,78 +732,6 @@ drop_packet:
     delete &pkt;
 
     return false;
-}
-
-/* the packet is added in the packet queue here to be analyzed in a second time */
-void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte)
-{
-    try
-    {
-        Packet * const pkt = new Packet(buff, nbyte);
-        pkt->mark(source, GOOD, INNOCENT);
-
-        /* Sniffjoke does handle only TCP, UDP and ICMP */
-        if (runconfig.active && (pkt->proto & (TCP | UDP | ICMP)))
-        {
-            if (runconfig.use_blacklist)
-            {
-
-                if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
-                        runconfig.blacklist->isPresent(pkt->ip->saddr))
-                {
-                    p_queue.insert(*pkt, SEND);
-                    return;
-                }
-            }
-            else if (runconfig.use_whitelist)
-            {
-                if (!runconfig.whitelist->isPresent(pkt->ip->daddr) &&
-                        !runconfig.whitelist->isPresent(pkt->ip->saddr))
-                {
-                    p_queue.insert(*pkt, SEND);
-                    return;
-                }
-            }
-
-            p_queue.insert(*pkt, YOUNG);
-            return;
-        }
-
-        p_queue.insert(*pkt, SEND);
-
-    }
-    catch (exception &e)
-    {
-
-        /* anomalous/malformed packets are flushed bypassing the queue */
-        LOG_ALL("malformed orig pkt dropped: %s", e.what());
-    }
-}
-
-/* 
- * this functions returns a packet from the SEND queue given a specific source
- */
-Packet* TCPTrack::readpacket(source_t destsource)
-{
-    uint8_t mask;
-    if (destsource == NETWORK)
-        mask = NETWORK;
-    else
-        mask = TUNNEL | LOCAL | TTLBFORCE;
-
-    Packet *pkt;
-
-    for (p_queue.select(SEND); ((pkt = p_queue.get()) != NULL);)
-    {
-        if (pkt->source & mask)
-        {
-            p_queue.remove(*pkt);
-
-            return pkt;
-        }
-    }
-
-    return NULL;
 }
 
 /*
@@ -989,12 +917,11 @@ void TCPTrack::handleHackPackets(void)
         }
     }
 
-    if(runconfig.chaining == true)
+    if (runconfig.chaining == true)
     {
-        /* the packet injected by createHack stay in HACK queue */
         for (p_queue.select(SEND); ((pkt = p_queue.getSource(LOCAL)) != NULL);)
         {
-            if(pkt->chainflag == REHACKABLE)
+            if (pkt->chainflag == REHACKABLE)
             {
                 pkt->SELFLOG("proposing the packet for the second round: chaining hack");
 
@@ -1009,6 +936,78 @@ void TCPTrack::handleHackPackets(void)
         }
         /* only the second generation hack are used */
     }
+}
+
+/* the packet is added in the packet queue here to be analyzed in a second time */
+void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte)
+{
+    try
+    {
+        Packet * const pkt = new Packet(buff, nbyte);
+        pkt->mark(source, GOOD, INNOCENT);
+
+        /* Sniffjoke does handle only TCP, UDP and ICMP */
+        if (runconfig.active && (pkt->proto & (TCP | UDP | ICMP)))
+        {
+            if (runconfig.use_blacklist)
+            {
+
+                if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
+                        runconfig.blacklist->isPresent(pkt->ip->saddr))
+                {
+                    p_queue.insert(*pkt, SEND);
+                    return;
+                }
+            }
+            else if (runconfig.use_whitelist)
+            {
+                if (!runconfig.whitelist->isPresent(pkt->ip->daddr) &&
+                        !runconfig.whitelist->isPresent(pkt->ip->saddr))
+                {
+                    p_queue.insert(*pkt, SEND);
+                    return;
+                }
+            }
+
+            p_queue.insert(*pkt, YOUNG);
+            return;
+        }
+
+        p_queue.insert(*pkt, SEND);
+
+    }
+    catch (exception &e)
+    {
+
+        /* anomalous/malformed packets are flushed bypassing the queue */
+        LOG_ALL("malformed orig pkt dropped: %s", e.what());
+    }
+}
+
+/*
+ * this functions returns a packet from the SEND queue given a specific source
+ */
+Packet* TCPTrack::readpacket(source_t destsource)
+{
+    uint8_t mask;
+    if (destsource == NETWORK)
+        mask = NETWORK;
+    else
+        mask = TUNNEL | LOCAL | TTLBFORCE;
+
+    Packet *pkt;
+
+    for (p_queue.select(SEND); ((pkt = p_queue.get()) != NULL);)
+    {
+        if (pkt->source & mask)
+        {
+            p_queue.remove(*pkt);
+
+            return pkt;
+        }
+    }
+
+    return NULL;
 }
 
 void TCPTrack::analyzePacketQueue(void)

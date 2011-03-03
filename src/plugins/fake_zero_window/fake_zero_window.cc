@@ -70,7 +70,7 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if (origpkt.chainflag != HACKUNASSIGNED )
+        if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
 
         return (origpkt.fragment == false &&

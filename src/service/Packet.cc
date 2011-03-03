@@ -30,9 +30,10 @@
 #define MAXIPINJITERATIONS 5 /* max number of injected ip options / retries */
 #define MAXTCPINJITERATIONS 5 /* max number of injected tcp options / retries */
 
-static uint32_t PacketIdCounter;
+uint32_t Packet::SjPacketIdCounter;
 
 Packet::Packet(const unsigned char* buff, uint16_t size) :
+SjPacketId(++SjPacketIdCounter),
 queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
@@ -42,7 +43,6 @@ proto(PROTOUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
 chainflag(HACKUNASSIGNED),
-SjPacketId(++PacketIdCounter),
 pbuf(size),
 fragment(false)
 {
@@ -51,6 +51,7 @@ fragment(false)
 }
 
 Packet::Packet(const Packet& pkt) :
+SjPacketId(++SjPacketIdCounter),
 queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
@@ -60,7 +61,6 @@ proto(pkt.proto),
 position(pkt.position),
 wtf(pkt.wtf),
 chainflag(pkt.chainflag),
-SjPacketId(++PacketIdCounter),
 pbuf(pkt.pbuf),
 fragment(false)
 {
@@ -723,9 +723,9 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%d %s",
-                   SjPacketId,
-                   func, evilstr, wtfstr, sourcestr,
+        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%u %s",
+                   func, SjPacketId,
+                   evilstr, wtfstr, sourcestr,
                    saddr, daddr,
                    protoinfo,
                    ip->ttl, loginfo);

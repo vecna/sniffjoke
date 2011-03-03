@@ -99,7 +99,7 @@ public:
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
 
-        if(origpkt.chainflag == FINALHACK)
+        if (origpkt.chainflag == FINALHACK)
             return false;
 
         /* preliminar condition */

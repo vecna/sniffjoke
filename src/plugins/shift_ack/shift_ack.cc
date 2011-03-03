@@ -65,7 +65,7 @@ public:
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
-            
+
         return (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&
