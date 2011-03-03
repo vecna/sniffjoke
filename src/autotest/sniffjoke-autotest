@@ -85,7 +85,7 @@ start_test() {
     for i in `seq 1 $TESTN`;
     do
         echo "starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring. test number #$i"
-        nohup curl --limit-rate 15k --retry 0 --max-time 10 --compressed -o "$PNAME-$SCRAMBLE-$i.received" \
+        nohup curl --limit-rate 15k --retry 0 --max-time 10 -o "$PNAME-$SCRAMBLE-$i.received" \
             -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.curl_output"
         sleep 1
     done
@@ -108,7 +108,6 @@ start_test() {
             # the follow are useful infos for debug
             echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE-$i" >> "/tmp/$LOCATION/$PNAME.failed_info"
             cat "$PNAME-$SCRAMBLE-$i.curl_output" >> "/tmp/$LOCATION/$PNAME.failed_info"
-            break
         else
             echo $i >> "$PNAME-$SCRAMBLE.passed_count"
         fi
