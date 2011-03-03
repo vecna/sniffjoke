@@ -33,10 +33,10 @@
 uint32_t Packet::SjPacketIdCounter;
 
 Packet::Packet(const unsigned char* buff, uint16_t size) :
-SjPacketId(++SjPacketIdCounter),
 queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
+SjPacketId(++SjPacketIdCounter),
 evilbit(MORALITYUNASSIGNED),
 source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
@@ -51,10 +51,10 @@ fragment(false)
 }
 
 Packet::Packet(const Packet& pkt) :
-SjPacketId(++SjPacketIdCounter),
 queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
+SjPacketId(++SjPacketIdCounter),
 evilbit(pkt.evilbit),
 source(LOCAL),
 proto(pkt.proto),
@@ -334,6 +334,11 @@ errorinfo:
     return false;
 }
 
+void Packet::randomizeID()
+{
+    ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
+}
+
 void Packet::iphdrResize(uint8_t size)
 {
     if (size == iphdrlen)
@@ -361,6 +366,7 @@ void Packet::iphdrResize(uint8_t size)
     }
     else
     { /* iphdrlen > size */
+
         ip->tot_len = htons(pktlen - (iphdrlen - size));
         pbuf.erase(it + size, it + iphdrlen);
     }
@@ -398,6 +404,7 @@ void Packet::tcphdrResize(uint8_t size)
     }
     else
     { /* tcphdrlen > size */
+
         ip->tot_len = htons(pktlen - (tcphdrlen - size));
         pbuf.erase(it + size, it + tcphdrlen);
     }
@@ -477,18 +484,21 @@ void Packet::udppayloadResize(uint16_t size)
 
 void Packet::ippayloadRandomFill()
 {
+
     const uint16_t diff = pbuf.size() - iphdrlen;
     memset_random(ippayload, diff);
 }
 
 void Packet::tcppayloadRandomFill()
 {
+
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
 }
 
 void Packet::udppayloadRandomFill()
 {
+
     const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
     memset_random(udppayload, diff);
 }
@@ -552,8 +562,9 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     if (target_iphdrlen != actual_iphdrlen)
     {
+
         /* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
-           to inject options not aligned to 4 */
+        to inject options not aligned to 4 */
         actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
         iphdrResize(actual_iphdrlen);
     }
@@ -622,8 +633,9 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 
     if (target_tcphdrlen != actual_tcphdrlen)
     {
+
         /* tcphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
-           to inject options not aligned to 4 */
+        to inject options not aligned to 4 */
         actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
         tcphdrResize(actual_tcphdrlen);
     }

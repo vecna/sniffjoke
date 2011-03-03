@@ -77,6 +77,7 @@ void Hack::upgradeChainFlag(Packet *pkt)
             break;
         case REHACKABLE:
             pkt->chainflag = FINALHACK;
+            break;
         case FINALHACK:
             LOG_ALL("Warning: a non hackable-again packet has requested an increment status: check packet_id %u",
                 pkt->SjPacketId);

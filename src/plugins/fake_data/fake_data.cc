@@ -101,7 +101,6 @@ public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
-
         /*
          * in fake segment I don't use pktRandomDamage because I want the
          * same hack for both packets.
@@ -131,31 +130,28 @@ public:
         if (perProtoFunction == NULL)
             return;
 
-        uint8_t pkts = 2;
-        while (pkts)
+        for (uint8_t pkts = 0; pkts < 2; pkts++)
         {
             Packet* pkt = (*perProtoFunction)(origpkt);
 
             pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
-            if (pkts == 2) /* first packet */
+            if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            upgradeChainFlag(pkt);
             pkt->wtf = selectedScramble;
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
-            pktVector.push_back(pkt);
+            upgradeChainFlag(pkt);
 
-            --pkts;
+            pktVector.push_back(pkt);
         }
     }
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-
         if (origpkt.chainflag == FINALHACK)
             return false;
 

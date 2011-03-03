@@ -113,10 +113,13 @@ public:
                             );
         }
 
-        upgradeChainFlag(pkt);
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
+
+        upgradeChainFlag(pkt);
+
         pktVector.push_back(pkt);
+
         removeOrigPkt = true;
     }
 

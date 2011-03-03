@@ -49,14 +49,13 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
-        upgradeChainFlag(pkt);
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = (availableScramble & supportedScramble);
+
+        upgradeChainFlag(pkt);
 
         pktVector.push_back(pkt);
     }

@@ -26,11 +26,14 @@
  *
  * I didn't rembemer exactly, zero window TCP packet are used for stop the 
  * communication until resume is requested
- * 
- * SOURCE: deduction, whishful thinking
- * VERIFIED IN:
- * KNOW BUGS:
- * WRITTEN IN VERSION: 0.4.0
+ *
+ * this hack must not used ATM, beside be an assured failure in
+ * sniffjoke-autotest (using this hack with INNOCENT scramble)
+ *
+ * SOURCE : deduction, whishful thinking
+ * VERIFIED IN :
+ * KNOW BUGS :
+ * WRITTEN IN VERSION : 0.4.0
  */
 
 #include "service/Hack.h"
@@ -45,25 +48,24 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+        pkt->tcp->window = 0;
 
         pkt->tcp->ack = 0;
         pkt->tcp->ack_seq = 0;
 
-        /* this hack must not used ATM, beside be an assured failure in
-         * sniffjoke-autotest (using this hack with INNOCENT scramble) */
-        pkt->tcp->rst = 1;
         /* trivia: must be explored: using an INNOCENT and totally valid packet
          * with RST and FIN sets, is dropped by a remote Linux OS -- v */
-        pkt->tcp->window = 0;
+        pkt->tcp->rst = 1;
 
-        pkt->tcppayloadResize(0);
         pkt->tcp->psh = 0;
 
-        upgradeChainFlag(pkt);
+        pkt->tcppayloadResize(0);
+
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
         pkt->choosableScramble = SCRAMBLE_INNOCENT;
+
+        upgradeChainFlag(pkt);
 
         pktVector.push_back(pkt);
     }

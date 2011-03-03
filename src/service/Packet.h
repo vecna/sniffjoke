@@ -175,6 +175,7 @@ public:
     bool selfIntegrityCheck(const char *);
 
     /* functions required in TCP/IP packets forging */
+    void randomizeID(void);
     void iphdrResize(uint8_t);
     void tcphdrResize(uint8_t);
     void ippayloadResize(uint16_t);

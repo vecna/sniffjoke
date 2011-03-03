@@ -46,8 +46,6 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
         if (RANDOMPERCENT(33))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
         else
@@ -67,10 +65,10 @@ public:
         pkt->tcppayloadRandomFill();
 
         pkt->position = ANY_POSITION;
-
-        upgradeChainFlag(pkt);
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = availableScramble & supportedScramble;
+
+        upgradeChainFlag(pkt);
 
         pktVector.push_back(pkt);
     }

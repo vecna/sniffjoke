@@ -38,6 +38,8 @@ class fake_close_fin : public Hack
 {
 #define HACK_NAME "Fake FIN"
 #define PKT_LOG "plugin.fakeFin.log"
+#define MIN_INJECTED_PKTS    4
+#define MAX_INJECTED_PKTS    10
 
 private:
     pluginLogHandler pLH;
@@ -51,9 +53,6 @@ private:
                 refpkt.tcp->source == pkt.tcp->source &&
                 refpkt.tcp->dest == pkt.tcp->dest);
     }
-
-#define MIN_INJECTED_PKTS    4
-#define MAX_INJECTED_PKTS    10
 
     bool inverseProportionality(uint32_t pkts)
     {
@@ -72,8 +71,6 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
         /* we have two guess: 
          * 1) the sniffer trust the FIN because has the last sequence number + 1
          * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
@@ -88,17 +85,16 @@ public:
         pkt->tcppayloadResize(0);
 
         pkt->position = ANTICIPATION;
-        pkt->chainflag = FINALHACK;
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = (availableScramble & supportedScramble);
-        pkt->proto = TCP;
+
+        pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
     }
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-
         if (origpkt.chainflag == FINALHACK)
             return false;
 
