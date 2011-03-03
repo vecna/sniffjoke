@@ -48,8 +48,8 @@ private:
     const uint32_t timeout_len;
     uint32_t manage_timeout;
     multiset<FilterEntry> fm[2];
-    multiset<FilterEntry> &first;
-    multiset<FilterEntry> &second;
+    multiset<FilterEntry> *first;
+    multiset<FilterEntry> *second;
 
 public:
     FilterMultiset(void);

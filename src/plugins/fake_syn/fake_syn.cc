@@ -44,12 +44,9 @@ public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
     {
-        uint8_t pkts = 2;
-        while (pkts)
+        for (uint8_t pkts = 0; pkts < 2; pkts++)
         {
             Packet * const pkt = new Packet(origpkt);
-
-            pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
 
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
 
@@ -73,19 +70,17 @@ public:
                 pkt->tcp->dest = swap;
             }
 
-            if (pkts == 2) /* first packet */
+            if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            upgradeChainFlag(pkt);
-
             pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
-            pktVector.push_back(pkt);
+            upgradeChainFlag(pkt);
 
-            --pkts;
+            pktVector.push_back(pkt);
         }
     }
 

@@ -70,15 +70,15 @@ bool FilterEntry::operator<(FilterEntry comp) const
 FilterMultiset::FilterMultiset(void) :
 timeout_len(HACKHASH_EXPIRYTIME),
 manage_timeout(sj_clock + timeout_len),
-first(fm[0]),
-second(fm[1])
+first(&fm[0]),
+second(&fm[1])
 {
 }
 
 FilterMultiset::~FilterMultiset(void)
 {
-    first.clear();
-    second.clear();
+    first->clear();
+    second->clear();
 }
 
 /*
@@ -93,7 +93,7 @@ FilterMultiset::~FilterMultiset(void)
  */
 bool FilterMultiset::checkEntry(const FilterEntry &hash)
 {
-    if (first.erase(hash) || second.erase(hash))
+    if (first->erase(hash) || second->erase(hash))
         return true;
 
     return false;
@@ -108,7 +108,7 @@ bool FilterMultiset::checkEntry(const FilterEntry &hash)
  */
 void FilterMultiset::addEntry(const FilterEntry &hash)
 {
-    second.insert(hash);
+    second->insert(hash);
 }
 
 void FilterMultiset::manage(void)
@@ -116,10 +116,10 @@ void FilterMultiset::manage(void)
     if (manage_timeout > sj_clock - timeout_len)
         return;
 
-    multiset<FilterEntry> &tmp = first;
+    multiset<FilterEntry> *tmp = first;
     first = second;
     second = tmp;
-    second.clear();
+    second->clear();
 
     manage_timeout = sj_clock + timeout_len;
 }

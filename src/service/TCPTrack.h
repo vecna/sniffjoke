@@ -37,7 +37,7 @@ class TCPTrack
 private:
     const struct sj_config &runconfig;
 
-    SessionTrackMap &sessiontrack_map;
+    SessionTrackMap & sessiontrack_map;
     TTLFocusMap &ttlfocus_map;
     HackPool &hack_pool;
 

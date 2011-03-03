@@ -58,25 +58,25 @@ public:
         uint32_t split_size = (origpkt.ippayloadlen / MAX_SPLIT_PKTS) + ((origpkt.ippayloadlen % MAX_SPLIT_PKTS) ? 1 : 0);
         split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
         split_size = (split_size >> 3) << 3; /* we need an offset multiple */
-        const uint8_t pkts = (origpkt.ippayloadlen / split_size) + ((origpkt.ippayloadlen % split_size) ? 1 : 0);
+        const uint8_t pkts_n = (origpkt.ippayloadlen / split_size) + ((origpkt.ippayloadlen % split_size) ? 1 : 0);
         const uint32_t carry = (origpkt.ippayloadlen % split_size) ? (origpkt.ippayloadlen % split_size) : split_size;
 
         vector<unsigned char> pbufcpy(origpkt.pbuf);
         vector<unsigned char>::iterator it = pbufcpy.begin() + origpkt.iphdrlen;
 
         pLH.completeLog("packet size %d, splitted in %d chunk of %d bytes",
-                        ntohs(origpkt.ip->tot_len), pkts, split_size);
+                        ntohs(origpkt.ip->tot_len), pkts_n, split_size);
 
         uint16_t offset = ntohs(origpkt.ip->frag_off) & ~htons(~IP_DF | ~IP_MF);
         bool justfragmented = ntohs(origpkt.ip->frag_off) & htons(IP_MF);
 
-        for (uint8_t i = 0; i < pkts; i++)
+        for (uint8_t pkts = 0; pkts < pkts_n; pkts++)
         {
             vector<unsigned char> pktbuf(pbufcpy.begin(), pbufcpy.begin() + origpkt.iphdrlen);
 
             struct iphdr *ip = (struct iphdr *) &(pktbuf[0]);
 
-            if (i < (pkts - 1)) /* first (pkt - 1) segments */
+            if (pkts < (pkts_n - 1)) /* first (pkt - 1) segments */
             {
                 /* common in my code */
                 ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
@@ -102,7 +102,8 @@ public:
             }
 
             Packet * const pkt = new Packet(&pktbuf[0], pktbuf.size());
-
+            /* we need to force inheriet of chainflag due to packet creation */
+            pkt->chainflag = origpkt.chainflag;
 
             /*
              * the orig packet is removed, so the value of the position
@@ -115,16 +116,14 @@ public:
 
             pkt->wtf = INNOCENT;
 
-            /* we need to force inheriet of chainflag */
-            pkt->chainflag = origpkt.chainflag;
-            upgradeChainFlag(pkt);
-
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
             pkt->choosableScramble = (availableScramble & supportedScramble);
 
+            upgradeChainFlag(pkt);
+
             pktVector.push_back(pkt);
 
-            pLH.completeLog(" chunk %d of %d", (i + 1), pkts);
+            pLH.completeLog(" chunk %d of %d", (pkts + 1), pkts);
         }
 
         removeOrigPkt = true;
@@ -136,7 +135,7 @@ public:
         pLH.completeLog("verifing condition for id %d datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
 
-        if ( origpkt.chainflag == FINALHACK )
+        if (origpkt.chainflag == FINALHACK)
             return false;
 
         if (!(availableScramble & supportedScramble))

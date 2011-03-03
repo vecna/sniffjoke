@@ -46,9 +46,7 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
-        if ( RANDOMPERCENT(33) )
+        if (RANDOMPERCENT(33))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
         else
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
@@ -67,17 +65,17 @@ public:
         pkt->tcppayloadRandomFill();
 
         pkt->position = ANY_POSITION;
-
-        upgradeChainFlag(pkt);
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = availableScramble & supportedScramble;
+
+        upgradeChainFlag(pkt);
 
         pktVector.push_back(pkt);
     }
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if( origpkt.chainflag == FINALHACK)
+        if (origpkt.chainflag == FINALHACK)
             return false;
 
         return (origpkt.fragment == false &&

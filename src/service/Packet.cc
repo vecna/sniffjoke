@@ -30,19 +30,19 @@
 #define MAXIPINJITERATIONS 5 /* max number of injected ip options / retries */
 #define MAXTCPINJITERATIONS 5 /* max number of injected tcp options / retries */
 
-static uint32_t PacketIdCounter;
+uint32_t Packet::SjPacketIdCounter;
 
 Packet::Packet(const unsigned char* buff, uint16_t size) :
 queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
+SjPacketId(++SjPacketIdCounter),
 evilbit(MORALITYUNASSIGNED),
 source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
 chainflag(HACKUNASSIGNED),
-SjPacketId(++PacketIdCounter),
 pbuf(size),
 fragment(false)
 {
@@ -54,13 +54,13 @@ Packet::Packet(const Packet& pkt) :
 queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
+SjPacketId(++SjPacketIdCounter),
 evilbit(pkt.evilbit),
 source(LOCAL),
 proto(pkt.proto),
 position(pkt.position),
 wtf(pkt.wtf),
 chainflag(pkt.chainflag),
-SjPacketId(++PacketIdCounter),
 pbuf(pkt.pbuf),
 fragment(false)
 {
@@ -171,8 +171,7 @@ void Packet::updatePacketMetadata()
             RUNTIME_EXCEPTION("pktlen < iphdrlen + udphdrlen");
 
         if (pktlen < iphdrlen + ntohs(udp->len))
-            RUNTIME_EXCEPTION("pktlen != iphdrlen + ntohs(udp->len) %u %u %u", pktlen, iphdrlen, ntohs(udp->len));
-
+            RUNTIME_EXCEPTION("pktlen != iphdrlen + ntohs(udp->len)");
 
         udppayloadlen = pktlen - iphdrlen - udphdrlen;
         if (udppayloadlen)
@@ -198,7 +197,7 @@ void Packet::updatePacketMetadata()
     }
 }
 
-uint32_t Packet::computeHalfSum(const void* data, uint16_t len)
+uint32_t Packet::computeHalfSum(const unsigned char* data, uint16_t len)
 {
     const uint16_t *usdata = (uint16_t *) data;
     const uint16_t *end = (uint16_t *) data + (len / sizeof (uint16_t));
@@ -226,7 +225,7 @@ void Packet::fixIPSum(void)
     uint32_t sum;
 
     ip->check = 0;
-    sum = computeHalfSum((const void *) ip, iphdrlen);
+    sum = computeHalfSum((const unsigned char *) ip, iphdrlen);
     ip->check = computeSum(sum);
 }
 
@@ -238,9 +237,9 @@ void Packet::fixIPTCPSum(void)
     const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
 
     tcp->check = 0;
-    sum = computeHalfSum((const void *) &ip->saddr, 8);
+    sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
     sum += htons(IPPROTO_TCP + l4len);
-    sum += computeHalfSum((const void *) tcp, l4len);
+    sum += computeHalfSum((const unsigned char *) tcp, l4len);
     tcp->check = computeSum(sum);
 }
 
@@ -252,9 +251,9 @@ void Packet::fixIPUDPSum(void)
     const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
 
     udp->check = 0;
-    sum = computeHalfSum((const void *) &ip->saddr, 8);
+    sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
     sum += htons(IPPROTO_UDP + l4len);
-    sum += computeHalfSum((const void *) udp, l4len);
+    sum += computeHalfSum((const unsigned char *) udp, l4len);
     udp->check = computeSum(sum);
 }
 
@@ -335,6 +334,11 @@ errorinfo:
     return false;
 }
 
+void Packet::randomizeID()
+{
+    ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
+}
+
 void Packet::iphdrResize(uint8_t size)
 {
     if (size == iphdrlen)
@@ -362,6 +366,7 @@ void Packet::iphdrResize(uint8_t size)
     }
     else
     { /* iphdrlen > size */
+
         ip->tot_len = htons(pktlen - (iphdrlen - size));
         pbuf.erase(it + size, it + iphdrlen);
     }
@@ -399,6 +404,7 @@ void Packet::tcphdrResize(uint8_t size)
     }
     else
     { /* tcphdrlen > size */
+
         ip->tot_len = htons(pktlen - (tcphdrlen - size));
         pbuf.erase(it + size, it + tcphdrlen);
     }
@@ -478,18 +484,21 @@ void Packet::udppayloadResize(uint16_t size)
 
 void Packet::ippayloadRandomFill()
 {
+
     const uint16_t diff = pbuf.size() - iphdrlen;
     memset_random(ippayload, diff);
 }
 
 void Packet::tcppayloadRandomFill()
 {
+
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
 }
 
 void Packet::udppayloadRandomFill()
 {
+
     const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
     memset_random(udppayload, diff);
 }
@@ -553,8 +562,9 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     if (target_iphdrlen != actual_iphdrlen)
     {
+
         /* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
-           to inject options not aligned to 4 */
+        to inject options not aligned to 4 */
         actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
         iphdrResize(actual_iphdrlen);
     }
@@ -623,8 +633,9 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 
     if (target_tcphdrlen != actual_tcphdrlen)
     {
+
         /* tcphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
-           to inject options not aligned to 4 */
+        to inject options not aligned to 4 */
         actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
         tcphdrResize(actual_tcphdrlen);
     }
@@ -724,9 +735,9 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%d %s",
-                   SjPacketId,
-                   func, evilstr, wtfstr, sourcestr,
+        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%u %s",
+                   func, SjPacketId,
+                   evilstr, wtfstr, sourcestr,
                    saddr, daddr,
                    protoinfo,
                    ip->ttl, loginfo);

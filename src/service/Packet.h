@@ -89,12 +89,15 @@ enum chaining_t
 class Packet
 {
 private:
+    static uint32_t SjPacketIdCounter;
+
     queue_t queue;
     Packet *prev;
     Packet *next;
     friend class PacketQueue;
 
 public:
+    uint32_t SjPacketId;
     evilbit_t evilbit;
     source_t source;
     proto_t proto;
@@ -107,8 +110,8 @@ public:
      * will not be used, (rarely will happen) */
     uint8_t choosableScramble;
 
+    /* a Packet created from a Packet inheriet the chainflag */
     chaining_t chainflag;
-    uint32_t SjPacketId;
 
     vector<unsigned char> pbuf;
 
@@ -119,25 +122,29 @@ public:
 
     bool fragment;
 
-    union {
+    union
+    {
         struct tcphdr *tcp;
         struct udphdr *udp;
         struct icmphdr *icmp;
     };
 
-    union {
+    union
+    {
         uint8_t tcphdrlen; /* [20 - 60] bytes */
         uint8_t udphdrlen; /* fixed: 8 bytes*/
         uint8_t icmphdrlen; /* fixed: 8 bytes*/
     };
 
-    union {
+    union
+    {
         unsigned char *tcppayload;
         unsigned char *udppayload;
         unsigned char *icmppayload; /* always NULL */
     };
 
-    union {
+    union
+    {
         uint16_t tcppayloadlen; /* [0 - 65515] bytes */
         uint16_t udppayloadlen; /* [0 - 65527] bytes */
         uint16_t icmppayloadlen; /* always 0 */
@@ -146,17 +153,13 @@ public:
     Packet(const unsigned char *, uint16_t);
     Packet(const Packet &);
 
-    virtual ~Packet(void)
-    {
-    };
-
     void updatePacketMetadata(void);
 
     void mark(source_t, evilbit_t);
     void mark(source_t, evilbit_t, judge_t);
 
     /* IP/TCP checksum functions */
-    uint32_t computeHalfSum(const void *, uint16_t);
+    uint32_t computeHalfSum(const unsigned char*, uint16_t);
     uint16_t computeSum(uint32_t);
     void fixIPSum(void);
     void fixIPTCPSum(void);
@@ -168,6 +171,7 @@ public:
     bool selfIntegrityCheck(const char *);
 
     /* functions required in TCP/IP packets forging */
+    void randomizeID(void);
     void iphdrResize(uint8_t);
     void tcphdrResize(uint8_t);
     void ippayloadResize(uint16_t);

@@ -47,8 +47,6 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
         pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
         pkt->tcp->window = htons((uint16_t) (-1));
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
@@ -56,21 +54,22 @@ public:
 
         pkt->tcppayloadResize(0);
 
+        pkt->position = ANY_POSITION;
+        pkt->wtf = INNOCENT;
+
+        /* useless because INNOCENT is never downgraded in last_pkt_fix */
+        pkt->choosableScramble = SCRAMBLE_INNOCENT;
+
         /* this packet will became dangerous if hacked again...
          * is an INNOCENT RST based on the seq... */
         pkt->chainflag = FINALHACK;
-
-        pkt->position = ANY_POSITION;
-        pkt->wtf = INNOCENT;
-        /* useless because INNOCENT is never downgraded in last_pkt_fix */
-        pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
         pktVector.push_back(pkt);
     }
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if( origpkt.chainflag != HACKUNASSIGNED)
+        if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
 
         return (origpkt.fragment == false &&

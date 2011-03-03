@@ -58,50 +58,39 @@ public:
          */
         uint32_t split_size = (origpkt.tcppayloadlen / MAX_SPLIT_PKTS) + ((origpkt.tcppayloadlen % MAX_SPLIT_PKTS) ? 1 : 0);
         split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
-        const uint8_t pkts = (origpkt.tcppayloadlen / split_size) + ((origpkt.tcppayloadlen % split_size) ? 1 : 0);
+        const uint8_t pkts_n = (origpkt.tcppayloadlen / split_size) + ((origpkt.tcppayloadlen % split_size) ? 1 : 0);
         const uint32_t carry = (origpkt.tcppayloadlen % split_size) ? (origpkt.tcppayloadlen % split_size) : split_size;
 
         const uint32_t starting_seq = ntohl(origpkt.tcp->seq);
 
         pLH.completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes",
                         origpkt.tcppayloadlen, starting_seq, ntohs(origpkt.tcp->source),
-                        pkts, split_size);
+                        pkts_n, split_size);
 
-        for (uint8_t i = 0; i < pkts; i++)
+        for (uint8_t pkts = 0; pkts < pkts_n; pkts++)
         {
             Packet * const pkt = new Packet(origpkt);
 
-            if (i < (pkts - 1)) /* first (pkt - 1) segments */
+            pkt->tcp->seq = htonl(starting_seq + (pkts * split_size));
+
+            uint32_t resizeAndCopy = 0;
+            if (pkts < (pkts_n - 1)) /* first (pkt - 1) segments */
             {
-
-                pkt->tcppayloadResize(split_size);
-
-                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * split_size], split_size);
-
-                pkt->tcp->seq = htonl(starting_seq + (i * split_size));
-
                 pkt->tcp->fin = 0;
                 pkt->tcp->rst = 0;
 
                 /* if the PUSH is present, it's keept only in the lasy data pkt */
                 pkt->tcp->psh = 0;
 
-                /* common in my code */
-                pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
+                resizeAndCopy = split_size;
             }
             else /* last segment */
             {
-                pkt->tcppayloadResize(carry);
-
-                memcpy(pkt->tcppayload, &origpkt.tcppayload[i * split_size], carry);
-
-                pkt->tcp->seq = htonl(starting_seq + (i * split_size));
-
-                /* marker useful when I feel drunk and confused by tcpdump */
-                pkt->ip->id = 1;
-
+                resizeAndCopy = carry;
             }
+
+            pkt->tcppayloadResize(resizeAndCopy);
+            memcpy(pkt->tcppayload, &origpkt.tcppayload[pkts * split_size], resizeAndCopy);
 
             /*
              * the orig packet is removed, so the value of the position
@@ -119,23 +108,21 @@ public:
 
             pkt->wtf = INNOCENT;
 
-            /* I was tempted to set it FINALHACK, but Sj supports fragment, lets see */
-            upgradeChainFlag(pkt);
-
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
             pkt->choosableScramble = (availableScramble & supportedScramble);
+
+            /* I was tempted to set it FINALHACK, but Sj supports fragment, lets see */
+            upgradeChainFlag(pkt);
 
             pktVector.push_back(pkt);
 
             pLH.completeLog(" chunk %d of %d - (seq %u) TCP source port %u",
-                            (i + 1), pkts, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
+                            (pkts + 1), pkts_n, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
         }
 
         removeOrigPkt = true;
     }
 
-    /* the only acceptable Scramble is INNOCENT, because the hack is based on
-     * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
@@ -161,6 +148,8 @@ public:
             return false;
         }
 
+        /* the only acceptable Scramble is INNOCENT, because the hack is based on
+         * overlap the fragment of the same packet */
         supportedScramble = SCRAMBLE_INNOCENT;
 
         return true;

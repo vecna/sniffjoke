@@ -53,7 +53,7 @@ vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt)
     return hackCache.end() - 1;
 }
 
-vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, void *data, size_t data_size)
+vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, const unsigned char *data, size_t data_size)
 {
     cacheRecord *newrecord = new cacheRecord(pkt, data, data_size);
     hackCache.push_back(newrecord);
@@ -62,8 +62,6 @@ vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, void *data,
 
 void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
-    if ((*it)->cached_data != NULL)
-        delete (*it)->cached_data;
     delete *it;
     hackCache.erase(it++);
 }
@@ -77,6 +75,7 @@ void Hack::upgradeChainFlag(Packet *pkt)
             break;
         case REHACKABLE:
             pkt->chainflag = FINALHACK;
+            break;
         case FINALHACK:
             LOG_ALL("Warning: a non hackable-again packet has requested an increment status: check packet_id %u",
                 pkt->SjPacketId);

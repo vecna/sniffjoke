@@ -46,8 +46,6 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
-
         pkt->tcp->psh = 0;
         pkt->tcp->rst = 1;
         pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
@@ -55,9 +53,10 @@ public:
         pkt->tcppayloadResize(0);
 
         pkt->position = ANTICIPATION;
-        pkt->chainflag = FINALHACK;
         pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
         pkt->choosableScramble = (availableScramble & supportedScramble);
+
+        pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
     }

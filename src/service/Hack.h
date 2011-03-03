@@ -49,21 +49,19 @@ public:
     time_t access_timestamp;
 
     const Packet cached_packet;
-    char *cached_data;
+    vector<unsigned char>cached_data;
 
     cacheRecord(const Packet& pkt) :
     access_timestamp(sj_clock),
-    cached_packet(pkt),
-    cached_data(NULL)
+    cached_packet(pkt)
     {
     };
 
-    cacheRecord(const Packet& pkt, const void* data, size_t data_size) :
+    cacheRecord(const Packet& pkt, const unsigned char* data, size_t data_size) :
     access_timestamp(sj_clock),
-    cached_packet(pkt)
+    cached_packet(pkt),
+    cached_data(data, data + data_size)
     {
-        cached_data = new char[data_size];
-        memcpy(cached_data, data, data_size);
     };
 };
 
@@ -73,13 +71,13 @@ public:
 
     uint8_t supportedScramble; /* supported by the location, derived
                                   from plugin_enabler.conf.$location */
-    const char *hackName; /* hack name as const string */
+    const char * const hackName; /* hack name as const string */
     const uint16_t hackFrequency; /* hack frequency, using the value  */
     bool removeOrigPkt; /* boolean to be set true if the hack
                            needs to remove the original packet */
 
-    vector<Packet*> pktVector; /* std vector of Packet* used for created hack packets */
-    vector<cacheRecord*> hackCache;
+    vector<Packet *> pktVector; /* std vector of Packet* used for created hack packets */
+    vector<cacheRecord *> hackCache;
     uint32_t hackCacheTimeout;
 
     judge_t pktRandomDamage(uint8_t scrambles)
@@ -113,9 +111,6 @@ public:
 
     virtual void mangleIncoming(Packet &pkt)
     {
-        /* used as testing */
-        pkt.ip->id = 1;
-        pkt.fixSum();
     };
 
     virtual void reset(void)
@@ -126,7 +121,7 @@ public:
 
     vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
     vector<cacheRecord *>::iterator cacheCreate(const Packet &);
-    vector<cacheRecord *>::iterator cacheCreate(const Packet &, void* data, size_t data_size);
+    vector<cacheRecord *>::iterator cacheCreate(const Packet &, const unsigned char* data, size_t data_size);
     void cacheDelete(vector<struct cacheRecord *>::iterator it);
 
     void upgradeChainFlag(Packet *);

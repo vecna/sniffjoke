@@ -88,7 +88,7 @@ public:
         {
             sentData = (origpkt.tcppayloadlen / 2);
 
-            it = cacheCreate(origpkt, (void*) &sentData, 4);
+            it = cacheCreate(origpkt, (const unsigned char*) &sentData, 4);
 
             pkt->tcppayloadResize(sentData);
             pkt->tcp->psh = 0;
@@ -101,7 +101,7 @@ public:
         else
         {
 
-            sentData = *(uint32_t*) ((*it)->cached_data);
+            sentData = *(uint32_t*)&((*it)->cached_data[0]);
 
             cacheDelete(it);
 
@@ -113,10 +113,13 @@ public:
                             );
         }
 
-        upgradeChainFlag(pkt);
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
+
+        upgradeChainFlag(pkt);
+
         pktVector.push_back(pkt);
+
         removeOrigPkt = true;
     }
 
@@ -124,7 +127,7 @@ public:
      * overlap the fragment of the same packet */
     virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
     {
-        if ( origpkt.chainflag != HACKUNASSIGNED)
+        if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
 
         return (origpkt.fragment == false &&
