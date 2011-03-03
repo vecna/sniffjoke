@@ -151,11 +151,7 @@ public:
     };
 
     Packet(const unsigned char *, uint16_t);
-    explicit Packet(const Packet &);
-
-    virtual ~Packet(void)
-    {
-    };
+    Packet(const Packet &);
 
     void updatePacketMetadata(void);
 
