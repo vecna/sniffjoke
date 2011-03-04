@@ -22,6 +22,8 @@
 
 #include "Hack.h"
 
+extern time_t sj_clock; /* uses global clock handled by NetIO module */
+
 vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
     for (vector<cacheRecord *>::iterator it = hackCache.begin(); it != hackCache.end();)

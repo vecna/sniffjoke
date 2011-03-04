@@ -23,6 +23,7 @@
 #ifndef SJ_INTERNALPROTOCOL_H
 #define SJ_INTERNALPROTOCOL_H
 
+#include <stdint.h>
 #include <time.h>
 
 #define START_COMMAND_TYPE          1

@@ -27,6 +27,8 @@
 #ifndef SJ_UTILS_H
 #define SJ_UTILS_H
 
+#include "hardcodedDefines.h"
+
 #include <cerrno>
 #include <csignal>
 #include <cstdarg>
@@ -48,12 +50,12 @@ using namespace std;
 #include <stdint.h>
 #include <unistd.h>
 
-#include "hardcodedDefines.h"
 #include "Debug.h"
 
 /*
- * there is a single clock in sniffjoke, global and
- * manteined by the NetIO module (network_io)
+ * there is a single clock in sniffjoke;
+ * it global and defined by main.cc
+ * it's updated by the NetIO module (network_io)
  */
 extern time_t sj_clock;
 

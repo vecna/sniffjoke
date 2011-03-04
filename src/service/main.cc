@@ -33,6 +33,7 @@
 
 using namespace std;
 
+/* global variables */
 Debug debug;
 time_t sj_clock;
 

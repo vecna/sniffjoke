@@ -182,7 +182,6 @@ void portLine::extractValue(void)
     const struct mapTheKeys *mtk;
     bool foundK;
 
-    /* AGG_* are defined in Packet.h */
     const struct mapTheKeys mappedKeywords[] = {
         { AGG_NONE, AGG_N_NONE},
         { AGG_VERYRARE, AGG_N_VERYRARE},

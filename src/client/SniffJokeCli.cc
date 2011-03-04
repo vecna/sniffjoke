@@ -21,6 +21,9 @@
  */
 
 #include "SniffJokeCli.h"
+#include "service/internalProtocol.h"
+#include "service/PortConf.h"
+
 
 #include <errno.h>
 #include <fcntl.h>
@@ -33,8 +36,6 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-
-#include <cstdlib>
 
 SniffJokeCli::SniffJokeCli(char* serveraddr, uint16_t serverport, uint32_t ms_timeout) :
 serveraddr(serveraddr),

@@ -23,15 +23,10 @@
 #ifndef SJ_SNIFFJOKECLI_H
 #define SJ_SNIFFJOKECLI_H
 
-//#include <csignal>
+#include "service/Utils.h"
+
 #include <cstdio>
-//#include <memory>
-
 #include <stdint.h>
-
-#include "service/hardcodedDefines.h"
-#include "service/internalProtocol.h"
-#include "service/PortConf.h"
 
 using namespace std;
 
