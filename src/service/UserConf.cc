@@ -672,3 +672,4 @@ bool UserConf::syncIPListsFiles(void)
     /* TODO */
     return true;
 }
+

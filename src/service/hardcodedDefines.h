@@ -68,9 +68,6 @@
 #define FILE_LOG_SESSION        "sniffjoke.log.sessions"
 #define FILE_LOG_PACKET         "sniffjoke.log.packets"
 
-// sorry, for double negation:
-#define DEFAULT_START_STOPPED   false /* sniffjoke start stopped and is false to be true
-                                         (http://freeworld.thc.org/root/phun/unmaintain.html)*/
 #define SMALLBUF                64
 #define MEDIUMBUF               256
 #define LARGEBUF                1024

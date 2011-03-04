@@ -79,8 +79,8 @@ static void sj_help(const char *pname)
            DEFAULT_LOCATION,
            WORK_DIR,
            DEFAULT_USER, DEFAULT_GROUP,
-           DEFAULT_NO_TCP ? "true" : "false",
-           DEFAULT_NO_UDP ? "true" : "false",
+           DEFAULT_NO_TCP ? "tcp mangled" : "tcp not mangled",
+           DEFAULT_NO_UDP ? "udp mangled" : "udp not mangled",
            DEFAULT_START_STOPPED ? "present" : "not present",
            DEFAULT_CHAINING ? "enabled" : "disabled",
            SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
@@ -199,7 +199,7 @@ int main(int argc, char **argv)
             break;
         case 'd':
             useropt.debug_level = atoi(optarg);
-            if (useropt.debug_level < SUPPRESS_LEVEL || useropt.debug_level > TESTING_LEVEL)
+            if (useropt.debug_level > TESTING_LEVEL)
                 goto sniffjoke_help;
             break;
         case 'p':
