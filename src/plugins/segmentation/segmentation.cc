@@ -24,7 +24,7 @@
  * HACK COMMENT:, every hacks require intensive comments because should cause 
  * malfunction, or KILL THE INTERNET :)
  *
- * this hack simply do a massive segment fragmentation of tcp packet.
+ * this hack simply does a massive segmentation of a tcp packet;
  * this could help to bypass some simple sniffers and ids.
  * 
  * 
@@ -99,7 +99,7 @@ public:
              * has no particular importance for the hack
              *
              * by the way setting this to ANTICIPATION it's fundamental
-             * to keep packets trasmission ordered, and her is the reason why:
+             * to keep packets trasmission ordered, and here is the reason why:
              *
              * ok tcp has sequence number to handle the packet reorder correctly but
              * we do a massive fragmentation to fight ids so with disordered
@@ -150,8 +150,7 @@ public:
             return false;
         }
 
-        /* the only acceptable Scramble is INNOCENT, because the hack is based on
-         * overlap the fragment of the same packet */
+        /* the original is removed, and segments are inserted */
         supportedScrambles = SCRAMBLE_INNOCENT;
 
         return true;
