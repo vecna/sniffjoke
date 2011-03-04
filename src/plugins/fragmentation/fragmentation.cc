@@ -41,10 +41,10 @@ class fragmentation : public Hack
 #define HACK_NAME "Fragmentation"
 #define PKT_LOG "plugin.fragmentation.log"
 
-#define MIN_SPLIT_PAYLOAD 1 /* bytes */
+#define MIN_SPLIT_PAYLOAD 8 /* bytes */
 #define MIN_SPLIT_PKTS    2
 #define MAX_SPLIT_PKTS    5
-#define MIN_IP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
+#define MIN_IP_PAYLOAD    (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
     pluginLogHandler pLH;
