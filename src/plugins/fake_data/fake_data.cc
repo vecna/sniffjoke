@@ -99,16 +99,16 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
          * in fake segment I don't use pktRandomDamage because I want the
          * same hack for both packets.
          */
         judge_t selectedScramble;
-        if (ISSET_TTL(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+        if (ISSET_TTL(availableScrambles & supportedScrambles) && RANDOMPERCENT(90))
             selectedScramble = PRESCRIPTION;
-        else if (ISSET_MALFORMED(availableScramble & supportedScramble) && RANDOMPERCENT(90))
+        else if (ISSET_MALFORMED(availableScrambles & supportedScrambles) && RANDOMPERCENT(90))
             selectedScramble = MALFORMED;
         else /* the 99% of the times */
             selectedScramble = GUILTY;
@@ -142,7 +142,7 @@ public:
                 pkt->position = POSTICIPATION;
 
             pkt->wtf = selectedScramble;
-            pkt->choosableScramble = (availableScramble & supportedScramble);
+            pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             upgradeChainFlag(pkt);
 
@@ -150,7 +150,7 @@ public:
         }
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -170,7 +170,7 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        supportedScramble = configuredScramble;
+        supportedScrambles = configuredScramble;
         return true;
     }
 

@@ -51,8 +51,8 @@ public:
     Process(const struct sj_config &);
     ~Process();
 
-    pid_t readPidfile();
-    void writePidfile();
+    pid_t readPidfile(void);
+    void writePidfile(void);
     void unlinkPidfile(bool);
 
 
@@ -60,10 +60,10 @@ public:
     void jail(const char *chroot_dir);
     void privilegesDowngrade();
     void sigtrapSetup(sig_t);
-    void sigtrapEnable();
-    void sigtrapDisable();
-    void background();
-    void isolation();
+    void sigtrapEnable(void);
+    void sigtrapDisable(void);
+    void background(void);
+    void isolation(void);
 };
 
 #endif /* SJ_PROCESS_H */

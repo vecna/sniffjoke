@@ -43,7 +43,7 @@ public:
     uint8_t c;
 
     IPList(uint32_t, uint8_t, uint8_t, uint8_t);
-    ~IPList();
+    ~IPList(void);
 
     /* utilities */
     void selflog(const char *func, const char *format, ...) const;
@@ -55,11 +55,11 @@ private:
     const char *dumpfname;
 public:
     IPListMap(const char*);
-    ~IPListMap();
+    ~IPListMap(void);
     IPList& add(uint32_t, uint8_t, uint8_t, uint8_t);
-    bool isPresent(uint32_t);
-    void load();
-    void dump();
+    bool isPresent(uint32_t) const;
+    void load(void);
+    void dump(void);
 };
 
 #endif /* SJ_IPLIST_H */

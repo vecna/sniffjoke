@@ -31,7 +31,7 @@ using namespace std;
 
 static void sjcli_version(const char *pname)
 {
-	printf("%s: %s\n", pname, SJ_CLI_VERSION);
+    printf("%s: %s\n", pname, SJ_CLI_VERSION);
 }
 
 #define SNIFFJOKECLI_HELP_FORMAT \
@@ -45,134 +45,134 @@ static void sjcli_version(const char *pname)
 	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
 	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
 	" saveconf\t\tdump config file\n"\
-	" showport\t\t\tshow the running port-aggressivity configuration\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
 	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
+	" showport\t\tshow the running port-aggressivity configuration\n"\
+        " set\t\t\t\n"\
+        " clear\t\t\t\n"\
 	" debug\t\t\t[1-5] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sjcli_help(const char *pname)
 {
-	printf(SNIFFJOKECLI_HELP_FORMAT, pname, DEFAULT_ADDRESS, DEFAULT_PORT, DEFAULT_TIMEOUT);
+    printf(SNIFFJOKECLI_HELP_FORMAT, pname, DEFAULT_ADDRESS, DEFAULT_PORT, DEFAULT_TIMEOUT);
 }
 
 /* return false on error in parsing or when command is not present */
 static bool parse_command(char **av, uint32_t ac, struct command *sjcmdlist, char *retcmd)
 {
-	for(uint32_t i = 0; i < ac; ++i) 
-	{
-		struct command *ptr;
-		for(ptr = &sjcmdlist[0]; ptr->cmd != NULL; ++ptr) 
-		{
-			if (!strcmp(ptr->cmd, av[i])) 
-			{
-				size_t usedlen = 0;
-				snprintf(retcmd, 256, "%s", ptr->cmd);
-				if (ptr->related_args + i > ac) {
-					sjcli_help(av[0]);
-					exit(-1);
-				}
-				while (--(ptr->related_args)) {
-					usedlen = strlen(retcmd);
-					snprintf(&retcmd[usedlen], 256 - usedlen, " %s", av[++i]);
-				}
-				return true;
-			}
-		}
-	}
-	return false;
+    for (uint32_t i = 0; i < ac; ++i)
+    {
+        struct command *ptr;
+        for (ptr = &sjcmdlist[0]; ptr->cmd != NULL; ++ptr)
+        {
+            if (!strcmp(ptr->cmd, av[i]))
+            {
+                size_t usedlen = 0;
+                snprintf(retcmd, 256, "%s", ptr->cmd);
+                if (ptr->related_args + i > ac)
+                {
+                    sjcli_help(av[0]);
+                    exit(-1);
+                }
+                while (--(ptr->related_args))
+                {
+                    usedlen = strlen(retcmd);
+                    snprintf(&retcmd[usedlen], 256 - usedlen, " %s", av[++i]);
+                }
+                return true;
+            }
+        }
+    }
+    return false;
 }
-
 
 int main(int argc, char **argv)
 {
-	struct sjcli_cmdline_opts 
-	{
-		char admin_address[256];
-		uint16_t admin_port;
-		uint32_t ms_timeout;
-		char cmd_buffer[256];
-	} useropt;
 
-	memset(&useropt, 0x00, sizeof(useropt));
-	/* setting the default defined in SniffJokeCli.h */
-	snprintf(useropt.admin_address, sizeof(useropt.admin_address), DEFAULT_ADDRESS);
-	useropt.admin_port = DEFAULT_PORT;
-	useropt.ms_timeout = DEFAULT_TIMEOUT;
+    struct sjcli_cmdline_opts
+    {
+        char admin_address[256];
+        uint16_t admin_port;
+        uint32_t ms_timeout;
+        char cmd_buffer[256];
+    } useropt;
 
-	struct command sjcli_command[] =
-	{
-		{ "start",    1 },
-		{ "stop",     1 },
-		{ "stat",     1 },
-/*		{ "clear",    1 }, */
-/* CLEAR is SET 1:64k NONE and so I've commented this too */
-		{ "showport", 1 },
-		{ "quit",     1 },
-		{ "info",     1 },
-		{ "ttlmap",   1 },
-		{ "saveconf", 1 },
-		{ "debug",    2 }, /* the log debuglevel */
-/*		{ "set",      4 }, */ 	/* set start_port end_port value */
-/* SET is not supported in the 0.4.0 client release because I require implementation
- * of the parsingPortBlah, because via command line is needed use all the keyword usable
- * in the configuration files. Now is time to close the 0.4 definitely, and SET will not
- * be supported now. holy fuck
- */
-		{ NULL,       0	}
-	};
+    memset(&useropt, 0x00, sizeof (useropt));
+    /* setting the default defined in SniffJokeCli.h */
+    snprintf(useropt.admin_address, sizeof (useropt.admin_address), DEFAULT_ADDRESS);
+    useropt.admin_port = DEFAULT_PORT;
+    useropt.ms_timeout = DEFAULT_TIMEOUT;
 
-	if(!parse_command(argv, argc, sjcli_command, useropt.cmd_buffer)) {
-		sjcli_help(argv[0]);
-		return -1;
-	}
+    struct command sjcli_command[] = {
+        { "start", 1},
+        { "stop", 1},
+        { "quit", 1},
+        { "saveconf", 1},
+        { "info", 1},
+        { "ttlmap", 1},
+        { "stat", 1},
+        { "showport", 1},
+        { "set", 3},
+        { "clear", 1},
+        { "debug", 2},
+        { NULL, 0}
+    };
 
-	struct option sjcli_option[] =
-	{
-		{ "address", required_argument, NULL, 'a' },
-		{ "timeout", required_argument, NULL, 't' },
-		{ "version", no_argument, NULL, 'v' },
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, 0, NULL, 0 }
-	};
+    if (!parse_command(argv, argc, sjcli_command, useropt.cmd_buffer))
+    {
+        sjcli_help(argv[0]);
+        return -1;
+    }
 
-	int charopt;
-	while ((charopt = getopt_long(argc, argv, "c:a:t:vh", sjcli_option, NULL)) != -1) {
-		switch(charopt) {
-			case 'c':
-				snprintf(useropt.cmd_buffer, sizeof(useropt.cmd_buffer), "%s", optarg);
-				break;
-			case 'a':
-				snprintf(useropt.admin_address, sizeof(useropt.admin_address), "%s", optarg);
-				char* port;
-				if ((port = strchr(useropt.admin_address, ':')) != NULL) {
-					*port = 0x00;
-					int checked_port = atoi(++port);
+    struct option sjcli_option[] = {
+        { "address", required_argument, NULL, 'a'},
+        { "timeout", required_argument, NULL, 't'},
+        { "version", no_argument, NULL, 'v'},
+        { "help", no_argument, NULL, 'h'},
+        { NULL, 0, NULL, 0}
+    };
 
-					if (checked_port > 65535 || checked_port < 0)
-						goto sniffjokecli_help;
+    int charopt;
+    while ((charopt = getopt_long(argc, argv, "c:a:t:vh", sjcli_option, NULL)) != -1)
+    {
+        switch (charopt)
+        {
+        case 'c':
+            snprintf(useropt.cmd_buffer, sizeof (useropt.cmd_buffer), "%s", optarg);
+            break;
+        case 'a':
+            snprintf(useropt.admin_address, sizeof (useropt.admin_address), "%s", optarg);
+            char* port;
+            if ((port = strchr(useropt.admin_address, ':')) != NULL)
+            {
+                *port = 0x00;
+                int checked_port = atoi(++port);
 
-					useropt.admin_port = (uint16_t)checked_port;
-				}
-				break;
-			case 't':
-				useropt.ms_timeout = atoi(optarg);
-				break;
-			case 'v':
-				sjcli_version(argv[0]);
-				return 0;
+                if (checked_port > 65535 || checked_port < 0)
+                    goto sniffjokecli_help;
+
+                useropt.admin_port = (uint16_t) checked_port;
+            }
+            break;
+        case 't':
+            useropt.ms_timeout = atoi(optarg);
+            break;
+        case 'v':
+            sjcli_version(argv[0]);
+            return 0;
 sniffjokecli_help:
-			case 'h':
-			default:
-				sjcli_help(argv[0]);
-				return -1;
+        case 'h':
+        default:
+            sjcli_help(argv[0]);
+            return -1;
 
-			argc -= optind;
-			argv += optind;
-		}
-	}
+            argc -= optind;
+            argv += optind;
+        }
+    }
 
-	SniffJokeCli cli(useropt.admin_address, useropt.admin_port, useropt.ms_timeout);
-	cli.send_command(useropt.cmd_buffer);
+    SniffJokeCli cli(useropt.admin_address, useropt.admin_port, useropt.ms_timeout);
+    cli.send_command(useropt.cmd_buffer);
 }

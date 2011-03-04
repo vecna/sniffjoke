@@ -49,7 +49,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
 
         /*
@@ -109,7 +109,7 @@ public:
             pkt->wtf = INNOCENT;
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
-            pkt->choosableScramble = (availableScramble & supportedScramble);
+            pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             /* I was tempted to set it FINALHACK, but Sj supports fragment, lets see */
             upgradeChainFlag(pkt);
@@ -123,7 +123,7 @@ public:
         removeOrigPkt = true;
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -150,7 +150,7 @@ public:
 
         /* the only acceptable Scramble is INNOCENT, because the hack is based on
          * overlap the fragment of the same packet */
-        supportedScramble = SCRAMBLE_INNOCENT;
+        supportedScrambles = SCRAMBLE_INNOCENT;
 
         return true;
     }

@@ -59,7 +59,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         /* 
          * TODO -- 
@@ -125,7 +125,7 @@ public:
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -144,7 +144,7 @@ public:
             return false;
         }
 
-        supportedScramble = SCRAMBLE_INNOCENT;
+        supportedScrambles = SCRAMBLE_INNOCENT;
 
         return true;
     }

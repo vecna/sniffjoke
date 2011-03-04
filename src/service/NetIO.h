@@ -62,7 +62,7 @@ public:
      *       --- but not killed!
      */
 
-    NetIO(sj_config &);
+    NetIO(const sj_config &);
     ~NetIO(void);
     void prepareConntrack(TCPTrack *);
     void networkIO(void);

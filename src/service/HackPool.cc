@@ -1,4 +1,4 @@
-/*
+/*'
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
@@ -25,9 +25,11 @@
 
 #include <dlfcn.h>
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, bool pluginOnly)
+PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, bool pluginOnly)
 {
     LOG_VERBOSE("%s", plugabspath);
+
+    char enabledScramblesStr[LARGEBUF] = {0};
 
     pluginHandler = dlopen(plugabspath, RTLD_NOW);
     if (pluginHandler == NULL)
@@ -70,14 +72,13 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t supportedScramble, boo
 
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
-    failInit = !selfObj->initializeHack(supportedScramble);
+    failInit = !selfObj->initializeHack(enabledScrambles);
 
-    LOG_ALL("import of %s: %s with %s%s%s%s %s",
+    snprintfScramblesList(enabledScramblesStr, sizeof(enabledScramblesStr), enabledScrambles);
+
+    LOG_ALL("import of %s: %s with [%s] %s",
             plugabspath, selfObj->hackName,
-            (ISSET_INNOCENT(supportedScramble) ? "INNOCENT," : ""),
-            (ISSET_TTL(supportedScramble) ? "PRESCRIPTION," : ""),
-            (ISSET_CHECKSUM(supportedScramble) ? "GUILTY," : ""),
-            (ISSET_MALFORMED(supportedScramble) ? "MALFORMED" : ""),
+            enabledScramblesStr,
             failInit ? "fail" : "success"
             );
 }
@@ -101,7 +102,7 @@ runconfig(runcfg)
         char *comma;
         char onlyplugin_cpy[MEDIUMBUF] = {0};
         char plugabspath[MEDIUMBUF] = {0};
-        uint8_t supportedScramble;
+        uint8_t supportedScrambles;
 
         snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), runcfg.onlyplugin);
 
@@ -113,10 +114,10 @@ runconfig(runcfg)
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
 
-        if (!(supportedScramble = parseScrambleList(comma)))
+        if (!(supportedScrambles = parseScrambleList(comma)))
             RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
-        importPlugin(plugabspath, runcfg.onlyplugin, supportedScramble, true);
+        importPlugin(plugabspath, runcfg.onlyplugin, supportedScrambles, true);
     }
     else
     {
@@ -129,7 +130,7 @@ runconfig(runcfg)
         LOG_ALL("loaded correctly %d plugins", size());
 }
 
-HackPool::~HackPool()
+HackPool::~HackPool(void)
 {
     LOG_DEBUG("");
 
@@ -148,12 +149,12 @@ HackPool::~HackPool()
     }
 }
 
-void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, uint8_t supportedScramble, bool onlyPlugin)
+void HackPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, bool onlyPlugin)
 {
     try
     {
         /* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the hacks */
-        PluginTrack *plugin = new PluginTrack(plugabspath, supportedScramble, onlyPlugin);
+        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, onlyPlugin);
         if (plugin->failInit)
         {
             LOG_DEBUG("failed initialization of %s: require scramble unsupported in the enabler file",
@@ -168,25 +169,26 @@ void HackPool::importPlugin(const char *plugabspath, const char *enablerentry, u
     }
     catch (runtime_error &e)
     {
-        RUNTIME_EXCEPTION("unable to load plugin %s", enablerentry);
+        RUNTIME_EXCEPTION("unable to load plugin %s", enablerEntry);
     }
 
 }
 
 uint8_t HackPool::parseScrambleList(const char *list_str)
 {
+#define SCRAMBLE_SUPPORTED    4
 
     struct scrambleparm
     {
         const char *keyword;
         uint8_t scramble;
     };
-#define SCRAMBLE_SUPPORTED    4
+
     const struct scrambleparm availablescramble[SCRAMBLE_SUPPORTED] = {
-        { "PRESCRIPTION", SCRAMBLE_TTL},
-        { "MALFORMED", SCRAMBLE_MALFORMED},
-        { "GUILTY", SCRAMBLE_CHECKSUM},
-        { "INNOCENT", SCRAMBLE_INNOCENT}
+        { SCRAMBLE_TTL_STR, SCRAMBLE_TTL},
+        { SCRAMBLE_MALFORMED_STR, SCRAMBLE_MALFORMED},
+        { SCRAMBLE_CHECKSUM_STR, SCRAMBLE_CHECKSUM},
+        { SCRAMBLE_INNOCENT_STR, SCRAMBLE_INNOCENT}
     };
 
     int retval = 0;
@@ -212,10 +214,12 @@ uint8_t HackPool::parseScrambleList(const char *list_str)
     return retval;
 }
 
-void HackPool::parseEnablerFile()
+void HackPool::parseEnablerFile(void)
 {
     char enablerabspath[LARGEBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
+    char enabledScramblesStr[LARGEBUF] = {0};
+
     FILE *plugfile;
 
     snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
@@ -227,7 +231,7 @@ void HackPool::parseEnablerFile()
     do
     {
         char enablerentry[LARGEBUF], *comma;
-        uint8_t supportedScramble = 0;
+        uint8_t enabledScramble = 0;
 
         fgets(enablerentry, LARGEBUF, plugfile);
         ++line;
@@ -258,14 +262,16 @@ void HackPool::parseEnablerFile()
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
-        if (!(supportedScramble = parseScrambleList(comma)))
+        if (!(enabledScramble = parseScrambleList(comma)))
         {
             RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
                               line, enablerentry, FILE_PLUGINSENABLER);
         }
 
-        LOG_VERBOSE("Importing plugin [%s] supportedScramble %u", enablerentry, supportedScramble);
-        importPlugin(plugabspath, enablerentry, supportedScramble, false);
+        snprintfScramblesList(enabledScramblesStr, sizeof(enabledScramblesStr), enabledScramble);
+
+        LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
+        importPlugin(plugabspath, enablerentry, enabledScramble, false);
 
     }
     while (!feof(plugfile));

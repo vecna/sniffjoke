@@ -44,10 +44,10 @@ public:
 
 private:
     const sj_cmdline_opts &opts;
-    /* used to copy structs for command I/O */
-    uint8_t io_buf[HUGEBUF * 4];
+
     UserConf userconf;
     Process proc;
+
     auto_ptr<NetIO> mitm;
     auto_ptr<HackPool> hack_pool;
     auto_ptr<SessionTrackMap> sessiontrack_map;
@@ -64,12 +64,15 @@ private:
     int admin_socket_flags_blocking;
     int admin_socket_flags_nonblocking;
 
-    void setupDebug();
-    void cleanDebug();
-    void cleanServerRoot();
-    void cleanServerUser();
-    void setupAdminSocket();
-    void handleAdminSocket();
+    /* used to copy structs for command I/O */
+    uint8_t io_buf[HUGEBUF * 4];
+
+    void setupDebug(void);
+    void cleanDebug(void);
+    void cleanServerRoot(void);
+    void cleanServerUser(void);
+    void setupAdminSocket(void);
+    void handleAdminSocket(void);
 
     /* internalProtocol handling */
     int recvCommand(int sock, char *, int, struct sockaddr *, FILE *, const char *);
@@ -84,8 +87,8 @@ private:
     void handleCmdInfo(void);
     void handleCmdTTL(void);
     void handleCmdShowport(void);
-    void handleCmdSet(unsigned short, uint16_t, uint8_t);
-    void handleCmdDebuglevel(int);
+    void handleCmdSet(const char *);
+    void handleCmdDebuglevel(uint8_t);
 
     /* main function for build the answer */
     void writeSJStatus(uint8_t);

@@ -21,7 +21,6 @@
  */
 
 #include "UserConf.h"
-#include "portConfParsing.h"
 #include "internalProtocol.h"
 
 #include <cctype>
@@ -40,11 +39,12 @@
  * 2) configuration files
  * 3) defaults
  */
+
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 cmdline_opts(cmdline_opts)
 {
     LOG_DEBUG("");
-    char *selected_basedir = NULL, *selected_location = NULL;
+    const char *selected_basedir = NULL, *selected_location = NULL;
 
     /* generating referringdir and configfile (public) */
     if (cmdline_opts.basedir[0])
@@ -52,11 +52,11 @@ cmdline_opts(cmdline_opts)
         if (access(cmdline_opts.basedir, X_OK))
             RUNTIME_EXCEPTION("--dir parameter is not accessible");
         else
-            selected_basedir = const_cast<char *> (cmdline_opts.basedir);
+            selected_basedir = cmdline_opts.basedir;
     }
     else /* no option used, default in hardcoded-defines.h */
     {
-        selected_basedir = const_cast<char *> (WORK_DIR);
+        selected_basedir = WORK_DIR;
     }
 
     if (cmdline_opts.location[0])
@@ -64,10 +64,10 @@ cmdline_opts(cmdline_opts)
         LOG_VERBOSE("is highly suggestes to use sniffjoke specifying a location (--location option)");
         LOG_VERBOSE("a defined location means that the network it's profiled for the best results");
         LOG_VERBOSE("a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
-        selected_location = const_cast<char *> (cmdline_opts.location);
+        selected_location = cmdline_opts.location;
     }
     else
-        selected_location = const_cast<char *> (DEFAULT_LOCATION);
+        selected_location = DEFAULT_LOCATION;
 
     /* length sanity check, the input value are MEDIUMBUF (256) the generated buf are LARGEBUF (1024) */
     if (strlen(selected_basedir) + strlen(selected_location) > (LARGEBUF - strlen(FILE_CONF) - 1))
@@ -104,6 +104,9 @@ cmdline_opts(cmdline_opts)
     loadDiskConfiguration();
 
     /* check integrity in the configuration loaded */
+    if (runconfig.no_tcp && runconfig.no_udp)
+        RUNTIME_EXCEPTION("configuration conflict: both tcp and udp can't be disabled");
+
     if (runconfig.use_blacklist && runconfig.use_whitelist)
         RUNTIME_EXCEPTION("configuration conflict: both blacklist and whitelist seem to be enabled");
 
@@ -129,12 +132,12 @@ cmdline_opts(cmdline_opts)
     LOG_DEBUG("runconfig pass the sanity checks");
 }
 
-UserConf::~UserConf()
+UserConf::~UserConf(void)
 {
     LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
 }
 
-void UserConf::autodetectLocalInterface()
+void UserConf::autodetectLocalInterface(void)
 {
     /* check this command: the flag value, matched in 0003, is derived from:
      *     /usr/src/linux/include/linux/route.h
@@ -162,7 +165,7 @@ void UserConf::autodetectLocalInterface()
     }
 }
 
-void UserConf::autodetectLocalInterfaceIPAddress()
+void UserConf::autodetectLocalInterfaceIPAddress(void)
 {
     char cmd[MEDIUMBUF];
     FILE *foca;
@@ -183,7 +186,7 @@ void UserConf::autodetectLocalInterfaceIPAddress()
     LOG_ALL("acquired local ip address: %s", runconfig.local_ip_addr);
 }
 
-void UserConf::autodetectGWIPAddress()
+void UserConf::autodetectGWIPAddress(void)
 {
     const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32 2>/dev/null";
     FILE *foca;
@@ -207,7 +210,7 @@ void UserConf::autodetectGWIPAddress()
     }
 }
 
-void UserConf::autodetectGWMACAddress()
+void UserConf::autodetectGWMACAddress(void)
 {
     char cmd[MEDIUMBUF];
     FILE *foca;
@@ -246,7 +249,7 @@ void UserConf::autodetectGWMACAddress()
     }
 }
 
-void UserConf::autodetectFirstAvailableTunnelInterface()
+void UserConf::autodetectFirstAvailableTunnelInterface(void)
 {
     const char *cmd = "ifconfig -a | grep tun | cut -b -7 2>/dev/null";
     FILE *foca;
@@ -419,7 +422,7 @@ EndparseMatchString:
     LOG_DEBUG(debugfmt, name, dst);
 }
 
-void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, const uint16_t difolt)
+void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, uint16_t difolt)
 {
     char useropt[SMALLBUF];
     const char *debugfmt = NULL;
@@ -472,21 +475,20 @@ bool UserConf::loadDiskConfiguration(void)
     else
         LOG_DEBUG("opening configuration file: %s", configfile);
 
-    /* the boolean value: if are present, are sets */
-    parseMatch(runconfig.use_whitelist, "whitelist", loadstream, cmdline_opts.use_whitelist, false);
-    parseMatch(runconfig.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, false);
-    parseMatch(runconfig.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, false);
-    parseMatch(runconfig.chaining, "chain", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
-    parseMatch(runconfig.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
-
-    parseMatch(runconfig.user, "user", loadstream, cmdline_opts.user, DROP_USER);
-    parseMatch(runconfig.group, "group", loadstream, cmdline_opts.group, DROP_GROUP);
+    parseMatch(runconfig.user, "user", loadstream, cmdline_opts.user, DEFAULT_USER);
+    parseMatch(runconfig.group, "group", loadstream, cmdline_opts.group, DEFAULT_GROUP);
     parseMatch(runconfig.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
-    parseMatch(runconfig.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
-    parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, MAX_TTLPROBE);
-
     parseMatch(runconfig.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
+    parseMatch(runconfig.chaining, "chaining", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
+    parseMatch(runconfig.no_tcp, "no-tcp", loadstream, cmdline_opts.no_tcp, DEFAULT_NO_TCP);
+    parseMatch(runconfig.no_udp, "no-udp", loadstream, cmdline_opts.no_udp, DEFAULT_NO_UDP);
+    parseMatch(runconfig.use_whitelist, "whitelist", loadstream, cmdline_opts.use_whitelist, DEFAULT_USE_WHITELIST);
+    parseMatch(runconfig.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, DEFAULT_USE_BLACKLIST);
+    parseMatch(runconfig.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
+    parseMatch(runconfig.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, DEFAULT_GO_FOREGROUND);
     parseMatch(runconfig.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
+    parseMatch(runconfig.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
+    parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     /* those files act in portconf[PORTNUMBER]; array, merging the ports configuration */
     loadAggressivity();
@@ -509,6 +511,9 @@ void UserConf::loadAggressivity(void)
 {
     FILE *loadstream;
 
+    for (int32_t i = 0; i < PORTSNUMBER; i++)
+        runconfig.portconf[i] = AGG_NONE;
+
     if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
     {
         LOG_ALL("port aggrssivity specifications in %s/%s: %s, using defaults",
@@ -521,8 +526,6 @@ void UserConf::loadAggressivity(void)
          *
          * but is not an absolute truth, I like the user that choose for himself
          */
-        for(int32_t i = 0; i < PORTSNUMBER; i++)
-            runconfig.portconf[i] = AGG_NONE;
 
         return;
     }
@@ -545,7 +548,7 @@ void UserConf::loadAggressivity(void)
         if (line[strlen(line) - 1] == '\n')
             line[strlen(line) - 1] = 0x00;
 
-        if (strlen(line) < 6 || line[0] == '#' || line[0] == '\n')
+        if (!strlen(line) || line[0] == '#' || line[0] == '\n')
             continue;
 
         /* setup function clear the previously used private variables */
@@ -564,31 +567,32 @@ void UserConf::loadAggressivity(void)
 }
 
 /* simple utiliy for dumping */
-uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, char *data)
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, char *data, const char* difolt)
 {
     uint32_t written = 0;
+    return 0;
 
-    if (data[0])
+    if (data != NULL && strncmp(data, difolt, strlen(data)))
         written = fprintf(out, "%s:%s\n", name, data);
 
     return written;
 }
 
-uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, uint16_t shortdat)
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, uint16_t shortdat, uint16_t difolt)
 {
     uint32_t written = 0;
 
-    if (shortdat)
+    if (shortdat != difolt)
         written = fprintf(out, "%s:%u\n", name, shortdat);
 
     return written;
 }
 
-uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata)
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata, bool difolt)
 {
     uint32_t written = 0;
 
-    if (yndata)
+    if (yndata != difolt)
         written = fprintf(out, "%s\n", name);
 
     return written;
@@ -610,16 +614,20 @@ bool UserConf::syncDiskConfiguration(void)
 
     /* this is bad, this segment of code is more coherent in UserConf.cc */
     written += fprintf(out, "# this is a dumped file by SniffJoke version %s\n", SW_VERSION);
-    written += dumpIfPresent(out, "user", runconfig.user);
-    written += dumpIfPresent(out, "group", runconfig.group);
-    written += dumpIfPresent(out, "management-address", runconfig.admin_address);
-    written += dumpIfPresent(out, "management-port", runconfig.admin_port);
-    written += dumpIfPresent(out, "debug", runconfig.debug_level);
-    written += dumpIfPresent(out, "foreground", runconfig.go_foreground);
-    written += dumpIfPresent(out, "whitelist", runconfig.use_whitelist);
-    written += dumpIfPresent(out, "blacklist", runconfig.use_blacklist);
-    written += dumpIfPresent(out, "active", runconfig.active);
-    written += dumpIfPresent(out, "only-plugin", runconfig.active);
+    written += dumpIfPresent(out, "user", runconfig.user, DEFAULT_USER);
+    written += dumpIfPresent(out, "group", runconfig.group, DEFAULT_GROUP);
+    written += dumpIfPresent(out, "management-address", runconfig.admin_address, DEFAULT_ADMIN_ADDRESS);
+    written += dumpIfPresent(out, "management-port", runconfig.admin_port, DEFAULT_ADMIN_PORT);
+    written += dumpIfPresent(out, "chaining", runconfig.chaining, DEFAULT_CHAINING);
+    written += dumpIfPresent(out, "no-tcp", runconfig.no_tcp, DEFAULT_NO_TCP);
+    written += dumpIfPresent(out, "no-udp", runconfig.no_udp, DEFAULT_NO_UDP);
+    written += dumpIfPresent(out, "whitelist", runconfig.use_whitelist, DEFAULT_USE_WHITELIST);
+    written += dumpIfPresent(out, "blacklist", runconfig.use_blacklist, DEFAULT_USE_BLACKLIST);
+    written += dumpIfPresent(out, "active", runconfig.active, DEFAULT_START_STOPPED);
+    written += dumpIfPresent(out, "foreground", runconfig.go_foreground, DEFAULT_GO_FOREGROUND);
+    written += dumpIfPresent(out, "debug", runconfig.debug_level, DEFAULT_DEBUG_LEVEL);
+    written += dumpIfPresent(out, "only-plugin", runconfig.onlyplugin, NULL);
+    written += dumpIfPresent(out, "max-ttl-probe", runconfig.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     if (!syncPortsFiles() || !syncIPListsFiles())
     {

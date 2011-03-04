@@ -4,6 +4,7 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			Debug.h \
 			Debug.cc \
 			Utils.h \
+			Utils.cc \
 			HDRoptions.h \
 			HDRoptions.cc \
 			Packet.h \
@@ -28,8 +29,8 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			Process.cc \
 			IPList.h \
 			IPList.cc \
-                        portConfParsing.h \
-                        portConfParsing.cc \
+                        PortConf.h \
+                        PortConf.cc \
 			UserConf.h \
 			UserConf.cc \
 			SniffJoke.cc \

@@ -35,6 +35,10 @@
 #include <ctime>
 #include <stdexcept>
 #include <sstream>
+#include <stdexcept>
+
+using namespace std;
+
 
 #include <stdint.h>
 #include <unistd.h>
@@ -73,11 +77,32 @@ enum size_buf_t
  */
 extern time_t sj_clock;
 
+/* those are the value used for track port strength of TCP coverage */
+#define PORTSNUMBER             65536
+
+#define SCRAMBLE_TTL            1
+#define SCRAMBLE_TTL_STR        "PRESCRIPTION"
+#define SCRAMBLE_CHECKSUM       2
+#define SCRAMBLE_CHECKSUM_STR   "GUILTY"
+#define SCRAMBLE_MALFORMED      4
+#define SCRAMBLE_MALFORMED_STR  "MALFORMED"
+#define SCRAMBLE_INNOCENT       8
+#define SCRAMBLE_INNOCENT_STR   "INNOCENT"
+
+#define ISSET_TTL(byte)         (byte & SCRAMBLE_TTL)
+#define ISSET_CHECKSUM(byte)    (byte & SCRAMBLE_CHECKSUM)
+#define ISSET_MALFORMED(byte)   (byte & SCRAMBLE_MALFORMED)
+#define ISSET_INNOCENT(byte)    (byte & SCRAMBLE_INNOCENT)
+
+int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
+
 #define RANDOMPERCENT(percent) ( (uint32_t)random() % 100 <= percent)
+void init_random(void);
+void* memset_random(void *, size_t);
+
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 #define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
 std::runtime_error runtime_exception(const char *, const char *, int32_t, const char *, ...);
-void* memset_random(void *, size_t);
-void sigtrap(int);
+
 
 #endif /* SJ_UTILS_H */

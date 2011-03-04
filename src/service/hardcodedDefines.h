@@ -34,14 +34,26 @@
 #define SW_VERSION              "0.4-beta4"
 
 /* Sniffjoke defaults config values */
-
-/* process information */
-#define DROP_USER               "nobody"
-#define DROP_GROUP              "nogroup"
-#define WORK_DIR                INSTALL_STATEDIR
+#define DEFAULT_DIR             INSTALL_STATEDIR
 #define DEFAULT_LOCATION        "generic"
+#define DEFAULT_USER            "nobody"
+#define DEFAULT_GROUP           "nogroup"
+#define DEFAULT_ADMIN_ADDRESS   "127.0.0.1"
+#define DEFAULT_ADMIN_PORT      8844
+#define DEFAULT_CHAINING        false
+#define DEFAULT_NO_TCP          false
+#define DEFAULT_NO_UDP          false
+#define DEFAULT_USE_WHITELIST   false
+#define DEFAULT_USE_BLACKLIST   false
+#define DEFAULT_DEBUG_LEVEL     2
+#define DEFAULT_START_STOPPED   false /* sniffjoke start stopped and is false to be true
+                                         (http://freeworld.thc.org/root/phun/unmaintain.html)*/
+#define DEFAULT_GO_FOREGROUND   false
+#define DEFAULT_MAX_TTLPROBE    35
 
-/* configuration file */
+/* configuration dirs/files */
+#define WORK_DIR                INSTALL_STATEDIR
+#define SJ_PIDFILE              "/var/run/sniffjoke.pid"
 #define FILE_CONF               "sniffjoke-service.conf"
 #define FILE_PLUGINSENABLER     "plugins-enabled.conf"
 #define FILE_TTLFOCUSMAP        "ttlfocusmap.bin"
@@ -49,24 +61,13 @@
 #define FILE_IPBLACKLIST        "ipblacklist.conf"
 #define FILE_AGGRESSIVITY       "port-aggressivity.conf"
 #define FILE_LOG                "sniffjoke.log"
-#define FILE_LOG_SESSION       "sniffjoke.log.sessions"
-#define FILE_LOG_PACKET        "sniffjoke.log.packets"
-
-/* fixed value */
-#define DEFAULT_DEBUG_LEVEL     2
-#define DEFAULT_ADMIN_ADDRESS   "127.0.0.1"
-#define DEFAULT_ADMIN_PORT      8844
-#define SJ_PIDFILE              "/var/run/sniffjoke.pid"
+#define FILE_LOG_SESSION        "sniffjoke.log.sessions"
+#define FILE_LOG_PACKET         "sniffjoke.log.packets"
 
 // sorry, for double negation:
-#define DEFAULT_START_STOPPED   false
-// sniffjoke start stopped
-// and is false to be true
-// ( http://freeworld.thc.org/root/phun/unmaintain.html )
-#define DEFAULT_CHAINING        false
+#define DEFAULT_START_STOPPED   false /* sniffjoke start stopped and is false to be true
+                                         (http://freeworld.thc.org/root/phun/unmaintain.html)*/
 
-/* the maximum value of bruteforced TTL */
-#define MAX_TTLPROBE                35
 #define STARTING_ARB_TTL            46
 #define TTLPROBE_RETRY_ON_UNKNOWN   600    /* seconds (10 MINUTES) */
 

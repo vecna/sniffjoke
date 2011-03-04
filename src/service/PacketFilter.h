@@ -56,7 +56,7 @@ public:
     ~FilterMultiset(void);
     bool checkEntry(const FilterEntry &);
     void addEntry(const FilterEntry &);
-    void manage();
+    void manage(void);
 };
 
 class PacketFilter

@@ -72,7 +72,7 @@ bool Debug::appendOpen(uint8_t thislevel, const char *fname, FILE **previously)
     return true;
 }
 
-bool Debug::resetLevel()
+bool Debug::resetLevel(void)
 {
     if (!appendOpen(ALL_LEVEL, logstream_file, &logstream))
         return false;
@@ -152,7 +152,7 @@ selfName(sN)
     completeLog("opened file %s successful for handler %s", LfN, selfName);
 }
 
-pluginLogHandler::~pluginLogHandler()
+pluginLogHandler::~pluginLogHandler(void)
 {
     completeLog("requested logfile closing %s", selfName);
     fclose(logstream);
