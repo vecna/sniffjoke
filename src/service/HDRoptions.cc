@@ -247,7 +247,7 @@ uint8_t HDRoptions::m_IPOPT_RR(void)
     if (!corrupt && opt_ip_rr) /* corrupts if repeated */
         return 0;
 
-    const uint8_t routes = 9; //4 + random() % 6; /* 4 - 9 */
+    const uint8_t routes = 4 + random() % 6; /* 4 - 9 */
     const uint8_t size_rr = 3 + routes * 4;
 
     if (available_opts_len < size_rr)
