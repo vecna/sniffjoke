@@ -20,10 +20,10 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "service/Utils.h"
 #include "SniffJokeCli.h"
 #include "service/internalProtocol.h"
 #include "service/PortConf.h"
+
 
 #include <errno.h>
 #include <fcntl.h>
@@ -36,8 +36,6 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-
-#include <cstdlib>
 
 SniffJokeCli::SniffJokeCli(char* serveraddr, uint16_t serverport, uint32_t ms_timeout) :
 serveraddr(serveraddr),
@@ -149,7 +147,7 @@ char *SniffJokeCli::fillWithSpace(uint16_t p)
     for (uint32_t i = strlen(testingline); i < SPACESIZE; i++)
         spaces[ i - strlen(testingline) ] = ' ';
 
-    return &spaces[0];
+    return spaces;
 }
 
 char *SniffJokeCli::fillWithSpace(uint16_t s, uint16_t e)
@@ -165,16 +163,15 @@ char *SniffJokeCli::fillWithSpace(uint16_t s, uint16_t e)
     for (uint32_t i = strlen(testingline); i < SPACESIZE; i++)
         spaces[ i - strlen(testingline) ] = ' ';
 
-    return &spaces[0];
+    return spaces;
 }
 
-char *SniffJokeCli::resolveWeight(uint32_t weight)
+void SniffJokeCli::resolveWeight(char *buf, size_t len, uint32_t weight)
 {
-    static char resolvedInfo[MEDIUMBUF];
     const struct mapTheKeys *mtk;
     uint32_t writtedLen = 0;
 
-    memset(&resolvedInfo, 0x00, MEDIUMBUF);
+    memset(buf, 0x00, len);
 
     /* this is taken from portConfParsing.cc */
     const struct mapTheKeys mappedKeywords[] = {
@@ -199,16 +196,14 @@ char *SniffJokeCli::resolveWeight(uint32_t weight)
         {
             if (writtedLen)
             {
-                resolvedInfo[writtedLen] = ',';
+                buf[writtedLen] = ',';
                 writtedLen++;
             }
 
-            snprintf(&resolvedInfo[writtedLen], (MEDIUMBUF - writtedLen - 1), "%s", mtk->keyword);
-            writtedLen = strlen(resolvedInfo);
+            snprintf(&buf[writtedLen], (len - writtedLen - 1), "%s", mtk->keyword);
+            writtedLen = strlen(buf);
         }
     }
-
-    return &resolvedInfo[0];
 }
 
 /* TODO in the stable release: implement a sort of cryptography, resolving issue of authentication */
@@ -441,6 +436,8 @@ bool SniffJokeCli::printSJTTL(const uint8_t *received, uint32_t rcvdlen)
 
 bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
 {
+    char resolvedInfo[MEDIUMBUF];
+
     int32_t parsedlen = 0;
 
     /* the first goal is to detect the de-facto default in your conf */
@@ -477,17 +474,20 @@ bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
         if (pInfo->weight == mostValue)
             continue;
 
+        resolveWeight(resolvedInfo, sizeof (resolvedInfo), pInfo->weight);
+
         if (pInfo->start == pInfo->end)
         {
-            printf("%d%s%s\n", pInfo->start, fillWithSpace(pInfo->start), resolveWeight(pInfo->weight));
+            printf("%d%s%s\n", pInfo->start, fillWithSpace(pInfo->start), resolvedInfo);
         }
         else
         {
-            printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolveWeight(pInfo->weight));
+            printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolvedInfo);
         }
     }
 
-    printf("omitted rule from the list is %s and apply to all ports not present on the list\n", resolveWeight(mostValue));
+    resolveWeight(resolvedInfo, sizeof (resolvedInfo), mostValue);
+    printf("omitted rule from the list is %s and apply to all ports not present on the list\n", resolvedInfo);
     return true;
 }
 

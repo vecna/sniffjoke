@@ -23,21 +23,16 @@
 #ifndef SJ_SNIFFJOKECLI_H
 #define SJ_SNIFFJOKECLI_H
 
-#include <csignal>
-#include <cstdio>
-#include <memory>
+#include "service/Utils.h"
 
+#include <cstdio>
 #include <stdint.h>
-#include "service/PortConf.h"
-#include "service/internalProtocol.h"
 
 using namespace std;
 
-#define SJ_CLI_VERSION	"0.4.0"
+#define SJCTL_VERSION           "0.4.0"
 
-#define DEFAULT_ADDRESS	"127.0.0.1"
-#define DEFAULT_PORT	8844
-#define DEFAULT_TIMEOUT	500
+#define SJCTL_DEFAULT_TIMEOUT   500
 
 struct command
 {
@@ -55,7 +50,7 @@ private:
 
     char *fillWithSpace(uint16_t);
     char *fillWithSpace(uint16_t, uint16_t);
-    char *resolveWeight(uint32_t);
+    void resolveWeight(char *, size_t, uint32_t);
 
     bool parse_SjinternalProto(uint8_t *, int32_t);
     bool printSJStat(const uint8_t *, int32_t);

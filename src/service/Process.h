@@ -26,9 +26,6 @@
 #include "Utils.h"
 #include "UserConf.h"
 
-#include <csignal>
-#include <cstdio>
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
@@ -49,16 +46,16 @@ private:
     struct sigaction action;
 public:
     Process(const struct sj_config &);
-    ~Process();
+    ~Process(void);
 
     pid_t readPidfile(void);
     void writePidfile(void);
     void unlinkPidfile(bool);
 
 
-    int detach();
+    int detach(void);
     void jail(const char *chroot_dir);
-    void privilegesDowngrade();
+    void privilegesDowngrade(void);
     void sigtrapSetup(sig_t);
     void sigtrapEnable(void);
     void sigtrapDisable(void);

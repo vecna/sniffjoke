@@ -27,67 +27,37 @@
 #ifndef SJ_UTILS_H
 #define SJ_UTILS_H
 
+#include "hardcodedDefines.h"
+
 #include <cerrno>
+#include <csignal>
 #include <cstdarg>
+#include <stdexcept>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <stdexcept>
 #include <sstream>
-#include <stdexcept>
+
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <set>
+#include <vector>
 
 using namespace std;
-
 
 #include <stdint.h>
 #include <unistd.h>
 
-#include "hardcodedDefines.h"
-
-enum size_buf_t
-{
-    SMALLBUF = 64,
-    MEDIUMBUF = 256,
-    LARGEBUF = 1024,
-    HUGEBUF = 4096,
-    GARGANTUABUF = 4096 * 4
-};
-
-/* loglevels & log classess */
 #include "Debug.h"
 
-#define SUPPRESS_LEVEL      0
-#define ALL_LEVEL           1
-#define ALL_LEVEL_NAME      "default"
-#define VERBOSE_LEVEL       2
-#define VERBOSE_LEVEL_NAME  "verbose"
-#define DEBUG_LEVEL         3
-#define DEBUG_LEVEL_NAME    "debug"
-#define SESSION_LEVEL       4
-#define SESSION_LEVEL_NAME  "sessions"
-#define PACKET_LEVEL        5
-#define PACKET_LEVEL_NAME   "packets"
-#define TESTING_LEVEL       6
-#define TESTING_LEVEL_NAME  "testing"
-
 /*
- * there is a single clock in sniffjoke, global and
- * manteined by the NetIO module (network_io)
+ * there is a single clock in sniffjoke;
+ * it global and defined by main.cc
+ * it's updated by the NetIO module (network_io)
  */
 extern time_t sj_clock;
-
-/* those are the value used for track port strength of TCP coverage */
-#define PORTSNUMBER             65536
-
-#define SCRAMBLE_TTL            1
-#define SCRAMBLE_TTL_STR        "PRESCRIPTION"
-#define SCRAMBLE_CHECKSUM       2
-#define SCRAMBLE_CHECKSUM_STR   "GUILTY"
-#define SCRAMBLE_MALFORMED      4
-#define SCRAMBLE_MALFORMED_STR  "MALFORMED"
-#define SCRAMBLE_INNOCENT       8
-#define SCRAMBLE_INNOCENT_STR   "INNOCENT"
 
 #define ISSET_TTL(byte)         (byte & SCRAMBLE_TTL)
 #define ISSET_CHECKSUM(byte)    (byte & SCRAMBLE_CHECKSUM)

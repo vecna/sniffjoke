@@ -22,16 +22,17 @@
 
 #include "SniffJokeCli.h"
 
+#include <cstdlib>
+#include <cstring>
+
 #include <getopt.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 using namespace std;
 
 static void sjcli_version(const char *pname)
 {
-    printf("%s: %s\n", pname, SJ_CLI_VERSION);
+    printf("%s: %s\n", pname, SJCTL_VERSION);
 }
 
 #define SNIFFJOKECLI_HELP_FORMAT \
@@ -42,21 +43,29 @@ static void sjcli_version(const char *pname)
 	" --help\t\t\tshow this help\n\n"\
 	"when sniffjoke is running, you should send commands with a command line argument:\n"\
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
-	" stop\t\t\tstop sniffjoke (but remain tunnel interface active)\n"\
-	" quit\t\t\tstop sniffjoke, save config, abort the service\n"\
-	" saveconf\t\tdump config file\n"\
+	" stop\t\t\tpause sniffjoke\n"\
+	" quit\t\t\tquit sniffjoke\n"\
+	" saveconf\t\tdump configutarion file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
 	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
 	" showport\t\tshow the running port-aggressivity configuration\n"\
-        " set\t\t\t\n"\
-        " clear\t\t\t\n"\
-	" debug\t\t\t[1-5] change the log debug level\n\n"\
+	" set start:end value\tset the injection's strogness over particular tcp/udp port\n"\
+	" \t\t\ttypical values are: <NONE|RARE|COMMON|HEAVY|ALWAYS>\n"\
+	" \t\t\teg.:\tset 80 COMMON,PEAKATSTART\n"\
+	" \t\t\t\tset 22,1194 NONE\n"\
+        " clear\t\t\talias to \"set 1:65535 NONE\"\n"\
+	" debug\t\t\t[%d-%d] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sjcli_help(const char *pname)
 {
-    printf(SNIFFJOKECLI_HELP_FORMAT, pname, DEFAULT_ADDRESS, DEFAULT_PORT, DEFAULT_TIMEOUT);
+    printf(SNIFFJOKECLI_HELP_FORMAT,
+           pname,
+           DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT,
+           SJCTL_DEFAULT_TIMEOUT,
+           SUPPRESS_LEVEL, PACKET_LEVEL
+           );
 }
 
 /* return false on error in parsing or when command is not present */
@@ -72,10 +81,7 @@ static bool parse_command(char **av, uint32_t ac, struct command *sjcmdlist, cha
                 size_t usedlen = 0;
                 snprintf(retcmd, 256, "%s", ptr->cmd);
                 if (ptr->related_args + i > ac)
-                {
-                    sjcli_help(av[0]);
-                    exit(-1);
-                }
+                    return false;
                 while (--(ptr->related_args))
                 {
                     usedlen = strlen(retcmd);
@@ -101,9 +107,9 @@ int main(int argc, char **argv)
 
     memset(&useropt, 0x00, sizeof (useropt));
     /* setting the default defined in SniffJokeCli.h */
-    snprintf(useropt.admin_address, sizeof (useropt.admin_address), DEFAULT_ADDRESS);
-    useropt.admin_port = DEFAULT_PORT;
-    useropt.ms_timeout = DEFAULT_TIMEOUT;
+    snprintf(useropt.admin_address, sizeof (useropt.admin_address), DEFAULT_ADMIN_ADDRESS);
+    useropt.admin_port = DEFAULT_ADMIN_PORT;
+    useropt.ms_timeout = SJCTL_DEFAULT_TIMEOUT;
 
     struct command sjcli_command[] = {
         { "start", 1},

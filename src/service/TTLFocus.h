@@ -26,10 +26,6 @@
 #include "Utils.h"
 #include "Packet.h"
 
-#include <map>
-
-using namespace std;
-
 /* IT'S FUNDAMENTAL TO HAVE ALL THIS ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
 enum ttlsearch_t
@@ -67,12 +63,11 @@ public:
     Packet probe_dummy; /* dummy ttlprobe packet generated from the packet
                            that scattered the ttlfocus creation. */
 
-    TTLFocus();
+    TTLFocus(void);
     TTLFocus(const Packet &pkt);
     TTLFocus(const struct ttlfocus_cache_record &);
-    ~TTLFocus();
-    void selectPuppetPort();
-    static bool timestampComparison(TTLFocus &i, TTLFocus &j);
+    ~TTLFocus(void);
+    void selectPuppetPort(void);
 
     /* utilities */
     void selflog(const char *func, const char *format, ...) const;
@@ -94,12 +89,12 @@ private:
     } ttlfocusTimestampComparison;
 
 public:
-    TTLFocusMap();
-    ~TTLFocusMap();
+    TTLFocusMap(void);
+    ~TTLFocusMap(void);
     TTLFocus& get(const Packet &);
-    void manage();
-    void load();
-    void dump();
+    void manage(void);
+    void load(void);
+    void dump(void);
 };
 
 struct ttlfocus_cache_record

@@ -33,7 +33,7 @@ private:
     FILE *logstream;
 public:
     pluginLogHandler(const char *, const char *);
-    ~pluginLogHandler();
+    ~pluginLogHandler(void);
     void completeLog(const char *, ...);
     void simpleLog(const char *, ...);
 };
@@ -49,10 +49,11 @@ private:
     FILE *logstream;
     FILE *session_logstream;
     FILE *packet_logstream;
+
     bool appendOpen(uint8_t thislevel, const char *fname, FILE **previously);
 
 public:
-    Debug();
+    Debug(void);
     void setLogstream(const char *lsf);
     void setSessionLogstream(const char *lsf);
     void setPacketLogstream(const char *lsf);

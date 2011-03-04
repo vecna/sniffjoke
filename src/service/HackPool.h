@@ -27,10 +27,6 @@
 #include "UserConf.h"
 #include "Hack.h"
 
-#include <vector>
-
-using namespace std;
-
 typedef Hack* constructor_f(bool);
 typedef void destructor_f(Hack *);
 typedef const char* version_f(void);

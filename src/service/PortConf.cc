@@ -62,7 +62,8 @@ void portLine::fixPointer(void)
         i++;
     }
 
-    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL) {
+    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL)
+    {
         error_message = "not all fields found in this line";
         return;
     }
@@ -181,7 +182,6 @@ void portLine::extractValue(void)
     const struct mapTheKeys *mtk;
     bool foundK;
 
-    /* AGG_* are defined in Packet.h */
     const struct mapTheKeys mappedKeywords[] = {
         { AGG_NONE, AGG_N_NONE},
         { AGG_VERYRARE, AGG_N_VERYRARE},

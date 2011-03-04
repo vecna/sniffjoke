@@ -26,8 +26,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-using namespace std;
-
 IPList::IPList(uint32_t ip, uint8_t a, uint8_t b, uint8_t c) :
 ip(ip),
 a(a),
@@ -98,7 +96,7 @@ bool IPListMap::isPresent(uint32_t ip) const
     return (find(ip) != end());
 }
 
-void IPListMap::load()
+void IPListMap::load(void)
 {
     uint32_t records_num = 0;
     char record[MEDIUMBUF];
@@ -141,7 +139,7 @@ void IPListMap::load()
 }
 
 /* Implemented but not used until the client sniffjokectl supports the updating of whitelist/blacklist */
-void IPListMap::dump()
+void IPListMap::dump(void)
 {
     uint32_t records_num = 0;
     char record[MEDIUMBUF];

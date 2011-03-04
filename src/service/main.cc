@@ -33,6 +33,7 @@
 
 using namespace std;
 
+/* global variables */
 Debug debug;
 time_t sj_clock;
 
@@ -62,7 +63,7 @@ static void sj_version(const char *pname)
     " --blacklist\t\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
     " --chain\t\tenable chained hacking, powerful and entropic effects [default: %s]\n"\
-    " --debug <level %d-%d>\tset up verbosoty level [default: %d]\n"\
+    " --debug <level %d-%d>\tset verbosity level [default: %d]\n"\
     "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\
     " --foreground\t\trunning in foreground [default:background]\n"\
     " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\

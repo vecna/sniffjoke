@@ -28,10 +28,10 @@
 #include "PortConf.h"
 #include "Packet.h"
 #include "PacketQueue.h"
+#include "PacketFilter.h"
 #include "SessionTrack.h"
 #include "TTLFocus.h"
 #include "HackPool.h"
-#include "PacketFilter.h"
 
 class TCPTrack
 {

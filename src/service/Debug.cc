@@ -22,7 +22,7 @@
 
 #include <Debug.h>
 
-Debug::Debug() :
+Debug::Debug(void) :
 debuglevel(ALL_LEVEL),
 logstream(stdout),
 session_logstream(stdout),
@@ -106,7 +106,7 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
             output_flow = session_logstream;
 
         char time_str[MEDIUMBUF];
-        memset(time_str, 0x00, sizeof(time_str));
+        memset(time_str, 0x00, sizeof (time_str));
 
         strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
 
@@ -164,7 +164,7 @@ void pluginLogHandler::completeLog(const char *msg, ...)
     time_t now = time(NULL);
 
     char time_str[MEDIUMBUF];
-    memset(time_str, 0x00, sizeof(time_str));
+    memset(time_str, 0x00, sizeof (time_str));
 
     strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
     fprintf(logstream, "%s ", time_str);

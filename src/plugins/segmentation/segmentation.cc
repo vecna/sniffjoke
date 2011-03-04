@@ -40,9 +40,11 @@ class segmentation : public Hack
 {
 #define HACK_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
-#define MIN_SPLIT_PAYLOAD 10                    /* 10 bytes */
-#define MIN_TCP_PAYLOAD   2*MIN_SPLIT_PAYLOAD   /* 20 bytes */
-#define MAX_SPLIT_PKTS    5                     /*  5 pkts  */
+
+#define MIN_SPLIT_PAYLOAD 1 /* bytes */
+#define MIN_SPLIT_PKTS    2
+#define MAX_SPLIT_PKTS    5
+#define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
     pluginLogHandler pLH;
@@ -51,14 +53,14 @@ public:
 
     virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
-
         /*
-         * due to the ratio between MIN_SPLIT_PAYLOAD and MIN_TCP_PAYLOAD
-         * the hack will produce a min number of 2 pkts and a max of 5 pkt
+         * due to the ratio: MIN_TCP_PAYLOAD = (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
+         * the hack will produce pkts between a min of MIN_SPLIT_PKTS and a max of MAX_SPLIT_PKTS
          */
-        uint32_t split_size = (origpkt.tcppayloadlen / MAX_SPLIT_PKTS) + ((origpkt.tcppayloadlen % MAX_SPLIT_PKTS) ? 1 : 0);
+        uint8_t pkts_n = MIN_SPLIT_PKTS + random() % (MAX_SPLIT_PKTS - (MIN_SPLIT_PKTS - 1));
+        uint32_t split_size = origpkt.tcppayloadlen / pkts_n;
         split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
-        const uint8_t pkts_n = (origpkt.tcppayloadlen / split_size) + ((origpkt.tcppayloadlen % split_size) ? 1 : 0);
+        pkts_n = (origpkt.tcppayloadlen / split_size) + ((origpkt.tcppayloadlen % split_size) ? 1 : 0);
         const uint32_t carry = (origpkt.tcppayloadlen % split_size) ? (origpkt.tcppayloadlen % split_size) : split_size;
 
         const uint32_t starting_seq = ntohl(origpkt.tcp->seq);

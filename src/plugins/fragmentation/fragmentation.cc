@@ -40,9 +40,11 @@ class fragmentation : public Hack
 {
 #define HACK_NAME "Fragmentation"
 #define PKT_LOG "plugin.fragmentation.log"
-#define MIN_SPLIT_PAYLOAD 16                    /* 16 bytes */
-#define MIN_IP_PAYLOAD    2*MIN_SPLIT_PAYLOAD   /* 32 bytes */
-#define MAX_SPLIT_PKTS    5                     /*  5 pkts  */
+
+#define MIN_SPLIT_PAYLOAD 1 /* bytes */
+#define MIN_SPLIT_PKTS    2
+#define MAX_SPLIT_PKTS    5
+#define MIN_IP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
     pluginLogHandler pLH;
@@ -52,13 +54,14 @@ public:
     virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
-         * due to the ratio between MIN_SPLIT_PAYLOAD and MIN_IP_PAYLOAD
-         * the hack will produce a min number of 2 pkts and a max of 5 pkt
+         * due to the ratio: MIN_IP_PAYLOAD = (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
+         * the hack will produce pkts between a min of MIN_SPLIT_PKTS and a max of MAX_SPLIT_PKTS
          */
-        uint32_t split_size = (origpkt.ippayloadlen / MAX_SPLIT_PKTS) + ((origpkt.ippayloadlen % MAX_SPLIT_PKTS) ? 1 : 0);
+        uint8_t pkts_n = MIN_SPLIT_PKTS + random() % (MAX_SPLIT_PKTS - (MIN_SPLIT_PKTS - 1));
+        uint32_t split_size = origpkt.ippayloadlen / pkts_n;
         split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
         split_size = (split_size >> 3) << 3; /* we need an offset multiple */
-        const uint8_t pkts_n = (origpkt.ippayloadlen / split_size) + ((origpkt.ippayloadlen % split_size) ? 1 : 0);
+        pkts_n = (origpkt.ippayloadlen / split_size) + ((origpkt.ippayloadlen % split_size) ? 1 : 0);
         const uint32_t carry = (origpkt.ippayloadlen % split_size) ? (origpkt.ippayloadlen % split_size) : split_size;
 
         vector<unsigned char> pbufcpy(origpkt.pbuf);

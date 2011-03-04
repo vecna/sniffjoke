@@ -21,10 +21,6 @@
  */
 
 #include "UserConf.h"
-#include "internalProtocol.h"
-
-#include <cctype>
-#include <sys/stat.h>
 
 /* 
  * rules for parms:

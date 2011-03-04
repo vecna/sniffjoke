@@ -23,8 +23,6 @@
 #ifndef HDROPTIONS_H
 #define HDROPTIONS_H
 
-#include "Packet.h"
-
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
@@ -87,7 +85,7 @@ public:
     /* used for internal definition of TCP opt functions */
 
     HDRoptions(injector_t, bool, unsigned char *, uint8_t &, uint8_t &);
-    bool randomInjector();
+    bool randomInjector(void);
 };
 
 #endif /* HDROPTIONS_H */

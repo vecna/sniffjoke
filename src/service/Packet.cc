@@ -79,7 +79,7 @@ void Packet::mark(source_t source, evilbit_t morality, judge_t wtf)
     mark(source, morality);
 }
 
-void Packet::updatePacketMetadata()
+void Packet::updatePacketMetadata(void)
 {
     uint16_t pktlen = pbuf.size();
 
@@ -334,7 +334,7 @@ errorinfo:
     return false;
 }
 
-void Packet::randomizeID()
+void Packet::randomizeID(void)
 {
     ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
 }
@@ -482,21 +482,21 @@ void Packet::udppayloadResize(uint16_t size)
     updatePacketMetadata();
 }
 
-void Packet::ippayloadRandomFill()
+void Packet::ippayloadRandomFill(void)
 {
 
     const uint16_t diff = pbuf.size() - iphdrlen;
     memset_random(ippayload, diff);
 }
 
-void Packet::tcppayloadRandomFill()
+void Packet::tcppayloadRandomFill(void)
 {
 
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
 }
 
-void Packet::udppayloadRandomFill()
+void Packet::udppayloadRandomFill(void)
 {
 
     const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
