@@ -40,9 +40,9 @@ class segmentation : public Hack
 {
 #define HACK_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
-#define MIN_SPLIT_PAYLOAD 10                    /* 10 bytes */
-#define MIN_TCP_PAYLOAD   2*MIN_SPLIT_PAYLOAD   /* 20 bytes */
-#define MAX_SPLIT_PKTS    5                     /*  5 pkts  */
+#define MIN_SPLIT_PAYLOAD 1                         /*  1 bytes */
+#define MIN_TCP_PAYLOAD   (MIN_SPLIT_PAYLOAD *2)    /*  2 bytes */
+#define MAX_SPLIT_PKTS    5                         /*  5 pkts  */
 
 private:
     pluginLogHandler pLH;
