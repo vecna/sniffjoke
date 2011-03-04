@@ -22,9 +22,7 @@
 #include "SniffJoke.h"
 
 #include <fcntl.h>
-#include <time.h>
 #include <sys/types.h>
-#include <sys/un.h>
 #include <sys/wait.h>
 
 /* the main must implement it */
@@ -403,13 +401,13 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
     }
 
     LOG_ALL("handled command (%s): answer %d bytes length", cmd, *psize);
-    return &io_buf[0];
+    return io_buf;
 
 handle_error:
     LOG_ALL("invalid command received");
     writeSJProtoError();
 
-    return &io_buf[0];
+    return io_buf;
 }
 
 void SniffJoke::handleCmdStart(void)

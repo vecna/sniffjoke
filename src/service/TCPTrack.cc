@@ -22,13 +22,6 @@
 
 #include "TCPTrack.h"
 
-#include <algorithm>
-
-#include <signal.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
 TCPTrack::TCPTrack(const sj_config &runcfg, HackPool &hpp, SessionTrackMap &sessiontrack_map, TTLFocusMap &ttlfocus_map) :
 runconfig(runcfg),
 sessiontrack_map(sessiontrack_map),
@@ -264,7 +257,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
 /*
  * verifies the need of ttl probes for active destinations
  */
-void TCPTrack::execTTLBruteforces()
+void TCPTrack::execTTLBruteforces(void)
 {
     for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it)
     {

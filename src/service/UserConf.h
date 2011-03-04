@@ -30,7 +30,6 @@
 #include "TTLFocus.h"
 #include "internalProtocol.h"
 
-#include <unistd.h>
 #include <net/ethernet.h>
 
 struct sj_cmdline_opts

@@ -23,12 +23,8 @@
 #ifndef SJ_HACK_H
 #define SJ_HACK_H
 
+#include "Utils.h"
 #include "Packet.h"
-#include "UserConf.h" /* for ISSET_* #defines */
-
-#include <vector>
-
-using namespace std;
 
 /* 
  * HackPacket - pure virtual methods 

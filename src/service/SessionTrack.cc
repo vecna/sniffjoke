@@ -22,11 +22,6 @@
 
 #include "SessionTrack.h"
 
-#include <algorithm>
-#include <memory>
-
-using namespace std;
-
 SessionTrack::SessionTrack(const Packet &pkt) :
 access_timestamp(0),
 daddr(pkt.ip->daddr),
@@ -49,7 +44,7 @@ injected_pktnumber(0)
     }
 }
 
-SessionTrack::~SessionTrack()
+SessionTrack::~SessionTrack(void)
 {
     SELFLOG("");
 }
@@ -103,14 +98,14 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
     }
 }
 
-SessionTrackMap::SessionTrackMap()
+SessionTrackMap::SessionTrackMap(void)
 {
     LOG_DEBUG("");
 
     manage_timeout = sj_clock;
 }
 
-SessionTrackMap::~SessionTrackMap()
+SessionTrackMap::~SessionTrackMap(void)
 {
     LOG_DEBUG("");
 
@@ -155,7 +150,7 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
     return *sessiontrack;
 }
 
-void SessionTrackMap::manage()
+void SessionTrackMap::manage(void)
 {
     /* timeout check */
     if (manage_timeout < sj_clock - SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)

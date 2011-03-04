@@ -27,10 +27,10 @@
 #include "UserConf.h"
 #include "Process.h"
 #include "NetIO.h"
-
-#include <csignal>
-#include <cstdio>
-#include <memory>
+#include "TCPTrack.h"
+#include "TTLFocus.h"
+#include "SessionTrack.h"
+#include "HackPool.h"
 
 using namespace std;
 
@@ -39,8 +39,8 @@ class SniffJoke
 public:
     bool alive;
     SniffJoke(const struct sj_cmdline_opts &);
-    ~SniffJoke();
-    void run();
+    ~SniffJoke(void);
+    void run(void);
 
 private:
     const sj_cmdline_opts &opts;
@@ -49,10 +49,10 @@ private:
     Process proc;
 
     auto_ptr<NetIO> mitm;
-    auto_ptr<HackPool> hack_pool;
-    auto_ptr<SessionTrackMap> sessiontrack_map;
-    auto_ptr<TTLFocusMap> ttlfocus_map;
     auto_ptr<TCPTrack> conntrack;
+    auto_ptr<TTLFocusMap> ttlfocus_map;
+    auto_ptr<SessionTrackMap> sessiontrack_map;
+    auto_ptr<HackPool> hack_pool;
 
     /* after detach:
      *     service_pid in the root process [the pid of the user process]

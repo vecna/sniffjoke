@@ -22,14 +22,6 @@
 
 #include "TTLFocus.h"
 
-#include <algorithm>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
-
-#include <unistd.h>
-#include <arpa/inet.h>
-
 using namespace std;
 
 TTLFocus::TTLFocus(const Packet &pkt) :

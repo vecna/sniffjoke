@@ -23,12 +23,6 @@
 #include "Utils.h"
 #include "Packet.h"
 
-#include <set>
-
-#include <stdint.h>
-
-using namespace std;
-
 class FilterEntry
 {
 public:

@@ -26,8 +26,6 @@
 #include "Utils.h"
 #include "Packet.h"
 
-#include <map>
-
 using namespace std;
 
 class SessionTrack

@@ -45,8 +45,7 @@
  */
 
 #include "HDRoptions.h"
-#include "Packet.h"
-#include "Debug.h"
+#include "Utils.h"
 
 uint8_t HDRoptions::m_IPOPT_TIMESTAMP(void)
 {

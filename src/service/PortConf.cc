@@ -62,7 +62,8 @@ void portLine::fixPointer(void)
         i++;
     }
 
-    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL) {
+    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL)
+    {
         error_message = "not all fields found in this line";
         return;
     }

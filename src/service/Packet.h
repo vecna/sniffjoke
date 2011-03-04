@@ -25,10 +25,6 @@
 
 #include "Utils.h"
 
-#include <cstdio>
-#include <cstdlib>
-#include <vector>
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -140,7 +136,7 @@ public:
     {
         unsigned char *tcppayload;
         unsigned char *udppayload;
-        unsigned char *icmppayload; /* always NULL */
+        unsigned char *icmppayload;
     };
 
     union
@@ -188,36 +184,5 @@ public:
     /* utilities */
     void selflog(const char *, const char *, ...) const;
 };
-
-/* definition for service Aggressiviy, or-red in a 16 bit field 
- * the Frequency meaning is explained in http://www.delirandom.net/sniffjoke/plugin 
- * they are put here because Packet.h is included in UserConf.h via SessionTrack.h
- * and are used in TCPTrack.cc too. whenever the parsing methodology implemented in 
- * UserConf about the tcp-port files change, those define should be revised */
-#define AGG_NONE            1
-#define AGG_N_NONE          "NONE"
-#define AGG_VERYRARE        2
-#define AGG_N_VERYRARE      "VERYRARE"
-#define AGG_RARE            4
-#define AGG_N_RARE          "RARE"
-#define AGG_COMMON          8
-#define AGG_N_COMMON        "COMMON"
-#define AGG_HEAVY           16 
-#define AGG_N_HEAVY         "HEAVY"
-#define AGG_ALWAYS          32
-#define AGG_N_ALWAYS        "ALWAYS"
-#define AGG_PACKETS10PEEK   64
-#define AGG_N_PACKETS10PEEK "PEEK10PKT"
-#define AGG_PACKETS30PEEK   128
-#define AGG_N_PACKETS30PEEK "PEEK30PKT"
-#define AGG_TIMEBASED5S     256
-#define AGG_N_TIMEBASED5S   "EVERY5SECONDS"
-#define AGG_TIMEBASED20S    512
-#define AGG_N_TIMEBASED20S  "EVERY20SECONDS"
-#define AGG_STARTPEEK       1024
-#define AGG_N_STARTPEEK     "PEEKATSTART"
-#define AGG_LONGPEEK        2048
-#define AGG_N_LONGPEEK      "LONGPEEK"
-
 
 #endif /* SJ_PACKET_H */
