@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
+ *
  *   Copyright (C) 2008 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
@@ -36,6 +36,14 @@ ttlfocus_map(ttlfocus_map),
 hack_pool(hpp)
 {
     LOG_DEBUG("");
+
+    mangled_proto_mask = ICMP;
+
+    if(!runcfg.no_tcp)
+        mangled_proto_mask |= TCP;
+
+    if(!runcfg.no_udp)
+        mangled_proto_mask |= UDP;
 }
 
 TCPTrack::~TCPTrack(void)
@@ -119,7 +127,7 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
     return freqret;
 }
 
-/*  
+/*
  *  this function is used from the injectHack() routine to decretee
  *  the possibility for an hack to happen.
  *  returns true if it's possibile to forge the hack.
@@ -128,13 +136,13 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
  *     configured to act in peek time or packets number relationship)
  *   - the frequency selector provided from the hack developer; used when the
  *     port-aggressivity.conf file don't provide a specific configuration.
- *   - the port configuration settings: derived from 'port-aggressivity.conf' 
+ *   - the port configuration settings: derived from 'port-aggressivity.conf'
  */
 bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16_t userFrequency)
 {
     uint32_t aggressivity_percentage = 0;
 
-    /* 
+    /*
      * as first is checked hackFrequency, because it could be AGG_ALWAYS
      * and this means that we are in testing mode with --only-olugin option
      */
@@ -146,7 +154,7 @@ bool TCPTrack::percentage(uint32_t packet_number, uint16_t hackFrequency, uint16
     return ( ((uint32_t) random() % 100) < aggressivity_percentage);
 }
 
-uint16_t TCPTrack::getUserFrequency(Packet &pkt)
+uint16_t TCPTrack::getUserFrequency(const Packet &pkt)
 {
     /* MUST be called on TCP/UDP packet only */
 
@@ -154,7 +162,7 @@ uint16_t TCPTrack::getUserFrequency(Packet &pkt)
         return runconfig.portconf[ntohs(pkt.tcp->dest)];
 
     /* else, no other proto other than UDP will reach here.
-     * 
+     *
      * the UDP traffic is for the most a data-apply hacks, because no flag gaming
      * nor sequence hack exist. when a service is request to be ALWAYS hacked, we
      * accept this choose in UDP too. otherwise, is better use a costant noise
@@ -166,7 +174,7 @@ uint16_t TCPTrack::getUserFrequency(Packet &pkt)
     return AGG_COMMON;
 }
 
-uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
+uint8_t TCPTrack::discernAvailScramble(const Packet &pkt)
 {
     /*
      * TODO - when we will integrate passive os fingerprint and
@@ -185,20 +193,20 @@ uint8_t TCPTrack::discernAvailScramble(Packet &pkt)
     return retval;
 }
 
-/* 
+/*
  * this function is responsable of the ttl bruteforce stage used
  * to detect the hop distance between us and the remote peer.
- * 
+ *
  * SniffJoke uses the first seen session packet as a starting point
  * for this stage.
- * 
+ *
  * packets generated are a copy of the original (first seen) packet
  * with some little modifications to:
  *  - ip->id
  *  - ip->ttl
  *  - tcp->source
  *  - tcp->seq
- * 
+ *
  */
 void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
 {
@@ -210,7 +218,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         ttlfocus.status = TTL_BRUTEFORCE;
         /* do not break, continue inside TTL_BRUTEFORCE */
     case TTL_BRUTEFORCE:
-        if (ttlfocus.sent_probe == MAX_TTLPROBE)
+        if (ttlfocus.sent_probe == runconfig.max_ttl_probe)
         {
             if (!ttlfocus.probe_timeout)
             {
@@ -283,7 +291,7 @@ void TCPTrack::execTTLBruteforces()
  *
  * the function returns TRUE if a plugins has requested the removal of the packet.
  */
-bool TCPTrack::extractTTLinfo(Packet &incompkt)
+bool TCPTrack::extractTTLinfo(const Packet &incompkt)
 {
     TTLFocusMap::iterator it;
     TTLFocus *ttlfocus;
@@ -465,7 +473,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
     return removeOrig;
 }
 
-/* 
+/*
  * injectHack is one of the core function in sniffjoke and handles the hack ijection.
  *
  * the hacks are, for the most, of three kinds.
@@ -474,10 +482,10 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
  * end points, to forge packets able to expire an hop before reaching the destination;
  * this permits to insert packet accepted in the session tracked by the sniffer.
  *
- * the second kind of hack does not have special requirements (as the third), 
+ * the second kind of hack does not have special requirements (as the third),
  * and it's based on particular malformed ip/tcp options that would lead the real
  * destination peer to drop the fake packet.
- * 
+ *
  * the latter kind of attack works forging packets with a bad ip/tcp checksum.
  *
  *
@@ -497,9 +505,12 @@ bool TCPTrack::injectHack(Packet &origpkt)
      * three scramble are available, and the plugins will use pktRandomDamage()
      * private method.
      */
-    uint8_t availableScramble = discernAvailScramble(origpkt);
+    uint8_t availableScrambles = discernAvailScramble(origpkt);
 
-    origpkt.SELFLOG("orig pkt: before hacks injection availScramble|%u)", availableScramble);
+    char availableScramblesStr[LARGEBUF] = {0};
+    snprintfScramblesList(availableScramblesStr, sizeof(availableScramblesStr), availableScrambles);
+
+    origpkt.SELFLOG("orig pkt: before hacks injection available scrambles [%s])", availableScramblesStr);
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
@@ -514,7 +525,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
          * more specific ones related to the origpkt will be checked in
          * the Condition function implemented by a specific hack.
          */
-        if (!(availableScramble & hppe->selfObj->supportedScramble))
+        if (!(availableScrambles & hppe->selfObj->supportedScrambles))
         {
             origpkt.SELFLOG("%s: no scramble available", hppe->selfObj->hackName);
             continue;
@@ -522,7 +533,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         bool applicable = true;
 
-        applicable &= hppe->selfObj->Condition(origpkt, availableScramble);
+        applicable &= hppe->selfObj->Condition(origpkt, availableScrambles);
         applicable &= percentage(
                                  sessiontrack.packet_number,
                                  hppe->selfObj->hackFrequency,
@@ -542,7 +553,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         PluginTrack *hppe = *it;
 
-        hppe->selfObj->createHack(origpkt, availableScramble);
+        hppe->selfObj->createHack(origpkt, availableScrambles);
 
         for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
         {
@@ -618,7 +629,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
         hppe->selfObj->reset();
     }
 
-    origpkt.SELFLOG("orig pkt: after hacks injection availScramble|%u", availableScramble);
+    origpkt.SELFLOG("orig pkt: after hacks injection");
 
     return removeOrig;
 }
@@ -952,11 +963,10 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
         pkt->mark(source, GOOD, INNOCENT);
 
         /* Sniffjoke does handle only TCP, UDP and ICMP */
-        if (runconfig.active && (pkt->proto & (TCP | UDP | ICMP)))
+        if (runconfig.active && (pkt->proto & mangled_proto_mask))
         {
             if (runconfig.use_blacklist)
             {
-
                 if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
                         runconfig.blacklist->isPresent(pkt->ip->saddr))
                 {

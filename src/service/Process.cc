@@ -61,7 +61,7 @@ groupinfo_buf(NULL)
         RUNTIME_EXCEPTION("invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
 }
 
-Process::~Process()
+Process::~Process(void)
 {
     LOG_DEBUG("[process id %d, uid %d]", getpid(), getuid());
 
@@ -69,7 +69,7 @@ Process::~Process()
     free(groupinfo_buf);
 }
 
-int Process::detach()
+int Process::detach(void)
 {
     pid_t pid_child;
     int pdes[2];
@@ -128,7 +128,7 @@ void Process::jail(const char *chroot_dir)
     LOG_VERBOSE("chroot'ed process %d in %s", getpid(), chroot_dir);
 }
 
-void Process::privilegesDowngrade()
+void Process::privilegesDowngrade(void)
 {
     debug.downgradeOpenlog(userinfo.pw_uid, groupinfo.gr_gid);
 
@@ -167,12 +167,12 @@ void Process::sigtrapSetup(sig_t sigtrap_function)
     sigaction(SIGUSR1, &ignore, NULL);
 }
 
-void Process::sigtrapEnable()
+void Process::sigtrapEnable(void)
 {
     sigprocmask(SIG_SETMASK, &sig_oset, NULL);
 }
 
-void Process::sigtrapDisable()
+void Process::sigtrapDisable(void)
 {
     sigemptyset(&sig_nset);
     sigaddset(&sig_nset, SIGINT);
@@ -257,7 +257,7 @@ __unlinkPidfile:
     LOG_DEBUG("pid %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
 }
 
-void Process::background()
+void Process::background(void)
 {
     if (fork())
         exit(0);
@@ -271,7 +271,7 @@ void Process::background()
     dup(i); /* stderr */
 }
 
-void Process::isolation()
+void Process::isolation(void)
 {
     LOG_DEBUG("the pid %d, uid %d is isolating themeself", getpid(), getuid());
 

@@ -106,20 +106,14 @@ int main(int argc, char **argv)
 		{ "start",    1 },
 		{ "stop",     1 },
 		{ "stat",     1 },
-/*		{ "clear",    1 }, */
-/* CLEAR is SET 1:64k NONE and so I've commented this too */
+		{ "clear",    1 },
 		{ "showport", 1 },
 		{ "quit",     1 },
 		{ "info",     1 },
 		{ "ttlmap",   1 },
 		{ "saveconf", 1 },
-		{ "debug",    2 }, /* the log debuglevel */
-/*		{ "set",      4 }, */ 	/* set start_port end_port value */
-/* SET is not supported in the 0.4.0 client release because I require implementation
- * of the parsingPortBlah, because via command line is needed use all the keyword usable
- * in the configuration files. Now is time to close the 0.4 definitely, and SET will not
- * be supported now. holy fuck
- */
+		{ "debug",    2 },
+		{ "set",      3 },
 		{ NULL,       0	}
 	};
 

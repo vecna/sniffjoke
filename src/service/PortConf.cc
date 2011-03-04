@@ -21,7 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "portConfParsing.h"
+#include "PortConf.h"
 
 /* find the first separator, port:port<sep>keyword. will be a ' ' or a \t */
 void portLine::fixPointer(void)
@@ -62,8 +62,10 @@ void portLine::fixPointer(void)
         i++;
     }
 
-    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL)
+    if (startStrPort == NULL || portLen == 0 || startKeyword == NULL) {
         error_message = "not all fields found in this line";
+        return;
+    }
 
     /* copy in the right buffer the pointed data */
     memset(portsblock, 0x00, MEDIUMBUF);
@@ -78,7 +80,7 @@ error_before:
     error_message = "separator between ports and keywords not found";
 }
 
-void portLine::setup(char *readedline)
+void portLine::setup(const char *readedline)
 {
     memset(line, 0x00, MEDIUMBUF);
     memcpy(line, readedline, strlen(readedline));
@@ -148,7 +150,7 @@ void portLine::extractPorts(void)
         if (readedendp >= PORTSNUMBER || readedendp < 0)
             goto invalid_range;
 
-        while (readedp < readedendp)
+        while (readedp <= readedendp)
         {
             portSelected[(uint16_t) readedp] = true;
             ++readedp;

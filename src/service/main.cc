@@ -38,67 +38,7 @@ time_t sj_clock;
 
 static auto_ptr<SniffJoke> sniffjoke;
 
-runtime_error runtime_exception(const char* func, const char* file, int32_t line, const char* format, ...)
-{
-    char error[LARGEBUF];
-    char complete_error[LARGEBUF];
-    va_list arguments;
-    va_start(arguments, format);
-    vsnprintf(error, sizeof (error), format, arguments);
-    snprintf(complete_error, sizeof (complete_error), "%s:%d %s() [ %s ]", file, line, func, error);
-    va_end(arguments);
-
-    stringstream stream;
-    stream << complete_error;
-    return std::runtime_error(stream.str());
-}
-
-void init_random()
-{
-    /* random pool initialization */
-    srandom(time(NULL));
-    for (uint8_t i = 0; i < ((uint8_t) random() % 10); ++i)
-        srandom(random());
-}
-
-void* memset_random(void *s, size_t n)
-{
-    /*
-     * highly optimized memset_random
-     *
-     * long int random(void).
-     *
-     * long int is variable on different architectures;
-     * for example on linux 64 bit is 8 chars long,
-     * so do a while using single chars its an inefficient choice.
-     *
-     */
-
-    if (debug.level() == TESTING_LEVEL)
-    {
-        memset(s, '6', n);
-        return s;
-    }
-
-    size_t longint = n / sizeof (long int);
-    size_t finalbytes = n % sizeof (long int);
-    unsigned char *cp = (unsigned char*) s;
-
-    while (longint-- > 0)
-    {
-        *((long int*) cp) = random();
-        cp += sizeof (long int);
-    }
-
-    while (finalbytes-- > 0)
-    {
-        *cp = (unsigned char) random();
-        ++cp;
-    }
-
-    return s;
-}
-
+/* defined here, is needed by SniffJoke.cc */
 void sigtrap(int signal)
 {
     sniffjoke->alive = false;
@@ -116,6 +56,8 @@ static void sj_version(const char *pname)
     "\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
     " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
     " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
+    " --no-tcp\t\tdisable tcp mangling [default: %s]\n"\
+    " --no-udp\t\tdisable udp mangling [default: %s]\n"\
     " --whitelist\t\tinject evasion packets only in the specified ip addresses\n"\
     " --blacklist\t\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
@@ -135,7 +77,9 @@ static void sj_help(const char *pname)
            pname, pname,
            DEFAULT_LOCATION,
            WORK_DIR,
-           DROP_USER, DROP_GROUP,
+           DEFAULT_USER, DEFAULT_GROUP,
+           DEFAULT_NO_TCP ? "true" : "false",
+           DEFAULT_NO_UDP ? "true" : "false",
            DEFAULT_START_STOPPED ? "present" : "not present",
            DEFAULT_CHAINING ? "enabled" : "disabled",
            SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
@@ -153,28 +97,50 @@ int main(int argc, char **argv)
     struct sj_cmdline_opts useropt;
     memset(&useropt, 0x00, sizeof (useropt));
 
+    /* ordered initialization of all the values to the default */
+
+    strncpy(useropt.basedir, DEFAULT_DIR, sizeof(useropt.basedir));
+    strncpy(useropt.location, DEFAULT_LOCATION, sizeof(useropt.location));
+    strncpy(useropt.user, DEFAULT_USER, sizeof(useropt.user));
+    strncpy(useropt.group, DEFAULT_GROUP, sizeof(useropt.group));
+    strncpy(useropt.admin_address, DEFAULT_ADMIN_ADDRESS, sizeof(useropt.admin_address));
+    useropt.admin_port = DEFAULT_ADMIN_PORT;
+    useropt.chaining = DEFAULT_CHAINING;
+    useropt.no_tcp = DEFAULT_NO_TCP;
+    useropt.no_udp = DEFAULT_NO_UDP;
+    useropt.use_whitelist = DEFAULT_USE_WHITELIST;
+    useropt.use_blacklist = DEFAULT_USE_BLACKLIST;
+    useropt.active = DEFAULT_START_STOPPED;
+    useropt.go_foreground = DEFAULT_GO_FOREGROUND;
+    useropt.debug_level = DEFAULT_DEBUG_LEVEL;
+    memset(useropt.onlyplugin, 0x00, sizeof (useropt.onlyplugin));
+    useropt.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
+    useropt.force_restart = false;
+
     struct option sj_option[] = {
         { "dir", required_argument, NULL, 'i'},
         { "location", required_argument, NULL, 'o'},
         { "user", required_argument, NULL, 'u'},
         { "group", required_argument, NULL, 'g'},
+        { "admin", required_argument, NULL, 'a'},
+        { "chain", no_argument, NULL, 'c'},
+        { "no-tcp", no_argument, NULL, 't'},
+        { "no-udp", no_argument, NULL, 'l'},
+        { "whitelist", no_argument, NULL, 'w'},
+        { "blacklist", no_argument, NULL, 'b'},
         { "start", no_argument, NULL, 's'},
         { "foreground", no_argument, NULL, 'x'},
         { "force", no_argument, NULL, 'r'},
-        { "whitelist", no_argument, NULL, 'w'},
-        { "blacklist", no_argument, NULL, 'b'},
-        { "chain", no_argument, NULL, 'c'},
-        { "admin", required_argument, NULL, 'a'},
-        { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
-        { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
         { "debug", required_argument, NULL, 'd'},
+        { "only-plugin", required_argument, NULL, 'p'},   /* not documented in --help */
+        { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
         { NULL, 0, NULL, 0}
     };
 
     int charopt;
-    while ((charopt = getopt_long(argc, argv, "i:o:u:g:sxrwbca:p:m:d:vh", sj_option, NULL)) != -1)
+    while ((charopt = getopt_long(argc, argv, "i:o:u:g:a:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
@@ -189,11 +155,28 @@ int main(int argc, char **argv)
         case 'u':
             snprintf(useropt.user, sizeof (useropt.user), "%s", optarg);
             break;
-        case 'm':
-            useropt.max_ttl_probe = atoi(optarg);
-            break;
         case 'g':
             snprintf(useropt.group, sizeof (useropt.group), "%s", optarg);
+            break;
+        case 'a':
+            snprintf(useropt.admin_address, sizeof (useropt.admin_address), "%s", optarg);
+            char* port;
+            if ((port = strchr(useropt.admin_address, ':')) != NULL)
+            {
+                *port = 0x00;
+                int checked_port = atoi(++port);
+
+                if (checked_port >= PORTSNUMBER || checked_port < 0)
+                    goto sniffjoke_help;
+
+                useropt.admin_port = (uint16_t) checked_port;
+            }
+            break;
+        case 't':
+            useropt.no_tcp = false;
+            break;
+        case 'l':
+            useropt.no_udp = false;
             break;
         case 'w':
             useropt.use_whitelist = true;
@@ -213,27 +196,16 @@ int main(int argc, char **argv)
         case 'r':
             useropt.force_restart = true;
             break;
-        case 'a':
-            snprintf(useropt.admin_address, sizeof (useropt.admin_address), "%s", optarg);
-            char* port;
-            if ((port = strchr(useropt.admin_address, ':')) != NULL)
-            {
-                *port = 0x00;
-                int checked_port = atoi(++port);
-
-                if (checked_port >= PORTSNUMBER || checked_port < 0)
-                    goto sniffjoke_help;
-
-                useropt.admin_port = (uint16_t) checked_port;
-            }
+        case 'd':
+            useropt.debug_level = atoi(optarg);
+            if (useropt.debug_level < SUPPRESS_LEVEL || useropt.debug_level > TESTING_LEVEL)
+                goto sniffjoke_help;
             break;
         case 'p':
             snprintf(useropt.onlyplugin, sizeof (useropt.onlyplugin), "%s", optarg);
             break;
-        case 'd':
-            useropt.debug_level = atoi(optarg);
-            if (useropt.debug_level > TESTING_LEVEL)
-                goto sniffjoke_help;
+        case 'm':
+            useropt.max_ttl_probe = atoi(optarg);
             break;
         case 'v':
             sj_version(argv[0]);

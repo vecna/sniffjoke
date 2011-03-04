@@ -24,6 +24,7 @@
 #define SJ_CONF_H
 
 #include "Utils.h"
+#include "PortConf.h"
 #include "IPList.h"
 #include "SessionTrack.h"
 #include "TTLFocus.h"
@@ -43,33 +44,22 @@ struct sj_cmdline_opts
     /* START OF COMMON PART WITH sj_config */
     char user[MEDIUMBUF];
     char group[MEDIUMBUF];
-    uint16_t debug_level;
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
-    char onlyplugin[MEDIUMBUF];
-    bool active;
-    bool go_foreground;
+    bool no_tcp;
+    bool no_udp;
+    bool chaining;
     bool use_whitelist;
     bool use_blacklist;
-    bool chaining;
+    bool active;
+    bool go_foreground;
+    uint16_t debug_level;
+    char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
     /* END OF COMMON PART WITH sj_config */
 
     bool force_restart;
 };
-
-/* those are the value used for track port strength of TCP coverage */
-#define PORTSNUMBER          65536
-
-#define SCRAMBLE_TTL        1
-#define SCRAMBLE_CHECKSUM   2
-#define SCRAMBLE_MALFORMED  4
-#define SCRAMBLE_INNOCENT   8
-
-#define ISSET_TTL(byte)         (byte & SCRAMBLE_TTL)
-#define ISSET_CHECKSUM(byte)    (byte & SCRAMBLE_CHECKSUM)
-#define ISSET_MALFORMED(byte)   (byte & SCRAMBLE_MALFORMED)
-#define ISSET_INNOCENT(byte)    (byte & SCRAMBLE_INNOCENT)
 
 /* this is the struct keeping the sniffjoke variables, is loaded 
  * by the configuration file, when a command line option is specified 
@@ -87,15 +77,17 @@ struct sj_config
     /* START OF COMMON PART WITH sj_cmdline_opt */
     char user[MEDIUMBUF];
     char group[MEDIUMBUF];
-    uint16_t debug_level;
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
-    char onlyplugin[MEDIUMBUF];
-    bool active;
-    bool go_foreground;
+    bool no_tcp;
+    bool no_udp;
+    bool chaining;
     bool use_whitelist;
     bool use_blacklist;
-    bool chaining;
+    bool active;
+    bool go_foreground;
+    uint16_t debug_level;
+    char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
     /* END OF COMMON PART WITH sj_cmdline_opt */
 
@@ -128,13 +120,13 @@ private:
     void parseOnlyParam(const char*);
 
     /* config file load/dump support*/
-    void parseMatch(char *, const char *, FILE *, const char *, const char *);
-    void parseMatch(uint16_t &, const char *, FILE *, uint16_t, const uint16_t);
-    void parseMatch(bool &, const char *, FILE *, bool, const bool);
     bool parseLine(FILE *, char *, const char *);
-    uint32_t dumpIfPresent(FILE *, const char *, char *);
-    uint32_t dumpIfPresent(FILE *, const char *, uint16_t);
-    uint32_t dumpIfPresent(FILE *, const char *, bool);
+    void parseMatch(char *, const char *, FILE *, const char *, const char *);
+    void parseMatch(uint16_t &, const char *, FILE *, uint16_t, uint16_t);
+    void parseMatch(bool &, const char *, FILE *, bool, bool);
+    uint32_t dumpIfPresent(FILE *, const char *, char *, const char *);
+    uint32_t dumpIfPresent(FILE *, const char *, uint16_t, uint16_t);
+    uint32_t dumpIfPresent(FILE *, const char *, bool, bool);
 
     /* import of the file containing the port range settings, and load the
      * default if not present, it use portLine class in portConfParsing.cc */
@@ -149,7 +141,7 @@ public:
     struct sj_config runconfig; /* the running configuration is accessible by other class */
 
     UserConf(const struct sj_cmdline_opts &);
-    ~UserConf();
+    ~UserConf(void);
 
     /* call all the private method for setup networking -- in future need to be modify
      * for multi OS supports */

@@ -19,7 +19,6 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "SniffJoke.h"
 
 #include <fcntl.h>
@@ -27,6 +26,9 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+
+/* the main must implement it */
+void sigtrap(int);
 
 SniffJoke::SniffJoke(const struct sj_cmdline_opts &opts) :
 alive(true),
@@ -38,7 +40,7 @@ service_pid(0)
     LOG_DEBUG("");
 }
 
-SniffJoke::~SniffJoke()
+SniffJoke::~SniffJoke(void)
 {
     if (getuid() || geteuid())
     {
@@ -54,7 +56,7 @@ SniffJoke::~SniffJoke()
     cleanDebug();
 }
 
-void SniffJoke::run()
+void SniffJoke::run(void)
 {
     pid_t old_service_pid = proc.readPidfile();
     if (old_service_pid != 0)
@@ -167,30 +169,30 @@ void SniffJoke::run()
     }
 }
 
-void SniffJoke::setupDebug()
+void SniffJoke::setupDebug(void)
 {
-        debug.debuglevel = userconf.runconfig.debug_level;
-        if (!opts.go_foreground)
-        {
-            LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles will be used instead.");
+    debug.debuglevel = userconf.runconfig.debug_level;
+    if (!opts.go_foreground)
+    {
+        LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles will be used instead.");
 
-            debug.setLogstream(FILE_LOG);
-            debug.setSessionLogstream(FILE_LOG_SESSION);
-            debug.setPacketLogstream(FILE_LOG_PACKET);
-        }
-        else
-        {
-            LOG_ALL("foreground logging enabled, use ^c for quit SniffJoke");
-        }
+        debug.setLogstream(FILE_LOG);
+        debug.setSessionLogstream(FILE_LOG_SESSION);
+        debug.setPacketLogstream(FILE_LOG_PACKET);
+    }
+    else
+    {
+        LOG_ALL("foreground logging enabled, use ^c for quit SniffJoke");
+    }
 
-        if (!debug.resetLevel())
-            RUNTIME_EXCEPTION("executing debug resetLevel");
+    if (!debug.resetLevel())
+        RUNTIME_EXCEPTION("executing debug resetLevel");
 }
 
 /* this function must not close the FILE *desc, because in the destructor of the
  * auto_ptr some debug call will be present. It simple need to flush the FILE,
  * and the descriptor are closed with the process, after. */
-void SniffJoke::cleanDebug()
+void SniffJoke::cleanDebug(void)
 {
     if (debug.logstream != NULL && debug.logstream != stdout)
         fflush(debug.logstream);
@@ -200,7 +202,7 @@ void SniffJoke::cleanDebug()
         fflush(debug.session_logstream);
 }
 
-void SniffJoke::cleanServerRoot()
+void SniffJoke::cleanServerRoot(void)
 {
     if (service_pid)
     {
@@ -212,18 +214,19 @@ void SniffJoke::cleanServerRoot()
     proc.unlinkPidfile(false);
 }
 
-void SniffJoke::cleanServerUser()
+void SniffJoke::cleanServerUser(void)
 {
     LOG_DEBUG("");
 }
 
-void SniffJoke::setupAdminSocket()
+void SniffJoke::setupAdminSocket(void)
 {
     int tmp;
-    
+
     struct sockaddr_in in_service;
 
-    if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+    if ((tmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    {
         RUNTIME_EXCEPTION("unable to open UDP socket: %s",
                           strerror(errno));
     }
@@ -231,7 +234,8 @@ void SniffJoke::setupAdminSocket()
     memset(&in_service, 0x00, sizeof (in_service));
 
     /* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
-    if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr)) {
+    if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr))
+    {
         RUNTIME_EXCEPTION("unable to accept hostname (%s): only IP address allow",
                           userconf.runconfig.admin_address);
     }
@@ -262,7 +266,7 @@ void SniffJoke::setupAdminSocket()
     admin_socket = tmp;
 }
 
-void SniffJoke::handleAdminSocket()
+void SniffJoke::handleAdminSocket(void)
 {
     char r_buf[MEDIUMBUF] = {0};
     uint8_t* output_buf = NULL;
@@ -341,7 +345,7 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
      * protocol, the first 4 byte represent the length of the
      * data, uint32_t lenght included.
      * the data returned is conform
-     * to the specification in doc/SJ-PROTOCOL.txt */
+     * to the specifications in doc/SJ-PROTOCOL.txt */
 
     if (!memcmp(cmd, "start", strlen("start")))
     {
@@ -375,29 +379,14 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
     {
         handleCmdShowport();
     }
-    /* no used handleCmdSet ATM */
-#if 0
     else if (!memcmp(cmd, "set", strlen("set")))
     {
-        uint32_t start_port, end_port, value;
-        /* Strength setValue; did Strenght be required anymore ? */
-
-        sscanf(cmd, "set %u %u %u", &start_port, &end_port, &value);
-
-        if (start_port < 0 || start_port > PORTSNUMBER || end_port < 0 || end_port > PORTSNUMBER)
-            goto handle_error;
-
-        if (start_port > end_port)
-            goto handle_error;
-
-        handleCmdSet(start_port, end_port, value);
+        handleCmdSet(cmd);
     }
     else if (!memcmp(cmd, "clear", strlen("clear")))
     {
-        uint8_t clearPortValue = FREQ_NONE;
-        handleCmdSet(0, PORTSNUMBER, clearPortValue);
+        handleCmdSet("0:65535 NONE");
     }
-#endif
     else if (!memcmp(cmd, "debug", strlen("debug")))
     {
         int32_t debuglevel;
@@ -466,7 +455,6 @@ void SniffJoke::handleCmdSaveconf(void)
     if (!userconf.syncDiskConfiguration())
     {
         /* TODO - handle the communication of the error in the client */
-        LOG_ALL("error in communication error in loggin error in keyboad");
     }
     /* as generic rule, when a command has not an output, write the status */
     writeSJStatus(SAVECONF_COMMAND_TYPE);
@@ -496,25 +484,35 @@ void SniffJoke::handleCmdShowport(void)
     writeSJPortStat(SHOWPORT_COMMAND_TYPE);
 }
 
-#if 0
-void SniffJoke::handleCmdSet(uint16_t start, uint16_t end, uint8_t what)
+void SniffJoke::handleCmdSet(const char* cmd)
 {
-    LOG_VERBOSE("set TCP ports from %d to %d at %d strenght level", start, end, what);
-
-    if (end == (PORTSNUMBER -1) )
+    if (strlen(cmd) < strlen("set "))
     {
-        userconf.runconfig.portconf[PORTSNUMBER - 1] = what;
-        --end;
+        /* TODO - handle the communication of the error in the client */
     }
 
-    do userconf.runconfig.portconf[start++] = what;
-    while (start <= end);
+    const char* portconf = cmd + strlen("set ");
+
+    portLine pl;
+    /* setup function clear the previously used private variables */
+    pl.setup(portconf);
+
+    pl.extractPorts();
+    pl.extractValue();
+
+    if (pl.error_message)
+    {
+        /* TODO - handle the communication of the error in the client */
+    }
+    else
+    {
+        pl.mergeLine(userconf.runconfig.portconf);
+    }
 
     writeSJPortStat(SETPORT_COMMAND_TYPE);
 }
-#endif
 
-void SniffJoke::handleCmdDebuglevel(int32_t newdebuglevel)
+void SniffJoke::handleCmdDebuglevel(uint8_t newdebuglevel)
 {
     if (newdebuglevel < SUPPRESS_LEVEL || newdebuglevel > TESTING_LEVEL)
     {
@@ -541,7 +539,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, sizeof(io_buf) );
+    memset(io_buf, 0x00, sizeof (io_buf));
 
     for (uint32_t i = 1; i < (PORTSNUMBER - 1); ++i)
     {
@@ -549,7 +547,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
         {
             accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
-            if (accumulen > sizeof(io_buf) )
+            if (accumulen > sizeof (io_buf))
                 RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
 
             prev_kind = userconf.runconfig.portconf[i];
@@ -561,7 +559,7 @@ void SniffJoke::writeSJPortStat(uint8_t type)
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;
-    memcpy(&io_buf[0], (void *) &retInfo, sizeof (retInfo));
+    memcpy(io_buf, (void *) &retInfo, sizeof (retInfo));
 }
 
 void SniffJoke::writeSJStatus(uint8_t commandReceived)
@@ -570,26 +568,34 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, sizeof(io_buf) );
+    memset(io_buf, 0x00, sizeof (io_buf));
 
     /* SJStatus is totally inspired by the IP/TCP options */
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf.runconfig.active), userconf.runconfig.active);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf.runconfig.debug_level), userconf.runconfig.debug_level);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf.runconfig.gw_mac_str), userconf.runconfig.gw_mac_str);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf.runconfig.gw_ip_addr), userconf.runconfig.gw_ip_addr);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_IFACE, strlen(userconf.runconfig.interface), userconf.runconfig.interface);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOIP, strlen(userconf.runconfig.local_ip_addr), userconf.runconfig.local_ip_addr);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf.runconfig.tun_number);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf.runconfig.debug_level), userconf.runconfig.debug_level);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf.runconfig.onlyplugin), userconf.runconfig.onlyplugin);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf.runconfig.admin_address), userconf.runconfig.admin_address);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf.runconfig.admin_port), userconf.runconfig.admin_port);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location_name), userconf.runconfig.location_name);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHAINING, sizeof (userconf.runconfig.chaining), userconf.runconfig.chaining);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_TCP, sizeof (userconf.runconfig.no_tcp), userconf.runconfig.no_tcp);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_UDP, sizeof (userconf.runconfig.no_udp), userconf.runconfig.no_udp);
+
+    if (userconf.runconfig.whitelist)
+        accumulen += appendSJStatus(&io_buf[accumulen], STAT_WHITELIST, sizeof (userconf.runconfig.whitelist), userconf.runconfig.whitelist);
+    else if (userconf.runconfig.blacklist)
+        accumulen += appendSJStatus(&io_buf[accumulen], STAT_BLACKLIST, sizeof (userconf.runconfig.blacklist), userconf.runconfig.blacklist);
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = commandReceived;
-    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+    memcpy(io_buf, &retInfo, sizeof (retInfo));
 }
 
 void SniffJoke::writeSJTTLmap(uint8_t type)
@@ -598,24 +604,23 @@ void SniffJoke::writeSJTTLmap(uint8_t type)
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, sizeof(io_buf) );
+    memset(io_buf, 0x00, sizeof (io_buf));
 
     for (TTLFocusMap::iterator it = ttlfocus_map->begin(); it != ttlfocus_map->end(); ++it)
     {
-        if (accumulen > sizeof(io_buf) - sizeof(struct ttl_record))
+        if (accumulen > sizeof (io_buf) - sizeof (struct ttl_record))
         {
-            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
+            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof (io_buf));
             break;
         }
 
-        TTLFocus &TT= *((*it).second);
+        TTLFocus &TT = *((*it).second);
         accumulen += appendSJTTLInfo(&io_buf[accumulen], TT);
     }
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;
-    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+    memcpy(io_buf, &retInfo, sizeof (retInfo));
 }
-
 
 void SniffJoke::writeSJInfoDump(uint8_t type)
 {
@@ -623,13 +628,13 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
     uint32_t accumulen = sizeof (retInfo);
 
     /* clean the buffer and fix the starting pointer */
-    memset(io_buf, 0x00, sizeof(io_buf) );
+    memset(io_buf, 0x00, sizeof (io_buf));
 
     for (SessionTrackMap::iterator it = sessiontrack_map->begin(); it != sessiontrack_map->end(); ++it)
     {
-        if (accumulen > sizeof(io_buf) - sizeof(struct sex_record))
+        if (accumulen > sizeof (io_buf) - sizeof (struct sex_record))
         {
-            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof(io_buf));
+            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof (io_buf));
             break;
         }
 
@@ -639,16 +644,16 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;
-    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+    memcpy(io_buf, &retInfo, sizeof (retInfo));
 }
 
 void SniffJoke::writeSJProtoError(void)
 {
     struct command_ret retInfo;
-    memset(io_buf, 0x00, sizeof(io_buf) );
+    memset(io_buf, 0x00, sizeof (io_buf));
     retInfo.cmd_len = sizeof (retInfo);
     retInfo.cmd_type = COMMAND_ERROR_MSG;
-    memcpy(&io_buf[0], &retInfo, sizeof (retInfo));
+    memcpy(io_buf, &retInfo, sizeof (retInfo));
 }
 
 /* follow the most "internal" method for io_buf creation, called from the methods before  */

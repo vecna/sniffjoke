@@ -22,7 +22,7 @@
 
 #include "PacketQueue.h"
 
-PacketQueue::PacketQueue() :
+PacketQueue::PacketQueue(void) :
 pkt_count(0),
 cur_queue(FIRST_QUEUE),
 cur_pkt(NULL),
@@ -186,7 +186,7 @@ void PacketQueue::select(queue_t queue)
     next_pkt = front[queue];
 }
 
-Packet* PacketQueue::get()
+Packet* PacketQueue::get(void)
 {
     if (next_pkt != NULL)
     {
@@ -199,12 +199,12 @@ Packet* PacketQueue::get()
 
 Packet* PacketQueue::getSource(source_t requestSrc)
 {
-    while(next_pkt != NULL)
+    while (next_pkt != NULL)
     {
         cur_pkt = next_pkt;
         next_pkt = next_pkt->next;
 
-        if(cur_pkt->source == requestSrc)
+        if (cur_pkt->source == requestSrc)
             return cur_pkt; /* FOUND */
     }
     return NULL; /* NOT FOUND */

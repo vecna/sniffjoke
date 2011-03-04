@@ -47,12 +47,13 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_sniffjoke_OBJECTS = Debug.$(OBJEXT) HDRoptions.$(OBJEXT) \
-	Packet.$(OBJEXT) PacketQueue.$(OBJEXT) Hack.$(OBJEXT) \
-	HackPool.$(OBJEXT) TTLFocus.$(OBJEXT) SessionTrack.$(OBJEXT) \
-	PacketFilter.$(OBJEXT) TCPTrack.$(OBJEXT) NetIO.$(OBJEXT) \
-	Process.$(OBJEXT) IPList.$(OBJEXT) portConfParsing.$(OBJEXT) \
-	UserConf.$(OBJEXT) SniffJoke.$(OBJEXT) main.$(OBJEXT)
+am_sniffjoke_OBJECTS = Debug.$(OBJEXT) Utils.$(OBJEXT) \
+	HDRoptions.$(OBJEXT) Packet.$(OBJEXT) PacketQueue.$(OBJEXT) \
+	Hack.$(OBJEXT) HackPool.$(OBJEXT) TTLFocus.$(OBJEXT) \
+	SessionTrack.$(OBJEXT) PacketFilter.$(OBJEXT) \
+	TCPTrack.$(OBJEXT) NetIO.$(OBJEXT) Process.$(OBJEXT) \
+	IPList.$(OBJEXT) PortConf.$(OBJEXT) UserConf.$(OBJEXT) \
+	SniffJoke.$(OBJEXT) main.$(OBJEXT)
 sniffjoke_OBJECTS = $(am_sniffjoke_OBJECTS)
 sniffjoke_LDADD = $(LDADD)
 sniffjoke_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -224,6 +225,7 @@ sniffjoke_SOURCES = hardcodedDefines.h \
 			Debug.h \
 			Debug.cc \
 			Utils.h \
+			Utils.cc \
 			HDRoptions.h \
 			HDRoptions.cc \
 			Packet.h \
@@ -248,8 +250,8 @@ sniffjoke_SOURCES = hardcodedDefines.h \
 			Process.cc \
 			IPList.h \
 			IPList.cc \
-                        portConfParsing.h \
-                        portConfParsing.cc \
+                        PortConf.h \
+                        PortConf.cc \
 			UserConf.h \
 			UserConf.cc \
 			SniffJoke.cc \
@@ -353,14 +355,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Packet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PacketFilter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PacketQueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PortConf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Process.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SessionTrack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SniffJoke.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCPTrack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TTLFocus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UserConf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/portConfParsing.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

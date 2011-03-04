@@ -44,7 +44,7 @@ class fake_zero_window : public Hack
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -70,7 +70,7 @@ public:
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -90,7 +90,7 @@ public:
             return false;
         }
 
-        supportedScramble = SCRAMBLE_INNOCENT;
+        supportedScrambles = SCRAMBLE_INNOCENT;
         return true;
     }
 

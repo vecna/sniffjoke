@@ -25,6 +25,7 @@
 
 #include "Utils.h"
 #include "UserConf.h"
+#include "PortConf.h"
 #include "Packet.h"
 #include "PacketQueue.h"
 #include "SessionTrack.h"
@@ -41,17 +42,19 @@ private:
     TTLFocusMap &ttlfocus_map;
     HackPool &hack_pool;
 
+    uint8_t mangled_proto_mask;
+
     PacketFilter packet_filter;
     PacketQueue p_queue;
 
     uint32_t derivePercentage(uint32_t, uint16_t);
     bool percentage(uint32_t, uint16_t, uint16_t);
-    uint16_t getUserFrequency(Packet &);
-    uint8_t discernAvailScramble(Packet &);
+    uint16_t getUserFrequency(const Packet &);
+    uint8_t discernAvailScramble(const Packet &);
 
     void injectTTLProbe(TTLFocus &);
     void execTTLBruteforces(void);
-    bool extractTTLinfo(Packet &);
+    bool extractTTLinfo(const Packet &);
 
     bool notifyIncoming(Packet &);
     bool injectHack(Packet &);

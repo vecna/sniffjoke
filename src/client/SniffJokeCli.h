@@ -28,8 +28,7 @@
 #include <memory>
 
 #include <stdint.h>
-#include "service/Packet.h"
-#include "service/portConfParsing.h"
+#include "service/PortConf.h"
 #include "service/internalProtocol.h"
 
 using namespace std;
@@ -53,16 +52,17 @@ private:
     uint16_t serverport;
     uint32_t ms_timeout;
     const char *cmd_buffer;
-    bool parse_SjinternalProto(uint8_t *, int32_t);
-    bool printSJStat(uint8_t *, int32_t);
-    bool printSJPort(uint8_t *, int32_t);
-    bool printSJError(uint8_t *, int32_t);
-    bool printSJSessionInfo(uint8_t*, uint32_t);
-    bool printSJTTL(uint8_t *, uint32_t);
 
     char *fillWithSpace(uint16_t);
     char *fillWithSpace(uint16_t, uint16_t);
     char *resolveWeight(uint32_t);
+
+    bool parse_SjinternalProto(uint8_t *, int32_t);
+    bool printSJStat(const uint8_t *, int32_t);
+    bool printSJPort(const uint8_t *, int32_t);
+    bool printSJError(const uint8_t *, int32_t);
+    bool printSJSessionInfo(const uint8_t*, uint32_t);
+    bool printSJTTL(const uint8_t *, uint32_t);
 
 public:
     SniffJokeCli(char *, uint16_t, uint32_t);

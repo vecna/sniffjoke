@@ -81,12 +81,12 @@ probe_dummy(cpy.probe_dummy, sizeof (cpy.probe_dummy))
     SELFLOG("");
 }
 
-TTLFocus::~TTLFocus()
+TTLFocus::~TTLFocus(void)
 {
     SELFLOG("");
 }
 
-void TTLFocus::selectPuppetPort()
+void TTLFocus::selectPuppetPort(void)
 {
     uint16_t realport = probe_dummy.tcp->source;
     puppet_port = (realport + random()) % 32767 + 1;
@@ -123,7 +123,7 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
                 );
 }
 
-TTLFocusMap::TTLFocusMap()
+TTLFocusMap::TTLFocusMap(void)
 {
     LOG_DEBUG("");
 
@@ -131,7 +131,7 @@ TTLFocusMap::TTLFocusMap()
     load();
 }
 
-TTLFocusMap::~TTLFocusMap()
+TTLFocusMap::~TTLFocusMap(void)
 {
     LOG_DEBUG("");
 
@@ -161,7 +161,7 @@ TTLFocus& TTLFocusMap::get(const Packet &pkt)
     return *ttlfocus;
 }
 
-void TTLFocusMap::manage()
+void TTLFocusMap::manage(void)
 {
     /* timeout check */
     if (manage_timeout < sj_clock - TTLFOCUSMAP_MANAGE_ROUTINE_TIMER)
@@ -215,7 +215,7 @@ void TTLFocusMap::manage()
     }
 }
 
-void TTLFocusMap::load()
+void TTLFocusMap::load(void)
 {
     FILE *loadstream = NULL;
     uint32_t records_num = 0;
@@ -242,7 +242,7 @@ void TTLFocusMap::load()
     LOG_ALL("load completed: %u records loaded", records_num);
 }
 
-void TTLFocusMap::dump()
+void TTLFocusMap::dump(void)
 {
     FILE *dumpstream = NULL;
     uint32_t undumped = 0, records_num = 0;

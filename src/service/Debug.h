@@ -50,16 +50,19 @@ private:
     FILE *session_logstream;
     FILE *packet_logstream;
     bool appendOpen(uint8_t thislevel, const char *fname, FILE **previously);
+
 public:
     Debug();
     void setLogstream(const char *lsf);
     void setSessionLogstream(const char *lsf);
     void setPacketLogstream(const char *lsf);
-    uint8_t level()
+
+    uint8_t level(void)
     {
         return debuglevel;
     };
-    bool resetLevel();
+
+    bool resetLevel(void);
     void log(uint8_t, const char *, const char *, ...);
     void downgradeOpenlog(uid_t, gid_t);
 };

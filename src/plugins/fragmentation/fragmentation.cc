@@ -49,7 +49,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
          * due to the ratio between MIN_SPLIT_PAYLOAD and MIN_IP_PAYLOAD
@@ -117,7 +117,7 @@ public:
             pkt->wtf = INNOCENT;
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
-            pkt->choosableScramble = (availableScramble & supportedScramble);
+            pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             upgradeChainFlag(pkt);
 
@@ -130,7 +130,7 @@ public:
 
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         pLH.completeLog("verifing condition for id %d datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
@@ -138,7 +138,7 @@ public:
         if (origpkt.chainflag == FINALHACK)
             return false;
 
-        if (!(availableScramble & supportedScramble))
+        if (!(availableScrambles & supportedScrambles))
         {
             origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
             return false;
@@ -165,7 +165,7 @@ public:
             return false;
         }
 
-        supportedScramble = SCRAMBLE_INNOCENT;
+        supportedScrambles = SCRAMBLE_INNOCENT;
 
         return true;
     }

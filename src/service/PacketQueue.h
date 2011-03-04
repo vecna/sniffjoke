@@ -41,16 +41,20 @@ private:
     Packet *next_pkt;
 
 public:
-    PacketQueue();
+    PacketQueue(void);
     ~PacketQueue(void);
     void insert(Packet &, queue_t);
     void insertBefore(Packet &, Packet &);
     void insertAfter(Packet &, Packet &);
     void remove(Packet &);
     void select(queue_t);
-    Packet* get();
+    Packet* get(void);
     Packet* getSource(source_t);
-    uint32_t size() { return pkt_count; };
+
+    uint32_t size(void)
+    {
+        return pkt_count;
+    };
 };
 
 #endif /* SJ_PACKET_QUEUE_H */

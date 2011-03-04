@@ -45,22 +45,22 @@ class shift_ack : public Hack
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
         pkt->position = ANY_POSITION;
-        pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-        pkt->choosableScramble = (availableScramble & supportedScramble);
+        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+        pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         upgradeChainFlag(pkt);
 
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -75,7 +75,7 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        supportedScramble = configuredScramble;
+        supportedScrambles = configuredScramble;
         return true;
     }
 

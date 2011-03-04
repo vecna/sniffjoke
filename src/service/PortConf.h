@@ -26,12 +26,31 @@
 
 /* MEDIUMBUF, LARGEBUF, ecc.. and cstdio */
 #include "Utils.h"
-/* the AGG_ aggrssivity definition */
-#include "Packet.h"
-/* PORTNUMBER */
-#include "UserConf.h"
-/* getservbyname */
-#include <netdb.h>
+
+#define AGG_NONE            1
+#define AGG_N_NONE          "NONE"
+#define AGG_VERYRARE        2
+#define AGG_N_VERYRARE      "VERYRARE"
+#define AGG_RARE            4
+#define AGG_N_RARE          "RARE"
+#define AGG_COMMON          8
+#define AGG_N_COMMON        "COMMON"
+#define AGG_HEAVY           16
+#define AGG_N_HEAVY         "HEAVY"
+#define AGG_ALWAYS          32
+#define AGG_N_ALWAYS        "ALWAYS"
+#define AGG_PACKETS10PEEK   64
+#define AGG_N_PACKETS10PEEK "PEEK10PKT"
+#define AGG_PACKETS30PEEK   128
+#define AGG_N_PACKETS30PEEK "PEEK30PKT"
+#define AGG_TIMEBASED5S     256
+#define AGG_N_TIMEBASED5S   "EVERY5SECONDS"
+#define AGG_TIMEBASED20S    512
+#define AGG_N_TIMEBASED20S  "EVERY20SECONDS"
+#define AGG_STARTPEEK       1024
+#define AGG_N_STARTPEEK     "PEEKATSTART"
+#define AGG_LONGPEEK        2048
+#define AGG_N_LONGPEEK      "LONGPEEK"
 
 struct mapTheKeys {
     uint16_t value;
@@ -52,7 +71,7 @@ private:
 public:
     const char *error_message;
 
-    void setup(char *);
+    void setup(const char *);
     void extractPorts(void);
     void extractValue(void);
     void mergeLine(uint16_t *);

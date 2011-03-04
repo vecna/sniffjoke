@@ -28,7 +28,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-NetIO::NetIO(sj_config& runcfg) :
+NetIO::NetIO(const sj_config& runcfg) :
 runconfig(runcfg)
 {
     LOG_DEBUG("");

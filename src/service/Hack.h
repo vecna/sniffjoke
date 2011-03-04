@@ -69,7 +69,7 @@ class Hack
 {
 public:
 
-    uint8_t supportedScramble; /* supported by the location, derived
+    uint8_t supportedScrambles; /* supported by the location, derived
                                   from plugin_enabler.conf.$location */
     const char * const hackName; /* hack name as const string */
     const uint16_t hackFrequency; /* hack frequency, using the value  */
@@ -97,9 +97,9 @@ public:
     {
     };
 
-    virtual void createHack(const Packet &, uint8_t availableScramble) = 0;
+    virtual void createHack(const Packet &, uint8_t availableScrambles) = 0;
 
-    virtual bool Condition(const Packet &, uint8_t availableScramble)
+    virtual bool Condition(const Packet &, uint8_t availableScrambles)
     {
         return true;
     };

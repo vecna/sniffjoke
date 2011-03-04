@@ -42,7 +42,7 @@ class fake_syn : public Hack
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScramble)
+    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
     {
         for (uint8_t pkts = 0; pkts < 2; pkts++)
         {
@@ -75,8 +75,8 @@ public:
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            pkt->wtf = pktRandomDamage(availableScramble & supportedScramble);
-            pkt->choosableScramble = (availableScramble & supportedScramble);
+            pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+            pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             upgradeChainFlag(pkt);
 
@@ -84,7 +84,7 @@ public:
         }
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScramble)
+    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -98,7 +98,7 @@ public:
 
     virtual bool initializeHack(uint8_t configuredScramble)
     {
-        supportedScramble = configuredScramble;
+        supportedScrambles = configuredScramble;
         return true;
     }
 

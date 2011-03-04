@@ -37,7 +37,7 @@ c(c)
     SELFLOG("");
 }
 
-IPList::~IPList()
+IPList::~IPList(void)
 {
     SELFLOG("");
 }
@@ -64,7 +64,7 @@ IPListMap::IPListMap(const char* ipConfFile)
     load();
 }
 
-IPListMap::~IPListMap()
+IPListMap::~IPListMap(void)
 {
     dump();
     for (IPListMap::iterator it = begin(); it != end();)
@@ -93,7 +93,7 @@ IPList& IPListMap::add(uint32_t ip, uint8_t a, uint8_t b, uint8_t c)
     return *ipcnf;
 }
 
-bool IPListMap::isPresent(uint32_t ip)
+bool IPListMap::isPresent(uint32_t ip) const
 {
     return (find(ip) != end());
 }

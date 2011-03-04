@@ -44,7 +44,7 @@ public:
     uint32_t injected_pktnumber;
 
     SessionTrack(const Packet &);
-    ~SessionTrack();
+    ~SessionTrack(void);
 
     /* utilities */
     void selflog(const char *func, const char *format, ...) const;
@@ -78,11 +78,11 @@ private:
     } sessiontrackTimestampComparison;
 
 public:
-    SessionTrackMap();
-    ~SessionTrackMap();
+    SessionTrackMap(void);
+    ~SessionTrackMap(void);
 
     SessionTrack& get(const Packet &);
-    void manage();
+    void manage(void);
 };
 
 #endif /* SJ_SESSIONTRACK_H */
