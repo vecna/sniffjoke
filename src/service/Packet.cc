@@ -33,50 +33,38 @@
 uint32_t Packet::SjPacketIdCounter;
 
 Packet::Packet(const unsigned char* buff, uint16_t size) :
-queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
+queue(QUEUEUNASSIGNED),
 SjPacketId(++SjPacketIdCounter),
-evilbit(MORALITYUNASSIGNED),
 source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
+choosableScramble(0),
 chainflag(HACKUNASSIGNED),
-pbuf(size),
-fragment(false)
+fragment(false),
+pbuf(size)
 {
     memcpy(&(pbuf[0]), buff, size);
     updatePacketMetadata();
 }
 
 Packet::Packet(const Packet& pkt) :
-queue(QUEUEUNASSIGNED),
 prev(NULL),
 next(NULL),
+queue(QUEUEUNASSIGNED),
 SjPacketId(++SjPacketIdCounter),
-evilbit(pkt.evilbit),
-source(LOCAL),
-proto(pkt.proto),
-position(pkt.position),
-wtf(pkt.wtf),
+source(SOURCEUNASSIGNED),
+proto(PROTOUNASSIGNED),
+position(POSITIONUNASSIGNED),
+wtf(JUDGEUNASSIGNED),
+choosableScramble(0),
 chainflag(pkt.chainflag),
-pbuf(pkt.pbuf),
-fragment(false)
+fragment(false),
+pbuf(pkt.pbuf)
 {
     updatePacketMetadata();
-}
-
-void Packet::mark(source_t source, evilbit_t morality)
-{
-    this->source = source;
-    this->evilbit = morality;
-}
-
-void Packet::mark(source_t source, evilbit_t morality, judge_t wtf)
-{
-    this->wtf = wtf;
-    mark(source, morality);
 }
 
 void Packet::updatePacketMetadata(void)
@@ -90,7 +78,8 @@ void Packet::updatePacketMetadata(void)
     ippayload = NULL;
     ippayloadlen = 0;
 
-    /* unions initialization; one for all */
+    /* unions initialization;
+     * one for all because variables are all pointers or uint32_t */
     tcp = NULL; /* udp, icmp */
     tcphdrlen = 0; /* udphdrlen, icmphdrlen */
     tcppayload = NULL; /* udppayload, icmppayload */
@@ -115,22 +104,6 @@ void Packet::updatePacketMetadata(void)
         RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
     /* end ip update */
 
-    switch (ip->protocol)
-    {
-    case IPPROTO_TCP:
-        proto = TCP;
-        break;
-    case IPPROTO_UDP:
-        proto = UDP;
-        break;
-    case IPPROTO_ICMP:
-        proto = ICMP;
-        break;
-    default:
-        proto = OTHER_IP;
-        break;
-    }
-
     /*
      * if the packet it's a fragment sniffjoke does treat it
      * as a pure ip packet.
@@ -144,6 +117,7 @@ void Packet::updatePacketMetadata(void)
     switch (ip->protocol)
     {
     case IPPROTO_TCP:
+        proto = TCP;
         /* start tcp update */
         if (pktlen < iphdrlen + sizeof (struct tcphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct tcphdr)");
@@ -160,6 +134,7 @@ void Packet::updatePacketMetadata(void)
         /* end tcp update */
         break;
     case IPPROTO_UDP:
+        proto = UDP;
         /* start udp update */
         if (pktlen < iphdrlen + sizeof (struct udphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct udphdr)");
@@ -179,6 +154,7 @@ void Packet::updatePacketMetadata(void)
         /* end udp update */
         break;
     case IPPROTO_ICMP:
+        proto = ICMP;
         /* start icmp update */
         if (pktlen < iphdrlen + sizeof (struct icmphdr))
             RUNTIME_EXCEPTION("pktlen < iphdrlen + sizeof(struct icmphdr)");
@@ -194,6 +170,8 @@ void Packet::updatePacketMetadata(void)
             icmppayload = (unsigned char *) icmp + icmphdrlen;
         /* end icmp update */
         break;
+    default:
+        proto = OTHER_IP;
     }
 }
 
@@ -306,6 +284,12 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
     if (wtf == JUDGEUNASSIGNED)
     {
         LOG_ALL("in %s not set \"wtf\" field (what the fuck Sj has to do with this packet?)", pluginName);
+        goto errorinfo;
+    }
+
+    if (choosableScramble == 0)
+    {
+        LOG_ALL("in %s not set \"chosableScramble\" field (what the fuck Sj can to do with this packet?)", pluginName);
         goto errorinfo;
     }
 
@@ -551,7 +535,6 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
         do
         {
             injected |= IPInjector.randomInjector();
-
         }
         while ((target_iphdrlen != actual_iphdrlen) && --tries);
     }
@@ -562,7 +545,6 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     if (target_iphdrlen != actual_iphdrlen)
     {
-
         /* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
         to inject options not aligned to 4 */
         actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
@@ -656,7 +638,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
     vsnprintf(loginfo, sizeof (loginfo), format, arguments);
     va_end(arguments);
 
-    const char *evilstr, *wtfstr, *sourcestr, *p;
+    const char *sourcestr, *wtfstr, *p;
     char protoinfo[MEDIUMBUF] = {0}, saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};
 
     p = inet_ntoa(*((struct in_addr *) &(ip->saddr)));
@@ -664,17 +646,6 @@ void Packet::selflog(const char *func, const char *format, ...) const
 
     p = inet_ntoa(*((struct in_addr *) &(ip->daddr)));
     strncpy(daddr, p, sizeof (daddr));
-
-    switch (evilbit)
-    {
-    case GOOD: evilstr = "good";
-        break;
-    case EVIL: evilstr = "evil";
-        break;
-    default: case MORALITYUNASSIGNED: evilstr = "UNASSIGNED-e";
-        break;
-
-    }
 
     switch (wtf)
     {
@@ -694,11 +665,11 @@ void Packet::selflog(const char *func, const char *format, ...) const
     {
     case TUNNEL: sourcestr = "tunnel";
         break;
-    case LOCAL: sourcestr = "local";
-        break;
     case NETWORK: sourcestr = "network";
         break;
-    case TTLBFORCE: sourcestr = "ttl bruteforce";
+    case HACKAPPLICATION: sourcestr = "hackapplication";
+        break;
+    case TRACEROUTE: sourcestr = "ttl bruteforce";
         break;
     default: case SOURCEUNASSIGNED: sourcestr = "UNASSIGNED-src";
         break;
@@ -735,18 +706,18 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%u %s",
+        LOG_PACKET("%s: i%u %s|%s %s->%s [%s] ttl:%u %s",
                    func, SjPacketId,
-                   evilstr, wtfstr, sourcestr,
+                   sourcestr, wtfstr,
                    saddr, daddr,
                    protoinfo,
                    ip->ttl, loginfo);
     }
     else
     {
-        LOG_PACKET("%s: i%u %s|%s|%s %s->%s FRAGMENT:%u ttl:%u %s",
+        LOG_PACKET("%s: i%u %s|%s %s->%s FRAGMENT:%u ttl:%u %s",
                    func, SjPacketId,
-                   evilstr, wtfstr, sourcestr,
+                   sourcestr, wtfstr,
                    saddr, daddr,
                    ntohs(ip->frag_off),
                    ip->ttl, loginfo);

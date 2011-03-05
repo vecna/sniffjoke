@@ -48,6 +48,8 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
+        pkt->randomizeID();
+
         pkt->tcp->window = 0;
 
         pkt->tcp->ack = 0;
@@ -61,6 +63,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
+        pkt->source = HACKAPPLICATION;
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
         pkt->choosableScramble = SCRAMBLE_INNOCENT;

@@ -134,7 +134,9 @@ public:
         {
             Packet* pkt = (*perProtoFunction)(origpkt);
 
-            pkt->ip->id = htons(ntohs(pkt->ip->id) - 10 + (random() % 20));
+            pkt->randomizeID();
+
+            pkt->source = HACKAPPLICATION;
 
             if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;

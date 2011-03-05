@@ -46,6 +46,8 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
+        pkt->randomizeID();
+
         if (RANDOMPERCENT(33))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
         else
@@ -64,6 +66,7 @@ public:
 
         pkt->tcppayloadRandomFill();
 
+        pkt->source = HACKAPPLICATION;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = availableScrambles & supportedScrambles;

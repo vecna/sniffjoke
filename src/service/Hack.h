@@ -73,7 +73,7 @@ public:
                            needs to remove the original packet */
 
     vector<Packet *> pktVector; /* std vector of Packet* used for created hack packets */
-    vector<cacheRecord *> hackCache;
+    vector<cacheRecord *> pluginCache;
     uint32_t hackCacheTimeout;
 
     judge_t pktRandomDamage(uint8_t scrambles)

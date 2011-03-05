@@ -79,12 +79,14 @@ public:
 
         Packet * const pkt = new Packet(origpkt);
 
-        /* Is cached the amount of data cached in the first segment */
+        pkt->randomizeID();
+
+        /* is cached the amount of data cached in the first segment */
         uint32_t sentData;
 
         vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
 
-        if (it == hackCache.end())
+        if (it == pluginCache.end())
         {
             sentData = (origpkt.tcppayloadlen / 2);
 
@@ -112,6 +114,8 @@ public:
                             ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
                             );
         }
+
+        pkt->source = HACKAPPLICATION;
 
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;

@@ -73,6 +73,8 @@ public:
         {
             Packet * const pkt = new Packet(origpkt);
 
+            pkt->randomizeID();
+
             pkt->tcp->seq = htonl(starting_seq + (pkts * split_size));
 
             uint32_t resizeAndCopy = 0;
@@ -93,6 +95,8 @@ public:
 
             pkt->tcppayloadResize(resizeAndCopy);
             memcpy(pkt->tcppayload, &origpkt.tcppayload[pkts * split_size], resizeAndCopy);
+
+            pkt->source = HACKAPPLICATION;
 
             /*
              * the orig packet is removed, so the value of the position

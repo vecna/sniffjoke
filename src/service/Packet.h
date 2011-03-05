@@ -42,7 +42,7 @@ enum queue_t
     QUEUEUNASSIGNED = 0, YOUNG = 1, KEEP = 2, HACK = 4, SEND = 8
 };
 
-/* if the packet is inject from sniffjoke is marked with the evilbit */
+/* if the packet is injected by sniffjoke is marked with the evilbit */
 enum evilbit_t
 {
     MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2
@@ -51,7 +51,13 @@ enum evilbit_t
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
 enum source_t
 {
-    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, LOCAL = 4, TTLBFORCE = 8
+    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, HACKAPPLICATION = 4, TRACEROUTE = 8
+};
+
+/* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
+enum proto_t
+{
+    PROTOUNASSIGNED = 0, TCP = 1, UDP = 2, ICMP = 4, OTHER_IP = 8
 };
 
 /* Every sniffjoke packet is based on be discarged from the remote host and accepted from
@@ -62,12 +68,6 @@ enum source_t
 enum judge_t
 {
     JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8
-};
-
-/* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
-enum proto_t
-{
-    PROTOUNASSIGNED = 0, TCP = 1, UDP = 2, ICMP = 4, OTHER_IP = 8
 };
 
 /* a sniffjoke packet should be send before the original packet or after the original packet */
@@ -85,38 +85,44 @@ enum chaining_t
 class Packet
 {
 private:
+    friend class PacketQueue;
     static uint32_t SjPacketIdCounter;
 
-    queue_t queue;
     Packet *prev;
     Packet *next;
-    friend class PacketQueue;
+
+    /* reflection variable used on queue change */
+    queue_t queue;
 
 public:
     uint32_t SjPacketId;
-    evilbit_t evilbit;
+
+    /* variable to keep track of packet creation origins */
     source_t source;
+
+    /* proto variable, redundant but useful because defined to permit OR masks */
     proto_t proto;
+
+    /* status variable to force relative position of a packet with
+       respect to an other. */
     position_t position;
 
-    /* this is what the hack has decided to do,
-     * had choosed between the Hack.avaialableScramble */
+    /* define  the actual selected scramble for the packet */
     judge_t wtf;
-    /* this is what's the packet will accept if the 'wtf'
-     * will not be used, (rarely will happen) */
+
+    /* defines the acceptable scrambles accepted by the packet */
     uint8_t choosableScramble;
 
-    /* a Packet created from a Packet inheriet the chainflag */
+    /* status variable for chained hack inherited on Packet(const Packet &).
+       significative only if source == HACKAPPLICATION  */
     chaining_t chainflag;
 
-    vector<unsigned char> pbuf;
+    bool fragment;
 
     struct iphdr *ip;
     uint8_t iphdrlen; /* [20 - 60] bytes */
     unsigned char *ippayload;
     uint16_t ippayloadlen; /* [0 - 65515] bytes */
-
-    bool fragment;
 
     union
     {
@@ -146,13 +152,12 @@ public:
         uint16_t icmppayloadlen; /* always 0 */
     };
 
+    vector<unsigned char> pbuf;
+
     Packet(const unsigned char *, uint16_t);
     Packet(const Packet &);
 
     void updatePacketMetadata(void);
-
-    void mark(source_t, evilbit_t);
-    void mark(source_t, evilbit_t, judge_t);
 
     /* IP/TCP checksum functions */
     uint32_t computeHalfSum(const unsigned char*, uint16_t);

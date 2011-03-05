@@ -105,8 +105,10 @@ public:
             }
 
             Packet * const pkt = new Packet(&pktbuf[0], pktbuf.size());
-            /* we need to force inheriet of chainflag due to packet creation */
-            pkt->chainflag = origpkt.chainflag;
+
+            pkt->randomizeID();
+
+            pkt->source = HACKAPPLICATION;
 
             /*
              * the orig packet is removed, so the value of the position
@@ -122,6 +124,9 @@ public:
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
             pkt->choosableScramble = (availableScrambles & supportedScrambles);
+
+            /* we need to force inheriet of chainflag due to packet creation */
+            pkt->chainflag = origpkt.chainflag;
 
             upgradeChainFlag(pkt);
 

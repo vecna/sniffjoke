@@ -22,11 +22,9 @@
 
 #include "Hack.h"
 
-extern time_t sj_clock; /* uses global clock handled by NetIO module */
-
 vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
-    for (vector<cacheRecord *>::iterator it = hackCache.begin(); it != hackCache.end();)
+    for (vector<cacheRecord *>::iterator it = pluginCache.begin(); it != pluginCache.end();)
     {
         cacheRecord &record = **it;
         if (filter(record, pkt)) {
@@ -45,27 +43,27 @@ vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord
         }
     }
 
-    return hackCache.end();
+    return pluginCache.end();
 }
 
 vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt)
 {
     cacheRecord *newrecord = new cacheRecord(pkt);
-    hackCache.push_back(newrecord);
-    return hackCache.end() - 1;
+    pluginCache.push_back(newrecord);
+    return pluginCache.end() - 1;
 }
 
 vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, const unsigned char *data, size_t data_size)
 {
     cacheRecord *newrecord = new cacheRecord(pkt, data, data_size);
-    hackCache.push_back(newrecord);
-    return hackCache.end() - 1;
+    pluginCache.push_back(newrecord);
+    return pluginCache.end() - 1;
 }
 
 void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
     delete *it;
-    hackCache.erase(it++);
+    pluginCache.erase(it++);
 }
 
 void Hack::upgradeChainFlag(Packet *pkt)

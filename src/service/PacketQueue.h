@@ -46,7 +46,8 @@ public:
     void insert(Packet &, queue_t);
     void insertBefore(Packet &, Packet &);
     void insertAfter(Packet &, Packet &);
-    void remove(Packet &);
+    void extract(Packet &);
+    void drop(Packet &);
     void select(queue_t);
     Packet* get(void);
     Packet* getSource(source_t);

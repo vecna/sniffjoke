@@ -49,8 +49,11 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
+        pkt->randomizeID();
+
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
+        pkt->source = HACKAPPLICATION;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);

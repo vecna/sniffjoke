@@ -32,10 +32,10 @@ hack_pool(hpp)
 
     mangled_proto_mask = ICMP;
 
-    if(!runcfg.no_tcp)
+    if (!runcfg.no_tcp)
         mangled_proto_mask |= TCP;
 
-    if(!runcfg.no_udp)
+    if (!runcfg.no_udp)
         mangled_proto_mask |= UDP;
 }
 
@@ -157,7 +157,7 @@ uint16_t TCPTrack::getUserFrequency(const Packet &pkt)
     /* else, no other proto other than UDP will reach here.
      *
      * the UDP traffic is for the most a data-apply hacks, because no flag gaming
-     * nor sequence hack exist. when a service is request to be ALWAYS hacked, we
+     * nor sequence hack exists. when a service is request to be ALWAYS hacked, we
      * accept this choose in UDP too. otherwise, is better use a costant noise
      * using AGG_COMMON */
 
@@ -232,7 +232,8 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         {
             ++ttlfocus.sent_probe;
             injpkt = new Packet(ttlfocus.probe_dummy);
-            injpkt->mark(TTLBFORCE, GOOD, INNOCENT);
+            injpkt->source = TRACEROUTE;
+            injpkt->wtf = INNOCENT;
             injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
             injpkt->ip->ttl = ttlfocus.sent_probe;
             injpkt->tcp->source = htons(ttlfocus.puppet_port);
@@ -438,9 +439,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
                 continue;
             }
 
-            injpkt.mark(LOCAL, GOOD);
-
-            /* lastPktHACK is called because the checksum will not be correct */
+            /* lastPktFix is called because the checksum will not be correct */
             if (!lastPktFix(injpkt))
                 continue;
 
@@ -501,9 +500,9 @@ bool TCPTrack::injectHack(Packet &origpkt)
     uint8_t availableScrambles = discernAvailScramble(origpkt);
 
     char availableScramblesStr[LARGEBUF] = {0};
-    snprintfScramblesList(availableScramblesStr, sizeof(availableScramblesStr), availableScrambles);
+    snprintfScramblesList(availableScramblesStr, sizeof (availableScramblesStr), availableScrambles);
 
-    origpkt.SELFLOG("orig pkt: before hacks injection available scrambles [%s])", availableScramblesStr);
+    origpkt.SELFLOG("before hacks injection available scrambles [%s])", availableScramblesStr);
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
@@ -561,10 +560,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
                 injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->hackName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
-#if 0
-                /* remove this condition when chaining debug is finished */
                 if (runconfig.debug_level == PACKET_LEVEL)
-#endif
                     RUNTIME_EXCEPTION("%s invalid pkt generated", hppe->selfObj->hackName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
@@ -572,22 +568,10 @@ bool TCPTrack::injectHack(Packet &origpkt)
                 continue;
             }
 
-            /*
-             * here we set the evilbit http://www.faqs.org/rfcs/rfc3514.html
-             * we are working in support RFC3514 and http://www.kill-9.it/rfc/draft-no-frills-tcp-04.txt too
-             */
-            if (injpkt.wtf != INNOCENT)
-            {
-                injpkt.randomizeID();
-                injpkt.mark(LOCAL, EVIL);
-            }
-            else
-            {
-                injpkt.mark(LOCAL, GOOD);
-            }
-
             if (!lastPktFix(injpkt))
+            {
                 continue;
+            }
 
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
@@ -622,7 +606,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
         hppe->selfObj->reset();
     }
 
-    origpkt.SELFLOG("orig pkt: after hacks injection");
+    origpkt.SELFLOG("after hacks injection");
 
     return removeOrig;
 }
@@ -711,13 +695,13 @@ bool TCPTrack::lastPktFix(Packet & pkt)
     }
 
     /* this is used because also good packet will have weird IP options */
-    if (ISSET_MALFORMED(pkt.choosableScramble) && pkt.evilbit == GOOD)
+    if (pkt.wtf == INNOCENT && ISSET_MALFORMED(pkt.choosableScramble))
     {
         if (RANDOMPERCENT(66))
             pkt.injectIPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
     }
 
-    /* HACKing the mangled packet */
+    /* fixing the mangled packet */
     pkt.fixSum();
 
     /*
@@ -771,9 +755,6 @@ void TCPTrack::handleYoungPackets(void)
 
     for (p_queue.select(YOUNG); ((pkt = p_queue.get()) != NULL);)
     {
-        /* young packet always change queue immediatly */
-        p_queue.remove(*pkt);
-
         switch (pkt->source)
         {
         case NETWORK:
@@ -785,14 +766,14 @@ void TCPTrack::handleYoungPackets(void)
             if (extractTTLinfo(*pkt))
             {
                 pkt->SELFLOG("removal requested by extractTTLinfo");
-                delete pkt;
+                p_queue.drop(*pkt);
                 continue;
             }
 
             if (packet_filter.matchFilter(*pkt))
             {
                 pkt->SELFLOG("removal requested by PacketFilter");
-                delete pkt;
+                p_queue.drop(*pkt);
                 continue;
             }
 
@@ -800,7 +781,7 @@ void TCPTrack::handleYoungPackets(void)
             if (notifyIncoming(*pkt))
             {
                 pkt->SELFLOG("removal requested by notifyIncoming");
-                delete pkt;
+                p_queue.drop(*pkt);
                 continue;
             }
 
@@ -831,7 +812,6 @@ void TCPTrack::handleYoungPackets(void)
             }
             else
             {
-
                 p_queue.insert(*pkt, SEND);
             }
             break;
@@ -857,23 +837,11 @@ void TCPTrack::handleYoungPackets(void)
 void TCPTrack::handleKeepPackets(void)
 {
     Packet *pkt = NULL;
-    for (p_queue.select(KEEP); ((pkt = p_queue.get()) != NULL);)
+    for (p_queue.select(KEEP); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
-        switch (pkt->proto)
+        if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
         {
-
-        case TUNNEL:
-
-            if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
-            {
-                p_queue.remove(*pkt);
-                p_queue.insert(*pkt, HACK);
-            }
-            break;
-
-        default:
-
-            RUNTIME_EXCEPTION("FATAL CODE [P1X135]: please send a notification to the developers (%u)", pkt->source);
+            p_queue.insert(*pkt, HACK);
         }
     }
 }
@@ -899,8 +867,6 @@ void TCPTrack::handleHackPackets(void)
         switch (pkt->source)
         {
         case TUNNEL:
-
-            p_queue.remove(*pkt);
             if (!lastPktFix(*pkt))
             {
                 RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
@@ -915,8 +881,7 @@ void TCPTrack::handleHackPackets(void)
             if (injectHack(*pkt))
             {
                 pkt->SELFLOG("removal requested by injectHack");
-                p_queue.remove(*pkt);
-                delete pkt;
+                p_queue.drop(*pkt);
             }
             break;
 
@@ -928,22 +893,20 @@ void TCPTrack::handleHackPackets(void)
 
     if (runconfig.chaining == true)
     {
-        for (p_queue.select(SEND); ((pkt = p_queue.getSource(LOCAL)) != NULL);)
+        for (p_queue.select(SEND); ((pkt = p_queue.getSource(HACKAPPLICATION)) != NULL);)
         {
             if (pkt->chainflag == REHACKABLE)
             {
                 pkt->SELFLOG("proposing the packet for the second round: chaining hack");
 
+                /* only the second generation hack are used */
                 if (injectHack(*pkt))
                 {
-
                     pkt->SELFLOG("removal requested by injectHack in the second round");
-                    p_queue.remove(*pkt);
-                    delete pkt;
+                    p_queue.drop(*pkt);
                 }
             }
         }
-        /* only the second generation hack are used */
     }
 }
 
@@ -953,7 +916,8 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
     try
     {
         Packet * const pkt = new Packet(buff, nbyte);
-        pkt->mark(source, GOOD, INNOCENT);
+        pkt->source = source;
+        pkt->wtf = INNOCENT;
 
         /* Sniffjoke does handle only TCP, UDP and ICMP */
         if (runconfig.active && (pkt->proto & mangled_proto_mask))
@@ -986,7 +950,6 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
     }
     catch (exception &e)
     {
-
         /* anomalous/malformed packets are flushed bypassing the queue */
         LOG_ALL("malformed orig pkt dropped: %s", e.what());
     }
@@ -1001,7 +964,7 @@ Packet * TCPTrack::readpacket(source_t destsource)
     if (destsource == NETWORK)
         mask = NETWORK;
     else
-        mask = TUNNEL | LOCAL | TTLBFORCE;
+        mask = TUNNEL | HACKAPPLICATION | TRACEROUTE;
 
     Packet *pkt;
 
@@ -1009,8 +972,7 @@ Packet * TCPTrack::readpacket(source_t destsource)
     {
         if (pkt->source & mask)
         {
-            p_queue.remove(*pkt);
-
+            p_queue.extract(*pkt);
             return pkt;
         }
     }

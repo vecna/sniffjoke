@@ -48,6 +48,8 @@ public:
         {
             Packet * const pkt = new Packet(origpkt);
 
+            pkt->randomizeID();
+
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 5000));
 
             /* 20% is a SYN ACK */
@@ -69,6 +71,8 @@ public:
                 pkt->tcp->source = pkt->tcp->dest;
                 pkt->tcp->dest = swap;
             }
+
+            pkt->source = HACKAPPLICATION;
 
             if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;

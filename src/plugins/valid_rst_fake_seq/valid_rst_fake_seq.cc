@@ -47,6 +47,8 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
+        pkt->randomizeID();
+
         pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
         pkt->tcp->window = htons((uint16_t) (-1));
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
@@ -54,6 +56,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
+        pkt->source = HACKAPPLICATION;
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
 
@@ -61,7 +64,7 @@ public:
         pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
         /* this packet will became dangerous if hacked again...
-         * is an INNOCENT RST based on the seq... */
+           is an INNOCENT RST based on the seq... */
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);

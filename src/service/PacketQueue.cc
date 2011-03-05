@@ -50,6 +50,9 @@ PacketQueue::~PacketQueue(void)
 
 void PacketQueue::insert(Packet &pkt, queue_t queue)
 {
+    if (pkt.queue != QUEUEUNASSIGNED)
+        extract(pkt);
+
     /*
       pkt is not in any queue so:
             pkt.prev == NULL;
@@ -74,6 +77,9 @@ void PacketQueue::insert(Packet &pkt, queue_t queue)
 
 void PacketQueue::insertBefore(Packet &pkt, Packet &ref)
 {
+    if (pkt.queue != QUEUEUNASSIGNED)
+        extract(pkt);
+
     /*
       pkt is not in any queue so:
             pkt.prev == NULL;
@@ -104,6 +110,9 @@ void PacketQueue::insertBefore(Packet &pkt, Packet &ref)
 
 void PacketQueue::insertAfter(Packet &pkt, Packet &ref)
 {
+    if (pkt.queue != QUEUEUNASSIGNED)
+        extract(pkt);
+
     /*
       pkt is not in any queue so:
             pkt.prev == NULL;
@@ -131,7 +140,7 @@ void PacketQueue::insertAfter(Packet &pkt, Packet &ref)
     ref.next = &pkt;
 }
 
-void PacketQueue::remove(Packet &pkt)
+void PacketQueue::extract(Packet &pkt)
 {
     --pkt_count;
     queue_t queue = pkt.queue;
@@ -177,6 +186,12 @@ remove_reset_pkt:
     pkt.queue = QUEUEUNASSIGNED;
     pkt.prev = NULL;
     pkt.next = NULL;
+}
+
+void PacketQueue::drop(Packet &pkt)
+{
+    extract(pkt);
+    delete &pkt;
 }
 
 void PacketQueue::select(queue_t queue)

@@ -71,6 +71,8 @@ public:
     {
         Packet * const pkt = new Packet(origpkt);
 
+        pkt->randomizeID();
+
         /* we have two guess: 
          * 1) the sniffer trust the FIN because has the last sequence number + 1
          * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
@@ -84,6 +86,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
+        pkt->source = HACKAPPLICATION;
         pkt->position = ANTICIPATION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);
@@ -111,14 +114,14 @@ public:
         uint32_t *previouslyInjected;
         vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
 
-        if (it == hackCache.end())
+        if (it == pluginCache.end())
         {
             uint32_t firstCached = 1;
 
             pLH.completeLog("creating cache for %s:%u",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
 
-            cacheCreate(origpkt, (const unsigned char*)&firstCached, sizeof (uint32_t));
+            cacheCreate(origpkt, (const unsigned char*) &firstCached, sizeof (uint32_t));
         }
         else
         {
