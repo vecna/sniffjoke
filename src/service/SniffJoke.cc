@@ -74,10 +74,11 @@ void SniffJoke::run(void)
              * here we can not use the waitpid because the process to kill it's not a child of us;
              * we can use a sleep(2) instead. */
             kill(old_service_pid, SIGTERM);
-            sleep(2);
+            sleep(1);
+            kill(old_service_pid, SIGKILL);
             proc.unlinkPidfile(true);
 
-            LOG_ALL("a new instance of SniffJoke is going background");
+            LOG_ALL("a new instance of SniffJoke is starting");
         }
     }
 
@@ -85,7 +86,7 @@ void SniffJoke::run(void)
         LOG_VERBOSE("option --force ignore: not found a previously running SniffJoke");
 
     if (!userconf.runconfig.active)
-        LOG_ALL("SniffJoke is INACTIVE: use \"sniffjokectl start\" or use the --start option");
+        LOG_ALL("SniffJoke is INACTIVE: use \"sniffjokectl start\" to activate");
     else
         LOG_VERBOSE("SniffJoke started and ACTIVE");
 
@@ -512,7 +513,7 @@ void SniffJoke::handleCmdSet(const char* cmd)
 
 void SniffJoke::handleCmdDebuglevel(uint8_t newdebuglevel)
 {
-    if (newdebuglevel < SUPPRESS_LEVEL || newdebuglevel > TESTING_LEVEL)
+    if (newdebuglevel > TESTING_LEVEL)
     {
         LOG_ALL("requested debuglevel %d invalid (>= %d <= %d permitted)",
                 newdebuglevel, SUPPRESS_LEVEL, TESTING_LEVEL);
