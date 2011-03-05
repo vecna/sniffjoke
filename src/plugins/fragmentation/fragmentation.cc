@@ -26,7 +26,7 @@
  *
  * http://en.wikipedia.org/wiki/IPv4#Fragmentation
  *
- * this hack simply do a massive fragmentation of ip packet (or fragment itself).
+ * this hack simply does a massive fragmentation of a ip packet (or fragment itself).
  * this could help to bypass some simple sniffers and ids.
  *
  * SOURCE: fragmentation historically is a pain in the ass for whom code firewall & sniffer
@@ -117,6 +117,7 @@ public:
              */
             pkt->position = ANTICIPATION;
 
+            /* the original is removed, and fragments are inserted */
             pkt->wtf = INNOCENT;
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
@@ -156,7 +157,7 @@ public:
          *
          */
         return (!(origpkt.ip->frag_off & htons(IP_DF)) &&
-                origpkt.ippayloadlen > MIN_IP_PAYLOAD);
+                origpkt.ippayloadlen >= MIN_IP_PAYLOAD);
     }
 
     virtual bool initializeHack(uint8_t configuredScramble)
