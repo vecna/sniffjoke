@@ -74,7 +74,7 @@ public:
 
     vector<Packet *> pktVector; /* std vector of Packet* used for created hack packets */
     vector<cacheRecord *> pluginCache;
-    uint32_t hackCacheTimeout;
+    time_t hackCacheTimeout;
 
     judge_t pktRandomDamage(uint8_t scrambles)
     {

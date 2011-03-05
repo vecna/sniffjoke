@@ -76,7 +76,7 @@ public:
 class TTLFocusMap : public map<const uint32_t, TTLFocus*>
 {
 private:
-    uint32_t manage_timeout;
+    time_t manage_timeout;
 
     struct ttlfocus_timestamp_comparison
     {

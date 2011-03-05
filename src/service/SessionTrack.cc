@@ -153,7 +153,7 @@ SessionTrack& SessionTrackMap::get(const Packet &pkt)
 void SessionTrackMap::manage(void)
 {
     /* timeout check */
-    if ( (time_t)manage_timeout < sj_clock - SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)
+    if (manage_timeout < sj_clock - SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER)
     {
         manage_timeout = sj_clock; /* update the next manage timeout */
         for (SessionTrackMap::iterator it = begin(); it != end();)

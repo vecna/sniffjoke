@@ -32,7 +32,7 @@ vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord
             return it;
         }
 
-        if (record.access_timestamp < sj_clock - (time_t)hackCacheTimeout)
+        if (record.access_timestamp < sj_clock - hackCacheTimeout)
         {
             cacheDelete(it); /* the ++ is done internally by the cacheDelete
                                 to keep the iterator valid */

@@ -156,7 +156,7 @@ TTLFocus& TTLFocusMap::get(const Packet &pkt)
 void TTLFocusMap::manage(void)
 {
     /* timeout check */
-    if (manage_timeout < (uint32_t)sj_clock - TTLFOCUSMAP_MANAGE_ROUTINE_TIMER)
+    if (manage_timeout < sj_clock - TTLFOCUSMAP_MANAGE_ROUTINE_TIMER)
     {
         manage_timeout = sj_clock; /* update the next manage timeout */
         for (TTLFocusMap::iterator it = begin(); it != end();)
