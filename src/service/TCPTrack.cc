@@ -885,7 +885,7 @@ void TCPTrack::handleHackPackets(void)
 
     if (runconfig.chaining == true)
     {
-        for (p_queue.select(SEND); ((pkt = p_queue.getSource(HACKINJ)) != NULL);)
+        for (p_queue.select(HACK); ((pkt = p_queue.getSource(HACKINJ)) != NULL);)
         {
             if (pkt->chainflag == REHACKABLE)
             {
