@@ -66,7 +66,7 @@ public:
 
         pkt->tcppayloadRandomFill();
 
-        pkt->source = HACKAPPLICATION;
+        pkt->source = HACKINJ;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = availableScrambles & supportedScrambles;

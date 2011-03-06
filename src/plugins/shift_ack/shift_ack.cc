@@ -53,7 +53,7 @@ public:
 
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
-        pkt->source = HACKAPPLICATION;
+        pkt->source = HACKINJ;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);

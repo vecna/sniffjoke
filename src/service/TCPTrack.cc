@@ -446,12 +446,11 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
             injpkt.SELFLOG("%s: generated packet, the original will be %s",
                            hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
-            /* injpkt.position) is ignored in this section because mangleIncoming
-             * is called on the YOUNG queue, and the current queue is YOUNG. a packet
-             * generated from LOCAL is not handled, and, for the moment, is better
-             * force the new queue of the injected packet in HACK. this cause that
-             * every packet generated in mangleIncoming is equal to be POSTICIPATION */
-            p_queue.insert(injpkt, HACK);
+            /* injpkt.position is ignored in this section because mangleIncoming
+             * is called on the YOUNG queue.
+             * ATM we inject in the SEND queue so every packet generated
+             * in mangleIncoming is equal to be ANTICIPATION */
+            p_queue.insert(injpkt, SEND);
         }
 
         if (hppe->selfObj->removeOrigPkt == true)
@@ -657,7 +656,14 @@ bool TCPTrack::lastPktFix(Packet & pkt)
     }
     else
     {
-        pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
+        if (pkt.wtf != PRESCRIPTION)
+            pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
+        else if (ISSET_MALFORMED(pkt.choosableScramble))
+            pkt.wtf = MALFORMED;
+        else if (ISSET_CHECKSUM(pkt.choosableScramble))
+            pkt.wtf = GUILTY;
+        else
+            goto drop_packet;
     }
 
     /*
@@ -861,39 +867,25 @@ void TCPTrack::handleKeepPackets(void)
 void TCPTrack::handleHackPackets(void)
 {
     /* for every packet in HACK queue we insert some random hacks */
+
     Packet *pkt = NULL;
-    for (p_queue.select(HACK); ((pkt = p_queue.get()) != NULL);)
+    for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
-        switch (pkt->source)
+        if (!lastPktFix(*pkt))
         {
-        case TUNNEL:
-            if (!lastPktFix(*pkt))
-            {
-                RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
-            }
+            RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
+        }
 
-            /*
-             * the real pkt must be fixed and inserted into SEND queue
-             * before hack injection to permit ANTICIPATION / POSTICIPATION
-             */
-            p_queue.insert(*pkt, SEND);
-
-            if (injectHack(*pkt))
-            {
-                pkt->SELFLOG("removal requested by injectHack");
-                p_queue.drop(*pkt);
-            }
-            break;
-
-        default:
-
-            RUNTIME_EXCEPTION("FATAL CODE [4NT4N1]: please send a notification to the developers (%u)", pkt->source);
+        if (injectHack(*pkt))
+        {
+            pkt->SELFLOG("removal requested by injectHack");
+            p_queue.drop(*pkt);
         }
     }
 
     if (runconfig.chaining == true)
     {
-        for (p_queue.select(SEND); ((pkt = p_queue.getSource(HACKAPPLICATION)) != NULL);)
+        for (p_queue.select(SEND); ((pkt = p_queue.getSource(HACKINJ)) != NULL);)
         {
             if (pkt->chainflag == REHACKABLE)
             {
@@ -907,6 +899,11 @@ void TCPTrack::handleHackPackets(void)
                 }
             }
         }
+    }
+
+    for (p_queue.select(HACK); ((pkt = p_queue.get()) != NULL);)
+    {
+        p_queue.insert(*pkt, SEND);
     }
 }
 
@@ -964,7 +961,7 @@ Packet * TCPTrack::readpacket(source_t destsource)
     if (destsource == NETWORK)
         mask = NETWORK;
     else
-        mask = TUNNEL | HACKAPPLICATION | TRACEROUTE;
+        mask = TUNNEL | HACKINJ | TRACEROUTE;
 
     Packet *pkt;
 

@@ -136,7 +136,7 @@ public:
 
             pkt->randomizeID();
 
-            pkt->source = HACKAPPLICATION;
+            pkt->source = HACKINJ;
 
             if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;

@@ -41,7 +41,7 @@ class segmentation : public Hack
 #define HACK_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
 
-#define MIN_SPLIT_PAYLOAD 1 /* bytes */
+#define MIN_SPLIT_PAYLOAD 2 /* bytes */
 #define MIN_SPLIT_PKTS    2
 #define MAX_SPLIT_PKTS    5
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
@@ -96,7 +96,7 @@ public:
             pkt->tcppayloadResize(resizeAndCopy);
             memcpy(pkt->tcppayload, &origpkt.tcppayload[pkts * split_size], resizeAndCopy);
 
-            pkt->source = HACKAPPLICATION;
+            pkt->source = HACKINJ;
 
             /*
              * the orig packet is removed, so the value of the position
@@ -112,7 +112,8 @@ public:
              */
             pkt->position = ANTICIPATION;
 
-            pkt->wtf = INNOCENT;
+            /* we keep the origpkt.wtf to permit this hack to segment both good and evil pkts */
+            pkt->wtf = origpkt.wtf;
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
             pkt->choosableScramble = (availableScrambles & supportedScrambles);
@@ -131,11 +132,11 @@ public:
 
     virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
     {
-        if (origpkt.chainflag != HACKUNASSIGNED)
-            return false;
-
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
+
+        if (origpkt.chainflag == FINALHACK)
+            return false;
 
         if (origpkt.fragment == false &&
                 origpkt.proto == TCP &&

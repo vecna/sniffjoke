@@ -51,7 +51,7 @@ enum evilbit_t
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
 enum source_t
 {
-    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, HACKAPPLICATION = 4, TRACEROUTE = 8
+    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, HACKINJ = 4, TRACEROUTE = 8
 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
@@ -114,7 +114,7 @@ public:
     uint8_t choosableScramble;
 
     /* status variable for chained hack inherited on Packet(const Packet &).
-       significative only if source == HACKAPPLICATION  */
+       significative only if source == HACKINJ  */
     chaining_t chainflag;
 
     bool fragment;

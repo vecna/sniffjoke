@@ -108,7 +108,7 @@ public:
 
             pkt->randomizeID();
 
-            pkt->source = HACKAPPLICATION;
+            pkt->source = HACKINJ;
 
             /*
              * the orig packet is removed, so the value of the position
@@ -119,8 +119,8 @@ public:
              */
             pkt->position = ANTICIPATION;
 
-            /* the original is removed, and fragments are inserted */
-            pkt->wtf = INNOCENT;
+            /* we keep the origpkt.wtf to permit this hack to segment both good and evil pkts */
+            pkt->wtf = origpkt.wtf;
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
             pkt->choosableScramble = (availableScrambles & supportedScrambles);

@@ -54,7 +54,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKAPPLICATION;
+        pkt->source = HACKINJ;
 
         pkt->position = ANTICIPATION;
 

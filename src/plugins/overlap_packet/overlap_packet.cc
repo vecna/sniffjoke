@@ -115,7 +115,7 @@ public:
                             );
         }
 
-        pkt->source = HACKAPPLICATION;
+        pkt->source = HACKINJ;
 
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;

@@ -86,7 +86,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKAPPLICATION;
+        pkt->source = HACKINJ;
         pkt->position = ANTICIPATION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);

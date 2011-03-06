@@ -79,12 +79,12 @@ static void sj_help(const char *pname)
            DEFAULT_LOCATION,
            WORK_DIR,
            DEFAULT_USER, DEFAULT_GROUP,
-           DEFAULT_NO_TCP ? "tcp mangled" : "tcp not mangled",
-           DEFAULT_NO_UDP ? "udp mangled" : "udp not mangled",
+           DEFAULT_NO_TCP ? "tcp not mangled" : "tcp mangled",
+           DEFAULT_NO_UDP ? "udp not mangled" : "udp mangled",
            DEFAULT_START_STOPPED ? "present" : "not present",
            DEFAULT_CHAINING ? "enabled" : "disabled",
            SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
-           SUPPRESS_LEVEL, ALL_LEVEL, VERBOSE_LEVEL, DEBUG_LEVEL, SESSION_LEVEL,PACKET_LEVEL,
+           SUPPRESS_LEVEL, ALL_LEVEL, VERBOSE_LEVEL, DEBUG_LEVEL, SESSION_LEVEL, PACKET_LEVEL,
            DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
            );
 }
@@ -100,11 +100,11 @@ int main(int argc, char **argv)
 
     /* ordered initialization of all the values to the default */
 
-    strncpy(useropt.basedir, DEFAULT_DIR, sizeof(useropt.basedir));
-    strncpy(useropt.location, DEFAULT_LOCATION, sizeof(useropt.location));
-    strncpy(useropt.user, DEFAULT_USER, sizeof(useropt.user));
-    strncpy(useropt.group, DEFAULT_GROUP, sizeof(useropt.group));
-    strncpy(useropt.admin_address, DEFAULT_ADMIN_ADDRESS, sizeof(useropt.admin_address));
+    strncpy(useropt.basedir, DEFAULT_DIR, sizeof (useropt.basedir));
+    strncpy(useropt.location, DEFAULT_LOCATION, sizeof (useropt.location));
+    strncpy(useropt.user, DEFAULT_USER, sizeof (useropt.user));
+    strncpy(useropt.group, DEFAULT_GROUP, sizeof (useropt.group));
+    strncpy(useropt.admin_address, DEFAULT_ADMIN_ADDRESS, sizeof (useropt.admin_address));
     useropt.admin_port = DEFAULT_ADMIN_PORT;
     useropt.chaining = DEFAULT_CHAINING;
     useropt.no_tcp = DEFAULT_NO_TCP;
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
         { "foreground", no_argument, NULL, 'x'},
         { "force", no_argument, NULL, 'r'},
         { "debug", required_argument, NULL, 'd'},
-        { "only-plugin", required_argument, NULL, 'p'},   /* not documented in --help */
+        { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
         { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
@@ -173,20 +173,20 @@ int main(int argc, char **argv)
                 useropt.admin_port = (uint16_t) checked_port;
             }
             break;
+        case 'c':
+            useropt.chaining = true;
+            break;
         case 't':
-            useropt.no_tcp = false;
+            useropt.no_tcp = true;
             break;
         case 'l':
-            useropt.no_udp = false;
+            useropt.no_udp = true;
             break;
         case 'w':
             useropt.use_whitelist = true;
             break;
         case 'b':
             useropt.use_blacklist = true;
-            break;
-        case 'c':
-            useropt.chaining = true;
             break;
         case 's':
             useropt.active = true;

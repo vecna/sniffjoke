@@ -72,7 +72,7 @@ public:
                 pkt->tcp->dest = swap;
             }
 
-            pkt->source = HACKAPPLICATION;
+            pkt->source = HACKINJ;
 
             if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;

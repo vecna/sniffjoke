@@ -56,7 +56,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKAPPLICATION;
+        pkt->source = HACKINJ;
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
 

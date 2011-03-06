@@ -667,7 +667,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
         break;
     case NETWORK: sourcestr = "network";
         break;
-    case HACKAPPLICATION: sourcestr = "hackapplication";
+    case HACKINJ: sourcestr = "hackapplication";
         break;
     case TRACEROUTE: sourcestr = "ttl bruteforce";
         break;
