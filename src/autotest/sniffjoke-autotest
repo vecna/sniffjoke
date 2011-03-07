@@ -50,7 +50,9 @@ fake_seq,GUILTY
 fake_syn,PRESCRIPTION
 fake_syn,MALFORMED
 fake_syn,GUILTY
-fake_zero_window,INNOCENT
+fake_window,PRESCRIPTION
+fake_window,MALFORMED
+fake_window,GUILTY
 fragmentation,INNOCENT
 segmentation,INNOCENT
 shift_ack,PRESCRIPTION
@@ -108,6 +110,7 @@ start_test() {
             # the follow are useful infos for debug
             echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE-$i" >> "/tmp/$LOCATION/$PNAME.failed_info"
             cat "$PNAME-$SCRAMBLE-$i.curl_output" >> "/tmp/$LOCATION/$PNAME.failed_info"
+	    break
         else
             echo $i >> "$PNAME-$SCRAMBLE.passed_count"
         fi

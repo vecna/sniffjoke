@@ -34,15 +34,15 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fake_seq : public Hack
+class fake_seq : public Plugin
 {
-#define HACK_NAME "Fake SEQ"
+#define PLUGIN_NAME "Fake SEQ"
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -66,7 +66,7 @@ public:
 
         pkt->tcppayloadRandomFill();
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = availableScrambles & supportedScrambles;
@@ -76,7 +76,7 @@ public:
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -89,23 +89,24 @@ public:
                 origpkt.tcppayload != NULL);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED5S)
+    fake_seq() :
+    Plugin(PLUGIN_NAME, AGG_TIMEBASED5S)
     {
     };
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new fake_seq(forcedTest);
+    return new fake_seq();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

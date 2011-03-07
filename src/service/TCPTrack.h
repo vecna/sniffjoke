@@ -31,7 +31,7 @@
 #include "PacketFilter.h"
 #include "SessionTrack.h"
 #include "TTLFocus.h"
-#include "HackPool.h"
+#include "PluginPool.h"
 
 class TCPTrack
 {
@@ -40,7 +40,7 @@ private:
 
     SessionTrackMap & sessiontrack_map;
     TTLFocusMap &ttlfocus_map;
-    HackPool &hack_pool;
+    PluginPool &plugin_pool;
 
     uint8_t mangled_proto_mask;
 
@@ -66,7 +66,7 @@ private:
 
 public:
 
-    TCPTrack(const sj_config &, HackPool &, SessionTrackMap &, TTLFocusMap &);
+    TCPTrack(const sj_config &, PluginPool &, SessionTrackMap &, TTLFocusMap &);
     ~TCPTrack(void);
 
     void writepacket(source_t, const unsigned char *, int);

@@ -667,7 +667,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
         break;
     case NETWORK: sourcestr = "network";
         break;
-    case HACKINJ: sourcestr = "hackapplication";
+    case PLUGIN: sourcestr = "hackapplication";
         break;
     case TRACEROUTE: sourcestr = "ttl bruteforce";
         break;
@@ -680,10 +680,10 @@ void Packet::selflog(const char *func, const char *format, ...) const
         switch (proto)
         {
         case TCP:
-            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x wndw|%u",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
                      tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
-                     ntohl(tcp->seq), ntohl(tcp->ack_seq)
+                     ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)
                      );
             break;
         case UDP:

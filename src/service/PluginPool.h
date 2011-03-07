@@ -20,15 +20,15 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SJ_HACKPOOL_H
-#define SJ_HACKPOOL_H
+#ifndef SJ_PLUGINPOOL_H
+#define SJ_PLUGINPOOL_H
 
 #include "Utils.h"
 #include "UserConf.h"
-#include "Hack.h"
+#include "Plugin.h"
 
-typedef Hack* constructor_f(bool);
-typedef void destructor_f(Hack *);
+typedef Plugin* constructor_f();
+typedef void destructor_f(Plugin *);
 typedef const char* version_f(void);
 
 class PluginTrack
@@ -36,26 +36,26 @@ class PluginTrack
 public:
     void *pluginHandler;
 
-    constructor_f *fp_CreateHackObj;
-    destructor_f *fp_DeleteHackObj;
+    constructor_f *fp_CreatePluginObj;
+    destructor_f *fp_DeletePluginObj;
     version_f *fp_versionValue;
 
-    Hack* selfObj;
+    Plugin* selfObj;
     bool failInit;
 
-    PluginTrack(const char *, uint8_t, bool);
+    PluginTrack(const char *, uint8_t);
 };
 
-class HackPool : public vector<PluginTrack *>
+class PluginPool : public vector<PluginTrack *>
 {
 private:
     const sj_config &runconfig;
-    void importPlugin(const char *, const char *, uint8_t, bool);
+    void importPlugin(const char *, const char *, uint8_t);
     void parseEnablerFile(void);
     uint8_t parseScrambleList(const char *);
 public:
-    HackPool(const sj_config &);
-    ~HackPool(void);
+    PluginPool(const sj_config &);
+    ~PluginPool(void);
 };
 
-#endif /* SJ_HACKPOOL_H */
+#endif /* SJ_PLUGINPOOL_H */

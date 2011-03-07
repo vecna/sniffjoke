@@ -138,7 +138,7 @@ void SniffJoke::run(void)
         setupDebug();
 
         /* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
-        hack_pool = auto_ptr<HackPool > (new HackPool(userconf.runconfig));
+        hack_pool = auto_ptr<PluginPool > (new PluginPool(userconf.runconfig));
 
         proc.jail(userconf.runconfig.working_dir);
 

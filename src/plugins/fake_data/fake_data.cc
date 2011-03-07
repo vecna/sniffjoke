@@ -45,11 +45,11 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fake_data : public Hack
+class fake_data : public Plugin
 {
-#define HACK_NAME "Fake Data"
+#define PLUGIN_NAME "Fake Data"
 private:
 
     static Packet* fake_fragment(const Packet &origpkt)
@@ -99,7 +99,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
          * in fake segment I don't use pktRandomDamage because I want the
@@ -136,7 +136,7 @@ public:
 
             pkt->randomizeID();
 
-            pkt->source = HACKINJ;
+            pkt->source = PLUGIN;
 
             if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;
@@ -152,7 +152,7 @@ public:
         }
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -170,23 +170,23 @@ public:
         return false;
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    fake_data(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_COMMON)
+    fake_data() : Plugin(PLUGIN_NAME, AGG_COMMON)
     {
     };
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new fake_data(forcedTest);
+    return new fake_data();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

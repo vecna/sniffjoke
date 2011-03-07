@@ -35,11 +35,11 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class overlap_packet : public Hack
+class overlap_packet : public Plugin
 {
-#define HACK_NAME "Overlap Packet"
+#define PLUGIN_NAME "Overlap Packet"
 #define PKT_LOG "plugin.overlap_packet.log"
 #define MIN_PACKET_OVERTRY 600
 
@@ -59,7 +59,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         /* 
          * TODO -- 
@@ -115,7 +115,7 @@ public:
                             );
         }
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
 
         pkt->position = ANTICIPATION;
         pkt->wtf = INNOCENT;
@@ -129,7 +129,7 @@ public:
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -140,11 +140,11 @@ public:
                 origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", hackName);
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", pluginName);
             return false;
         }
 
@@ -153,20 +153,20 @@ public:
         return true;
     }
 
-    overlap_packet(bool forcedTest) :
-    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE),
-    pLH(HACK_NAME, PKT_LOG)
+    overlap_packet() :
+    Plugin(PLUGIN_NAME, AGG_RARE),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
     }
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
 
-    return new overlap_packet(forcedTest);
+    return new overlap_packet();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
 
     delete who;

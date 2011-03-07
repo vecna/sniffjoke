@@ -36,14 +36,14 @@
  *
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class valid_rst_fake_seq : public Hack
+class valid_rst_fake_seq : public Plugin
 {
-#define HACK_NAME "valid RST / fake SEQ"
+#define PLUGIN_NAME "valid RST / fake SEQ"
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -56,7 +56,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
 
@@ -70,7 +70,7 @@ public:
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -83,11 +83,11 @@ public:
                 origpkt.tcp->ack);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
             return false;
         }
 
@@ -96,17 +96,18 @@ public:
         return true;
     }
 
-    valid_rst_fake_seq(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_STARTPEEK)
+    valid_rst_fake_seq() :
+    Plugin(PLUGIN_NAME, AGG_STARTPEEK)
     {
     }
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new valid_rst_fake_seq(forcedTest);
+    return new valid_rst_fake_seq();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

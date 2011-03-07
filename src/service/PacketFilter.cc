@@ -68,7 +68,7 @@ bool FilterEntry::operator<(FilterEntry comp) const
 }
 
 FilterMultiset::FilterMultiset(void) :
-timeout_len(HACKHASH_EXPIRYTIME),
+timeout_len(PLUGINHASH_EXPIRYTIME),
 manage_timeout(sj_clock + timeout_len),
 first(&fm[0]),
 second(&fm[1])

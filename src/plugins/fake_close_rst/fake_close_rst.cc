@@ -34,15 +34,42 @@
  * 	      from your box.
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fake_close_rst : public Hack
+class fake_close_rst : public Plugin
 {
-#define HACK_NAME "Fake RST"
+#define PLUGIN_NAME "Fake RST"
+#define PKT_LOG "plugin.fake_close_rst.log"
+#define MIN_INJECTED_PKTS    4
+#define MAX_INJECTED_PKTS    10
+
+private:
+    pluginLogHandler pLH;
+
+    /* define the cache filter: we need to get info about the session tuple */
+    static bool filter(const cacheRecord &record, const Packet &pkt)
+    {
+        const Packet &refpkt = record.cached_packet;
+
+        return (refpkt.ip->daddr == pkt.ip->daddr &&
+                refpkt.tcp->source == pkt.tcp->source &&
+                refpkt.tcp->dest == pkt.tcp->dest);
+    }
+
+    bool inverseProportionality(uint32_t pkts)
+    {
+        if (pkts < MIN_INJECTED_PKTS)
+            return true;
+
+        if (pkts > MAX_INJECTED_PKTS)
+            return false;
+
+        return (RANDOMPERCENT(100 - (pkts * MAX_INJECTED_PKTS)));
+    }
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -54,7 +81,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
 
         pkt->position = ANTICIPATION;
 
@@ -66,34 +93,75 @@ public:
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
+        pLH.completeLog("verifing condition for id %d datalen %d total len %d",
+                        origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
+
         if (origpkt.chainflag == FINALHACK)
             return false;
 
-        return (origpkt.proto == TCP &&
+        /* preliminar condition */
+        bool ret = origpkt.fragment == false &&
+                origpkt.proto == TCP &&
                 !origpkt.tcp->syn &&
                 !origpkt.tcp->rst &&
-                !origpkt.tcp->fin);
+                !origpkt.tcp->fin;
+
+        if (!ret)
+            return false;
+
+        uint32_t *previouslyInjected;
+        vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
+
+        if (it == pluginCache.end())
+        {
+            uint32_t firstCached = 1;
+
+            cacheCreate(origpkt, (const unsigned char*) &firstCached, sizeof (uint32_t));
+
+            pLH.completeLog("cache created for %s:%u",
+                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
+        }
+        else
+        {
+            /* an hack like Fake RST will be useful few times, not for all the
+             * connections: we are keeping a cache record to count every injected RST and after
+             * a randomic number (between a min of 4 and 12), the RST is not injected again */
+            previouslyInjected = (uint32_t*)&((*it)->cached_data[0]);
+
+            /* we use the pointer to updat the cached data directly */
+            ++(*previouslyInjected);
+
+            ret = inverseProportionality(*previouslyInjected);
+
+            pLH.completeLog("cache present for %s:%u value of %d condition return %s",
+                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
+                            *previouslyInjected, ret ? "TRUE" : "FALSE");
+        }
+
+        return true;
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    fake_close_rst(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_TIMEBASED20S)
+    fake_close_rst() :
+    Plugin(PLUGIN_NAME, AGG_TIMEBASED20S),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
     };
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new fake_close_rst(forcedTest);
+    return new fake_close_rst();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

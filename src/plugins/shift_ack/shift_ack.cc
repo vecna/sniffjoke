@@ -37,15 +37,15 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class shift_ack : public Hack
+class shift_ack : public Plugin
 {
-#define HACK_NAME "unexpected ACK shift"
+#define PLUGIN_NAME "unexpected ACK shift"
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -53,7 +53,7 @@ public:
 
         pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);
@@ -63,7 +63,7 @@ public:
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -76,23 +76,24 @@ public:
                 origpkt.tcp->ack);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    shift_ack(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE)
+    shift_ack() :
+    Plugin(PLUGIN_NAME, AGG_RARE)
     {
     }
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new shift_ack(forcedTest);
+    return new shift_ack();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

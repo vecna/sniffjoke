@@ -20,12 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "HackPool.h"
+#include "PluginPool.h"
 #include "TCPTrack.h"
 
 #include <dlfcn.h>
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, bool pluginOnly)
+PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles)
 {
     LOG_VERBOSE("%s", plugabspath);
 
@@ -44,13 +44,13 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, bool
      * for this reason our makefile is without -Werror
      */
 
-    fp_CreateHackObj = (constructor_f *) dlsym(pluginHandler, "CreateHackObject");
-    fp_DeleteHackObj = (destructor_f *) dlsym(pluginHandler, "DeleteHackObject");
+    fp_CreatePluginObj = (constructor_f *) dlsym(pluginHandler, "createPluginObj");
+    fp_DeletePluginObj = (destructor_f *) dlsym(pluginHandler, "deletePluginObj");
     fp_versionValue = (version_f *) dlsym(pluginHandler, "versionValue");
 
-    if (fp_CreateHackObj == NULL || fp_DeleteHackObj == NULL || fp_versionValue == NULL)
+    if (fp_CreatePluginObj == NULL || fp_DeletePluginObj == NULL || fp_versionValue == NULL)
     {
-        RUNTIME_EXCEPTION("hack plugin %s lack of packet mangling object", plugabspath);
+        RUNTIME_EXCEPTION("plugin %s lack of packet mangling object", plugabspath);
     }
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
@@ -59,46 +59,44 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, bool
                           plugabspath, fp_versionValue(), SW_VERSION);
     }
 
-    if (pluginOnly)
-        LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
-
-    selfObj = fp_CreateHackObj(pluginOnly);
-
-    if (selfObj->hackName == NULL)
+    selfObj = fp_CreatePluginObj();
+    if (selfObj->pluginName == NULL)
     {
-        RUNTIME_EXCEPTION("hack plugin %s lack of ->hackName member",
+        RUNTIME_EXCEPTION("plugin %s lack of ->PluginName member",
                           plugabspath);
     }
 
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
-    failInit = !selfObj->initializeHack(enabledScrambles);
+    failInit = !selfObj->initializePlugin(enabledScrambles);
 
-    snprintfScramblesList(enabledScramblesStr, sizeof(enabledScramblesStr), enabledScrambles);
+    snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
     LOG_ALL("import of %s: %s with [%s] %s",
-            plugabspath, selfObj->hackName,
+            plugabspath, selfObj->pluginName,
             enabledScramblesStr,
             failInit ? "fail" : "success"
             );
 }
 
 /*
- * the constructor of HackPool is called once; in the TCPTrack constructor the class member
- * hack_pool is instanced. what we need here is to read the entire plugin list, open and fix the
- * list, keeping track in listOfHacks variable
+ * the constructor of PluginPool is called once; in the TCPTrack constructor the class member
+ * plugin_pool is instanced. what we need here is to read the entire plugin list, open and fix the
+ * list, keeping track in listOfPlugin variable
  *
- *    hack_pool(sjconf->running)
+ *    plugin_pool(sjconf->running)
  *
- * (class TCPTrack).hack_pool is the name of the unique HackPool element
+ * (class TCPTrack).plugin_pool is the name of the unique PluginPool element
  */
-HackPool::HackPool(const sj_config &runcfg) :
+PluginPool::PluginPool(const sj_config &runcfg) :
 runconfig(runcfg)
 {
     LOG_VERBOSE("onlyplugin [%s]", runcfg.onlyplugin);
 
     if (runcfg.onlyplugin[0])
     {
+        LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
+
         char *comma;
         char onlyplugin_cpy[MEDIUMBUF] = {0};
         char plugabspath[MEDIUMBUF] = {0};
@@ -117,7 +115,7 @@ runconfig(runcfg)
         if (!(supportedScrambles = parseScrambleList(comma)))
             RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
-        importPlugin(plugabspath, runcfg.onlyplugin, supportedScrambles, true);
+        importPlugin(plugabspath, runcfg.onlyplugin, supportedScrambles);
     }
     else
     {
@@ -130,7 +128,7 @@ runconfig(runcfg)
         LOG_ALL("loaded correctly %d plugins", size());
 }
 
-HackPool::~HackPool(void)
+PluginPool::~PluginPool(void)
 {
     LOG_DEBUG("");
 
@@ -139,9 +137,9 @@ HackPool::~HackPool(void)
     {
         const PluginTrack *plugin = *it;
 
-        LOG_DEBUG("calling %s destructor and closing plugin handler", plugin->selfObj->hackName);
+        LOG_DEBUG("calling %s destructor and closing plugin handler", plugin->selfObj->pluginName);
 
-        plugin->fp_DeleteHackObj(plugin->selfObj);
+        plugin->fp_DeletePluginObj(plugin->selfObj);
 
         dlclose(plugin->pluginHandler);
 
@@ -149,22 +147,22 @@ HackPool::~HackPool(void)
     }
 }
 
-void HackPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, bool onlyPlugin)
+void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble)
 {
     try
     {
-        /* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the hacks */
-        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, onlyPlugin);
+        /* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the plugin */
+        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble);
         if (plugin->failInit)
         {
             LOG_DEBUG("failed initialization of %s: require scramble unsupported in the enabler file",
-                      plugin->selfObj->hackName);
+                      plugin->selfObj->pluginName);
             delete plugin;
         }
         else
         {
             push_back(plugin);
-            LOG_DEBUG("plugin %s implementation accepted", plugin->selfObj->hackName);
+            LOG_DEBUG("plugin %s implementation accepted", plugin->selfObj->pluginName);
         }
     }
     catch (runtime_error &e)
@@ -174,7 +172,7 @@ void HackPool::importPlugin(const char *plugabspath, const char *enablerEntry, u
 
 }
 
-uint8_t HackPool::parseScrambleList(const char *list_str)
+uint8_t PluginPool::parseScrambleList(const char *list_str)
 {
 #define SCRAMBLE_SUPPORTED    4
 
@@ -214,7 +212,7 @@ uint8_t HackPool::parseScrambleList(const char *list_str)
     return retval;
 }
 
-void HackPool::parseEnablerFile(void)
+void PluginPool::parseEnablerFile(void)
 {
     char enablerabspath[LARGEBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
@@ -268,10 +266,10 @@ void HackPool::parseEnablerFile(void)
                               line, enablerentry, FILE_PLUGINSENABLER);
         }
 
-        snprintfScramblesList(enabledScramblesStr, sizeof(enabledScramblesStr), enabledScramble);
+        snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScramble);
 
         LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
-        importPlugin(plugabspath, enablerentry, enabledScramble, false);
+        importPlugin(plugabspath, enablerentry, enabledScramble);
 
     }
     while (!feof(plugfile));

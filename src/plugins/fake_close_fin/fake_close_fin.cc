@@ -32,12 +32,12 @@
  * KNOW BUGS:
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fake_close_fin : public Hack
+class fake_close_fin : public Plugin
 {
-#define HACK_NAME "Fake FIN"
-#define PKT_LOG "plugin.fakeFin.log"
+#define PLUGIN_NAME "Fake FIN"
+#define PKT_LOG "plugin.fake_close_fin.log"
 #define MIN_INJECTED_PKTS    4
 #define MAX_INJECTED_PKTS    10
 
@@ -67,7 +67,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -86,7 +86,7 @@ public:
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);
@@ -96,8 +96,11 @@ public:
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
+        pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
+                        origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
+
         if (origpkt.chainflag == FINALHACK)
             return false;
 
@@ -118,10 +121,10 @@ public:
         {
             uint32_t firstCached = 1;
 
-            pLH.completeLog("creating cache for %s:%u",
-                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
-
             cacheCreate(origpkt, (const unsigned char*) &firstCached, sizeof (uint32_t));
+
+            pLH.completeLog("cache created for %s:%u",
+                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
         }
         else
         {
@@ -135,7 +138,7 @@ public:
 
             ret = inverseProportionality(*previouslyInjected);
 
-            pLH.completeLog("cache present for %s:%u value of %d Condition return %s",
+            pLH.completeLog("cache present for %s:%u value of %d condition return %s",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
                             *previouslyInjected, ret ? "TRUE" : "FALSE");
         }
@@ -143,25 +146,25 @@ public:
         return true;
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    fake_close_fin(bool forcedTest) :
-    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_PACKETS30PEEK),
-    pLH(HACK_NAME, PKT_LOG)
+    fake_close_fin() :
+    Plugin(PLUGIN_NAME, AGG_PACKETS30PEEK),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
     }
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new fake_close_fin(forcedTest);
+    return new fake_close_fin();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

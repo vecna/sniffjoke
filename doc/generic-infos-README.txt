@@ -8,20 +8,20 @@ developing 0.4 beta: http://github.com/evilaliv3/sniffjoke
 
 HEADLINE:
 
-This software is a single peer sniffer obfuscator. when you start sniffjoke
+This software is a single peer sniffer obfuscator. when you start SniffJoke
 from your network privileges, the outgoing internet connections became 
 scattered with fake data - without interfere with your sessions - and confusing
 the sniffers in the network when their algorithms try to follow your stream.
 
 REMIND:
 
-1) sniffjoke obfuscates the passive data collection: a man in the middle using 
+1) SniffJoke obfuscates the passive data collection: a man in the middle using 
    a passive software like wireshark, dsniff, xplico, carnivore, ecc...
    ... so DOES NOT PROTECT about the data you, willing or not, send to evil third 
    party, like a phisher, facebook or a proxy service.
-2) sniffjoke does not guarantee a protection from an uber network expert that collects
+2) SniffJoke does not guarantee a protection from an uber network expert that collects
    your data BY HANDS (if you know what's a tcp reconstruction flow, you will figure that 
-   is less expensive, for your enemy, to buy a whore payed for drug you), sniffjoke 
+   is less expensive, for your enemy, to buy a whore payed for drug you), SniffJoke 
    if effective defense from a massive data collection, a threat well solved by
    cryptography but the lack of security culture in "the others" require some single
    peer solution.

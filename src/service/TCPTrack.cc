@@ -22,11 +22,11 @@
 
 #include "TCPTrack.h"
 
-TCPTrack::TCPTrack(const sj_config &runcfg, HackPool &hpp, SessionTrackMap &sessiontrack_map, TTLFocusMap &ttlfocus_map) :
+TCPTrack::TCPTrack(const sj_config &runcfg, PluginPool &hpp, SessionTrackMap &sessiontrack_map, TTLFocusMap &ttlfocus_map) :
 runconfig(runcfg),
 sessiontrack_map(sessiontrack_map),
 ttlfocus_map(ttlfocus_map),
-hack_pool(hpp)
+plugin_pool(hpp)
 {
     LOG_DEBUG("");
 
@@ -46,6 +46,10 @@ TCPTrack::~TCPTrack(void)
 
 uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
 {
+
+    if(runconfig.onlyplugin[0])
+        frequencyValue = AGG_ALWAYS;
+
     uint32_t freqret = 0;
 
     if (frequencyValue & AGG_VERYRARE)
@@ -414,7 +418,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
 
     origpkt.SELFLOG("orig pkt: before incoming mangle");
 
-    for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
+    for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
     {
         PluginTrack *hppe = *it;
 
@@ -425,14 +429,14 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
         {
             Packet &injpkt = **hack_it;
 
-            if (!injpkt.selfIntegrityCheck(hppe->selfObj->hackName))
+            if (!injpkt.selfIntegrityCheck(hppe->selfObj->pluginName))
             {
-                LOG_ALL("%s: invalid pkt generated", hppe->selfObj->hackName);
-                injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->hackName);
+                LOG_ALL("%s: invalid pkt generated", hppe->selfObj->pluginName);
+                injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runconfig.debug_level == PACKET_LEVEL)
-                    RUNTIME_EXCEPTION("%s: invalid pkt generated", hppe->selfObj->hackName);
+                    RUNTIME_EXCEPTION("%s: invalid pkt generated", hppe->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -444,7 +448,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
                 continue;
 
             injpkt.SELFLOG("%s: generated packet, the original will be %s",
-                           hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+                           hppe->selfObj->pluginName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
             /* injpkt.position is ignored in this section because mangleIncoming
              * is called on the YOUNG queue.
@@ -506,7 +510,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
-    for (vector<PluginTrack*>::iterator it = hack_pool.begin(); it != hack_pool.end(); ++it)
+    for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
     {
 
         PluginTrack *hppe = *it;
@@ -514,20 +518,20 @@ bool TCPTrack::injectHack(Packet &origpkt)
         /*
          * this represents a preliminar check common to all hacks.
          * more specific ones related to the origpkt will be checked in
-         * the Condition function implemented by a specific hack.
+         * the condition function implemented by a specific hack.
          */
         if (!(availableScrambles & hppe->selfObj->supportedScrambles))
         {
-            origpkt.SELFLOG("%s: no scramble available", hppe->selfObj->hackName);
+            origpkt.SELFLOG("%s: no scramble available", hppe->selfObj->pluginName);
             continue;
         }
 
         bool applicable = true;
 
-        applicable &= hppe->selfObj->Condition(origpkt, availableScrambles);
+        applicable &= hppe->selfObj->condition(origpkt, availableScrambles);
         applicable &= percentage(
                                  sessiontrack.packet_number,
-                                 hppe->selfObj->hackFrequency,
+                                 hppe->selfObj->pluginFrequency,
                                  getUserFrequency(origpkt)
                                  );
 
@@ -544,7 +548,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         PluginTrack *hppe = *it;
 
-        hppe->selfObj->createHack(origpkt, availableScrambles);
+        hppe->selfObj->applyPlugin(origpkt, availableScrambles);
 
         for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
         {
@@ -553,14 +557,14 @@ bool TCPTrack::injectHack(Packet &origpkt)
              * we trust in the external developer, but it's required a
              * simple safety check by sniffjoke :)
              */
-            if (!injpkt.selfIntegrityCheck(hppe->selfObj->hackName))
+            if (!injpkt.selfIntegrityCheck(hppe->selfObj->pluginName))
             {
-                LOG_ALL("%s: invalid pkt generated", hppe->selfObj->hackName);
-                injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->hackName);
+                LOG_ALL("%s: invalid pkt generated", hppe->selfObj->pluginName);
+                injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runconfig.debug_level == PACKET_LEVEL)
-                    RUNTIME_EXCEPTION("%s invalid pkt generated", hppe->selfObj->hackName);
+                    RUNTIME_EXCEPTION("%s invalid pkt generated", hppe->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -578,7 +582,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
             packet_filter.addFilter(injpkt);
 
             injpkt.SELFLOG("%s: generated pkt, the original will be %s",
-                           hppe->selfObj->hackName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+                           hppe->selfObj->pluginName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
             switch (injpkt.position)
             {
@@ -885,7 +889,7 @@ void TCPTrack::handleHackPackets(void)
 
     if (runconfig.chaining == true)
     {
-        for (p_queue.select(HACK); ((pkt = p_queue.getSource(HACKINJ)) != NULL);)
+        for (p_queue.select(HACK); ((pkt = p_queue.getSource(PLUGIN)) != NULL);)
         {
             if (pkt->chainflag == REHACKABLE)
             {
@@ -961,7 +965,7 @@ Packet * TCPTrack::readpacket(source_t destsource)
     if (destsource == NETWORK)
         mask = NETWORK;
     else
-        mask = TUNNEL | HACKINJ | TRACEROUTE;
+        mask = TUNNEL | PLUGIN | TRACEROUTE;
 
     Packet *pkt;
 

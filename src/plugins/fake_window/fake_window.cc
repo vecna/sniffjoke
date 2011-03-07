@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
+ *
  *   Copyright (C) 2010 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
@@ -21,14 +21,13 @@
  */
 
 /*
- * HACK COMMENT:, every hacks require intensive comments because should cause 
+ * HACK COMMENT:, every hacks require intensive comments because should cause
  * malfunction, or KILL THE INTERNET :)
  *
- * I didn't rembemer exactly, zero window TCP packet are used for stop the 
- * communication until resume is requested
+ * this hack alters the window value perceived by the sniffer for our source
  *
- * this hack must not used ATM, beside be an assured failure in
- * sniffjoke-autotest (using this hack with INNOCENT scramble)
+ * could be useful for futuer hacks.
+ *
  *
  * SOURCE : deduction, whishful thinking
  * VERIFIED IN :
@@ -36,44 +35,52 @@
  * WRITTEN IN VERSION : 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fake_zero_window : public Hack
+class fake_window : public Plugin
 {
-#define HACK_NAME "Fake 0-WINDOW"
+#define PLUGIN_NAME "Fake WINDOW"
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
         pkt->randomizeID();
 
-        pkt->tcp->window = 0;
+        if (RANDOMPERCENT(50))
+            pkt->tcp->window = 0; /* ZERO WINDOW */
+        else
+            memset_random(&(pkt->tcp->window), sizeof (pkt->tcp->window)); /* WINDOW UPDATE */
 
-        pkt->tcp->ack = 0;
-        pkt->tcp->ack_seq = 0;
-
-        /* trivia: must be explored: using an INNOCENT and totally valid packet
-         * with RST and FIN sets, is dropped by a remote Linux OS -- v */
-        pkt->tcp->rst = 1;
+        /* a zero/update window could ack segments */
+        if (RANDOMPERCENT(66))
+        {
+            pkt->tcp->ack = 1;
+            memset_random(&(pkt->tcp->ack_seq), sizeof (pkt->tcp->ack_seq));
+        }
+        else
+        {
+            pkt->tcp->ack = 0;
+            pkt->tcp->ack_seq = 0;
+        }
 
         pkt->tcp->psh = 0;
 
         pkt->tcppayloadResize(0);
 
-        pkt->source = HACKINJ;
+        pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
-        pkt->wtf = INNOCENT;
-        pkt->choosableScramble = SCRAMBLE_INNOCENT;
+        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+        pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         upgradeChainFlag(pkt);
 
         pktVector.push_back(pkt);
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -85,29 +92,24 @@ public:
                 !origpkt.tcp->fin);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
-        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
-        {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
-            return false;
-        }
-
-        supportedScrambles = SCRAMBLE_INNOCENT;
+        supportedScrambles = configuredScramble;
         return true;
     }
 
-    fake_zero_window(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS)
+    fake_window() :
+    Plugin(PLUGIN_NAME, AGG_ALWAYS)
     {
     };
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new fake_zero_window(forcedTest);
+    return new fake_window();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

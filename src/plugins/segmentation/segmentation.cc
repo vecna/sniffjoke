@@ -34,11 +34,11 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class segmentation : public Hack
+class segmentation : public Plugin
 {
-#define HACK_NAME "TCP Segmentation"
+#define PLUGIN_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
 
 #define MIN_SPLIT_PAYLOAD 2 /* bytes */
@@ -51,7 +51,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
          * due to the ratio: MIN_TCP_PAYLOAD = (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
@@ -96,7 +96,7 @@ public:
             pkt->tcppayloadResize(resizeAndCopy);
             memcpy(pkt->tcppayload, &origpkt.tcppayload[pkts * split_size], resizeAndCopy);
 
-            pkt->source = HACKINJ;
+            pkt->source = PLUGIN;
 
             /*
              * the orig packet is removed, so the value of the position
@@ -130,7 +130,7 @@ public:
         removeOrigPkt = true;
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
@@ -147,11 +147,11 @@ public:
         return false;
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
             return false;
         }
 
@@ -161,19 +161,19 @@ public:
         return true;
     }
 
-    segmentation(bool forcedTest) :
-    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE),
-    pLH(HACK_NAME, PKT_LOG)
+    segmentation() :
+    Plugin(PLUGIN_NAME, AGG_RARE),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
     };
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new segmentation(forcedTest);
+    return new segmentation();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

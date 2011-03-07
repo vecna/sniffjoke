@@ -7,7 +7,7 @@ SUBDIRS =	fragmentation \
 		fake_data \
 		fake_seq \
 		fake_syn \
-		fake_zero_window \
+		fake_window \
                 overlap_packet \
 		shift_ack \
 		valid_rst_fake_seq

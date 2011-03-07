@@ -34,11 +34,11 @@
  * KNOW BUGS:
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fragmentation : public Hack
+class fragmentation : public Plugin
 {
-#define HACK_NAME "Fragmentation"
+#define PLUGIN_NAME "Fragmentation"
 #define PKT_LOG "plugin.fragmentation.log"
 
 #define MIN_SPLIT_PAYLOAD 8 /* bytes */
@@ -51,7 +51,7 @@ private:
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
          * due to the ratio: MIN_IP_PAYLOAD = (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
@@ -108,7 +108,7 @@ public:
 
             pkt->randomizeID();
 
-            pkt->source = HACKINJ;
+            pkt->source = PLUGIN;
 
             /*
              * the orig packet is removed, so the value of the position
@@ -139,7 +139,7 @@ public:
 
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         pLH.completeLog("verifing condition for id %d datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
@@ -149,7 +149,7 @@ public:
 
         if (!(availableScrambles & supportedScrambles))
         {
-            origpkt.SELFLOG("no scramble avalable for %s", HACK_NAME);
+            origpkt.SELFLOG("no scramble avalable for %s", PLUGIN_NAME);
             return false;
         }
 
@@ -165,12 +165,11 @@ public:
                 origpkt.ippayloadlen >= MIN_IP_PAYLOAD);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", HACK_NAME);
-
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
             return false;
         }
 
@@ -179,20 +178,19 @@ public:
         return true;
     }
 
-    fragmentation(bool forcedTest) :
-    Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_ALWAYS),
-    pLH(HACK_NAME, PKT_LOG)
+    fragmentation() :
+    Plugin(PLUGIN_NAME, AGG_ALWAYS),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
     }
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-
-    return new fragmentation(forcedTest);
+    return new fragmentation();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
 
     delete who;

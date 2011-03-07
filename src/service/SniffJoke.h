@@ -30,7 +30,7 @@
 #include "TCPTrack.h"
 #include "TTLFocus.h"
 #include "SessionTrack.h"
-#include "HackPool.h"
+#include "PluginPool.h"
 
 using namespace std;
 
@@ -52,7 +52,7 @@ private:
     auto_ptr<TCPTrack> conntrack;
     auto_ptr<TTLFocusMap> ttlfocus_map;
     auto_ptr<SessionTrackMap> sessiontrack_map;
-    auto_ptr<HackPool> hack_pool;
+    auto_ptr<PluginPool> hack_pool;
 
     /* after detach:
      *     service_pid in the root process [the pid of the user process]

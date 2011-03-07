@@ -11,10 +11,10 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			Packet.cc \
 			PacketQueue.h \
 			PacketQueue.cc \
-			Hack.h \
-			Hack.cc \
-			HackPool.h \
-			HackPool.cc \
+			Plugin.h \
+			Plugin.cc \
+			PluginPool.h \
+			PluginPool.cc \
 			TTLFocus.h \
 			TTLFocus.cc \
 			SessionTrack.h \

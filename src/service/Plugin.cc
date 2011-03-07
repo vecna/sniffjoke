@@ -20,9 +20,9 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Hack.h"
+#include "Plugin.h"
 
-vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
+vector<cacheRecord *>::iterator Plugin::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
     for (vector<cacheRecord *>::iterator it = pluginCache.begin(); it != pluginCache.end();)
     {
@@ -32,7 +32,7 @@ vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord
             return it;
         }
 
-        if (record.access_timestamp < sj_clock - hackCacheTimeout)
+        if (record.access_timestamp < sj_clock - pluginCacheTimeout)
         {
             cacheDelete(it); /* the ++ is done internally by the cacheDelete
                                 to keep the iterator valid */
@@ -46,27 +46,27 @@ vector<cacheRecord *>::iterator Hack::cacheCheck(bool(*filter)(const cacheRecord
     return pluginCache.end();
 }
 
-vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt)
+vector<cacheRecord *>::iterator Plugin::cacheCreate(const Packet &pkt)
 {
     cacheRecord *newrecord = new cacheRecord(pkt);
     pluginCache.push_back(newrecord);
     return pluginCache.end() - 1;
 }
 
-vector<cacheRecord *>::iterator Hack::cacheCreate(const Packet &pkt, const unsigned char *data, size_t data_size)
+vector<cacheRecord *>::iterator Plugin::cacheCreate(const Packet &pkt, const unsigned char *data, size_t data_size)
 {
     cacheRecord *newrecord = new cacheRecord(pkt, data, data_size);
     pluginCache.push_back(newrecord);
     return pluginCache.end() - 1;
 }
 
-void Hack::cacheDelete(vector<struct cacheRecord *>::iterator it)
+void Plugin::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
     delete *it;
     pluginCache.erase(it++);
 }
 
-void Hack::upgradeChainFlag(Packet *pkt)
+void Plugin::upgradeChainFlag(Packet *pkt)
 {
     switch(pkt->chainflag)
     {

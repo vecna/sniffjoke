@@ -20,19 +20,18 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SJ_HACK_H
-#define SJ_HACK_H
+#ifndef SJ_PLUGIN_H
+#define SJ_PLUGIN_H
 
 #include "Utils.h"
 #include "Packet.h"
 
 /* 
- * HackPacket - pure virtual methods 
  *
  * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
  * we understood how to do a plugin and load it.
  * HackPacket classes are implemented as external modules and the programmer
- * shoulds implement Condition and createHack, constructor and distructor methods.
+ * shoulds implement condition and applyPlugin, constructor and distructor methods.
  *
  * At the end of every plugin code, it's is required to export two "C" symbols,
  * pointing to the constructor and the destructor method.
@@ -61,20 +60,20 @@ public:
     };
 };
 
-class Hack
+class Plugin
 {
 public:
 
     uint8_t supportedScrambles; /* supported by the location, derived
                                   from plugin_enabler.conf.$location */
-    const char * const hackName; /* hack name as const string */
-    const uint16_t hackFrequency; /* hack frequency, using the value  */
-    bool removeOrigPkt; /* boolean to be set true if the hack
+    const char * const pluginName; /* plugin name as const string */
+    const uint16_t pluginFrequency; /* plugin frequency, using the value  */
+    bool removeOrigPkt; /* boolean to be set true if the plugin
                            needs to remove the original packet */
 
-    vector<Packet *> pktVector; /* std vector of Packet* used for created hack packets */
+    vector<Packet *> pktVector; /* std vector of Packet* used for created packets */
     vector<cacheRecord *> pluginCache;
-    time_t hackCacheTimeout;
+    time_t pluginCacheTimeout;
 
     judge_t pktRandomDamage(uint8_t scrambles)
     {
@@ -85,22 +84,22 @@ public:
         return GUILTY;
     }
 
-    Hack(const char* hackName, uint16_t hackFrequency) :
-    hackName(hackName),
-    hackFrequency(hackFrequency),
+    Plugin(const char* pluginName, uint16_t pluginFrequency) :
+    pluginName(pluginName),
+    pluginFrequency(pluginFrequency),
     removeOrigPkt(false),
-    hackCacheTimeout(HACKCACHE_EXPIRYTIME)
+    pluginCacheTimeout(PLUGINCACHE_EXPIRYTIME)
     {
     };
 
-    virtual void createHack(const Packet &, uint8_t availableScrambles) = 0;
+    virtual void applyPlugin(const Packet &, uint8_t availableScrambles) = 0;
 
-    virtual bool Condition(const Packet &, uint8_t availableScrambles)
+    virtual bool condition(const Packet &, uint8_t availableScrambles)
     {
         return true;
     };
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         return true;
     };
@@ -123,4 +122,4 @@ public:
     void upgradeChainFlag(Packet *);
 };
 
-#endif /* SJ_HACK_H */
+#endif /* SJ_PLUGIN_H */

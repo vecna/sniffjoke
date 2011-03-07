@@ -34,15 +34,15 @@
  * WRITTEN IN VERSION: 0.4.0
  */
 
-#include "service/Hack.h"
+#include "service/Plugin.h"
 
-class fake_syn : public Hack
+class fake_syn : public Plugin
 {
-#define HACK_NAME "Fake SYN"
+#define PLUGIN_NAME "Fake SYN"
 
 public:
 
-    virtual void createHack(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         for (uint8_t pkts = 0; pkts < 2; pkts++)
         {
@@ -72,7 +72,7 @@ public:
                 pkt->tcp->dest = swap;
             }
 
-            pkt->source = HACKINJ;
+            pkt->source = PLUGIN;
 
             if (pkts == 0) /* first packet */
                 pkt->position = ANTICIPATION;
@@ -88,7 +88,7 @@ public:
         }
     }
 
-    virtual bool Condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -100,23 +100,24 @@ public:
                 !origpkt.tcp->fin);
     }
 
-    virtual bool initializeHack(uint8_t configuredScramble)
+    virtual bool initializePlugin(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    fake_syn(bool forcedTest) : Hack(HACK_NAME, forcedTest ? AGG_ALWAYS : AGG_RARE)
+    fake_syn() :
+    Plugin(PLUGIN_NAME, AGG_RARE)
     {
     };
 };
 
-extern "C" Hack* CreateHackObject(bool forcedTest)
+extern "C" Plugin* createPluginObj()
 {
-    return new fake_syn(forcedTest);
+    return new fake_syn();
 }
 
-extern "C" void DeleteHackObject(Hack *who)
+extern "C" void deletePluginObj(Plugin *who)
 {
     delete who;
 }

@@ -93,19 +93,11 @@ int main(int argc, char **argv)
 {
     /*
      * set the default values in the configuration struct
-     * we have only constant length char[] and booleans
      */
     struct sj_cmdline_opts useropt;
     memset(&useropt, 0x00, sizeof (useropt));
 
-    /* ordered initialization of all the values to the default */
-
-    strncpy(useropt.basedir, DEFAULT_DIR, sizeof (useropt.basedir));
-    strncpy(useropt.location, DEFAULT_LOCATION, sizeof (useropt.location));
-    strncpy(useropt.user, DEFAULT_USER, sizeof (useropt.user));
-    strncpy(useropt.group, DEFAULT_GROUP, sizeof (useropt.group));
-    strncpy(useropt.admin_address, DEFAULT_ADMIN_ADDRESS, sizeof (useropt.admin_address));
-    useropt.admin_port = DEFAULT_ADMIN_PORT;
+    /* ordered initialization of all boolean/uint values to the default */
     useropt.chaining = DEFAULT_CHAINING;
     useropt.no_tcp = DEFAULT_NO_TCP;
     useropt.no_udp = DEFAULT_NO_UDP;
@@ -113,10 +105,13 @@ int main(int argc, char **argv)
     useropt.use_blacklist = DEFAULT_USE_BLACKLIST;
     useropt.active = DEFAULT_START_STOPPED;
     useropt.go_foreground = DEFAULT_GO_FOREGROUND;
-    useropt.debug_level = DEFAULT_DEBUG_LEVEL;
-    memset(useropt.onlyplugin, 0x00, sizeof (useropt.onlyplugin));
     useropt.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
     useropt.force_restart = false;
+
+    /*
+     * no explicit inizialization needed for string values;
+     * all will be checked with string[0] != 0
+     */
 
     struct option sj_option[] = {
         { "dir", required_argument, NULL, 'i'},

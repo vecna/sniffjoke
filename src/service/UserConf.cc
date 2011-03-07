@@ -45,6 +45,7 @@ cmdline_opts(cmdline_opts)
     /* generating referringdir and configfile (public) */
     if (cmdline_opts.basedir[0])
     {
+        LOG_ALL("%s", cmdline_opts.basedir);
         if (access(cmdline_opts.basedir, X_OK))
             RUNTIME_EXCEPTION("--dir parameter is not accessible");
         else
