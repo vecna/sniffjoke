@@ -149,7 +149,7 @@ public:
     {
         uint16_t tcppayloadlen; /* [0 - 65515] bytes */
         uint16_t udppayloadlen; /* [0 - 65527] bytes */
-        uint16_t icmppayloadlen; /* always 0 */
+        uint16_t icmppayloadlen; /* [0 - 65527] bytes */
     };
 
     vector<unsigned char> pbuf;

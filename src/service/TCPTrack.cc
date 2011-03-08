@@ -559,12 +559,11 @@ bool TCPTrack::injectHack(Packet &origpkt)
              */
             if (!injpkt.selfIntegrityCheck(hppe->selfObj->pluginName))
             {
-                LOG_ALL("%s: invalid pkt generated", hppe->selfObj->pluginName);
-                injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->pluginName);
+                injpkt.SELFLOG("%s: invalid pkt generated: bad integrity", hppe->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runconfig.debug_level == PACKET_LEVEL)
-                    RUNTIME_EXCEPTION("%s invalid pkt generated", hppe->selfObj->pluginName);
+                    RUNTIME_EXCEPTION("%s invalid pkt generated: bad integrity", hppe->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -828,7 +827,7 @@ void TCPTrack::handleYoungPackets(void)
 
         default:
 
-            RUNTIME_EXCEPTION("FATAL CODE [M05C0N1]: please send a notification to the developers (%u)", pkt->source);
+            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
         }
     }
 }

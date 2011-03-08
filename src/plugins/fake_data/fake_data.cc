@@ -52,7 +52,7 @@ class fake_data : public Plugin
 #define PLUGIN_NAME "Fake Data"
 private:
 
-    static Packet* fake_fragment(const Packet &origpkt)
+    Packet* fake_fragment(const Packet &origpkt)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -61,7 +61,7 @@ private:
         return pkt;
     }
 
-    static Packet* fake_segment(const Packet &origpkt)
+    Packet* fake_segment(const Packet &origpkt)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -88,7 +88,7 @@ private:
         return pkt;
     }
 
-    static Packet* fake_datagram(const Packet &origpkt)
+    Packet* fake_datagram(const Packet &origpkt)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -113,18 +113,18 @@ public:
         else /* the 99% of the times */
             selectedScramble = GUILTY;
 
-        Packet * (*perProtoFunction)(const Packet &);
+        Packet * (fake_data::*perProtoFunction)(const Packet &) = NULL;
 
         if (origpkt.fragment == false)
         {
             if (origpkt.proto == TCP && origpkt.tcppayload != NULL)
-                perProtoFunction = fake_segment;
+                perProtoFunction = &fake_data::fake_segment;
             else if (origpkt.proto == UDP && origpkt.udppayload != NULL)
-                perProtoFunction = fake_datagram;
+                perProtoFunction = &fake_data::fake_datagram;
         }
         else
         {
-            perProtoFunction = fake_fragment;
+            perProtoFunction = &fake_data::fake_fragment;
         }
 
         if (perProtoFunction == NULL)
@@ -132,7 +132,7 @@ public:
 
         for (uint8_t pkts = 0; pkts < 2; pkts++)
         {
-            Packet* pkt = (*perProtoFunction)(origpkt);
+            Packet* pkt = (this->*perProtoFunction)(origpkt);
 
             pkt->randomizeID();
 
