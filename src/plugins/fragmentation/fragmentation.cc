@@ -47,9 +47,55 @@ class fragmentation : public Plugin
 #define MIN_IP_PAYLOAD    (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
+
     pluginLogHandler pLH;
 
 public:
+
+    fragmentation() :
+    Plugin(PLUGIN_NAME, AGG_ALWAYS),
+    pLH(PLUGIN_NAME, PKT_LOG)
+    {
+    }
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
+        {
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
+            return false;
+        }
+
+        supportedScrambles = SCRAMBLE_INNOCENT;
+
+        return true;
+    }
+
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        pLH.completeLog("verifing condition for id %d datalen %d total len %d",
+                        origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
+
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+
+        if (!(availableScrambles & supportedScrambles))
+        {
+            origpkt.SELFLOG("no scramble avalable for %s", PLUGIN_NAME);
+            return false;
+        }
+
+        /*
+         *  RFC 791 states:
+         *
+         * "Every internet module must be able to forward a datagram of 68
+         *  octets without further fragmentation.  This is because an internet
+         *  header may be up to 60 octets, and the minimum fragment is 8 octets."
+         *
+         */
+        return (!(origpkt.ip->frag_off & htons(IP_DF)) &&
+                origpkt.ippayloadlen >= MIN_IP_PAYLOAD);
+    }
 
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
@@ -137,51 +183,6 @@ public:
 
         removeOrigPkt = true;
 
-    }
-
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        pLH.completeLog("verifing condition for id %d datalen %d total len %d",
-                        origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
-
-        if (origpkt.chainflag == FINALHACK)
-            return false;
-
-        if (!(availableScrambles & supportedScrambles))
-        {
-            origpkt.SELFLOG("no scramble avalable for %s", PLUGIN_NAME);
-            return false;
-        }
-
-        /*
-         *  RFC 791 states:
-         *
-         * "Every internet module must be able to forward a datagram of 68
-         *  octets without further fragmentation.  This is because an internet
-         *  header may be up to 60 octets, and the minimum fragment is 8 octets."
-         *
-         */
-        return (!(origpkt.ip->frag_off & htons(IP_DF)) &&
-                origpkt.ippayloadlen >= MIN_IP_PAYLOAD);
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
-        {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
-            return false;
-        }
-
-        supportedScrambles = SCRAMBLE_INNOCENT;
-
-        return true;
-    }
-
-    fragmentation() :
-    Plugin(PLUGIN_NAME, AGG_ALWAYS),
-    pLH(PLUGIN_NAME, PKT_LOG)
-    {
     }
 };
 

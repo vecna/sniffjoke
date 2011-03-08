@@ -42,6 +42,7 @@ class fake_close_fin : public Plugin
 #define MAX_INJECTED_PKTS    10
 
 private:
+
     pluginLogHandler pLH;
 
     /* define the cache filter: we need to get info about the session tuple */
@@ -67,33 +68,16 @@ private:
 
 public:
 
-    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
+    fake_close_fin() :
+    Plugin(PLUGIN_NAME, AGG_PACKETS30PEEK),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
-        Packet * const pkt = new Packet(origpkt);
+    }
 
-        pkt->randomizeID();
-
-        /* we have two guess: 
-         * 1) the sniffer trust the FIN because has the last sequence number + 1
-         * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
-        if (RANDOMPERCENT(50))
-            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
-        /* else, the sequence number is not changed and will be acked after,
-         * because the remote host is receiving this data */
-
-        pkt->tcp->psh = 0;
-        pkt->tcp->fin = 1;
-
-        pkt->tcppayloadResize(0);
-
-        pkt->source = PLUGIN;
-        pkt->position = ANTICIPATION;
-        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
-        pkt->choosableScramble = (availableScrambles & supportedScrambles);
-
-        pkt->chainflag = FINALHACK;
-
-        pktVector.push_back(pkt);
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        supportedScrambles = configuredScramble;
+        return true;
     }
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
@@ -146,16 +130,33 @@ public:
         return true;
     }
 
-    virtual bool initializePlugin(uint8_t configuredScramble)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
-        supportedScrambles = configuredScramble;
-        return true;
-    }
+        Packet * const pkt = new Packet(origpkt);
 
-    fake_close_fin() :
-    Plugin(PLUGIN_NAME, AGG_PACKETS30PEEK),
-    pLH(PLUGIN_NAME, PKT_LOG)
-    {
+        pkt->randomizeID();
+
+        /* we have two guess:
+         * 1) the sniffer trust the FIN because has the last sequence number + 1
+         * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
+        if (RANDOMPERCENT(50))
+            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
+        /* else, the sequence number is not changed and will be acked after,
+         * because the remote host is receiving this data */
+
+        pkt->tcp->psh = 0;
+        pkt->tcp->fin = 1;
+
+        pkt->tcppayloadResize(0);
+
+        pkt->source = PLUGIN;
+        pkt->position = ANTICIPATION;
+        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+        pkt->choosableScramble = (availableScrambles & supportedScrambles);
+
+        pkt->chainflag = FINALHACK;
+
+        pktVector.push_back(pkt);
     }
 };
 

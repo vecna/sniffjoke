@@ -41,7 +41,39 @@
 class valid_rst_fake_seq : public Plugin
 {
 #define PLUGIN_NAME "valid RST / fake SEQ"
+
 public:
+
+    valid_rst_fake_seq() :
+    Plugin(PLUGIN_NAME, AGG_STARTPEEK)
+    {
+    }
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
+        {
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
+            return false;
+        }
+
+        supportedScrambles = SCRAMBLE_INNOCENT;
+
+        return true;
+    }
+
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        if (origpkt.chainflag != HACKUNASSIGNED)
+            return false;
+
+        return (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin &&
+                origpkt.tcp->ack);
+    }
 
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
@@ -68,37 +100,6 @@ public:
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
-    }
-
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        if (origpkt.chainflag != HACKUNASSIGNED)
-            return false;
-
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                !origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin &&
-                origpkt.tcp->ack);
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
-        {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
-            return false;
-        }
-
-        supportedScrambles = SCRAMBLE_INNOCENT;
-
-        return true;
-    }
-
-    valid_rst_fake_seq() :
-    Plugin(PLUGIN_NAME, AGG_STARTPEEK)
-    {
     }
 };
 

@@ -42,6 +42,29 @@ class fake_syn : public Plugin
 
 public:
 
+    fake_syn() :
+    Plugin(PLUGIN_NAME, AGG_RARE)
+    {
+    };
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        supportedScrambles = configuredScramble;
+        return true;
+    }
+
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+
+        return (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
+                origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin);
+    }
+
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         for (uint8_t pkts = 0; pkts < 2; pkts++)
@@ -87,29 +110,6 @@ public:
             pktVector.push_back(pkt);
         }
     }
-
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        if (origpkt.chainflag == FINALHACK)
-            return false;
-
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin);
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        supportedScrambles = configuredScramble;
-        return true;
-    }
-
-    fake_syn() :
-    Plugin(PLUGIN_NAME, AGG_RARE)
-    {
-    };
 };
 
 extern "C" Plugin* createPluginObj()

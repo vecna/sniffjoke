@@ -44,7 +44,9 @@ class overlap_packet : public Plugin
 #define MIN_PACKET_OVERTRY 600
 
 #define SEQINFO 1
+
 private:
+
     pluginLogHandler pLH;
 
     static bool filter(const cacheRecord &record, const Packet &pkt)
@@ -58,6 +60,38 @@ private:
     }
 
 public:
+
+    overlap_packet() :
+    Plugin(PLUGIN_NAME, AGG_RARE),
+    pLH(PLUGIN_NAME, PKT_LOG)
+    {
+    }
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
+        {
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", pluginName);
+            return false;
+        }
+
+        supportedScrambles = SCRAMBLE_INNOCENT;
+
+        return true;
+    }
+
+    /* the only acceptable Scramble is INNOCENT, because the hack is based on
+     * overlap the fragment of the same packet */
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        if (origpkt.chainflag != HACKUNASSIGNED)
+            return false;
+
+        return (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
+                origpkt.tcppayload != NULL &&
+                origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
+    }
 
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
@@ -125,38 +159,6 @@ public:
         pktVector.push_back(pkt);
 
         removeOrigPkt = true;
-    }
-
-    /* the only acceptable Scramble is INNOCENT, because the hack is based on
-     * overlap the fragment of the same packet */
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        if (origpkt.chainflag != HACKUNASSIGNED)
-            return false;
-
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                origpkt.tcppayload != NULL &&
-                origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
-        {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", pluginName);
-            return false;
-        }
-
-        supportedScrambles = SCRAMBLE_INNOCENT;
-
-        return true;
-    }
-
-    overlap_packet() :
-    Plugin(PLUGIN_NAME, AGG_RARE),
-    pLH(PLUGIN_NAME, PKT_LOG)
-    {
     }
 };
 

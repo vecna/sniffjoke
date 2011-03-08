@@ -47,9 +47,60 @@ class segmentation : public Plugin
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
+
     pluginLogHandler pLH;
 
+    /* define the cache filter: we need to get info about the session tuple */
+    static bool filter(const cacheRecord &record, const Packet &pkt)
+    {
+        const Packet &refpkt = record.cached_packet;
+        const uint32_t realnextseq = ntohl(refpkt.tcp->seq) + refpkt.tcppayloadlen;
+
+        return (refpkt.ip->daddr == pkt.ip->saddr &&
+                refpkt.ip->saddr == pkt.ip->daddr &&
+                refpkt.tcp->source == pkt.tcp->dest &&
+                refpkt.tcp->dest == pkt.tcp->source &&
+                realnextseq > ntohl(pkt.tcp->ack_seq));
+    }
+
 public:
+
+    segmentation() :
+    Plugin(PLUGIN_NAME, AGG_RARE),
+    pLH(PLUGIN_NAME, PKT_LOG)
+    {
+    };
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
+        {
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
+            return false;
+        }
+
+        /* the original is removed, and segments are inserted */
+        supportedScrambles = SCRAMBLE_INNOCENT;
+
+        return true;
+    }
+
+    virtual bool condition(const Packet & origpkt, uint8_t availableScrambles)
+    {
+        pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
+                        origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
+
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+
+        if (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
+                origpkt.tcppayload != NULL &&
+                origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
+            return true;
+
+        return false;
+    }
 
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
@@ -127,45 +178,18 @@ public:
                             (pkts + 1), pkts_n, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
         }
 
+        cacheCreate(origpkt);
+
         removeOrigPkt = true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    void mangleIncoming(Packet &pkt)
     {
-        pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
-                        origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
+        vector<cacheRecord *>::iterator it = cacheCheck(&filter, pkt);
 
-        if (origpkt.chainflag == FINALHACK)
-            return false;
-
-        if (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                origpkt.tcppayload != NULL &&
-                origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
-            return true;
-
-        return false;
+        if (it != pluginCache.end())
+            removeOrigPkt = true;
     }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
-        {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
-            return false;
-        }
-
-        /* the original is removed, and segments are inserted */
-        supportedScrambles = SCRAMBLE_INNOCENT;
-
-        return true;
-    }
-
-    segmentation() :
-    Plugin(PLUGIN_NAME, AGG_RARE),
-    pLH(PLUGIN_NAME, PKT_LOG)
-    {
-    };
 };
 
 extern "C" Plugin* createPluginObj()

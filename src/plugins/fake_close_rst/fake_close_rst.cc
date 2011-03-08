@@ -44,6 +44,7 @@ class fake_close_rst : public Plugin
 #define MAX_INJECTED_PKTS    10
 
 private:
+
     pluginLogHandler pLH;
 
     /* define the cache filter: we need to get info about the session tuple */
@@ -69,28 +70,16 @@ private:
 
 public:
 
-    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
+    fake_close_rst() :
+    Plugin(PLUGIN_NAME, AGG_TIMEBASED20S),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
-        Packet * const pkt = new Packet(origpkt);
+    };
 
-        pkt->randomizeID();
-
-        pkt->tcp->psh = 0;
-        pkt->tcp->rst = 1;
-        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
-
-        pkt->tcppayloadResize(0);
-
-        pkt->source = PLUGIN;
-
-        pkt->position = ANTICIPATION;
-
-        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
-        pkt->choosableScramble = (availableScrambles & supportedScrambles);
-
-        pkt->chainflag = FINALHACK;
-
-        pktVector.push_back(pkt);
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        supportedScrambles = configuredScramble;
+        return true;
     }
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
@@ -143,17 +132,29 @@ public:
         return true;
     }
 
-    virtual bool initializePlugin(uint8_t configuredScramble)
+    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
-        supportedScrambles = configuredScramble;
-        return true;
-    }
+        Packet * const pkt = new Packet(origpkt);
 
-    fake_close_rst() :
-    Plugin(PLUGIN_NAME, AGG_TIMEBASED20S),
-    pLH(PLUGIN_NAME, PKT_LOG)
-    {
-    };
+        pkt->randomizeID();
+
+        pkt->tcp->psh = 0;
+        pkt->tcp->rst = 1;
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
+
+        pkt->tcppayloadResize(0);
+
+        pkt->source = PLUGIN;
+
+        pkt->position = ANTICIPATION;
+
+        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+        pkt->choosableScramble = (availableScrambles & supportedScrambles);
+
+        pkt->chainflag = FINALHACK;
+
+        pktVector.push_back(pkt);
+    }
 };
 
 extern "C" Plugin* createPluginObj()

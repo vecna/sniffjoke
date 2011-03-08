@@ -92,17 +92,17 @@ public:
     {
     };
 
-    virtual void applyPlugin(const Packet &, uint8_t availableScrambles) = 0;
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        return true;
+    };
 
     virtual bool condition(const Packet &, uint8_t availableScrambles)
     {
         return true;
     };
 
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        return true;
-    };
+    virtual void applyPlugin(const Packet &, uint8_t availableScrambles) = 0;
 
     virtual void mangleIncoming(Packet &pkt)
     {

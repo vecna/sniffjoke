@@ -50,6 +50,7 @@
 class fake_data : public Plugin
 {
 #define PLUGIN_NAME "Fake Data"
+
 private:
 
     Packet* fake_fragment(const Packet &origpkt)
@@ -98,6 +99,34 @@ private:
     }
 
 public:
+
+    fake_data() : Plugin(PLUGIN_NAME, AGG_COMMON)
+    {
+    };
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        supportedScrambles = configuredScramble;
+        return true;
+    }
+
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+
+        if (origpkt.fragment)
+            return true;
+
+        /* a fake data apply only if a data exists */
+        if (origpkt.proto == TCP && origpkt.tcppayloadlen > 0)
+            return true;
+
+        if (origpkt.proto == UDP && origpkt.udppayloadlen > 0)
+            return true;
+
+        return false;
+    }
 
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
@@ -151,34 +180,6 @@ public:
             pktVector.push_back(pkt);
         }
     }
-
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        if (origpkt.chainflag == FINALHACK)
-            return false;
-
-        if (origpkt.fragment)
-            return true;
-
-        /* a fake data apply only if a data exists */
-        if (origpkt.proto == TCP && origpkt.tcppayloadlen > 0)
-            return true;
-
-        if (origpkt.proto == UDP && origpkt.udppayloadlen > 0)
-            return true;
-
-        return false;
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        supportedScrambles = configuredScramble;
-        return true;
-    }
-
-    fake_data() : Plugin(PLUGIN_NAME, AGG_COMMON)
-    {
-    };
 };
 
 extern "C" Plugin* createPluginObj()

@@ -43,6 +43,29 @@ class fake_window : public Plugin
 
 public:
 
+    fake_window() :
+    Plugin(PLUGIN_NAME, AGG_ALWAYS)
+    {
+    };
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        supportedScrambles = configuredScramble;
+        return true;
+    }
+
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        if (origpkt.chainflag != HACKUNASSIGNED)
+            return false;
+
+        return (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin);
+    }
+
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
@@ -79,29 +102,6 @@ public:
 
         pktVector.push_back(pkt);
     }
-
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        if (origpkt.chainflag != HACKUNASSIGNED)
-            return false;
-
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                !origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin);
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        supportedScrambles = configuredScramble;
-        return true;
-    }
-
-    fake_window() :
-    Plugin(PLUGIN_NAME, AGG_ALWAYS)
-    {
-    };
 };
 
 extern "C" Plugin* createPluginObj()

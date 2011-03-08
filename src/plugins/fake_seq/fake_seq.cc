@@ -42,6 +42,30 @@ class fake_seq : public Plugin
 
 public:
 
+    fake_seq() :
+    Plugin(PLUGIN_NAME, AGG_TIMEBASED5S)
+    {
+    };
+
+    virtual bool initializePlugin(uint8_t configuredScramble)
+    {
+        supportedScrambles = configuredScramble;
+        return true;
+    }
+
+    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        if (origpkt.chainflag == FINALHACK)
+            return false;
+
+        return (origpkt.fragment == false &&
+                origpkt.proto == TCP &&
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin &&
+                origpkt.tcppayload != NULL);
+    }
+
     virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
@@ -75,30 +99,6 @@ public:
 
         pktVector.push_back(pkt);
     }
-
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
-    {
-        if (origpkt.chainflag == FINALHACK)
-            return false;
-
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                !origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin &&
-                origpkt.tcppayload != NULL);
-    }
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        supportedScrambles = configuredScramble;
-        return true;
-    }
-
-    fake_seq() :
-    Plugin(PLUGIN_NAME, AGG_TIMEBASED5S)
-    {
-    };
 };
 
 extern "C" Plugin* createPluginObj()
