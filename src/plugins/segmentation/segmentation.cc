@@ -43,14 +43,13 @@ class segmentation : public Plugin
 
 #define MIN_SPLIT_PAYLOAD 2 /* bytes */
 #define MIN_SPLIT_PKTS    2
-#define MAX_SPLIT_PKTS    5
+#define MAX_SPLIT_PKTS    20
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
 
     pluginLogHandler pLH;
 
-    /* define the cache filter: we need to get info about the session tuple */
     static bool filter(const cacheRecord &record, const Packet &pkt)
     {
         const Packet &refpkt = record.cached_packet;
@@ -58,8 +57,10 @@ private:
 
         return (refpkt.ip->daddr == pkt.ip->saddr &&
                 refpkt.ip->saddr == pkt.ip->daddr &&
+                pkt.proto == TCP &&
                 refpkt.tcp->source == pkt.tcp->dest &&
                 refpkt.tcp->dest == pkt.tcp->source &&
+                pkt.tcp->ack == 1 &&
                 realnextseq > ntohl(pkt.tcp->ack_seq));
     }
 
@@ -95,6 +96,9 @@ public:
 
         if (origpkt.fragment == false &&
                 origpkt.proto == TCP &&
+                !origpkt.tcp->syn &&
+                !origpkt.tcp->rst &&
+                !origpkt.tcp->fin &&
                 origpkt.tcppayload != NULL &&
                 origpkt.tcppayloadlen >= MIN_TCP_PAYLOAD)
             return true;
@@ -116,7 +120,15 @@ public:
 
         const uint32_t starting_seq = ntohl(origpkt.tcp->seq);
 
-        pLH.completeLog("packet size %d start_seq %u (sport %u), splitted in %d chunk of %d bytes",
+        const char *p;
+        char saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};
+        p = inet_ntoa(*((struct in_addr *) &(origpkt.ip->saddr)));
+        strncpy(saddr, p, sizeof (saddr));
+        p = inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr)));
+        strncpy(daddr, p, sizeof (daddr));
+
+        pLH.completeLog("packet %s:%u -> %s:%u size %d start_seq %x (sport %u), splitted in %d chunk of %d bytes",
+                        saddr, ntohs(origpkt.tcp->source), daddr, ntohs(origpkt.tcp->dest),
                         origpkt.tcppayloadlen, starting_seq, ntohs(origpkt.tcp->source),
                         pkts_n, split_size);
 
@@ -174,8 +186,8 @@ public:
 
             pktVector.push_back(pkt);
 
-            pLH.completeLog(" chunk %d of %d - (seq %u) TCP source port %u",
-                            (pkts + 1), pkts_n, ntohl(pkt->tcp->seq), ntohs(pkt->tcp->source));
+            pLH.completeLog(" chunk %d of %d - seq|%x",
+                            (pkts + 1), pkts_n, ntohl(pkt->tcp->seq));
         }
 
         cacheCreate(origpkt);
@@ -188,7 +200,21 @@ public:
         vector<cacheRecord *>::iterator it = cacheCheck(&filter, pkt);
 
         if (it != pluginCache.end())
+        {
+            const char *p;
+            char saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};
+            p = inet_ntoa(*((struct in_addr *) &(pkt.ip->saddr)));
+            strncpy(saddr, p, sizeof (saddr));
+            p = inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr)));
+            strncpy(daddr, p, sizeof (daddr));
+
+            pkt.SELFLOG("requesting packet removal due to segmented ack");
+            pLH.completeLog("requesting packet removal due to segmented ack: %s:%u -> %s:%u ack_seq|%x",
+                            saddr, ntohs(pkt.tcp->source), daddr, ntohs(pkt.tcp->dest),
+                            ntohl(pkt.tcp->ack_seq));
+
             removeOrigPkt = true;
+        }
     }
 };
 

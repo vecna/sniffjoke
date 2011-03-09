@@ -114,6 +114,10 @@ public:
         pktVector.clear();
     }
 
+    /*
+       we export the iterator as return to permit explicit cache removal;
+       this is not a requirement for plugins, due to the mangage routine included in cacheCheck
+     */
     vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
     vector<cacheRecord *>::iterator cacheCreate(const Packet &);
     vector<cacheRecord *>::iterator cacheCreate(const Packet &, const unsigned char* data, size_t data_size);
