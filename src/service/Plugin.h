@@ -60,6 +60,27 @@ public:
     };
 };
 
+class PluginCache : public vector<cacheRecord *>
+{
+    time_t cacheTimeout;
+
+public:
+
+    PluginCache(time_t timeout = PLUGINCACHE_EXPIRYTIME)
+    {
+        cacheTimeout = timeout;
+    };
+
+    /*
+      we export the iterator as return to permit explicit cache removal;
+      this is not a requirement for plugins, due to the mangage routine included in cacheCheck
+     */
+    vector<cacheRecord *>::iterator check(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
+    vector<cacheRecord *>::iterator add(const Packet &);
+    vector<cacheRecord *>::iterator add(const Packet &, const unsigned char*, size_t);
+    void erase(vector<struct cacheRecord *>::iterator it);
+};
+
 class Plugin
 {
 public:
@@ -72,8 +93,6 @@ public:
                            needs to remove the original packet */
 
     vector<Packet *> pktVector; /* std vector of Packet* used for created packets */
-    vector<cacheRecord *> pluginCache;
-    time_t pluginCacheTimeout;
 
     judge_t pktRandomDamage(uint8_t scrambles)
     {
@@ -87,8 +106,7 @@ public:
     Plugin(const char* pluginName, uint16_t pluginFrequency) :
     pluginName(pluginName),
     pluginFrequency(pluginFrequency),
-    removeOrigPkt(false),
-    pluginCacheTimeout(PLUGINCACHE_EXPIRYTIME)
+    removeOrigPkt(false)
     {
     };
 
@@ -113,15 +131,6 @@ public:
         removeOrigPkt = false;
         pktVector.clear();
     }
-
-    /*
-       we export the iterator as return to permit explicit cache removal;
-       this is not a requirement for plugins, due to the mangage routine included in cacheCheck
-     */
-    vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
-    vector<cacheRecord *>::iterator cacheCreate(const Packet &);
-    vector<cacheRecord *>::iterator cacheCreate(const Packet &, const unsigned char* data, size_t data_size);
-    void cacheDelete(vector<struct cacheRecord *>::iterator it);
 
     void upgradeChainFlag(Packet *);
 };

@@ -45,6 +45,8 @@ private:
 
     pluginLogHandler pLH;
 
+    PluginCache cache;
+
     /* define the cache filter: we need to get info about the session tuple */
     static bool filter(const cacheRecord &record, const Packet &pkt)
     {
@@ -99,13 +101,13 @@ public:
             return false;
 
         uint32_t *previouslyInjected;
-        vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
+        vector<cacheRecord *>::iterator it = cache.check(&filter, origpkt);
 
-        if (it == pluginCache.end())
+        if (it == cache.end())
         {
             uint32_t firstCached = 1;
 
-            cacheCreate(origpkt, (const unsigned char*) &firstCached, sizeof (uint32_t));
+            cache.add(origpkt, (const unsigned char*) &firstCached, sizeof (firstCached));
 
             pLH.completeLog("cache created for %s:%u",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));

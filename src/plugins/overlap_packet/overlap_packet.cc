@@ -49,6 +49,8 @@ private:
 
     pluginLogHandler pLH;
 
+    PluginCache cache;
+
     static bool filter(const cacheRecord &record, const Packet &pkt)
     {
 
@@ -118,13 +120,13 @@ public:
         /* is cached the amount of data cached in the first segment */
         uint32_t sentData;
 
-        vector<cacheRecord *>::iterator it = cacheCheck(&filter, origpkt);
+        vector<cacheRecord *>::iterator it = cache.check(&filter, origpkt);
 
-        if (it == pluginCache.end())
+        if (it == cache.end())
         {
             sentData = (origpkt.tcppayloadlen / 2);
 
-            it = cacheCreate(origpkt, (const unsigned char*) &sentData, 4);
+            it = cache.add(origpkt, (const unsigned char*) &sentData, sizeof(sentData));
 
             pkt->tcppayloadResize(sentData);
             pkt->tcp->psh = 0;
@@ -139,7 +141,7 @@ public:
 
             sentData = *(uint32_t*)&((*it)->cached_data[0]);
 
-            cacheDelete(it);
+            cache.erase(it);
 
             memset_random(pkt->tcppayload, sentData);
 

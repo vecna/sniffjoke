@@ -91,7 +91,7 @@ FilterMultiset::~FilterMultiset(void)
  * 
  *      - false: if not found.
  */
-bool FilterMultiset::checkEntry(const FilterEntry &hash)
+bool FilterMultiset::check(const FilterEntry &hash)
 {
     if (first->erase(hash) || second->erase(hash))
         return true;
@@ -106,7 +106,7 @@ bool FilterMultiset::checkEntry(const FilterEntry &hash)
  * so repeated filters works as a fine counter during packet filtering.
  *
  */
-void FilterMultiset::addEntry(const FilterEntry &hash)
+void FilterMultiset::add(const FilterEntry &hash)
 {
     second->insert(hash);
 }
@@ -130,19 +130,19 @@ bool PacketFilter::filterICMPErrors(const Packet &pkt)
     {
         struct iphdr *ip = (struct iphdr*) pkt.icmppayload;
         FilterEntry filter(ip->id, ip->tot_len, ip->saddr, ip->daddr);
-        return filter_multiset.checkEntry(filter);
+        return filter_multiset.check(filter);
     }
 
     return false;
 }
 
-void PacketFilter::addFilter(const Packet& pkt)
+void PacketFilter::add(const Packet& pkt)
 {
     FilterEntry hash(pkt);
-    filter_multiset.addEntry(hash);
+    filter_multiset.add(hash);
 }
 
-bool PacketFilter::matchFilter(const Packet& pkt)
+bool PacketFilter::match(const Packet& pkt)
 {
     if (pkt.proto == ICMP)
         return filterICMPErrors(pkt);

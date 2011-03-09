@@ -43,12 +43,14 @@ class segmentation : public Plugin
 
 #define MIN_SPLIT_PAYLOAD 2 /* bytes */
 #define MIN_SPLIT_PKTS    2
-#define MAX_SPLIT_PKTS    20
+#define MAX_SPLIT_PKTS    10
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
 
     pluginLogHandler pLH;
+
+    PluginCache cache;
 
     static bool filter(const cacheRecord &record, const Packet &pkt)
     {
@@ -190,16 +192,16 @@ public:
                             (pkts + 1), pkts_n, ntohl(pkt->tcp->seq));
         }
 
-        cacheCreate(origpkt);
+        cache.add(origpkt);
 
         removeOrigPkt = true;
     }
 
     void mangleIncoming(Packet &pkt)
     {
-        vector<cacheRecord *>::iterator it = cacheCheck(&filter, pkt);
+        vector<cacheRecord *>::iterator it = cache.check(&filter, pkt);
 
-        if (it != pluginCache.end())
+        if (it != cache.end())
         {
             const char *p;
             char saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};

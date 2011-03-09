@@ -48,8 +48,8 @@ private:
 public:
     FilterMultiset(void);
     ~FilterMultiset(void);
-    bool checkEntry(const FilterEntry &);
-    void addEntry(const FilterEntry &);
+    bool check(const FilterEntry &);
+    void add(const FilterEntry &);
     void manage(void);
 };
 
@@ -61,6 +61,6 @@ private:
     bool filterICMPErrors(const Packet &pkt);
 
 public:
-    void addFilter(const Packet& pkt);
-    bool matchFilter(const Packet& pkt);
+    void add(const Packet& pkt);
+    bool match(const Packet& pkt);
 };

@@ -578,7 +578,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
             /* setting for debug pourpose: sniffjokectl info will show this value */
             sessiontrack.injected_pktnumber++;
 
-            packet_filter.addFilter(injpkt);
+            packet_filter.add(injpkt);
 
             injpkt.SELFLOG("%s: generated pkt, the original will be %s",
                            hppe->selfObj->pluginName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
@@ -779,7 +779,7 @@ void TCPTrack::handleYoungPackets(void)
                 continue;
             }
 
-            if (packet_filter.matchFilter(*pkt))
+            if (packet_filter.match(*pkt))
             {
                 pkt->SELFLOG("removal requested by PacketFilter");
                 p_queue.drop(*pkt);
