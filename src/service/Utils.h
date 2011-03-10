@@ -63,13 +63,12 @@ extern time_t sj_clock;
 #define ISSET_CHECKSUM(byte)    (byte & SCRAMBLE_CHECKSUM)
 #define ISSET_MALFORMED(byte)   (byte & SCRAMBLE_MALFORMED)
 #define ISSET_INNOCENT(byte)    (byte & SCRAMBLE_INNOCENT)
+#define RANDOMPERCENT(percent)  ((uint32_t)random() % 100 <= percent)
 
-int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
-
-#define RANDOMPERCENT(percent) ( (uint32_t)random() % 100 <= percent)
 void init_random(void);
 void* memset_random(void *, size_t);
 
+int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 #define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
 std::runtime_error runtime_exception(const char *, const char *, int32_t, const char *, ...);

@@ -69,7 +69,7 @@ public:
     {
     }
 
-    virtual bool initializePlugin(uint8_t configuredScramble)
+    virtual bool init(uint8_t configuredScramble)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
@@ -95,7 +95,7 @@ public:
                 origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
     }
 
-    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
     {
         /* 
          * TODO -- 

@@ -49,7 +49,6 @@ private:
     FILE *logstream;
     FILE *session_logstream;
     FILE *packet_logstream;
-
     bool appendOpen(uint8_t thislevel, const char *fname, FILE **previously);
 
 public:

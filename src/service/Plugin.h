@@ -31,7 +31,7 @@
  * Following this howto: http://www.faqs.org/docs/Linux-mini/C++-dlopen.html
  * we understood how to do a plugin and load it.
  * HackPacket classes are implemented as external modules and the programmer
- * shoulds implement condition and applyPlugin, constructor and distructor methods.
+ * shoulds implement condition and apply, constructor and distructor methods.
  *
  * At the end of every plugin code, it's is required to export two "C" symbols,
  * pointing to the constructor and the destructor method.
@@ -66,10 +66,8 @@ class PluginCache : public vector<cacheRecord *>
 
 public:
 
-    PluginCache(time_t timeout = PLUGINCACHE_EXPIRYTIME)
-    {
-        cacheTimeout = timeout;
-    };
+    PluginCache(time_t = PLUGINCACHE_EXPIRYTIME);
+    ~PluginCache();
 
     /*
       we export the iterator as return to permit explicit cache removal;
@@ -78,7 +76,7 @@ public:
     vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
     vector<cacheRecord *>::iterator cacheAdd(const Packet &);
     vector<cacheRecord *>::iterator cacheAdd(const Packet &, const unsigned char*, size_t);
-    void cacheDelete(vector<struct cacheRecord *>::iterator it);
+    vector<cacheRecord *>::iterator cacheDelete(vector<struct cacheRecord *>::iterator it);
 };
 
 class Plugin
@@ -94,44 +92,14 @@ public:
 
     vector<Packet *> pktVector; /* std vector of Packet* used for created packets */
 
-    judge_t pktRandomDamage(uint8_t scrambles)
-    {
-        if (ISSET_TTL(scrambles) && RANDOMPERCENT(75))
-            return PRESCRIPTION;
-        if (ISSET_MALFORMED(scrambles) && RANDOMPERCENT(80))
-            return MALFORMED;
-        return GUILTY;
-    }
-
-    Plugin(const char* pluginName, uint16_t pluginFrequency) :
-    pluginName(pluginName),
-    pluginFrequency(pluginFrequency),
-    removeOrigPkt(false)
-    {
-    };
-
-    virtual bool initializePlugin(uint8_t configuredScramble)
-    {
-        return true;
-    };
-
-    virtual bool condition(const Packet &, uint8_t availableScrambles)
-    {
-        return true;
-    };
-
-    virtual void applyPlugin(const Packet &, uint8_t availableScrambles) = 0;
-
-    virtual void mangleIncoming(Packet &pkt)
-    {
-    };
-
-    virtual void reset(void)
-    {
-        removeOrigPkt = false;
-        pktVector.clear();
-    }
-
+    Plugin(const char *, uint16_t);
+    virtual ~Plugin() = 0; /* Plugin is an abstract class */
+    judge_t pktRandomDamage(uint8_t);
+    virtual bool init(uint8_t);
+    virtual bool condition(const Packet &, uint8_t);
+    virtual void apply(const Packet &, uint8_t);
+    virtual void mangleIncoming(Packet &);
+    virtual void reset(void);
     void upgradeChainFlag(Packet *);
 };
 

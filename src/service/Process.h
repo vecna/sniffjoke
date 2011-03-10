@@ -44,6 +44,7 @@ private:
     sigset_t sig_nset;
     sigset_t sig_oset;
     struct sigaction action;
+
 public:
     Process(const struct sj_config &);
     ~Process(void);
@@ -51,7 +52,6 @@ public:
     pid_t readPidfile(void);
     void writePidfile(void);
     void unlinkPidfile(bool);
-
 
     int detach(void);
     void jail(const char *chroot_dir);

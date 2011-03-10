@@ -68,7 +68,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles)
 
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
-    failInit = !selfObj->initializePlugin(enabledScrambles);
+    failInit = !selfObj->init(enabledScrambles);
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 

@@ -44,6 +44,7 @@ class IPListMap : public map<const uint32_t, IPList*>
 {
 private:
     const char *dumpfname;
+
 public:
     IPListMap(const char*);
     ~IPListMap(void);

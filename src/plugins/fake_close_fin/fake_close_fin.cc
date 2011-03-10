@@ -76,7 +76,7 @@ public:
     {
     }
 
-    virtual bool initializePlugin(uint8_t configuredScramble)
+    virtual bool init(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
@@ -132,7 +132,7 @@ public:
         return true;
     }
 
-    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 

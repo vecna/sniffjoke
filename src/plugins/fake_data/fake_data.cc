@@ -104,7 +104,7 @@ public:
     {
     };
 
-    virtual bool initializePlugin(uint8_t configuredScramble)
+    virtual bool init(uint8_t configuredScramble)
     {
         supportedScrambles = configuredScramble;
         return true;
@@ -128,7 +128,7 @@ public:
         return false;
     }
 
-    virtual void applyPlugin(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
     {
         /*
          * in fake segment I don't use pktRandomDamage because I want the

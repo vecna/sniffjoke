@@ -548,7 +548,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         PluginTrack *hppe = *it;
 
-        hppe->selfObj->applyPlugin(origpkt, availableScrambles);
+        hppe->selfObj->apply(origpkt, availableScrambles);
 
         for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
         {

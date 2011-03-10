@@ -53,6 +53,7 @@ private:
     void importPlugin(const char *, const char *, uint8_t);
     void parseEnablerFile(void);
     uint8_t parseScrambleList(const char *);
+
 public:
     PluginPool(const sj_config &);
     ~PluginPool(void);

@@ -22,20 +22,38 @@
 
 #include "Plugin.h"
 
+PluginCache::PluginCache(time_t timeout) :
+cacheTimeout(timeout)
+{
+    LOG_DEBUG("");
+}
+
+PluginCache::~PluginCache()
+{
+    LOG_DEBUG("");
+
+    for (vector<cacheRecord *>::iterator it = begin(); it != end();)
+    {
+        delete *it;
+        it = erase(it);
+    }
+}
+
 vector<cacheRecord *>::iterator PluginCache::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
     for (vector<cacheRecord *>::iterator it = begin(); it != end();)
     {
         cacheRecord &record = **it;
-        if (filter(record, pkt)) {
+        if (filter(record, pkt))
+        {
             record.access_timestamp = sj_clock; /* update the access timestamp */
             return it;
         }
 
         if (record.access_timestamp < sj_clock - cacheTimeout)
         {
-            cacheDelete(it); /* the ++ is done internally by the cacheDelete
-                                to keep the iterator valid */
+            it = cacheDelete(it); /* the ++ is done internally by the cacheDelete
+                                     to keep the iterator valid */
         }
         else
         {
@@ -60,25 +78,66 @@ vector<cacheRecord *>::iterator PluginCache::cacheAdd(const Packet &pkt, const u
     return end() - 1;
 }
 
-void PluginCache::cacheDelete(vector<struct cacheRecord *>::iterator it)
+vector<cacheRecord *>::iterator PluginCache::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
     delete *it;
-    cacheDelete(it++);
+    return erase(it);
+}
+
+Plugin::Plugin(const char* pluginName, uint16_t pluginFrequency) :
+pluginName(pluginName),
+pluginFrequency(pluginFrequency),
+removeOrigPkt(false)
+{
+}
+
+judge_t Plugin::pktRandomDamage(uint8_t scrambles)
+{
+    if (ISSET_TTL(scrambles) && RANDOMPERCENT(75))
+        return PRESCRIPTION;
+    if (ISSET_MALFORMED(scrambles) && RANDOMPERCENT(80))
+        return MALFORMED;
+    return GUILTY;
+}
+
+bool Plugin::init(uint8_t configuredScramble)
+{
+    return true;
+}
+
+bool Plugin::condition(const Packet &, uint8_t availableScrambles)
+{
+    return true;
+}
+
+void Plugin::apply(const Packet &, uint8_t availableScrambles)
+{
+    return;
+}
+
+void Plugin::mangleIncoming(Packet &pkt)
+{
+}
+
+void Plugin::reset(void)
+{
+    removeOrigPkt = false;
+    pktVector.clear();
 }
 
 void Plugin::upgradeChainFlag(Packet *pkt)
 {
-    switch(pkt->chainflag)
+    switch (pkt->chainflag)
     {
-        case HACKUNASSIGNED:
-            pkt->chainflag = REHACKABLE;
-            break;
-        case REHACKABLE:
-            pkt->chainflag = FINALHACK;
-            break;
-        case FINALHACK:
-            LOG_ALL("Warning: a non hackable-again packet has requested an increment status: check packet_id %u",
+    case HACKUNASSIGNED:
+        pkt->chainflag = REHACKABLE;
+        break;
+    case REHACKABLE:
+        pkt->chainflag = FINALHACK;
+        break;
+    case FINALHACK:
+        LOG_ALL("Warning: a non hackable-again packet has requested an increment status: check packet_id %u",
                 pkt->SjPacketId);
-            pkt->chainflag = FINALHACK;
+        pkt->chainflag = FINALHACK;
     }
 }
