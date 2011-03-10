@@ -22,7 +22,7 @@
 
 #include "Plugin.h"
 
-vector<cacheRecord *>::iterator PluginCache::check(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
+vector<cacheRecord *>::iterator PluginCache::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
     for (vector<cacheRecord *>::iterator it = begin(); it != end();)
     {
@@ -34,7 +34,7 @@ vector<cacheRecord *>::iterator PluginCache::check(bool(*filter)(const cacheReco
 
         if (record.access_timestamp < sj_clock - cacheTimeout)
         {
-            erase(it); /* the ++ is done internally by the cacheDelete
+            cacheDelete(it); /* the ++ is done internally by the cacheDelete
                                 to keep the iterator valid */
         }
         else
@@ -46,24 +46,24 @@ vector<cacheRecord *>::iterator PluginCache::check(bool(*filter)(const cacheReco
     return end();
 }
 
-vector<cacheRecord *>::iterator PluginCache::add(const Packet &pkt)
+vector<cacheRecord *>::iterator PluginCache::cacheAdd(const Packet &pkt)
 {
     cacheRecord *newrecord = new cacheRecord(pkt);
     push_back(newrecord);
     return end() - 1;
 }
 
-vector<cacheRecord *>::iterator PluginCache::add(const Packet &pkt, const unsigned char *data, size_t data_size)
+vector<cacheRecord *>::iterator PluginCache::cacheAdd(const Packet &pkt, const unsigned char *data, size_t data_size)
 {
     cacheRecord *newrecord = new cacheRecord(pkt, data, data_size);
     push_back(newrecord);
     return end() - 1;
 }
 
-void PluginCache::erase(vector<struct cacheRecord *>::iterator it)
+void PluginCache::cacheDelete(vector<struct cacheRecord *>::iterator it)
 {
     delete *it;
-    erase(it++);
+    cacheDelete(it++);
 }
 
 void Plugin::upgradeChainFlag(Packet *pkt)

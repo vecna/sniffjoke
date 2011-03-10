@@ -192,14 +192,14 @@ public:
                             (pkts + 1), pkts_n, ntohl(pkt->tcp->seq));
         }
 
-        cache.add(origpkt);
+        cache.cacheAdd(origpkt);
 
         removeOrigPkt = true;
     }
 
     void mangleIncoming(Packet &pkt)
     {
-        vector<cacheRecord *>::iterator it = cache.check(&filter, pkt);
+        vector<cacheRecord *>::iterator it = cache.cacheCheck(&filter, pkt);
 
         if (it != cache.end())
         {

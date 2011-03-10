@@ -582,7 +582,7 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf.runconfig.admin_port), userconf.runconfig.admin_port);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location_name), userconf.runconfig.location_name);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location), userconf.runconfig.location);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHAINING, sizeof (userconf.runconfig.chaining), userconf.runconfig.chaining);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_TCP, sizeof (userconf.runconfig.no_tcp), userconf.runconfig.no_tcp);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_UDP, sizeof (userconf.runconfig.no_udp), userconf.runconfig.no_udp);

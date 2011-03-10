@@ -40,7 +40,7 @@ struct sj_cmdline_opts
     char basedir[MEDIUMBUF];
     char location[MEDIUMBUF];
 
-    /* START OF COMMON PART WITH sj_config */
+    /* START OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
     char user[MEDIUMBUF];
     char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
@@ -55,7 +55,7 @@ struct sj_cmdline_opts
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
-    /* END OF COMMON PART WITH sj_config */
+    /* END OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
 
     bool force_restart;
 };
@@ -71,9 +71,9 @@ struct sj_config
     char version[SMALLBUF]; /* SW_VERSION from hardcoded-defines.h */
 
     char working_dir[LARGEBUF];
-    char location_name[MEDIUMBUF];
+    char location[MEDIUMBUF];
 
-    /* START OF COMMON PART WITH sj_cmdline_opt */
+    /* START OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
     char user[MEDIUMBUF];
     char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
@@ -88,7 +88,7 @@ struct sj_config
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
-    /* END OF COMMON PART WITH sj_cmdline_opt */
+    /* END OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
 
     /* mangling policies */
     uint16_t portconf[PORTSNUMBER];

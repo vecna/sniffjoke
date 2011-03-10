@@ -103,13 +103,13 @@ public:
             return false;
 
         uint32_t *previouslyInjected;
-        vector<cacheRecord *>::iterator it = cache.check(&filter, origpkt);
+        vector<cacheRecord *>::iterator it = cache.cacheCheck(&filter, origpkt);
 
         if (it == cache.end())
         {
             uint32_t firstCached = 1;
 
-            cache.add(origpkt, (const unsigned char*) &firstCached, sizeof (firstCached));
+            cache.cacheAdd(origpkt, (const unsigned char*) &firstCached, sizeof (firstCached));
 
             pLH.completeLog("cache created for %s:%u",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));

@@ -75,10 +75,10 @@ public:
       we export the iterator as return to permit explicit cache removal;
       this is not a requirement for plugins, due to the mangage routine included in cacheCheck
      */
-    vector<cacheRecord *>::iterator check(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
-    vector<cacheRecord *>::iterator add(const Packet &);
-    vector<cacheRecord *>::iterator add(const Packet &, const unsigned char*, size_t);
-    void erase(vector<struct cacheRecord *>::iterator it);
+    vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
+    vector<cacheRecord *>::iterator cacheAdd(const Packet &);
+    vector<cacheRecord *>::iterator cacheAdd(const Packet &, const unsigned char*, size_t);
+    void cacheDelete(vector<struct cacheRecord *>::iterator it);
 };
 
 class Plugin

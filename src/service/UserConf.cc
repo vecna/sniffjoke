@@ -75,7 +75,7 @@ cmdline_opts(cmdline_opts)
 
     /* setting up che 'struct sj_config runconfig', the public member of UserConf class */
     memset(&runconfig, 0x00, sizeof (sj_config));
-    memcpy(runconfig.location_name, selected_location, strlen(selected_location));
+    memcpy(runconfig.location, selected_location, strlen(selected_location));
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
     snprintf(runconfig.working_dir, sizeof (runconfig.working_dir), "%s%s", selected_basedir, selected_location);
@@ -122,7 +122,7 @@ cmdline_opts(cmdline_opts)
         else
         {
             LOG_VERBOSE("accepted location %s with accessible enabler fileconf",
-                        runconfig.location_name);
+                        runconfig.location);
         }
     }
 
@@ -628,7 +628,7 @@ bool UserConf::syncDiskConfiguration(void)
 
     if (!syncPortsFiles() || !syncIPListsFiles())
     {
-        LOG_ALL("interrupted dumping of running configuration in the %s location", runconfig.location_name);
+        LOG_ALL("interrupted dumping of running configuration in the %s location", runconfig.location);
         goto faultyreturn;
     }
 
