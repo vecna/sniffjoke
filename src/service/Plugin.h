@@ -83,9 +83,9 @@ class Plugin
 {
 public:
 
-    uint8_t supportedScrambles; /* supported by the location, derived
-                                  from plugin_enabler.conf.$location */
     const char * const pluginName; /* plugin name as const string */
+    uint8_t supportedScrambles; /* supported by the location, derived
+                                   from plugin_enabler.conf.$location */
     const uint16_t pluginFrequency; /* plugin frequency, using the value  */
     bool removeOrigPkt; /* boolean to be set true if the plugin
                            needs to remove the original packet */
