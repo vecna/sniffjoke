@@ -115,11 +115,11 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
                 );
 }
 
-TTLFocusMap::TTLFocusMap(void)
+TTLFocusMap::TTLFocusMap(void) :
+manage_timeout(sj_clock)
 {
     LOG_DEBUG("");
 
-    manage_timeout = sj_clock;
     load();
 }
 
@@ -143,6 +143,7 @@ TTLFocus& TTLFocusMap::get(const Packet &pkt)
 
     /* check if the key it's already present */
     TTLFocusMap::iterator it = find(pkt.ip->daddr);
+
     if (it != end()) /* on hit: return the ttlfocus object. */
         ttlfocus = &(*it->second);
     else /* on miss: create a new ttlfocus and insert it into the map */

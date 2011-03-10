@@ -69,7 +69,7 @@ pbuf(pkt.pbuf)
 
 void Packet::updatePacketMetadata(void)
 {
-    uint16_t pktlen = pbuf.size();
+    const uint16_t pktlen = pbuf.size();
 
     /* start initial metadata reset */
 

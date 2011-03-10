@@ -132,7 +132,6 @@ void SniffJoke::run(void)
     }
     else
     {
-
         proc.isolation();
 
         setupDebug();
@@ -336,7 +335,7 @@ int SniffJoke::recvCommand(int sock, char *databuf, int bufsize, struct sockaddr
 uint8_t * SniffJoke::handleCmd(const char *cmd)
 {
     memset(io_buf, 0x00, sizeof (io_buf));
-    uint16_t* psize = (uint16_t *) io_buf;
+    const uint16_t* psize = (uint16_t *) io_buf;
 
     LOG_DEBUG("command received begin processed: [%s]", cmd);
 
