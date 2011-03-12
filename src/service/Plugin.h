@@ -93,9 +93,8 @@ public:
     vector<Packet *> pktVector; /* std vector of Packet* used for created packets */
 
     Plugin(const char *, uint16_t);
-    virtual ~Plugin() = 0; /* Plugin is an abstract class */
     judge_t pktRandomDamage(uint8_t);
-    virtual bool init(uint8_t);
+    virtual bool init(uint8_t) = 0 ; /* Plugin is an abstract class */
     virtual bool condition(const Packet &, uint8_t);
     virtual void apply(const Packet &, uint8_t);
     virtual void mangleIncoming(Packet &);
