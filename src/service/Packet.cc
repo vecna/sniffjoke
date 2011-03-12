@@ -500,7 +500,7 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     uint16_t freespace = MTU - pktlen;
 
-    SELFLOG("before ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
+    SELFLOG("before ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     if (strip_previous)
     {
@@ -529,29 +529,33 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     try
     {
-        HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (unsigned char *) ip + sizeof (struct iphdr), actual_iphdrlen, target_iphdrlen);
+        HDRoptions IPInjector(IPOPTS_INJECTOR, (uint8_t *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
         uint8_t tries = MAXIPINJITERATIONS;
+        uint32_t growing_opthdrlen = 0 ;
+        uint8_t alignByte;
 
-        do
-        {
-            injected |= IPInjector.randomInjector();
-        }
-        while ((target_iphdrlen != actual_iphdrlen) && --tries);
+        /* TODO IPinjector.setupOption( sessiontrack-> ... ); */
+
+        while( (growing_opthdrlen + sizeof(struct iphdr)) != target_iphdrlen && --tries);
+            growing_opthdrlen = IPInjector.randomInjector(corrupt);
+
+        alignByte = ( growing_opthdrlen % 4) ? 4 - ( growing_opthdrlen % 4) : 0;
+        if(alignByte)
+            growing_opthdrlen = IPInjector.alignOpthdr( alignByte );
+
+        growing_opthdrlen += sizeof(struct iphdr);
+
+        if ( target_iphdrlen != growing_opthdrlen )
+            iphdrResize(growing_opthdrlen);
+
+        IPInjector.copyOpthdr( (uint8_t *)ip + sizeof(struct iphdr) );
     }
     catch (exception &e)
     {
         SELFLOG("IPOpts injection not possible");
     }
 
-    if (target_iphdrlen != actual_iphdrlen)
-    {
-        /* iphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
-        to inject options not aligned to 4 */
-        actual_iphdrlen += (actual_iphdrlen % 4) ? (4 - actual_iphdrlen % 4) : 0;
-        iphdrResize(actual_iphdrlen);
-    }
-
-    SELFLOG("after ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
+    SELFLOG("after ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
     return injected;
 }
@@ -597,29 +601,30 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 
     try
     {
-        HDRoptions TCPInjector(TCPOPTS_INJECTOR, corrupt, (unsigned char *) tcp + sizeof (struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
+        HDRoptions TCPInjector(TCPOPTS_INJECTOR, (uint8_t *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
         uint8_t tries = MAXTCPINJITERATIONS;
+        uint32_t growing_opthdrlen = 0 ;
+        uint8_t alignByte;
 
-        do
-        {
-            injected |= TCPInjector.randomInjector();
+        /* TODO IPinjector.setupOption( sessiontrack-> ... ); */
 
-        }
-        while ((target_tcphdrlen != actual_tcphdrlen) && --tries);
+        while( (growing_opthdrlen + sizeof(struct tcphdr)) != target_tcphdrlen && --tries);
+            growing_opthdrlen = TCPInjector.randomInjector(corrupt);
 
+        alignByte = ( growing_opthdrlen % 4) ? 4 - ( growing_opthdrlen % 4) : 0;
+        if(alignByte)
+            growing_opthdrlen = TCPInjector.alignOpthdr( alignByte );
+
+        growing_opthdrlen += sizeof(struct tcphdr);
+
+        if ( target_tcphdrlen != growing_opthdrlen )
+            tcphdrResize(growing_opthdrlen);
+
+        TCPInjector.copyOpthdr( (uint8_t *)tcp + sizeof(struct tcphdr) );
     }
     catch (exception &e)
     {
         SELFLOG("TCPOpts injection not possibile");
-    }
-
-    if (target_tcphdrlen != actual_tcphdrlen)
-    {
-
-        /* tcphdrlen must be a multiple of 4, this last check is to permit IPInjector.randomInjector()
-        to inject options not aligned to 4 */
-        actual_tcphdrlen += (actual_tcphdrlen % 4) ? (4 - actual_tcphdrlen % 4) : 0;
-        tcphdrResize(actual_tcphdrlen);
     }
 
     SELFLOG("after TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());

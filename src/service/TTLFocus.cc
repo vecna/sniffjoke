@@ -80,10 +80,11 @@ TTLFocus::~TTLFocus(void)
 
 void TTLFocus::selectPuppetPort(void)
 {
-    uint16_t realport = probe_dummy.tcp->source;
-    puppet_port = (realport + random()) % 32767 + 1;
-    if (puppet_port > realport - PUPPET_MARGIN && puppet_port < realport + PUPPET_MARGIN)
-        puppet_port = (puppet_port + (random() % 2) ? -PUPPET_MARGIN : +PUPPET_MARGIN) % 32767 + 1;
+    uint16_t realport = ntohs(probe_dummy.tcp->source);
+
+    do {
+        puppet_port = (random() % (32767 - 1024) ) + 1024;
+    } while ( (puppet_port >> 4) == (realport >> 4) );
 }
 
 void TTLFocus::selflog(const char *func, const char *format, ...) const
