@@ -236,3 +236,4 @@ void portLine::mergeLine(uint16_t *portarray)
         if (portSelected[i])
             portarray[i] = OrValue;
 }
+

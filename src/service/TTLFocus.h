@@ -25,12 +25,24 @@
 
 #include "Utils.h"
 #include "Packet.h"
+#include "HDRoptions.h"
 
 /* IT'S FUNDAMENTAL TO HAVE ALL THIS ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
 enum ttlsearch_t
 {
     TTL_KNOWN = 1, TTL_BRUTEFORCE = 2, TTL_UNKNOWN = 4
+};
+
+struct usefulHDRopt
+{
+    /* this is set by default in every IP/TCP options */
+    bool usefull;
+    /* this is set when the MALFORMED scramble is not randomic but aim 
+     * to test a specific option, waiting in the incoming Filter if an
+     * error is returned or not, after this test, the option will be
+     * set usefull = false */
+    bool underTesting;
 };
 
 class TTLFocus
@@ -46,9 +58,6 @@ public:
     uint8_t rand_key; /* random key used as try to discriminate traceroute packet */
     uint16_t puppet_port; /* random port used with the aim to not disturbe a session */
 
-#define PUPPET_MARGIN 10 /* margin to mantain between real dest port and puppet port
-                            with the aim to not disturbe a session */
-
     uint8_t sent_probe; /* number of sent probes */
     uint8_t received_probe; /* number of received probes */
 
@@ -59,6 +68,8 @@ public:
                              on status UNKNOWN : represents the max expired ttl found */
     uint8_t ttl_synack; /* the value of the ttl read in the synack packet */
 
+    /* per-dest tracking of which IP|TCP options will be effective or became dropped */
+    struct option_discovery OptMap[SUPPORTED_OPTIONS];
 
     Packet probe_dummy; /* dummy ttlprobe packet generated from the packet
                            that scattered the ttlfocus creation. */
