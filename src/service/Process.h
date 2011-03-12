@@ -34,7 +34,7 @@
 class Process
 {
 private:
-    const struct sj_config &runconfig;
+    const struct sj_config &runcfg;
 
     struct passwd userinfo;
     void* userinfo_buf;

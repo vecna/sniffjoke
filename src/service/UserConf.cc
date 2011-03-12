@@ -75,14 +75,14 @@ cmdline_opts(cmdline_opts)
     }
 
     /* setting up che 'struct sj_config runconfig', the public member of UserConf class */
-    memset(&runconfig, 0x00, sizeof (sj_config));
-    memcpy(runconfig.location, selected_location, strlen(selected_location));
+    memset(&runcfg, 0x00, sizeof (sj_config));
+    memcpy(runcfg.location, selected_location, strlen(selected_location));
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
-    snprintf(runconfig.working_dir, sizeof (runconfig.working_dir), "%s%s", selected_basedir, selected_location);
+    snprintf(runcfg.working_dir, sizeof (runcfg.working_dir), "%s%s", selected_basedir, selected_location);
 
     /* checking if the option --location has sense: will be a typo! */
-    if (access(runconfig.working_dir, X_OK))
+    if (access(runcfg.working_dir, X_OK))
     {
         RUNTIME_EXCEPTION("invalid parm: basedir (%s) and location (%s) point to a non accessible directory: %s",
                           selected_basedir, selected_location, strerror(errno));
@@ -90,27 +90,27 @@ cmdline_opts(cmdline_opts)
     else
     {
         LOG_DEBUG("checked working directory %s accessible",
-                  runconfig.working_dir);
+                  runcfg.working_dir);
     }
 
     snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
     /* loadDiskConfiguration() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
-    if (chdir(runconfig.working_dir))
+    if (chdir(runcfg.working_dir))
         RUNTIME_EXCEPTION("Unable to chdir in the specifiy location");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     loadDiskConfiguration();
 
     /* check integrity in the configuration loaded */
-    if (runconfig.no_tcp && runconfig.no_udp)
+    if (runcfg.no_tcp && runcfg.no_udp)
         RUNTIME_EXCEPTION("configuration conflict: both tcp and udp can't be disabled");
 
-    if (runconfig.use_blacklist && runconfig.use_whitelist)
+    if (runcfg.use_blacklist && runcfg.use_whitelist)
         RUNTIME_EXCEPTION("configuration conflict: both blacklist and whitelist seem to be enabled");
 
-    if (runconfig.onlyplugin[0])
+    if (runcfg.onlyplugin[0])
     {
-        LOG_VERBOSE("plugin %s override the plugins settings in %s", runconfig.onlyplugin,
+        LOG_VERBOSE("plugin %s override the plugins settings in %s", runcfg.onlyplugin,
                     FILE_PLUGINSENABLER);
     }
     else
@@ -123,7 +123,7 @@ cmdline_opts(cmdline_opts)
         else
         {
             LOG_VERBOSE("accepted location %s with accessible enabler fileconf",
-                        runconfig.location);
+                        runcfg.location);
         }
     }
 
@@ -152,14 +152,14 @@ void UserConf::autodetectLocalInterface(void)
     pclose(foca);
 
     for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); ++i)
-        runconfig.interface[i] = imp_str[i];
+        runcfg.interface[i] = imp_str[i];
 
     if (i < 3)
         RUNTIME_EXCEPTION("default gateway not present: sniffjoke cannot be started");
     else
     {
         LOG_ALL("detected external interface with default gateway: %s",
-                runconfig.interface);
+                runcfg.interface);
     }
 }
 
@@ -170,18 +170,18 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
     char imp_str[SMALLBUF];
     uint8_t i;
     snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- 2>/dev/null",
-             runconfig.interface);
+             runcfg.interface);
 
-    LOG_ALL("detecting interface %s ip address with [%s]", runconfig.interface, cmd);
+    LOG_ALL("detecting interface %s ip address with [%s]", runcfg.interface, cmd);
 
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
     pclose(foca);
 
     for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
-        runconfig.local_ip_addr[i] = imp_str[i];
+        runcfg.local_ip_addr[i] = imp_str[i];
 
-    LOG_ALL("acquired local ip address: %s", runconfig.local_ip_addr);
+    LOG_ALL("acquired local ip address: %s", runcfg.local_ip_addr);
 }
 
 void UserConf::autodetectGWIPAddress(void)
@@ -198,13 +198,13 @@ void UserConf::autodetectGWIPAddress(void)
     pclose(foca);
 
     for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
-        runconfig.gw_ip_addr[i] = imp_str[i];
+        runcfg.gw_ip_addr[i] = imp_str[i];
 
-    if (strlen(runconfig.gw_ip_addr) < 7)
+    if (strlen(runcfg.gw_ip_addr) < 7)
         RUNTIME_EXCEPTION("unable to autodetect gateway ip address, sniffjoke cannot be started");
     else
     {
-        LOG_ALL("acquired gateway ip address: %s", runconfig.gw_ip_addr);
+        LOG_ALL("acquired gateway ip address: %s", runcfg.gw_ip_addr);
     }
 }
 
@@ -214,9 +214,9 @@ void UserConf::autodetectGWMACAddress(void)
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
-    snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s 2>/dev/null", runconfig.gw_ip_addr);
+    snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s 2>/dev/null", runcfg.gw_ip_addr);
 
-    LOG_ALL("pinging %s trying to populate ARP table [%s]", runconfig.gw_ip_addr, cmd);
+    LOG_ALL("pinging %s trying to populate ARP table [%s]", runcfg.gw_ip_addr, cmd);
 
     foca = popen(cmd, "r");
     /* we do not need the output of ping, we need to wait the ping to finish
@@ -224,7 +224,7 @@ void UserConf::autodetectGWMACAddress(void)
     pclose(foca);
 
     memset(cmd, 0x00, sizeof (cmd));
-    snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50 2>/dev/null", runconfig.gw_ip_addr);
+    snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50 2>/dev/null", runcfg.gw_ip_addr);
 
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
 
@@ -233,17 +233,17 @@ void UserConf::autodetectGWMACAddress(void)
     pclose(foca);
 
     for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); ++i)
-        runconfig.gw_mac_str[i] = imp_str[i];
+        runcfg.gw_mac_str[i] = imp_str[i];
 
     if (i != 17)
         RUNTIME_EXCEPTION("unable to autodetect gateway mac address");
     else
     {
-        LOG_ALL("acquired mac address from the arp table: %s", runconfig.gw_mac_str);
+        LOG_ALL("acquired mac address from the arp table: %s", runcfg.gw_mac_str);
         uint32_t mac[6];
-        sscanf(runconfig.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+        sscanf(runcfg.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         for (i = 0; i < 6; ++i)
-            runconfig.gw_mac_addr[i] = mac[i];
+            runcfg.gw_mac_addr[i] = mac[i];
     }
 }
 
@@ -256,7 +256,7 @@ void UserConf::autodetectFirstAvailableTunnelInterface(void)
     LOG_ALL("detecting first unused tunnel device with [%s]", cmd);
 
     foca = popen(cmd, "r");
-    for (runconfig.tun_number = 0;; ++runconfig.tun_number)
+    for (runcfg.tun_number = 0;; ++runcfg.tun_number)
     {
         memset(imp_str, 0x00, sizeof (imp_str));
         fgets(imp_str, SMALLBUF, foca);
@@ -265,7 +265,7 @@ void UserConf::autodetectFirstAvailableTunnelInterface(void)
     }
     pclose(foca);
 
-    LOG_ALL("detected %d as first unused tunnel device", runconfig.tun_number);
+    LOG_ALL("detected %d as first unused tunnel device", runcfg.tun_number);
 }
 
 /* this method is called by SniffJoke.cc */
@@ -280,10 +280,10 @@ void UserConf::networkSetup(void)
     autodetectGWMACAddress();
     autodetectFirstAvailableTunnelInterface();
 
-    LOG_VERBOSE("* system local interface: %s, %s address", runconfig.interface, runconfig.local_ip_addr);
-    LOG_VERBOSE("* default gateway mac address: %s", runconfig.gw_mac_str);
-    LOG_VERBOSE("* default gateway ip address: %s", runconfig.gw_ip_addr);
-    LOG_VERBOSE("* first available tunnel interface: tun%d", runconfig.tun_number);
+    LOG_VERBOSE("* system local interface: %s, %s address", runcfg.interface, runcfg.local_ip_addr);
+    LOG_VERBOSE("* default gateway mac address: %s", runcfg.gw_mac_str);
+    LOG_VERBOSE("* default gateway ip address: %s", runcfg.gw_ip_addr);
+    LOG_VERBOSE("* first available tunnel interface: tun%d", runcfg.tun_number);
     LOG_VERBOSE("* the traffic from the gateway mac address has been blocked by iptables");
     sleep(1);
 }
@@ -473,30 +473,30 @@ bool UserConf::loadDiskConfiguration(void)
     else
         LOG_DEBUG("opening configuration file: %s", configfile);
 
-    parseMatch(runconfig.user, "user", loadstream, cmdline_opts.user, DEFAULT_USER);
-    parseMatch(runconfig.group, "group", loadstream, cmdline_opts.group, DEFAULT_GROUP);
-    parseMatch(runconfig.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
-    parseMatch(runconfig.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
-    parseMatch(runconfig.chaining, "chaining", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
-    parseMatch(runconfig.no_tcp, "no-tcp", loadstream, cmdline_opts.no_tcp, DEFAULT_NO_TCP);
-    parseMatch(runconfig.no_udp, "no-udp", loadstream, cmdline_opts.no_udp, DEFAULT_NO_UDP);
-    parseMatch(runconfig.use_whitelist, "whitelist", loadstream, cmdline_opts.use_whitelist, DEFAULT_USE_WHITELIST);
-    parseMatch(runconfig.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, DEFAULT_USE_BLACKLIST);
-    parseMatch(runconfig.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
-    parseMatch(runconfig.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, DEFAULT_GO_FOREGROUND);
-    parseMatch(runconfig.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
-    parseMatch(runconfig.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
-    parseMatch(runconfig.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
+    parseMatch(runcfg.user, "user", loadstream, cmdline_opts.user, DEFAULT_USER);
+    parseMatch(runcfg.group, "group", loadstream, cmdline_opts.group, DEFAULT_GROUP);
+    parseMatch(runcfg.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
+    parseMatch(runcfg.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
+    parseMatch(runcfg.chaining, "chaining", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
+    parseMatch(runcfg.no_tcp, "no-tcp", loadstream, cmdline_opts.no_tcp, DEFAULT_NO_TCP);
+    parseMatch(runcfg.no_udp, "no-udp", loadstream, cmdline_opts.no_udp, DEFAULT_NO_UDP);
+    parseMatch(runcfg.use_whitelist, "whitelist", loadstream, cmdline_opts.use_whitelist, DEFAULT_USE_WHITELIST);
+    parseMatch(runcfg.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, DEFAULT_USE_BLACKLIST);
+    parseMatch(runcfg.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
+    parseMatch(runcfg.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, DEFAULT_GO_FOREGROUND);
+    parseMatch(runcfg.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
+    parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
+    parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     /* those files act in portconf[PORTNUMBER]; array, merging the ports configuration */
     loadAggressivity();
 
     /* loading of IP lists, in future also the source IP address should be useful */
-    if (runconfig.use_blacklist)
-        runconfig.blacklist = new IPListMap(FILE_IPBLACKLIST);
+    if (runcfg.use_blacklist)
+        runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
 
-    if (runconfig.use_whitelist)
-        runconfig.whitelist = new IPListMap(FILE_IPWHITELIST);
+    if (runcfg.use_whitelist)
+        runcfg.whitelist = new IPListMap(FILE_IPWHITELIST);
 
     if (loadstream)
         fclose(loadstream);
@@ -510,12 +510,12 @@ void UserConf::loadAggressivity(void)
     FILE *loadstream;
 
     for (int32_t i = 0; i < PORTSNUMBER; i++)
-        runconfig.portconf[i] = AGG_NONE;
+        runcfg.portconf[i] = AGG_NONE;
 
     if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
     {
         LOG_ALL("port aggrssivity specifications in %s/%s: %s, using defaults",
-                runconfig.working_dir, FILE_AGGRESSIVITY, strerror(errno));
+                runcfg.working_dir, FILE_AGGRESSIVITY, strerror(errno));
 
         /* the default is NONE. in the file port-aggrssivity.conf
          * the configured default is:
@@ -556,9 +556,9 @@ void UserConf::loadAggressivity(void)
         pl.extractValue();
 
         if (pl.error_message)
-            RUNTIME_EXCEPTION("Unable to parse aggressivity file %s/%s line %d: %s", runconfig.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
+            RUNTIME_EXCEPTION("Unable to parse aggressivity file %s/%s line %d: %s", runcfg.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
 
-        pl.mergeLine(runconfig.portconf);
+        pl.mergeLine(runcfg.portconf);
     }
 
     fclose(loadstream);
@@ -612,24 +612,24 @@ bool UserConf::syncDiskConfiguration(void)
 
     /* this is bad, this segment of code is more coherent in UserConf.cc */
     written += fprintf(out, "# this is a dumped file by SniffJoke version %s\n", SW_VERSION);
-    written += dumpIfPresent(out, "user", runconfig.user, DEFAULT_USER);
-    written += dumpIfPresent(out, "group", runconfig.group, DEFAULT_GROUP);
-    written += dumpIfPresent(out, "management-address", runconfig.admin_address, DEFAULT_ADMIN_ADDRESS);
-    written += dumpIfPresent(out, "management-port", runconfig.admin_port, DEFAULT_ADMIN_PORT);
-    written += dumpIfPresent(out, "chaining", runconfig.chaining, DEFAULT_CHAINING);
-    written += dumpIfPresent(out, "no-tcp", runconfig.no_tcp, DEFAULT_NO_TCP);
-    written += dumpIfPresent(out, "no-udp", runconfig.no_udp, DEFAULT_NO_UDP);
-    written += dumpIfPresent(out, "whitelist", runconfig.use_whitelist, DEFAULT_USE_WHITELIST);
-    written += dumpIfPresent(out, "blacklist", runconfig.use_blacklist, DEFAULT_USE_BLACKLIST);
-    written += dumpIfPresent(out, "active", runconfig.active, DEFAULT_START_STOPPED);
-    written += dumpIfPresent(out, "foreground", runconfig.go_foreground, DEFAULT_GO_FOREGROUND);
-    written += dumpIfPresent(out, "debug", runconfig.debug_level, DEFAULT_DEBUG_LEVEL);
-    written += dumpIfPresent(out, "only-plugin", runconfig.onlyplugin, NULL);
-    written += dumpIfPresent(out, "max-ttl-probe", runconfig.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
+    written += dumpIfPresent(out, "user", runcfg.user, DEFAULT_USER);
+    written += dumpIfPresent(out, "group", runcfg.group, DEFAULT_GROUP);
+    written += dumpIfPresent(out, "management-address", runcfg.admin_address, DEFAULT_ADMIN_ADDRESS);
+    written += dumpIfPresent(out, "management-port", runcfg.admin_port, DEFAULT_ADMIN_PORT);
+    written += dumpIfPresent(out, "chaining", runcfg.chaining, DEFAULT_CHAINING);
+    written += dumpIfPresent(out, "no-tcp", runcfg.no_tcp, DEFAULT_NO_TCP);
+    written += dumpIfPresent(out, "no-udp", runcfg.no_udp, DEFAULT_NO_UDP);
+    written += dumpIfPresent(out, "whitelist", runcfg.use_whitelist, DEFAULT_USE_WHITELIST);
+    written += dumpIfPresent(out, "blacklist", runcfg.use_blacklist, DEFAULT_USE_BLACKLIST);
+    written += dumpIfPresent(out, "active", runcfg.active, DEFAULT_START_STOPPED);
+    written += dumpIfPresent(out, "foreground", runcfg.go_foreground, DEFAULT_GO_FOREGROUND);
+    written += dumpIfPresent(out, "debug", runcfg.debug_level, DEFAULT_DEBUG_LEVEL);
+    written += dumpIfPresent(out, "only-plugin", runcfg.onlyplugin, NULL);
+    written += dumpIfPresent(out, "max-ttl-probe", runcfg.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     if (!syncPortsFiles() || !syncIPListsFiles())
     {
-        LOG_ALL("interrupted dumping of running configuration in the %s location", runconfig.location);
+        LOG_ALL("interrupted dumping of running configuration in the %s location", runcfg.location);
         goto faultyreturn;
     }
 

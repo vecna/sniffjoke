@@ -29,7 +29,7 @@
 #include <sys/ioctl.h>
 
 NetIO::NetIO(const sj_config& runcfg) :
-runconfig(runcfg)
+runcfg(runcfg)
 {
     LOG_DEBUG("");
 
@@ -50,16 +50,16 @@ runconfig(runcfg)
     memset(&orig_gw, 0x00, sizeof (orig_gw));
 
     /* pseudo sanity check of received data, sjconf had already make something */
-    if (strlen(runconfig.gw_ip_addr) < 7 || strlen(runconfig.gw_ip_addr) > 17)
+    if (strlen(runcfg.gw_ip_addr) < 7 || strlen(runcfg.gw_ip_addr) > 17)
     {
         RUNTIME_EXCEPTION("invalid ip address [%s] is not an IPv4, check the config",
-                          runconfig.gw_ip_addr);
+                          runcfg.gw_ip_addr);
     }
 
-    if (strlen(runconfig.gw_mac_str) != 17)
+    if (strlen(runcfg.gw_mac_str) != 17)
     {
         RUNTIME_EXCEPTION("invalid mac address [%s] is not a MAC addr, check the config",
-                          runconfig.gw_mac_str);
+                          runcfg.gw_mac_str);
     }
 
     if ((tunfd = open("/dev/net/tun", O_RDWR)) != -1)
@@ -107,23 +107,23 @@ runconfig(runcfg)
     pclose(popen("route del default 2>/dev/null", "r"));
 
     snprintf(cmd, sizeof (cmd), "ifconfig tun%d %s pointopoint %s mtu %d 2>/dev/null",
-             runconfig.tun_number, runconfig.local_ip_addr, DEFAULT_FAKE_IPADDR, MTU_FAKE);
+             runcfg.tun_number, runcfg.local_ip_addr, DEFAULT_FAKE_IPADDR, MTU_FAKE);
     LOG_VERBOSE("setting up tun % d with the % s's IP (%s) command [%s]",
-                runconfig.tun_number, runconfig.interface, runconfig.local_ip_addr, cmd);
+                runcfg.tun_number, runcfg.interface, runcfg.local_ip_addr, cmd);
     pclose(popen(cmd, "r"));
 
     LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: "DEFAULT_FAKE_IPADDR);
     pclose(popen("route add default gw "DEFAULT_FAKE_IPADDR" 2>/dev/null", "r"));
 
-    strncpy(orig_gw.ifr_name, (const char *) runconfig.interface, sizeof (orig_gw.ifr_name));
+    strncpy(orig_gw.ifr_name, (const char *) runcfg.interface, sizeof (orig_gw.ifr_name));
     tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 
     if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1)
-        LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", runconfig.interface);
+        LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", runcfg.interface);
     else
     {
         RUNTIME_EXCEPTION("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
-                          runconfig.interface, strerror(errno));
+                          runcfg.interface, strerror(errno));
     }
 
     close(tmpfd);
@@ -144,14 +144,14 @@ runconfig(runcfg)
     send_ll.sll_halen = ETH_ALEN;
 
     memset(&send_ll.sll_addr, 0xFF, sizeof (send_ll.sll_addr));
-    memcpy(send_ll.sll_addr, runconfig.gw_mac_addr, ETH_ALEN);
+    memcpy(send_ll.sll_addr, runcfg.gw_mac_addr, ETH_ALEN);
 
     if ((ret = bind(netfd, (struct sockaddr *) &send_ll, sizeof (send_ll))) != -1)
         LOG_DEBUG("binding datalink layer interface successfully");
     else
         RUNTIME_EXCEPTION("unable to bind datalink layer interface: %s", strerror(errno));
 
-    snprintf(cmd, sizeof (cmd), "iptables -A INPUT -m mac --mac-source %s -j DROP 2>/dev/null", runconfig.gw_mac_str);
+    snprintf(cmd, sizeof (cmd), "iptables -A INPUT -m mac --mac-source %s -j DROP 2>/dev/null", runcfg.gw_mac_str);
     LOG_ALL("dropping all traffic from the gateway [%s]", cmd);
     pclose(popen(cmd, "r"));
 
@@ -172,15 +172,15 @@ NetIO::~NetIO(void)
         LOG_VERBOSE("deleting our default gw [route del default]");
         pclose(popen("route del default 2>/dev/null", "r"));
 
-        snprintf(cmd, sizeof (cmd), "ifconfig tun%d down 2>/dev/null", runconfig.tun_number);
-        LOG_VERBOSE("shutting down tun%d interface [%s]", runconfig.tun_number, cmd);
+        snprintf(cmd, sizeof (cmd), "ifconfig tun%d down 2>/dev/null", runcfg.tun_number);
+        LOG_VERBOSE("shutting down tun%d interface [%s]", runcfg.tun_number, cmd);
         pclose(popen(cmd, "r"));
 
-        snprintf(cmd, sizeof (cmd), "route add default gw %s 2>/dev/null", runconfig.gw_ip_addr);
+        snprintf(cmd, sizeof (cmd), "route add default gw %s 2>/dev/null", runcfg.gw_ip_addr);
         LOG_VERBOSE("restoring previous default gateway [%s]", cmd);
         pclose(popen(cmd, "r"));
 
-        snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP 2>/dev/null", runconfig.gw_mac_str);
+        snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP 2>/dev/null", runcfg.gw_mac_str);
         LOG_VERBOSE("deleting the filtering rule: [%s]", cmd);
         pclose(popen(cmd, "r"));
     }

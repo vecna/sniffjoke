@@ -32,11 +32,8 @@ PluginCache::~PluginCache()
 {
     LOG_DEBUG("");
 
-    for (vector<cacheRecord *>::iterator it = begin(); it != end();)
-    {
+    for (vector<cacheRecord *>::iterator it = begin(); it != end(); it = erase(it))
         delete *it;
-        it = erase(it);
-    }
 }
 
 vector<cacheRecord *>::iterator PluginCache::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)

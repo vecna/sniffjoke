@@ -35,7 +35,7 @@
 class NetIO
 {
 private:
-    const struct sj_config &runconfig;
+    const struct sj_config &runcfg;
     TCPTrack *conntrack;
 
     /*

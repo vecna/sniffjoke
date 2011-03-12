@@ -49,14 +49,17 @@ public:
 class PluginPool : public vector<PluginTrack *>
 {
 private:
-    const sj_config &runconfig;
+    const sj_config &runcfg;
+    uint8_t globalEnabledScrambles;
     void importPlugin(const char *, const char *, uint8_t);
+    void parseOnlyPlugin(void);
     void parseEnablerFile(void);
     uint8_t parseScrambleList(const char *);
 
 public:
     PluginPool(const sj_config &);
     ~PluginPool(void);
+    uint8_t enabledScrambles();
 };
 
 #endif /* SJ_PLUGINPOOL_H */

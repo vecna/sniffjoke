@@ -28,6 +28,9 @@
 #include "Utils.h"
 
 /* not all options are defined in the standard library */
+
+#define IPOPT_NOOP_SIZE     1
+
 #define IPOPT_CIPSO         (6 |IPOPT_CONTROL|IPOPT_COPY)
 #define IPOPT_CIPSO_SIZE    10
 
@@ -53,11 +56,10 @@ enum corruption_t
     UNASSIGNED_VALUE = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4
 };
 
-struct option_tracking
+struct option_occorrence
 {
-    bool isPresent;
-    uint8_t *offset;
-    uint8_t optlen;
+    uint8_t off;
+    uint8_t len;
 };
 
 /* this is the option used in an array long 
@@ -103,8 +105,10 @@ struct option_discovery
 class HDRoptions
 {
 private:
+
     injector_t type;
     bool corruptRequest;
+    bool corruptDone;
 
     uint8_t target_opts_len; /* max value 40 on IP and TCP too */
 
@@ -112,6 +116,7 @@ private:
      * options we need to check the presence for;
      * some options are good but if repeated may corrupt the packet.
      */
+    void registerOptOccurrence(uint32_t, uint8_t, uint8_t);
     bool checkupIPopt(void);
     bool checkupTCPopt(void);
     bool checkCondition(uint32_t, uint8_t);
@@ -120,34 +125,44 @@ public:
     vector<unsigned char> optshdr;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
     uint8_t available_opts_len; /* max value 40 on IP and TCP too */
-    bool corruptDone;
 
-    struct option_tracking optTrack[SUPPORTED_OPTIONS];
-    uint8_t(* nextPlannedInj)(HDRoptions *);
+    vector<option_occorrence> optTrack[SUPPORTED_OPTIONS];
 
-    HDRoptions(injector_t, uint8_t *, uint8_t, uint8_t);
+    uint8_t(HDRoptions::*nextPlannedInj)();
+
+    HDRoptions(injector_t, bool, uint8_t *, uint8_t, uint8_t);
     void setupOption(struct option_discovery *);
 
     /* this is used for MALFORMED pourpose */
-    uint32_t randomInjector(bool);
+    uint32_t randomInjector();
     uint32_t alignOpthdr(uint32_t);
     void copyOpthdr(uint8_t *);
+    bool isGoalAchieved();
 
     /* this is used if a Plugin want inject a specific option, in this case,
      * the value corruptRequest and corruptDone are ignored */
     bool calledInjector(uint32_t);
 
     bool removeOption(uint32_t);
+
+    uint8_t m_IPOPT_NOOP();
+    uint8_t m_IPOPT_TIMESTAMP();
+    uint8_t m_IPOPT_LSRR();
+    uint8_t m_IPOPT_RR();
+    uint8_t m_IPOPT_RA();
+    uint8_t m_IPOPT_CIPSO();
+    uint8_t m_IPOPT_SEC();
+    uint8_t m_IPOPT_SID();
+    uint8_t m_TCPOPT_PAWSCORRUPT();
 };
 
 struct option_mapping
 {
     corruption_t corruptionType;
-    uint8_t(* optApply)(HDRoptions *);
+    uint8_t(HDRoptions::*optApply)();
     uint8_t optValue;
     uint8_t applyProto;
     const char *optName;
 };
-
 
 #endif /* HDROPTIONS_H */

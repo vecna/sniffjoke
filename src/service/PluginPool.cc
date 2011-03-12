@@ -89,43 +89,23 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles)
  * (class TCPTrack).plugin_pool is the name of the unique PluginPool element
  */
 PluginPool::PluginPool(const sj_config &runcfg) :
-runconfig(runcfg)
+runcfg(runcfg),
+globalEnabledScrambles(0)
 {
-    LOG_VERBOSE("onlyplugin [%s]", runcfg.onlyplugin);
-
     if (runcfg.onlyplugin[0])
-    {
-        LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
-
-        char *comma;
-        char onlyplugin_cpy[MEDIUMBUF] = {0};
-        char plugabspath[MEDIUMBUF] = {0};
-        uint8_t supportedScrambles;
-
-        snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), runcfg.onlyplugin);
-
-        if ((comma = strchr(onlyplugin_cpy, ',')) == NULL)
-            RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
-
-        *comma = 0x00;
-        comma++;
-
-        snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
-
-        if (!(supportedScrambles = parseScrambleList(comma)))
-            RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
-
-        importPlugin(plugabspath, runcfg.onlyplugin, supportedScrambles);
-    }
+        parseOnlyPlugin();
     else
-    {
         parseEnablerFile();
-    }
 
     if (!size())
         RUNTIME_EXCEPTION("loaded correctly 0 plugins");
     else
         LOG_ALL("loaded correctly %d plugins", size());
+
+    char enabledScramblesStr[LARGEBUF];
+    snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), globalEnabledScrambles);
+    LOG_ALL("loaded plugins globally enabled scrambles: [%s]", enabledScramblesStr);
+    LOG_ALL("sniffjoke will use this configuration to create confusion also on real packet");
 }
 
 PluginPool::~PluginPool(void)
@@ -212,6 +192,37 @@ uint8_t PluginPool::parseScrambleList(const char *list_str)
     return retval;
 }
 
+void PluginPool::parseOnlyPlugin(void)
+{
+    LOG_VERBOSE("onlyplugin [%s]", runcfg.onlyplugin);
+    LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
+
+    char *comma;
+    char onlyplugin_cpy[MEDIUMBUF] = {0};
+    char plugabspath[MEDIUMBUF] = {0};
+    uint8_t pluginEnabledScrambles;
+
+    snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), runcfg.onlyplugin);
+
+    if ((comma = strchr(onlyplugin_cpy, ',')) == NULL)
+        RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
+
+    *comma = 0x00;
+    comma++;
+
+    snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
+
+    pluginEnabledScrambles = parseScrambleList(comma);
+
+    if (!(pluginEnabledScrambles))
+        RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
+
+    importPlugin(plugabspath, runcfg.onlyplugin, pluginEnabledScrambles);
+
+    /* we keep track of enabled scramble to apply confusion on real good packets */
+    globalEnabledScrambles |= pluginEnabledScrambles;
+}
+
 void PluginPool::parseEnablerFile(void)
 {
     char enablerabspath[LARGEBUF] = {0};
@@ -220,7 +231,7 @@ void PluginPool::parseEnablerFile(void)
 
     FILE *plugfile;
 
-    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runconfig.working_dir, FILE_PLUGINSENABLER);
+    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runcfg.working_dir, FILE_PLUGINSENABLER);
 
     if ((plugfile = fopen(enablerabspath, "r")) == NULL)
         RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
@@ -229,7 +240,7 @@ void PluginPool::parseEnablerFile(void)
     do
     {
         char enablerentry[LARGEBUF], *comma;
-        uint8_t enabledScramble = 0;
+        uint8_t enabledScrambles = 0;
 
         fgets(enablerentry, LARGEBUF, plugfile);
         ++line;
@@ -260,19 +271,28 @@ void PluginPool::parseEnablerFile(void)
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
-        if (!(enabledScramble = parseScrambleList(comma)))
+        enabledScrambles = parseScrambleList(comma);
+        if (!(enabledScrambles))
         {
             RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
                               line, enablerentry, FILE_PLUGINSENABLER);
         }
 
-        snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScramble);
+        snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
         LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
-        importPlugin(plugabspath, enablerentry, enabledScramble);
+        importPlugin(plugabspath, enablerentry, enabledScrambles);
+
+        /* we keep track of enabled scramble to apply confusion on real good packets */
+        globalEnabledScrambles |= enabledScrambles;
 
     }
     while (!feof(plugfile));
 
     fclose(plugfile);
+}
+
+uint8_t PluginPool::enabledScrambles()
+{
+    return globalEnabledScrambles;
 }

@@ -23,7 +23,7 @@
 #include "TCPTrack.h"
 
 TCPTrack::TCPTrack(const sj_config &runcfg, PluginPool &hpp, SessionTrackMap &sessiontrack_map, TTLFocusMap &ttlfocus_map) :
-runconfig(runcfg),
+runcfg(runcfg),
 sessiontrack_map(sessiontrack_map),
 ttlfocus_map(ttlfocus_map),
 plugin_pool(hpp)
@@ -47,7 +47,7 @@ TCPTrack::~TCPTrack(void)
 uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
 {
 
-    if(runconfig.onlyplugin[0])
+    if (runcfg.onlyplugin[0])
         frequencyValue = AGG_ALWAYS;
 
     uint32_t freqret = 0;
@@ -156,7 +156,7 @@ uint16_t TCPTrack::getUserFrequency(const Packet &pkt)
     /* MUST be called on TCP/UDP packet only */
 
     if (pkt.proto == TCP)
-        return runconfig.portconf[ntohs(pkt.tcp->dest)];
+        return runcfg.portconf[ntohs(pkt.tcp->dest)];
 
     /* else, no other proto other than UDP will reach here.
      *
@@ -165,7 +165,7 @@ uint16_t TCPTrack::getUserFrequency(const Packet &pkt)
      * accept this choose in UDP too. otherwise, is better use a costant noise
      * using AGG_COMMON */
 
-    if (runconfig.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
+    if (runcfg.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
         return AGG_ALWAYS;
 
     return AGG_COMMON;
@@ -215,7 +215,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         ttlfocus.status = TTL_BRUTEFORCE;
         /* do not break, continue inside TTL_BRUTEFORCE */
     case TTL_BRUTEFORCE:
-        if (ttlfocus.sent_probe == runconfig.max_ttl_probe)
+        if (ttlfocus.sent_probe == runcfg.max_ttl_probe)
         {
             if (!ttlfocus.probe_timeout)
             {
@@ -435,7 +435,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
                 injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
-                if (runconfig.debug_level == PACKET_LEVEL)
+                if (runcfg.debug_level == PACKET_LEVEL)
                     RUNTIME_EXCEPTION("%s: invalid pkt generated", hppe->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
@@ -562,7 +562,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
                 injpkt.SELFLOG("%s: invalid pkt generated: bad integrity", hppe->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
-                if (runconfig.debug_level == PACKET_LEVEL)
+                if (runcfg.debug_level == PACKET_LEVEL)
                     RUNTIME_EXCEPTION("%s invalid pkt generated: bad integrity", hppe->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
@@ -653,20 +653,36 @@ bool TCPTrack::lastPktFix(Packet & pkt)
     {
         pkt.ip->ttl = (*it->second).ttl_estimate;
         if (pkt.wtf == PRESCRIPTION)
+        {
             pkt.ip->ttl -= (1 + (random() % 5)); /* [-1, -5], 5 values */
+        }
         else
-            pkt.ip->ttl += (random() % 5); /* [+0, +4], 5 values */
+        {
+            /* MISTIFICATION FOR WTF != PRESCRIPTION */
+            if (ISSET_TTL(plugin_pool.enabledScrambles()))
+                pkt.ip->ttl += (random() % 5); /* [+0, +4], 5 values */
+        }
     }
     else
     {
+        if (pkt.wtf == PRESCRIPTION)
+        {
+            if (ISSET_MALFORMED(pkt.choosableScramble))
+                pkt.wtf = MALFORMED;
+            else if (ISSET_CHECKSUM(pkt.choosableScramble))
+                pkt.wtf = GUILTY;
+            else
+                goto drop_packet;
+        }
+
         if (pkt.wtf != PRESCRIPTION)
-            pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
-        else if (ISSET_MALFORMED(pkt.choosableScramble))
-            pkt.wtf = MALFORMED;
-        else if (ISSET_CHECKSUM(pkt.choosableScramble))
-            pkt.wtf = GUILTY;
-        else
-            goto drop_packet;
+        {
+            /* MISTIFICATION FOR WTF != PRESCRIPTION ALSO ON DOWNGRADE */
+
+            /* apply mistification if PRESCRIPTION is globally enabled */
+            if (ISSET_TTL(plugin_pool.enabledScrambles()))
+                pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
+        }
     }
 
     /*
@@ -703,11 +719,15 @@ bool TCPTrack::lastPktFix(Packet & pkt)
         }
     }
 
-    /* this is used because also good packet will have weird IP options */
-    if (pkt.wtf == INNOCENT && ISSET_MALFORMED(pkt.choosableScramble))
+    if (pkt.wtf != MALFORMED)
     {
-        if (RANDOMPERCENT(66))
+        /* MISTIFICATION FOR WTF != MALFORMED ALSO ON DOWNGRADE */
+
+        /* apply mistification if MALFORMED is globally enabled */
+        if (ISSET_MALFORMED(plugin_pool.enabledScrambles()) && RANDOMPERCENT(66))
+        {
             pkt.injectIPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+        }
     }
 
     /* fixing the mangled packet */
@@ -719,12 +739,7 @@ bool TCPTrack::lastPktFix(Packet & pkt)
      * PRESCRIPTION nor MALFORMED are applicable.
      */
     if (pkt.wtf == GUILTY)
-    {
-        if (ISSET_CHECKSUM(pkt.choosableScramble))
-            pkt.corruptSum();
-        else
-            goto drop_packet;
-    }
+        pkt.corruptSum();
 
     pkt.SELFLOG("pkt ready to be sent");
     return true;
@@ -886,7 +901,7 @@ void TCPTrack::handleHackPackets(void)
         }
     }
 
-    if (runconfig.chaining == true)
+    if (runcfg.chaining == true)
     {
         for (p_queue.select(HACK); ((pkt = p_queue.getSource(PLUGIN)) != NULL);)
         {
@@ -918,23 +933,24 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
         Packet * const pkt = new Packet(buff, nbyte);
         pkt->source = source;
         pkt->wtf = INNOCENT;
+        pkt->choosableScramble = INNOCENT | MALFORMED;
 
         /* Sniffjoke does handle only TCP, UDP and ICMP */
-        if (runconfig.active && (pkt->proto & mangled_proto_mask))
+        if (runcfg.active && (pkt->proto & mangled_proto_mask))
         {
-            if (runconfig.use_blacklist)
+            if (runcfg.use_blacklist)
             {
-                if (runconfig.blacklist->isPresent(pkt->ip->daddr) ||
-                        runconfig.blacklist->isPresent(pkt->ip->saddr))
+                if (runcfg.blacklist->isPresent(pkt->ip->daddr) ||
+                        runcfg.blacklist->isPresent(pkt->ip->saddr))
                 {
                     p_queue.insert(*pkt, SEND);
                     return;
                 }
             }
-            else if (runconfig.use_whitelist)
+            else if (runcfg.use_whitelist)
             {
-                if (!runconfig.whitelist->isPresent(pkt->ip->daddr) &&
-                        !runconfig.whitelist->isPresent(pkt->ip->saddr))
+                if (!runcfg.whitelist->isPresent(pkt->ip->daddr) &&
+                        !runcfg.whitelist->isPresent(pkt->ip->saddr))
                 {
                     p_queue.insert(*pkt, SEND);
                     return;

@@ -32,7 +32,7 @@ SniffJoke::SniffJoke(const struct sj_cmdline_opts &opts) :
 alive(true),
 opts(opts),
 userconf(opts),
-proc(userconf.runconfig),
+proc(userconf.runcfg),
 service_pid(0)
 {
     LOG_DEBUG("");
@@ -85,7 +85,7 @@ void SniffJoke::run(void)
     if (!old_service_pid && opts.force_restart)
         LOG_VERBOSE("option --force ignore: not found a previously running SniffJoke");
 
-    if (!userconf.runconfig.active)
+    if (!userconf.runcfg.active)
         LOG_ALL("SniffJoke is INACTIVE: use \"sniffjokectl start\" to activate");
     else
         LOG_VERBOSE("SniffJoke started and ACTIVE");
@@ -99,7 +99,7 @@ void SniffJoke::run(void)
     userconf.networkSetup();
 
     /* the code flow reach here, SniffJoke is ready to instance network environment */
-    mitm = auto_ptr<NetIO > (new NetIO(userconf.runconfig));
+    mitm = auto_ptr<NetIO > (new NetIO(userconf.runcfg));
 
     /* sigtrap handler mapped the same in both Sj processes */
     proc.sigtrapSetup(sigtrap);
@@ -137,15 +137,15 @@ void SniffJoke::run(void)
         setupDebug();
 
         /* loading the plugins used for tcp hacking, MUST be done before proc.jail() */
-        hack_pool = auto_ptr<PluginPool > (new PluginPool(userconf.runconfig));
+        hack_pool = auto_ptr<PluginPool > (new PluginPool(userconf.runcfg));
 
-        proc.jail(userconf.runconfig.working_dir);
+        proc.jail(userconf.runcfg.working_dir);
 
         proc.privilegesDowngrade();
 
         sessiontrack_map = auto_ptr<SessionTrackMap > (new SessionTrackMap);
         ttlfocus_map = auto_ptr<TTLFocusMap > (new TTLFocusMap());
-        conntrack = auto_ptr<TCPTrack > (new TCPTrack(userconf.runconfig, *hack_pool, *sessiontrack_map, *ttlfocus_map));
+        conntrack = auto_ptr<TCPTrack > (new TCPTrack(userconf.runcfg, *hack_pool, *sessiontrack_map, *ttlfocus_map));
 
         mitm->prepareConntrack(conntrack.get());
 
@@ -169,7 +169,7 @@ void SniffJoke::run(void)
 
 void SniffJoke::setupDebug(void)
 {
-    debug.debuglevel = userconf.runconfig.debug_level;
+    debug.debuglevel = userconf.runcfg.debug_level;
     if (!opts.go_foreground)
     {
         LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles will be used instead.");
@@ -232,24 +232,24 @@ void SniffJoke::setupAdminSocket(void)
     memset(&in_service, 0x00, sizeof (in_service));
 
     /* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
-    if (!inet_aton(userconf.runconfig.admin_address, &in_service.sin_addr))
+    if (!inet_aton(userconf.runcfg.admin_address, &in_service.sin_addr))
     {
         RUNTIME_EXCEPTION("unable to accept hostname (%s): only IP address allow",
-                          userconf.runconfig.admin_address);
+                          userconf.runcfg.admin_address);
     }
 
     in_service.sin_family = AF_INET;
-    in_service.sin_port = htons(userconf.runconfig.admin_port);
+    in_service.sin_port = htons(userconf.runcfg.admin_port);
 
     if (bind(tmp, (struct sockaddr *) &in_service, sizeof (in_service)) == -1)
     {
         close(tmp);
         RUNTIME_EXCEPTION("unable to bind UDP socket %s:%d: %s",
-                          userconf.runconfig.admin_address, ntohs(in_service.sin_port), strerror(errno));
+                          userconf.runcfg.admin_address, ntohs(in_service.sin_port), strerror(errno));
     }
 
     LOG_VERBOSE("bind %u UDP port in %s ip interface for administration",
-                userconf.runconfig.admin_port, userconf.runconfig.admin_address);
+                userconf.runcfg.admin_port, userconf.runcfg.admin_address);
 
     admin_socket_flags_blocking = fcntl(tmp, F_GETFL);
     admin_socket_flags_nonblocking = admin_socket_flags_blocking | O_NONBLOCK;
@@ -304,10 +304,10 @@ void SniffJoke::handleAdminSocket(void)
         RUNTIME_EXCEPTION("BUG: command handling of [%s] doesn't return any answer", r_buf);
 
     /* delayed execution of requested commands (only debug level change ATM) */
-    if (debug.debuglevel != userconf.runconfig.debug_level)
+    if (debug.debuglevel != userconf.runcfg.debug_level)
     {
-        LOG_ALL("changing log level since %d to %d\n", debug.debuglevel, userconf.runconfig.debug_level);
-        debug.debuglevel = userconf.runconfig.debug_level;
+        LOG_ALL("changing log level since %d to %d\n", debug.debuglevel, userconf.runcfg.debug_level);
+        debug.debuglevel = userconf.runcfg.debug_level;
 
         if (!debug.resetLevel())
             RUNTIME_EXCEPTION("changing logfile settings");
@@ -412,24 +412,24 @@ handle_error:
 
 void SniffJoke::handleCmdStart(void)
 {
-    if (userconf.runconfig.active != true)
+    if (userconf.runcfg.active != true)
         LOG_VERBOSE("started SniffJoke as requested!");
     else /* SniffJoke is already running */
         LOG_VERBOSE("SniffJoke it's already in run status");
 
-    userconf.runconfig.active = true;
+    userconf.runcfg.active = true;
     /* this function fill io_buf with the status information */
     writeSJStatus(START_COMMAND_TYPE);
 }
 
 void SniffJoke::handleCmdStop(void)
 {
-    if (userconf.runconfig.active != false)
+    if (userconf.runcfg.active != false)
         LOG_VERBOSE("stopped SniffJoke as requested!");
     else /* SniffJoke is already runconfig */
         LOG_VERBOSE("SniffJoke it's already in stop status");
 
-    userconf.runconfig.active = false;
+    userconf.runcfg.active = false;
     /* this function fill io_buf with the status information */
     writeSJStatus(STOP_COMMAND_TYPE);
 }
@@ -504,7 +504,7 @@ void SniffJoke::handleCmdSet(const char* cmd)
     }
     else
     {
-        pl.mergeLine(userconf.runconfig.portconf);
+        pl.mergeLine(userconf.runcfg.portconf);
     }
 
     writeSJPortStat(SETPORT_COMMAND_TYPE);
@@ -519,7 +519,7 @@ void SniffJoke::handleCmdDebuglevel(uint8_t newdebuglevel)
     }
     else
     {
-        userconf.runconfig.debug_level = newdebuglevel;
+        userconf.runcfg.debug_level = newdebuglevel;
     }
     writeSJStatus(LOGLEVEL_COMMAND_TYPE);
 }
@@ -532,7 +532,7 @@ void SniffJoke::handleCmdDebuglevel(uint8_t newdebuglevel)
 void SniffJoke::writeSJPortStat(uint8_t type)
 {
     uint16_t prev_port = 0;
-    uint16_t prev_kind = userconf.runconfig.portconf[0];
+    uint16_t prev_kind = userconf.runcfg.portconf[0];
     struct command_ret retInfo;
     uint32_t accumulen = sizeof (retInfo);
 
@@ -541,14 +541,14 @@ void SniffJoke::writeSJPortStat(uint8_t type)
 
     for (uint32_t i = 1; i < (PORTSNUMBER - 1); ++i)
     {
-        if (userconf.runconfig.portconf[i] != prev_kind)
+        if (userconf.runcfg.portconf[i] != prev_kind)
         {
             accumulen += appendSJPortBlock(&io_buf[accumulen], prev_port, i - 1, prev_kind);
 
             if (accumulen > sizeof (io_buf))
                 RUNTIME_EXCEPTION("someone has a very stupid sniffjoke configuration, or is trying to overflow me");
 
-            prev_kind = userconf.runconfig.portconf[i];
+            prev_kind = userconf.runcfg.portconf[i];
             prev_port = i;
         }
     }
@@ -569,27 +569,27 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     memset(io_buf, 0x00, sizeof (io_buf));
 
     /* SJStatus is totally inspired by the IP/TCP options */
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf.runconfig.active), userconf.runconfig.active);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf.runconfig.debug_level), userconf.runconfig.debug_level);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf.runconfig.gw_mac_str), userconf.runconfig.gw_mac_str);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf.runconfig.gw_ip_addr), userconf.runconfig.gw_ip_addr);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_IFACE, strlen(userconf.runconfig.interface), userconf.runconfig.interface);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOIP, strlen(userconf.runconfig.local_ip_addr), userconf.runconfig.local_ip_addr);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf.runconfig.tun_number);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf.runconfig.onlyplugin), userconf.runconfig.onlyplugin);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf.runconfig.admin_address), userconf.runconfig.admin_address);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf.runconfig.admin_port), userconf.runconfig.admin_port);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runconfig.user), userconf.runconfig.user);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runconfig.group), userconf.runconfig.group);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runconfig.location), userconf.runconfig.location);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHAINING, sizeof (userconf.runconfig.chaining), userconf.runconfig.chaining);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_TCP, sizeof (userconf.runconfig.no_tcp), userconf.runconfig.no_tcp);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_UDP, sizeof (userconf.runconfig.no_udp), userconf.runconfig.no_udp);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf.runcfg.active), userconf.runcfg.active);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf.runcfg.debug_level), userconf.runcfg.debug_level);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf.runcfg.gw_mac_str), userconf.runcfg.gw_mac_str);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf.runcfg.gw_ip_addr), userconf.runcfg.gw_ip_addr);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_IFACE, strlen(userconf.runcfg.interface), userconf.runcfg.interface);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOIP, strlen(userconf.runcfg.local_ip_addr), userconf.runcfg.local_ip_addr);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf.runcfg.tun_number);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf.runcfg.onlyplugin), userconf.runcfg.onlyplugin);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf.runcfg.admin_address), userconf.runcfg.admin_address);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf.runcfg.admin_port), userconf.runcfg.admin_port);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf.runcfg.user), userconf.runcfg.user);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf.runcfg.group), userconf.runcfg.group);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf.runcfg.location), userconf.runcfg.location);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHAINING, sizeof (userconf.runcfg.chaining), userconf.runcfg.chaining);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_TCP, sizeof (userconf.runcfg.no_tcp), userconf.runcfg.no_tcp);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_UDP, sizeof (userconf.runcfg.no_udp), userconf.runcfg.no_udp);
 
-    if (userconf.runconfig.whitelist)
-        accumulen += appendSJStatus(&io_buf[accumulen], STAT_WHITELIST, sizeof (userconf.runconfig.whitelist), userconf.runconfig.whitelist);
-    else if (userconf.runconfig.blacklist)
-        accumulen += appendSJStatus(&io_buf[accumulen], STAT_BLACKLIST, sizeof (userconf.runconfig.blacklist), userconf.runconfig.blacklist);
+    if (userconf.runcfg.whitelist)
+        accumulen += appendSJStatus(&io_buf[accumulen], STAT_WHITELIST, sizeof (userconf.runcfg.whitelist), userconf.runcfg.whitelist);
+    else if (userconf.runcfg.blacklist)
+        accumulen += appendSJStatus(&io_buf[accumulen], STAT_BLACKLIST, sizeof (userconf.runcfg.blacklist), userconf.runcfg.blacklist);
 
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = commandReceived;

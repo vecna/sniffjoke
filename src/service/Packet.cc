@@ -489,8 +489,7 @@ void Packet::udppayloadRandomFill(void)
 
 bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 {
-
-    bool injected = false;
+    bool goalAchieved = false;
 
     const uint16_t pktlen = pbuf.size();
 
@@ -529,26 +528,31 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     try
     {
-        HDRoptions IPInjector(IPOPTS_INJECTOR, (uint8_t *)ip + sizeof(struct iphdr), actual_iphdrlen, target_iphdrlen);
+        HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (uint8_t *) ip + sizeof (struct iphdr), actual_iphdrlen, target_iphdrlen);
         uint8_t tries = MAXIPINJITERATIONS;
-        uint32_t growing_opthdrlen = 0 ;
+        uint32_t growing_opthdrlen = 0;
         uint8_t alignByte;
 
         /* TODO IPinjector.setupOption( sessiontrack-> ... ); */
 
-        while( (growing_opthdrlen + sizeof(struct iphdr)) != target_iphdrlen && --tries);
-            growing_opthdrlen = IPInjector.randomInjector(corrupt);
+        while ((growing_opthdrlen + sizeof (struct iphdr)) != target_iphdrlen && --tries);
+        growing_opthdrlen = IPInjector.randomInjector();
 
-        alignByte = ( growing_opthdrlen % 4) ? 4 - ( growing_opthdrlen % 4) : 0;
-        if(alignByte)
-            growing_opthdrlen = IPInjector.alignOpthdr( alignByte );
+        alignByte = (growing_opthdrlen % 4) ? 4 - (growing_opthdrlen % 4) : 0;
+        if (alignByte)
+            growing_opthdrlen = IPInjector.alignOpthdr(alignByte);
 
-        growing_opthdrlen += sizeof(struct iphdr);
+        growing_opthdrlen += sizeof (struct iphdr);
 
-        if ( target_iphdrlen != growing_opthdrlen )
-            iphdrResize(growing_opthdrlen);
+        goalAchieved = IPInjector.isGoalAchieved();
 
-        IPInjector.copyOpthdr( (uint8_t *)ip + sizeof(struct iphdr) );
+        if (goalAchieved)
+        {
+            if (target_iphdrlen != growing_opthdrlen)
+                iphdrResize(growing_opthdrlen);
+
+            IPInjector.copyOpthdr((uint8_t *) ip + sizeof (struct iphdr));
+        }
     }
     catch (exception &e)
     {
@@ -557,12 +561,12 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
 
     SELFLOG("after ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, iphdrlen, ippayloadlen, pbuf.size());
 
-    return injected;
+    return goalAchieved;
 }
 
 bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 {
-    bool injected = false;
+    bool goalAchieved = false;
 
     const uint16_t pktlen = pbuf.size();
 
@@ -596,31 +600,33 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
     if (freespace < target_tcphdrlen)
         target_tcphdrlen = actual_tcphdrlen + freespace;
 
-    if (target_tcphdrlen != tcphdrlen)
-        tcphdrResize(target_tcphdrlen);
-
     try
     {
-        HDRoptions TCPInjector(TCPOPTS_INJECTOR, (uint8_t *)tcp + sizeof(struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
+        HDRoptions TCPInjector(TCPOPTS_INJECTOR, corrupt, (uint8_t *) tcp + sizeof (struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
         uint8_t tries = MAXTCPINJITERATIONS;
-        uint32_t growing_opthdrlen = 0 ;
+        uint32_t growing_opthdrlen = 0;
         uint8_t alignByte;
 
         /* TODO IPinjector.setupOption( sessiontrack-> ... ); */
 
-        while( (growing_opthdrlen + sizeof(struct tcphdr)) != target_tcphdrlen && --tries);
-            growing_opthdrlen = TCPInjector.randomInjector(corrupt);
+        while ((growing_opthdrlen + sizeof (struct tcphdr)) != target_tcphdrlen && --tries)
+            growing_opthdrlen = TCPInjector.randomInjector();
 
-        alignByte = ( growing_opthdrlen % 4) ? 4 - ( growing_opthdrlen % 4) : 0;
-        if(alignByte)
-            growing_opthdrlen = TCPInjector.alignOpthdr( alignByte );
+        alignByte = (growing_opthdrlen % 4) ? 4 - (growing_opthdrlen % 4) : 0;
+        if (alignByte)
+            growing_opthdrlen = TCPInjector.alignOpthdr(alignByte);
 
-        growing_opthdrlen += sizeof(struct tcphdr);
+        growing_opthdrlen += sizeof (struct tcphdr);
 
-        if ( target_tcphdrlen != growing_opthdrlen )
-            tcphdrResize(growing_opthdrlen);
+        goalAchieved = TCPInjector.isGoalAchieved();
 
-        TCPInjector.copyOpthdr( (uint8_t *)tcp + sizeof(struct tcphdr) );
+        if (goalAchieved)
+        {
+            if (target_tcphdrlen != growing_opthdrlen)
+                tcphdrResize(growing_opthdrlen);
+
+            TCPInjector.copyOpthdr((uint8_t *) tcp + sizeof (struct tcphdr));
+        }
     }
     catch (exception &e)
     {
@@ -629,7 +635,7 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
 
     SELFLOG("after TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, iphdrlen, tcphdrlen, tcppayloadlen, pbuf.size());
 
-    return injected;
+    return goalAchieved;
 }
 
 void Packet::selflog(const char *func, const char *format, ...) const

@@ -36,7 +36,7 @@
 class TCPTrack
 {
 private:
-    const struct sj_config &runconfig;
+    const struct sj_config &runcfg;
 
     SessionTrackMap & sessiontrack_map;
     TTLFocusMap &ttlfocus_map;

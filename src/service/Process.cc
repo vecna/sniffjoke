@@ -26,7 +26,7 @@
 
 /* startup of the process */
 Process::Process(const struct sj_config &runcfg) :
-runconfig(runcfg),
+runcfg(runcfg),
 userinfo_buf(NULL),
 groupinfo_buf(NULL)
 {
@@ -47,11 +47,11 @@ groupinfo_buf(NULL)
     if (userinfo_buf == NULL || groupinfo_buf == NULL)
         RUNTIME_EXCEPTION("problem during memory allocation for userinfo or groupinfo");
 
-    getpwnam_r(runconfig.user, &userinfo, (char*) userinfo_buf, userinfo_buf_len, &userinfo_result);
-    getgrnam_r(runconfig.group, &groupinfo, (char*) groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
+    getpwnam_r(runcfg.user, &userinfo, (char*) userinfo_buf, userinfo_buf_len, &userinfo_result);
+    getgrnam_r(runcfg.group, &groupinfo, (char*) groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
 
     if (userinfo_result == NULL || groupinfo_result == NULL)
-        RUNTIME_EXCEPTION("invalid user or group specified: %s, %s", runconfig.user, runconfig.group);
+        RUNTIME_EXCEPTION("invalid user or group specified: %s, %s", runcfg.user, runcfg.group);
 }
 
 Process::~Process(void)
@@ -111,7 +111,7 @@ void Process::jail(const char *chroot_dir)
     if (chown(chroot_dir, userinfo.pw_uid, groupinfo.gr_gid))
     {
         RUNTIME_EXCEPTION("chown of %s to %s:%s failed: %s: unable to start SniffJoke",
-                          chroot_dir, runconfig.user, runconfig.group, strerror(errno));
+                          chroot_dir, runcfg.user, runcfg.group, strerror(errno));
     }
 
     if (chdir(chroot_dir) || chroot(chroot_dir))
