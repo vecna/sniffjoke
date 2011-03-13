@@ -435,7 +435,7 @@ uint8_t HDRoptions::m_IPOPT_SID()
     if (optTrack[SJ_IPOPT_SID].size())
         corruptDone = true;
 
-    if(corruptRequest)
+    if (corruptRequest)
         nextPlannedInj = (!nextPlannedInj) ? &HDRoptions::m_IPOPT_SID : NULL;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
@@ -587,23 +587,28 @@ bool HDRoptions::checkupIPopt(void)
         }
         i += option_len;
 
+        bool identified = false;
         for (uint8_t j = 0; j < SUPPORTED_OPTIONS; j++)
         {
             if (optMap[j].applyProto == IPPROTO_IP && *option == optMap[j].optValue)
             {
+                identified = true;
                 registerOptOccurrence(j, i, option_len);
+                break;
             }
-            else
-            {
-                /*
-                 * analysis: will we make a malformed and stripping an option we don't know ?
-                 * I belive is better to return false if the code is running here, but I prefer
-                 * support every IP options available in the optMap[].
-                 * for this reason, in the beta and < 1.0 release the previous message
-                 * will be used for debug & progress pourposes.
-                 */
-                LOG_PACKET("INFO: a non trapped IP-options: %02x", *option);
-            }
+
+        }
+
+        if (!identified)
+        {
+            /*
+             * analysis: will we make a malformed and stripping an option we don't know ?
+             * I belive is better to return false if the code is running here, but I prefer
+             * support every IP options available in the optMap[].
+             * for this reason, in the beta and < 1.0 release the previous message
+             * will be used for debug & progress pourposes.
+             */
+            LOG_PACKET("INFO: a non trapped IP-options: %02x", *option);
         }
     }
 
@@ -636,17 +641,21 @@ bool HDRoptions::checkupTCPopt(void)
         }
         i += option_len;
 
+        bool identified = false;
         for (uint8_t j = 0; j < SUPPORTED_OPTIONS; j++)
         {
             if (optMap[j].applyProto != IPPROTO_TCP && *option == optMap[j].optValue)
             {
+                identified = true;
                 registerOptOccurrence(j, i, option_len);
+                break;
             }
-            else
-            {
-                /* read the same analysis written into checkupIPopt for IP unknow options */
-                LOG_PACKET("INFO: a non trapped TCP-options: %02x", *option);
-            }
+        }
+
+        if (!identified)
+        {
+            /* read the same analysis written into checkupIPopt for IP unknow options */
+            LOG_PACKET("INFO: a non trapped TCP-options: %02x", *option);
         }
     }
 
@@ -766,9 +775,10 @@ uint32_t HDRoptions::randomInjector()
         /* the planned option is used when a TWOSHOT define the second shot */
         if (nextPlannedInj != NULL)
         {
-            actual_opts_len += (this->*nextPlannedInj)();
-            if (actual_opts_len)
+            uint8_t ret = (this->*nextPlannedInj)();
+            if (ret)
             {
+                actual_opts_len += ret;
                 available_opts_len = target_opts_len - actual_opts_len;
             }
             else
