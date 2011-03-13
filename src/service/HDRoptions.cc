@@ -435,7 +435,7 @@ uint8_t HDRoptions::m_IPOPT_SID()
     if (optTrack[SJ_IPOPT_SID].size())
         corruptDone = true;
 
-    if (corruptRequest)
+    if (corruptRequest && !corruptDone)
         nextPlannedInj = (!nextPlannedInj) ? &HDRoptions::m_IPOPT_SID : NULL;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
