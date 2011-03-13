@@ -208,7 +208,7 @@ uint8_t HDRoptions::m_IPOPT_LSRR()
      *  first router.
      */
 
-    const uint8_t size_lsrr = getBestRandsize(3, 2, 4, 4);
+    const uint8_t size_lsrr = getBestRandsize(3, 1, 4, 4);
     const uint8_t index = actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
@@ -265,9 +265,6 @@ uint8_t HDRoptions::m_IPOPT_RR()
 
     optshdr[index] = IPOPT_RR;
     optshdr[index + 1] = size_rr;
-
-    /* good option */
-
     optshdr[index + 2] = size_rr + 1; /* full */
 
     memset_random(&(optshdr)[index + 3], (size_rr - 3));
@@ -428,6 +425,9 @@ uint8_t HDRoptions::m_IPOPT_SID()
 
     const uint8_t index = actual_opts_len;
 
+    if (available_opts_len < IPOPT_SID_SIZE)
+        return 0;
+
     optshdr[index] = IPOPT_SID;
     optshdr[index + 1] = IPOPT_SID_SIZE;
     memset_random(&optshdr[index + 2], 2);
@@ -481,15 +481,15 @@ uint8_t HDRoptions::m_TCPOPT_PAWSCORRUPT()
 
 HDRoptions::option_mapping HDRoptions::optMap[SUPPORTED_OPTIONS] = {
     /* SJ_IPOPT_NOOP */
-    { false, NOT_CORRUPT, &HDRoptions::m_IPOPT_NOOP, IPOPT_NOOP, IPPROTO_IP, "IP NOOP"},
+    { true, NOT_CORRUPT, &HDRoptions::m_IPOPT_NOOP, IPOPT_NOOP, IPPROTO_IP, "IP NOOP"},
     /* SJ_IPOPT_TIMESTAMP */
     { true, ONESHOT /* FIXME: should be BOTH */, &HDRoptions::m_IPOPT_TIMESTAMP, IPOPT_TIMESTAMP, IPPROTO_IP, "IP Timestamp"},
     /* SJ_IPOPT_LSRR */
-    { false, ONESHOT, &HDRoptions::m_IPOPT_LSRR, IPOPT_LSRR, IPPROTO_IP, "Loose source routing"},
+    { true, ONESHOT, &HDRoptions::m_IPOPT_LSRR, IPOPT_LSRR, IPPROTO_IP, "Loose source routing"},
     /* SJ_IPOPT_RR */
-    { false, TWOSHOT, &HDRoptions::m_IPOPT_RR, IPOPT_RR, IPPROTO_IP, "Record route"},
+    { true, ONESHOT, &HDRoptions::m_IPOPT_RR, IPOPT_RR, IPPROTO_IP, "Record route"},
     /* SJ_IPOPT_RA */
-    { false, NOT_CORRUPT, &HDRoptions::m_IPOPT_RA, IPOPT_RA, IPPROTO_IP, "Router advertising"},
+    { true, NOT_CORRUPT, &HDRoptions::m_IPOPT_RA, IPOPT_RA, IPPROTO_IP, "Router advertising"},
     /* SJ_IPOPT_CIPSO */
     { true, ONESHOT, &HDRoptions::m_IPOPT_CIPSO, IPOPT_CIPSO, IPPROTO_IP, "Cipso"},
     /* SJ_IPOPT_SEC */

@@ -523,34 +523,21 @@ bool Packet::injectIPOpts(bool corrupt, bool strip_previous)
     if (freespace < target_iphdrlen)
         target_iphdrlen = actual_iphdrlen + freespace;
 
-    if (target_iphdrlen != iphdrlen)
-        iphdrResize(target_iphdrlen);
-
     try
     {
         HDRoptions IPInjector(IPOPTS_INJECTOR, corrupt, (uint8_t *) ip + sizeof (struct iphdr), actual_iphdrlen, target_iphdrlen);
-        uint8_t tries = MAXIPINJITERATIONS;
-        uint32_t growing_opthdrlen = 0;
-        uint8_t alignByte;
 
         /* TODO IPinjector.setupOption( sessiontrack-> ... ); */
 
-        while ((growing_opthdrlen + sizeof (struct iphdr)) != target_iphdrlen && --tries);
-        growing_opthdrlen = IPInjector.randomInjector();
-
-        alignByte = (growing_opthdrlen % 4) ? 4 - (growing_opthdrlen % 4) : 0;
+        uint8_t options_size = IPInjector.randomInjector();
+        uint8_t alignByte = (options_size % 4) ? 4 - (options_size % 4) : 0;
         if (alignByte)
-            growing_opthdrlen = IPInjector.alignOpthdr(alignByte);
-
-        growing_opthdrlen += sizeof (struct iphdr);
+            options_size = IPInjector.alignOpthdr(alignByte);
 
         goalAchieved = IPInjector.isGoalAchieved();
-
         if (goalAchieved)
         {
-            if (target_iphdrlen != growing_opthdrlen)
-                iphdrResize(growing_opthdrlen);
-
+            iphdrResize(sizeof (struct iphdr) + options_size);
             IPInjector.copyOpthdr((uint8_t *) ip + sizeof (struct iphdr));
         }
     }
@@ -603,28 +590,18 @@ bool Packet::injectTCPOpts(bool corrupt, bool strip_previous)
     try
     {
         HDRoptions TCPInjector(TCPOPTS_INJECTOR, corrupt, (uint8_t *) tcp + sizeof (struct tcphdr), actual_tcphdrlen, target_tcphdrlen);
-        uint8_t tries = MAXTCPINJITERATIONS;
-        uint32_t growing_opthdrlen = 0;
-        uint8_t alignByte;
 
         /* TODO IPinjector.setupOption( sessiontrack-> ... ); */
 
-        while ((growing_opthdrlen + sizeof (struct tcphdr)) != target_tcphdrlen && --tries)
-            growing_opthdrlen = TCPInjector.randomInjector();
-
-        alignByte = (growing_opthdrlen % 4) ? 4 - (growing_opthdrlen % 4) : 0;
+        uint8_t options_size = TCPInjector.randomInjector();
+        uint8_t alignByte = (options_size % 4) ? 4 - (options_size % 4) : 0;
         if (alignByte)
-            growing_opthdrlen = TCPInjector.alignOpthdr(alignByte);
-
-        growing_opthdrlen += sizeof (struct tcphdr);
+            options_size = TCPInjector.alignOpthdr(alignByte);
 
         goalAchieved = TCPInjector.isGoalAchieved();
-
         if (goalAchieved)
         {
-            if (target_tcphdrlen != growing_opthdrlen)
-                tcphdrResize(growing_opthdrlen);
-
+            tcphdrResize(sizeof (struct tcphdr) + options_size);
             TCPInjector.copyOpthdr((uint8_t *) tcp + sizeof (struct tcphdr));
         }
     }
