@@ -53,10 +53,10 @@ enum injector_t
  * to be dumped by the remote host */
 enum corruption_t
 {
-    UNASSIGNED_VALUE = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4
+    UNASSIGNED_VALUE = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
 };
 
-struct option_occorrence
+struct option_occurrence
 {
     uint8_t off;
     uint8_t len;
@@ -108,42 +108,38 @@ private:
 
     injector_t type;
     bool corruptRequest;
+    bool corruptNow;
     bool corruptDone;
 
+
+    vector<unsigned char> optshdr;
+    uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
+    uint8_t available_opts_len; /* max value 40 on IP and TCP too */
     uint8_t target_opts_len; /* max value 40 on IP and TCP too */
+
+    static struct option_mapping
+    {
+        bool enabled;
+        corruption_t corruptionType;
+        uint8_t(HDRoptions::*optApply)();
+        uint8_t optValue;
+        uint8_t applyProto;
+        const char *optName;
+    } optMap[SUPPORTED_OPTIONS];
+
+    vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
+
+    uint8_t(HDRoptions::*nextPlannedInj)();
 
     /*
      * options we need to check the presence for;
      * some options are good but if repeated may corrupt the packet.
      */
-    void registerOptOccurrence(uint32_t, uint8_t, uint8_t);
     bool checkupIPopt(void);
     bool checkupTCPopt(void);
-    bool checkCondition(uint32_t, uint8_t);
-
-public:
-    vector<unsigned char> optshdr;
-    uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t available_opts_len; /* max value 40 on IP and TCP too */
-
-    vector<option_occorrence> optTrack[SUPPORTED_OPTIONS];
-
-    uint8_t(HDRoptions::*nextPlannedInj)();
-
-    HDRoptions(injector_t, bool, uint8_t *, uint8_t, uint8_t);
-    void setupOption(struct option_discovery *);
-
-    /* this is used for MALFORMED pourpose */
-    uint32_t randomInjector();
-    uint32_t alignOpthdr(uint32_t);
-    void copyOpthdr(uint8_t *);
-    bool isGoalAchieved();
-
-    /* this is used if a Plugin want inject a specific option, in this case,
-     * the value corruptRequest and corruptDone are ignored */
-    bool calledInjector(uint32_t);
-
-    bool removeOption(uint32_t);
+    bool checkCondition(uint8_t);
+    uint8_t getBestRandsize(uint8_t, uint8_t, uint8_t, uint8_t);
+    void registerOptOccurrence(uint8_t, uint8_t, uint8_t);
 
     uint8_t m_IPOPT_NOOP();
     uint8_t m_IPOPT_TIMESTAMP();
@@ -154,15 +150,19 @@ public:
     uint8_t m_IPOPT_SEC();
     uint8_t m_IPOPT_SID();
     uint8_t m_TCPOPT_PAWSCORRUPT();
-};
 
-struct option_mapping
-{
-    corruption_t corruptionType;
-    uint8_t(HDRoptions::*optApply)();
-    uint8_t optValue;
-    uint8_t applyProto;
-    const char *optName;
+public:
+
+    HDRoptions(injector_t, bool, uint8_t *, uint8_t, uint8_t);
+    void setupOption(struct option_discovery *);
+
+    /* this is used for MALFORMED pourpose */
+    uint32_t randomInjector();
+    bool removeOption(uint8_t);
+    uint32_t alignOpthdr(uint8_t);
+    void copyOpthdr(uint8_t *);
+    bool isGoalAchieved();
+    bool customInjector(uint8_t);
 };
 
 #endif /* HDROPTIONS_H */

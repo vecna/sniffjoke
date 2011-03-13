@@ -651,16 +651,17 @@ bool TCPTrack::lastPktFix(Packet & pkt)
     TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
     if (it != ttlfocus_map.end() && (*it->second).status == TTL_KNOWN)
     {
-        pkt.ip->ttl = (*it->second).ttl_estimate;
         if (pkt.wtf == PRESCRIPTION)
         {
-            pkt.ip->ttl -= (1 + (random() % 5)); /* [-1, -5], 5 values */
+            pkt.ip->ttl = (*it->second).ttl_estimate - (1 + (random() % 5)); /* [-1, -5], 5 values */
         }
         else
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
-                pkt.ip->ttl += (random() % 5); /* [+0, +4], 5 values */
+            {
+                pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 5); /* [+0, +4], 5 values */
+            }
         }
     }
     else
@@ -746,7 +747,7 @@ bool TCPTrack::lastPktFix(Packet & pkt)
 
 drop_packet:
     pkt.SELFLOG("pkt dropped during fix");
-    delete &pkt;
+    p_queue.drop(pkt);
 
     return false;
 }
@@ -982,8 +983,7 @@ Packet * TCPTrack::readpacket(source_t destsource)
     else
         mask = TUNNEL | PLUGIN | TRACEROUTE;
 
-    Packet *pkt;
-
+    Packet *pkt = NULL;
     for (p_queue.select(SEND); ((pkt = p_queue.get()) != NULL);)
     {
         if (pkt->source & mask)

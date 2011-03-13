@@ -190,7 +190,9 @@ remove_reset_pkt:
 
 void PacketQueue::drop(Packet &pkt)
 {
-    extract(pkt);
+    if(pkt.queue != QUEUEUNASSIGNED)
+        extract(pkt);
+    
     delete &pkt;
 }
 

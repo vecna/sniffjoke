@@ -39,36 +39,13 @@
  *
  * but checking:
  * http://www.faqs.org/rfcs/rfc1812.html
- * seems that some weird ipoptions will cause a packet to be discarged
+ * seems that some weird ipoptions will cause a packet to be discarded
  * on the route, without ever reach the server. we aim to create 
  * ipoptions accepted by the router, and discarded from the remote host.
  */
 
 #include "HDRoptions.h"
 #include "Utils.h"
-
-/* this is the utility function used by the single option adder to calculate the best fit size for an option */
-uint8_t getBestRandsize(uint8_t fixedLen, uint8_t minRblks, uint8_t maxRblks, uint8_t blockSize, uint8_t availableLen)
-{
-    uint8_t minComputed = fixedLen + (minRblks * blockSize);
-    uint8_t maxComputed = fixedLen + (maxRblks * blockSize);
-
-    if (availableLen == minComputed || availableLen == maxComputed)
-        return availableLen;
-
-    if (availableLen < minComputed)
-        return 0;
-
-    if (availableLen > maxComputed)
-    {
-        return (((random() % (maxRblks - minRblks + 1)) + minRblks) * blockSize) +fixedLen;
-    }
-    else /* should try the best filling of memory and the NOP fill after */
-    {
-        uint8_t blockNumber = (availableLen - fixedLen) / blockSize;
-        return (blockNumber * blockSize) +fixedLen;
-    }
-}
 
 /*
  * Now start the method indexed by optMap. The only ASSURED FACTS:
@@ -86,15 +63,15 @@ uint8_t HDRoptions::m_IPOPT_NOOP()
 
     optshdr[index] = IPOPT_NOOP;
 
-    registerOptOccurrence(SJ_IPOPT_NOOP, index, IPOPT_NOOP_SIZE);
-
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s avail %d",
-               "SJ_IPOPT_NOOP", index, 1,
+               "SJ_IPOPT_NOOP", index, IPOPT_NOOP_SIZE,
                optTrack[SJ_IPOPT_NOOP].size() ? "true" : "false",
                available_opts_len - IPOPT_NOOP_SIZE
                );
 
-    return 1;
+    registerOptOccurrence(SJ_IPOPT_NOOP, index, IPOPT_NOOP_SIZE);
+
+    return IPOPT_NOOP_SIZE;
 }
 
 uint8_t HDRoptions::m_IPOPT_TIMESTAMP()
@@ -122,11 +99,9 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP()
      *   due tu random() exploit one or the other.
      */
 
-    const uint8_t size_timestamp = getBestRandsize(4, 1, 4, 8, available_opts_len);
-    const uint8_t timestamps = (size_timestamp - 4) / 8;
+    const uint8_t size_timestamp = getBestRandsize(4, 1, 9, 4);
+    const uint8_t timestamps = (size_timestamp - 4) / 4;
     const uint8_t index = actual_opts_len;
-
-    /* this is a corrupt only option - AT THE MOMENT */
 
     /*
      * it has been tested that some networks (Fastweb) do silently filter packets
@@ -156,36 +131,38 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP()
 
     optshdr[index] = IPOPT_TIMESTAMP;
     optshdr[index + 1] = size_timestamp;
-    optshdr[index + 2] = size_timestamp + 1; /* full */
 
-    if (RANDOMPERCENT(50))
+    if (corruptNow)
+    {
+        /*
+         * FIXME: integrating ttl knowledge we can select a precise expiring hop;
+         * timestamp range is 1:9;
+         * overflow range is of 0:15;
+         * so we have (covered_hops = 9 + 15) different possibilities.
+         * so we can cover destinations between 1 and 24 hops.
+         */
+        optshdr[index + 2] = size_timestamp + 1; /* full */
+        optshdr[index + 3] = (IPOPT_TS_TSONLY | (15 << 4)); /* next will overflow */
+        memset_random(&optshdr[index + 4], timestamps * 4);
+
+        corruptDone = true;
+    }
+    else
+    {
+        optshdr[index + 2] = 5; /* empty */
         optshdr[index + 3] = IPOPT_TS_TSONLY;
-    else
-        optshdr[index + 3] = IPOPT_TS_TSANDADDR;
 
-    if (RANDOMPERCENT(50))
-    {
-        /* reference code : if (optptr[2] < 5) */
-        optshdr[index + 2] = random() % 5;
+        /* by rfc preallocated options memory must be 0 */
+        memset(&optshdr[index + 4], 0, timestamps * 4);
     }
-    else
-    {
-        /* reference code : if (optptr[2] <= optlen) 
-                      and : if (optptr[2]+3 > optptr[1])  */
-        optshdr[index + 2] = optshdr[index + 1] - (1 + random() % 2);
-    }
-
-    memset_random(&optshdr[index + 4], 1 + timestamps * 8);
-
-    registerOptOccurrence(SJ_IPOPT_TIMESTAMP, index, size_timestamp);
-
-    corruptDone = true;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
                "SJ_IPOPT_TIMESTAMP", index, size_timestamp,
                optTrack[SJ_IPOPT_TIMESTAMP].size() ? "true" : "false",
                available_opts_len, size_timestamp
                );
+
+    registerOptOccurrence(SJ_IPOPT_TIMESTAMP, index, size_timestamp);
 
     return size_timestamp;
 }
@@ -205,8 +182,6 @@ uint8_t HDRoptions::m_IPOPT_LSRR()
      * packet and reply with an ICMP Parameter Problem message whose pointer
      * points at the beginning of the second source route option.
      *
-     * This option it's based on analysis of the linux kernel. (2.6.36)
-     *
      * Extract from: net/ipv4/ip_options.c
      *
      *    case IPOPT_SSRR:
@@ -214,68 +189,46 @@ uint8_t HDRoptions::m_IPOPT_LSRR()
      *
      *        [...]
      *
-     *        if (optlen < 3) {
-     *                pp_ptr = optptr + 1;
-     *                goto error;
-     *         }
-     *         if (optptr[2] < 4) {
-     *                pp_ptr = optptr + 2;
-     *                goto error;
-     *         }
      *         / * NB: cf RFC-1812 5.2.4.1 * /
      *         if (opt->srr) {
      *                pp_ptr = optptr;
      *                goto error;
      *         }
-     *         if (!skb) {
-     *                if (optptr[2] != 4 || optlen < 7 || ((optlen-3) & 3)) {
-     *                        pp_ptr = optptr + 1;
-     *                        goto error;
-     *                }
-     *                memcpy(&opt->faddr, &optptr[3], 4);
-     *                if (optlen > 7)
-     *                        memmove(&optptr[3], &optptr[7], optlen-7);
-     *         }
-     *         opt->is_strictroute = (optptr[0] == IPOPT_SSRR);
-     *         opt->srr = optptr - iph;
-     *         break;
      *
-     *  we want to send LSRR option 2 times.
-     *  so we have to respect all checks that lead to an error.
-     *  using SSRR is also possibile but the packet will be trashed by the
+     *  so to corrupt we need to inject this option twice.
+     *
+     *  DOUBTS:
+     *    - 1) the packet will be discarded at the first router that correctly implements the rfc.
+     *         if all does this this corruption is useles :(
+     *    - 2) the filled address are random, so the packet will quite surely dropped at first hop.
+     *         or sent onto a random path so probably will not reach the sniffer to.
+     *         (useful only dealing with a near sniffer)
+     *
+     *  using SSRR is also possibile but using with withe packet will be surely trashed by the
      *  first router.
      */
 
-    const uint8_t size_lsrr = getBestRandsize(3, 2, 4, 4, available_opts_len);
+    const uint8_t size_lsrr = getBestRandsize(3, 2, 4, 4);
     const uint8_t index = actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
     if (!size_lsrr)
-    {
-        if (nextPlannedInj != NULL)
-            nextPlannedInj = NULL;
-
         return 0;
-    }
 
     optshdr[index] = IPOPT_LSRR;
     optshdr[index + 1] = size_lsrr;
     optshdr[index + 2] = 4;
     memset_random(&optshdr[index + 3], (size_lsrr - 3));
 
-    /* in the TWO STEP injecton only the first is tracked */
-    if (optTrack[SJ_IPOPT_LSRR].size())
-        corruptDone = true;
-
-    registerOptOccurrence(SJ_IPOPT_LSRR, index, size_lsrr);
-
-    nextPlannedInj = (!nextPlannedInj) ? &HDRoptions::m_IPOPT_LSRR : NULL;
+    corruptDone = true;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
                "SJ_IPOPT_LSRR", index, size_lsrr,
                optTrack[SJ_IPOPT_LSRR].size() ? "true" : "false",
                available_opts_len - size_lsrr
                );
+
+    registerOptOccurrence(SJ_IPOPT_LSRR, index, size_lsrr);
 
     return size_lsrr;
 }
@@ -287,12 +240,12 @@ uint8_t HDRoptions::m_IPOPT_RR()
      *
      * Extract from: net/ipv4/ip_options.c
      *
-     *   if (optptr[2] < 4) 
+     *   if (optptr[2] < 4)
      *       pp_ptr = optptr + 2;
      *       goto error;
      *
-     *   if (optptr[2] <= optlen) 
-     *       if (optptr[2]+3 > optlen) 
+     *   if (optptr[2] <= optlen)
+     *       if (optptr[2]+3 > optlen)
      *           pp_ptr = optptr + 2;
      *           goto error;
      *
@@ -303,7 +256,7 @@ uint8_t HDRoptions::m_IPOPT_RR()
      *   due to random() exploits the first or the latter.
      */
 
-    const uint8_t size_rr = getBestRandsize(3, 1, 4, 4, available_opts_len);
+    const uint8_t size_rr = getBestRandsize(3, 1, 4, 4);
     const uint8_t index = actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
@@ -319,13 +272,13 @@ uint8_t HDRoptions::m_IPOPT_RR()
 
     memset_random(&(optshdr)[index + 3], (size_rr - 3));
 
-    registerOptOccurrence(SJ_IPOPT_RR, index, size_rr);
-
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
                "SJ_IPOPT_RR", index, size_rr,
                optTrack[SJ_IPOPT_RR].size() ? "true" : "false",
                available_opts_len - size_rr
                );
+
+    registerOptOccurrence(SJ_IPOPT_RR, index, size_rr);
 
     return size_rr;
 }
@@ -359,14 +312,13 @@ uint8_t HDRoptions::m_IPOPT_RA()
      */
     memset_random(&optshdr[index + 2], 2);
 
-    registerOptOccurrence(SJ_IPOPT_RA, index, IPOPT_RA_SIZE);
-
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
                "SJ_IPOPT_RA", index, IPOPT_RA_SIZE,
                optTrack[SJ_IPOPT_RA].size() ? "true" : "false",
                available_opts_len - IPOPT_RA_SIZE
                );
 
+    registerOptOccurrence(SJ_IPOPT_RA, index, IPOPT_RA_SIZE);
 
     return IPOPT_RA_SIZE;
 }
@@ -381,11 +333,11 @@ uint8_t HDRoptions::m_IPOPT_CIPSO()
      * Extract from: net/ipv4/ip_options.c
      *
      *   case IPOPT_CIPSO:
-     *       if ((!skb && !capable(CAP_NET_RAW)) || opt->cipso) 
+     *       if ((!skb && !capable(CAP_NET_RAW)) || opt->cipso)
      *           pp_ptr = optptr;
      *           goto error;
      *       opt->cipso = optptr - iph;
-     *       if (cipso_v4_validate(skb, &optptr)) 
+     *       if (cipso_v4_validate(skb, &optptr))
      *          pp_ptr = optptr;
      *          goto error;
      *       break;
@@ -407,8 +359,6 @@ uint8_t HDRoptions::m_IPOPT_CIPSO()
     optshdr[index + 1] = IPOPT_CIPSO_SIZE;
     memset_random(&optshdr[index + 2], 8);
 
-    registerOptOccurrence(SJ_IPOPT_CIPSO, index, IPOPT_CIPSO_SIZE);
-
     corruptDone = true;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
@@ -416,6 +366,8 @@ uint8_t HDRoptions::m_IPOPT_CIPSO()
                optTrack[SJ_IPOPT_CIPSO].size() ? "true" : "false",
                available_opts_len - IPOPT_CIPSO_SIZE
                );
+
+    registerOptOccurrence(SJ_IPOPT_CIPSO, index, IPOPT_CIPSO_SIZE);
 
     return IPOPT_CIPSO_SIZE;
 }
@@ -442,7 +394,10 @@ uint8_t HDRoptions::m_IPOPT_SEC()
 
 #define IPOPT_SEC_SIZE 11
 
-    /* this option always corrupts the packet */
+    /*
+     * this option always corrupts the packet random data value packet
+     */
+
     const uint8_t index = actual_opts_len;
 
     if (available_opts_len < IPOPT_SEC_SIZE)
@@ -454,8 +409,6 @@ uint8_t HDRoptions::m_IPOPT_SEC()
     optshdr[index + 1] = IPOPT_SEC_SIZE;
     memset_random(&optshdr[index + 2], 9);
 
-    registerOptOccurrence(SJ_IPOPT_SEC, index, IPOPT_SEC_SIZE);
-
     corruptDone = true;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s, (avail %u)",
@@ -464,34 +417,26 @@ uint8_t HDRoptions::m_IPOPT_SEC()
                available_opts_len - IPOPT_SEC_SIZE
                );
 
+    registerOptOccurrence(SJ_IPOPT_SEC, index, IPOPT_SEC_SIZE);
+
     return IPOPT_SEC_SIZE;
 }
 
-/* rivedere - il doppio uso esiste nel senso che non deve essere good e corrupt, deve essere
- * TWOSHOT che implicitamente se è sato una volta sola è buona! */
 uint8_t HDRoptions::m_IPOPT_SID()
 {
-    /* this option does corrupt the packet if repeated. */
+    /* this option corrupts the packet if repeated. */
+
     const uint8_t index = actual_opts_len;
-
-    if (available_opts_len < IPOPT_SID_SIZE)
-    {
-        if (nextPlannedInj != NULL)
-            nextPlannedInj = NULL;
-
-        return 0;
-    }
 
     optshdr[index] = IPOPT_SID;
     optshdr[index + 1] = IPOPT_SID_SIZE;
     memset_random(&optshdr[index + 2], 2);
 
-    if (!optTrack[SJ_IPOPT_SID].size())
+    if (optTrack[SJ_IPOPT_SID].size())
         corruptDone = true;
 
-    registerOptOccurrence(SJ_IPOPT_SID, index, IPOPT_SID_SIZE);
-
-    nextPlannedInj = (!nextPlannedInj) ? &HDRoptions::m_IPOPT_SID : NULL;
+    if(corruptRequest)
+        nextPlannedInj = (!nextPlannedInj) ? &HDRoptions::m_IPOPT_SID : NULL;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
                "SJ_IPOPT_SID", index, IPOPT_SID_SIZE,
@@ -499,17 +444,17 @@ uint8_t HDRoptions::m_IPOPT_SID()
                available_opts_len - IPOPT_SID_SIZE
                );
 
+    registerOptOccurrence(SJ_IPOPT_SID, index, IPOPT_SID_SIZE);
+
     return IPOPT_SID_SIZE;
 }
 
 /*
- * TCP OPTIONS 
+ * TCP OPTIONS
  */
 uint8_t HDRoptions::m_TCPOPT_PAWSCORRUPT()
 {
 #define TCPOPT_TIMESTAMP_SIZE 10
-
-    /* this option does corrupt the packet if repeated. */
 
     const uint8_t index = actual_opts_len;
 
@@ -521,8 +466,6 @@ uint8_t HDRoptions::m_TCPOPT_PAWSCORRUPT()
     *(uint32_t *) &optshdr[index + 2] = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
     memset_random(&optshdr[index + 6], 4);
 
-    registerOptOccurrence(SJ_IPOPT_TIMESTAMP, index, TCPOPT_TIMESTAMP_SIZE);
-
     corruptDone = true;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
@@ -531,34 +474,36 @@ uint8_t HDRoptions::m_TCPOPT_PAWSCORRUPT()
                available_opts_len - TCPOPT_TIMESTAMP_SIZE
                );
 
+    registerOptOccurrence(SJ_IPOPT_TIMESTAMP, index, TCPOPT_TIMESTAMP_SIZE);
+
     return TCPOPT_TIMESTAMP_SIZE;
 }
 
-static struct option_mapping optMap[SUPPORTED_OPTIONS] = {
+HDRoptions::option_mapping HDRoptions::optMap[SUPPORTED_OPTIONS] = {
     /* SJ_IPOPT_NOOP */
-    { NOT_CORRUPT, &HDRoptions::m_IPOPT_NOOP, IPOPT_NOOP, IPPROTO_IP, "IP NOOP"},
+    { false, NOT_CORRUPT, &HDRoptions::m_IPOPT_NOOP, IPOPT_NOOP, IPPROTO_IP, "IP NOOP"},
     /* SJ_IPOPT_TIMESTAMP */
-    { ONESHOT, &HDRoptions::m_IPOPT_TIMESTAMP, IPOPT_TIMESTAMP, IPPROTO_IP, "IP Timestamp"},
+    { true, ONESHOT /* FIXME: should be BOTH */, &HDRoptions::m_IPOPT_TIMESTAMP, IPOPT_TIMESTAMP, IPPROTO_IP, "IP Timestamp"},
     /* SJ_IPOPT_LSRR */
-    { TWOSHOT, &HDRoptions::m_IPOPT_LSRR, IPOPT_LSRR, IPPROTO_IP, "Loose source routing"},
+    { false, ONESHOT, &HDRoptions::m_IPOPT_LSRR, IPOPT_LSRR, IPPROTO_IP, "Loose source routing"},
     /* SJ_IPOPT_RR */
-    { NOT_CORRUPT, &HDRoptions::m_IPOPT_RR, IPOPT_RR, IPPROTO_IP, "Record route"},
+    { false, TWOSHOT, &HDRoptions::m_IPOPT_RR, IPOPT_RR, IPPROTO_IP, "Record route"},
     /* SJ_IPOPT_RA */
-    { NOT_CORRUPT, &HDRoptions::m_IPOPT_RA, IPOPT_RA, IPPROTO_IP, "Router advertising"},
+    { false, NOT_CORRUPT, &HDRoptions::m_IPOPT_RA, IPOPT_RA, IPPROTO_IP, "Router advertising"},
     /* SJ_IPOPT_CIPSO */
-    { ONESHOT, &HDRoptions::m_IPOPT_CIPSO, IPOPT_CIPSO, IPPROTO_IP, "Cipso"},
+    { true, ONESHOT, &HDRoptions::m_IPOPT_CIPSO, IPOPT_CIPSO, IPPROTO_IP, "Cipso"},
     /* SJ_IPOPT_SEC */
-    { ONESHOT, &HDRoptions::m_IPOPT_SEC, IPOPT_SEC, IPPROTO_IP, "Security"},
+    { true, ONESHOT, &HDRoptions::m_IPOPT_SEC, IPOPT_SEC, IPPROTO_IP, "Security"},
     /* SJ_IPOPT_SID_VALID */
-    { TWOSHOT, &HDRoptions::m_IPOPT_SID, IPOPT_SID, IPPROTO_IP, "Session ID"},
+    { true, TWOSHOT, &HDRoptions::m_IPOPT_SID, IPOPT_SID, IPPROTO_IP, "Session ID"},
     /* SJ_TCPOPT_PAWSCORRUPT */
-    //{ ONESHOT, &HDRoptions::m_TCPOPT_PAWSCORRUPT, RFC_UNEXISTENT_CODE, IPPROTO_TCP, "TCP Timestamp corrupt PAWS"},
-    /* SJ_TCPOPT_PAWSCORRUPT */
-    { UNASSIGNED_VALUE, NULL, TCPOPT_TIMESTAMP, IPPROTO_TCP, "TCP Timestamp "},
-    /* SJ_TCPOPT_PAWSCORRUPT */
-    { UNASSIGNED_VALUE, NULL, TCPOPT_MSS, IPPROTO_TCP, "TCP MSS"},
-    /* SJ_TCPOPT_PAWSCORRUPT */
-    { UNASSIGNED_VALUE, NULL, TCPOPT_SACK, IPPROTO_TCP, "TCP SACK"}
+    { false, ONESHOT, &HDRoptions::m_TCPOPT_PAWSCORRUPT, RFC_UNEXISTENT_CODE, IPPROTO_TCP, "TCP Timestamp corrupt PAWS"},
+    /* SJ_TCPOPT_TIMESTAMP */
+    { false, UNASSIGNED_VALUE, NULL, TCPOPT_TIMESTAMP, IPPROTO_TCP, "TCP Timestamp "},
+    /* SJ_TCPOPT_TCP */
+    { false, UNASSIGNED_VALUE, NULL, TCPOPT_MSS, IPPROTO_TCP, "TCP MSS"},
+    /* SJ_TCPOPT_SACK */
+    { false, UNASSIGNED_VALUE, NULL, TCPOPT_SACK, IPPROTO_TCP, "TCP SACK"}
 };
 
 /* Now start the implementation of HDRoptions member */
@@ -607,7 +552,7 @@ nextPlannedInj(NULL)
               );
 }
 
-void HDRoptions::setupOption(struct option_discovery *sessionDiscovery)
+void HDRoptions::setupOption(struct option_discovery * sessionDiscovery)
 {
     /* TODO */
 }
@@ -618,9 +563,7 @@ void HDRoptions::setupOption(struct option_discovery *sessionDiscovery)
  */
 bool HDRoptions::checkupIPopt(void)
 {
-    uint8_t i = 0;
-
-    while (i < actual_opts_len)
+    for (uint8_t i = 0; i < actual_opts_len;)
     {
         uint8_t * const option = &optshdr[i];
 
@@ -672,9 +615,7 @@ bool HDRoptions::checkupIPopt(void)
  */
 bool HDRoptions::checkupTCPopt(void)
 {
-    uint8_t i = 0;
-
-    while (i < actual_opts_len)
+    for (uint8_t i = 0; i < actual_opts_len;)
     {
         unsigned char* const option = &optshdr[i];
 
@@ -713,45 +654,74 @@ bool HDRoptions::checkupTCPopt(void)
 }
 
 /* return false if the condition doesn't fit */
-bool HDRoptions::checkCondition(uint32_t i, uint8_t pregressOpt)
+bool HDRoptions::checkCondition(uint8_t i)
 {
-    /* 1st section, will be the option USED ? */
+    corruptNow = corruptRequest;
 
-    /* 2nd section, at which state of the injection we are? */
-    if (!corruptRequest || corruptDone)
-        goto only_good;
-
-    /* 3rd section, corrupted only check */
-    if (pregressOpt < 4 && RANDOMPERCENT(40))
-        goto only_good;
-
-    if (optMap[i].corruptionType == ONESHOT || optMap[i].corruptionType == TWOSHOT)
-        return true;
-
-    return false;
-
-    /* 4th section, clear the next opt + good packet only */
-only_good:
-    nextPlannedInj = NULL;
-
-    if (optTrack[i].size())
+    /*
+     * 1st global check: can we use this option ?
+     * at the time a global enabled variable is used to permit selective testing
+     */
+    if (optMap[i].enabled == false)
         return false;
 
-    if (optMap[i].corruptionType == NOT_CORRUPT)
-        return true;
+    /*
+     * 2nd global check: at which state of the injection are we?
+     * we avoid corrupt options if we have just corrupted the packet
+     * and we also alter the probability for the first injection
+     * in favour of good injection.
+     */
+    if (corruptNow && (corruptDone || ((actual_opts_len < 4) && RANDOMPERCENT(40))))
+        corruptNow = false;
 
-    if (optMap[i].corruptionType == TWOSHOT)
-        return false;
+    if (corruptNow)
+    {
+        /* if we have decided to corrupt we must avoid only NOT_CORRUPT options */
+        if (optMap[i].corruptionType != NOT_CORRUPT)
+            return true;
+    }
+    else
+    {
+        /* if we have decided to no corrupt we must avoid ONESHOT and repeated options */
+        if ((optMap[i].corruptionType != ONESHOT) && !optTrack[i].size())
+        {
+            nextPlannedInj = NULL;
+            return true;
+        }
+    }
 
     return false;
 }
 
-void HDRoptions::registerOptOccurrence(uint32_t sjRegOpt, uint8_t off, uint8_t len)
+/* this is the utility function used by the single option adder to calculate the best fit size for an option */
+uint8_t HDRoptions::getBestRandsize(uint8_t fixedLen, uint8_t minRblks, uint8_t maxRblks, uint8_t blockSize)
 {
-    struct option_occorrence occ;
+    uint8_t minComputed = fixedLen + (minRblks * blockSize);
+    uint8_t maxComputed = fixedLen + (maxRblks * blockSize);
+
+    if (available_opts_len == minComputed || available_opts_len == maxComputed)
+        return available_opts_len;
+
+    if (available_opts_len < minComputed)
+        return 0;
+
+    if (available_opts_len > maxComputed)
+    {
+        return (((random() % (maxRblks - minRblks + 1)) + minRblks) * blockSize) +fixedLen;
+    }
+    else /* should try the best filling of memory and the NOP fill after */
+    {
+        uint8_t blockNumber = (available_opts_len - fixedLen) / blockSize;
+        return (blockNumber * blockSize) +fixedLen;
+    }
+}
+
+void HDRoptions::registerOptOccurrence(uint8_t opt, uint8_t off, uint8_t len)
+{
+    struct option_occurrence occ;
     occ.off = off;
     occ.len = len;
-    optTrack[sjRegOpt].push_back(occ);
+    optTrack[opt].push_back(occ);
 }
 
 uint32_t HDRoptions::randomInjector()
@@ -787,17 +757,32 @@ uint32_t HDRoptions::randomInjector()
             i++;
 
         /* check: this->corruptRequest, this->corruptDone and nextPlannedInj */
-        if (!checkCondition(i, actual_opts_len))
+        if (!checkCondition(i))
             continue;
 
         actual_opts_len += (this->*(optMap[i].optApply))();
         available_opts_len = target_opts_len - actual_opts_len;
 
-        /* the planned option is used when a TWO SHOT define the second shot */
+        /* the planned option is used when a TWOSHOT define the second shot */
         if (nextPlannedInj != NULL)
         {
             actual_opts_len += (this->*nextPlannedInj)();
-            available_opts_len = target_opts_len - actual_opts_len;
+            if (actual_opts_len)
+            {
+                available_opts_len = target_opts_len - actual_opts_len;
+            }
+            else
+            {
+                /* TWOSHOT FAIL: and now ?! no problem!
+                 *
+                 *      1) an other injection tries will follow;
+                 *      2) if all the tries will fail probably a scramble downgrade will
+                 *         solve the problem with no inconvenience.
+                 */
+            }
+
+            nextPlannedInj = NULL;
+
         }
 
         /* this will likely never happen if the getBestRandom is used correctly */
@@ -818,7 +803,20 @@ uint32_t HDRoptions::randomInjector()
     return actual_opts_len;
 }
 
-uint32_t HDRoptions::alignOpthdr(uint32_t alignN)
+/*
+ * this is used if a plugin wants to inject a specific option;
+ * in this case the value corruptRequest and corruptDone are ignored
+ */
+bool HDRoptions::customInjector(uint8_t opt)
+{
+    if ((this->*(optMap[opt].optApply))())
+        return true;
+
+    else
+        return false;
+}
+
+uint32_t HDRoptions::alignOpthdr(uint8_t alignN)
 {
 
     uint8_t nopcode = (type == IPOPTS_INJECTOR) ? IPOPT_NOOP : TCPOPT_NOP;
@@ -832,29 +830,19 @@ uint32_t HDRoptions::alignOpthdr(uint32_t alignN)
     return actual_opts_len;
 }
 
-void HDRoptions::copyOpthdr(uint8_t *dst)
+void HDRoptions::copyOpthdr(uint8_t * dst)
 {
 
     memcpy(dst, &optshdr[0], actual_opts_len);
 }
 
-bool HDRoptions::calledInjector(uint32_t sjOptIndex)
-{
-    if ((this->*(optMap[sjOptIndex].optApply))())
-        return true;
-
-    else
-        return false;
-}
-
-bool HDRoptions::removeOption(uint32_t sjDelOpt)
+bool HDRoptions::removeOption(uint8_t opt)
 {
     /* if an option is request to be deleted, we need to check if it exists! */
-    if (optTrack[sjDelOpt].size() == false)
+    if (optTrack[opt].size() == false)
         return false;
 
-    vector<option_occorrence>::iterator it = optTrack[sjDelOpt].begin();
-    for (vector<option_occorrence>::iterator it = optTrack[sjDelOpt].begin(); it != optTrack[sjDelOpt].end(); it = optTrack[sjDelOpt].erase(it))
+    for (vector<option_occurrence>::iterator it = optTrack[opt].begin(); it != optTrack[opt].end(); it = optTrack[opt].erase(it))
     {
 
         vector<unsigned char>::iterator start = optshdr.begin() + it->off;
