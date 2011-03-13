@@ -659,9 +659,7 @@ bool TCPTrack::lastPktFix(Packet & pkt)
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
-            {
-                pkt.ip->ttl = (*it->second).ttl_estimate - (random() % 5); /* [+0, +4], 5 values */
-            }
+                pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 5); /* [+0, +4], 5 values */
         }
     }
     else
