@@ -5,10 +5,14 @@ SniffJoke is an application for Linux that handle transparently your TCP connect
 # Installation
     ./configure && make && make install
 
-# Simple immediate execution
-    root@linux# sniffjoke --debug 5 --start --foreground
+If you have some truble with the version of libtool (will happen if you have an old versions) you will compile with:
 
-#Requirements
+    ./autogen.sh && ./configure && make && make install
+
+# Simple immediate verbose execution
+    root@linux# sniffjoke --debug 6 --start --foreground
+
+# Requirements
 
 Linux OS (>=2.6.19) with tun kernel module;
 
@@ -71,9 +75,6 @@ TODO, and if you will help, we are glad:
 
 # Internal & external links
 
-The files:
-    doc/*
-
 Official sniffjoke page:
     http://www.delirandom.net/sniffjoke
 
@@ -87,7 +88,7 @@ Script installed:
 (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
-Hacker's bread:
+Hacker's old bread:
     http://www.phrack.org/issues.html?issue=54&id=10#article
 
 MacOSx ports as kernel module:
