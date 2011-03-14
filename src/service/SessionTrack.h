@@ -30,8 +30,12 @@ using namespace std;
 
 class SessionTrack
 {
-public:
+    friend class SessionTrackMap;
+
+private:
     time_t access_timestamp; /* access timestamp used to decretee expiry */
+
+public:
 
     uint8_t proto;
     uint32_t daddr;

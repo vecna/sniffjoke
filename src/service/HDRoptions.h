@@ -26,19 +26,37 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include "Utils.h"
+#include "Packet.h"
+#include "TTLFocus.h"
 
-/* not all options are defined in the standard library */
+#define MAXIPOPTIONS 40
+#define MAXTCPOPTIONS 40
+#define MINIPOPTION 4 /* excluded NOP/EOL */
+#define MINTCPOPTION 4 /* excluded NOP/EOL */
+#define MAXIPINJITERATIONS 5 /* max number of injected ip options / retries */
+#define MAXTCPINJITERATIONS 5 /* max number of injected tcp options / retries */
+
+/* 
+ * not all options are defined in the standard library,
+ * so some values are defined here.
+ * 
+ * references:
+ * 
+ *     http://www.networksorcery.com/enp/protocol/ip.htm
+ *     http://www.networksorcery.com/enp/protocol/tcp.htm
+ */
+
 
 #define IPOPT_NOOP_SIZE     1
-
 #define IPOPT_CIPSO         (6 |IPOPT_CONTROL|IPOPT_COPY)
 #define IPOPT_CIPSO_SIZE    10
-
-/* required info taken from http://www.networksorcery.com/enp/protocol/ip.htm */
 #define IPOPT_SID_SIZE      4
 
-/* TCP opt code from: http://www.networksorcery.com/enp/protocol/tcp.htm */
+#define TCPOPT_NOP_SIZE     1
+#define TCPOPT_MD5SIG       19
+#define TCPOPT_MD5SIG_SIZE  18
 #define TCPOPT_MSS          2
+#define TCPOPT_MSS_SIZE     4
 
 #define RFC_UNEXISTENT_CODE 255
 
@@ -62,55 +80,18 @@ struct option_occurrence
     uint8_t len;
 };
 
-/* this is the option used in an array long 
- * #SUPPORTED_OPTIONS element and present in every TTLfocus. */
-struct option_discovery
-{
-    bool underTesting;
-    bool confirmed;
-    bool defaultWorking;
-};
-
-/*
- * these are the IP/TCP options supported in detection, injection,
- * corruption and so on. in the start of HDRoptions.cc this index are
- * used for fill the description structure
- */
-#define SJ_IPOPT_NOOP               0
-#define SJ_IPOPT_TIMESTAMP          1
-#define SJ_IPOPT_LSRR               2
-#define SJ_IPOPT_RR                 3
-#define SJ_IPOPT_RA                 4
-#define SJ_IPOPT_CIPSO              5
-#define SJ_IPOPT_SEC                6
-#define SJ_IPOPT_SID                7
-/* you need to update this, when another IP options is added */
-#define LAST_IPOPT_NAME             SJ_IPOPT_SID
-
-#define SJ_TCPOPT_PAWSCORRUPT       LAST_IPOPT_NAME + 1
-#define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT_NAME + 2
-#define SJ_TCPOPT_MSS               LAST_IPOPT_NAME + 3
-#define SJ_TCPOPT_SACK              LAST_IPOPT_NAME + 4
-
-/* this too */
-#define LAST_TCPOPT_NAME            SJ_TCPOPT_SACK
-
-/* the last code + 1 */
-#define SUPPORTED_OPTIONS           (LAST_TCPOPT_NAME + 1)
-
-/* get random options: this will not need to be updated */
-#define GET_RANDOM_IPOPT ( random() % (LAST_IPOPT_NAME + 1) )
-#define GET_RANDOM_TCPOPT ( ( random() % (LAST_TCPOPT_NAME - LAST_IPOPT_NAME ) ) + LAST_IPOPT_NAME + 1 )
-
 class HDRoptions
 {
 private:
 
     injector_t type;
+
+    Packet &pkt;
+    TTLFocus &ttlfocus;
+
     bool corruptRequest;
     bool corruptNow;
     bool corruptDone;
-
 
     vector<unsigned char> optshdr;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
@@ -138,8 +119,15 @@ private:
     bool checkupIPopt(void);
     bool checkupTCPopt(void);
     bool checkCondition(uint8_t);
+
     uint8_t getBestRandsize(uint8_t, uint8_t, uint8_t, uint8_t);
     void registerOptOccurrence(uint8_t, uint8_t, uint8_t);
+    uint32_t alignOpthdr();
+    void copyOpthdr(uint8_t *);
+    bool isGoalAchieved();
+
+    uint32_t randomInjector();
+    bool customInjector(uint8_t);
 
     uint8_t m_IPOPT_NOOP();
     uint8_t m_IPOPT_TIMESTAMP();
@@ -149,20 +137,18 @@ private:
     uint8_t m_IPOPT_CIPSO();
     uint8_t m_IPOPT_SEC();
     uint8_t m_IPOPT_SID();
+    uint8_t m_TCPOPT_NOP();
+    uint8_t m_TCPOPT_MD5SIG();
     uint8_t m_TCPOPT_PAWSCORRUPT();
 
 public:
 
-    HDRoptions(injector_t, bool, uint8_t *, uint8_t, uint8_t);
+    HDRoptions(injector_t, Packet &, TTLFocus &);
     void setupOption(struct option_discovery *);
 
-    /* this is used for MALFORMED pourpose */
-    uint32_t randomInjector();
+    bool injectIPOpts(bool, bool);
+    bool injectTCPOpts(bool, bool);
     bool removeOption(uint8_t);
-    uint32_t alignOpthdr(uint8_t);
-    void copyOpthdr(uint8_t *);
-    bool isGoalAchieved();
-    bool customInjector(uint8_t);
 };
 
 #endif /* HDROPTIONS_H */

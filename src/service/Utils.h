@@ -65,6 +65,10 @@ extern time_t sj_clock;
 #define ISSET_INNOCENT(byte)    (byte & SCRAMBLE_INNOCENT)
 #define RANDOMPERCENT(percent)  ((uint32_t)random() % 100 <= percent)
 
+/* get random options: this will not need to be updated */
+#define GET_RANDOM_IPOPT        (random() % (LAST_IPOPT_NAME + 1))
+#define GET_RANDOM_TCPOPT       ((random() % (LAST_TCPOPT_NAME - LAST_IPOPT_NAME )) + LAST_IPOPT_NAME + 1)
+
 void init_random(void);
 void* memset_random(void *, size_t);
 

@@ -77,31 +77,19 @@ uint8_t HDRoptions::m_IPOPT_NOOP()
 uint8_t HDRoptions::m_IPOPT_TIMESTAMP()
 {
     /*
-     * This option it's based on analysis of the linux kernel. (2.6.36)
+     * This options use the ttlfocus information and has two configurations:
      *
-     * Extract from: net/ipv4/ip_options.c
+     * 1) a NOT CORRUPT one:
+     *      the option is configured with empy timestamp space.
      *
-     *   if (optptr[2] < 5) 
-     *       pp_ptr = optptr + 2;
-     *       goto error;
-     *   
+     * 2) a CORRUPT one:
+     *      the option is configured a precise setting of overflow variable
+     *      to permit an hack similar to prescription.
      *
-     *   if (optptr[2] <= optlen) 
-     *       __be32 *timeptr = NULL;
-     *       if (optptr[2]+3 > optptr[1]) 
-     *           pp_ptr = optptr + 2;
-     *           goto error;
      *
-     *       [...]
+     * reference: http://tools.ietf.org/rfc/rfc781.txt
      *
-     *   so here have two conditions we can disattend;
-     *   It's possible to create a unique hack that
-     *   due tu random() exploit one or the other.
      */
-
-    const uint8_t size_timestamp = getBestRandsize(4, 1, 9, 4);
-    const uint8_t timestamps = (size_timestamp - 4) / 4;
-    const uint8_t index = actual_opts_len;
 
     /*
      * it has been tested that some networks (Fastweb) do silently filter packets
@@ -121,9 +109,16 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP()
      *
      * the same can be found on CISCO and Juniper (http://www.cisco.com/en/US/docs/ios/12_3t/12_3t4/feature/guide/gtipofil.html)
      *
-     * this is a great news for us, and in future we will have to test if a good
-     * options could be used to make the network drops it.
      */
+
+    const uint8_t size_timestamp = getBestRandsize(4, 9, 9, 4);
+    const uint8_t timestamps = (size_timestamp - 4) / 4;
+    const uint8_t covered_destinations = timestamps + 15; /* the overflow counter is 4 bits */
+
+    if (ttlfocus.status != TTL_KNOWN || ttlfocus.ttl_estimate > covered_destinations)
+        return 0;
+
+    const uint8_t index = actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
     if (!size_timestamp)
@@ -134,16 +129,21 @@ uint8_t HDRoptions::m_IPOPT_TIMESTAMP()
 
     if (corruptNow)
     {
-        /*
-         * FIXME: integrating ttl knowledge we can select a precise expiring hop;
-         * timestamp range is 1:9;
-         * overflow range is of 0:15;
-         * so we have (covered_hops = 9 + 15) different possibilities.
-         * so we can cover destinations between 1 and 24 hops.
-         */
+        uint8_t last_filled = 0;
+        uint8_t overflow = 0;
+
+        last_filled = covered_destinations - ttlfocus.ttl_estimate;
+        if (last_filled > timestamps)
+        {
+            overflow = (last_filled - timestamps);
+            last_filled = timestamps;
+        }
+
         optshdr[index + 2] = size_timestamp + 1; /* full */
-        optshdr[index + 3] = (IPOPT_TS_TSONLY | (15 << 4)); /* next will overflow */
-        memset_random(&optshdr[index + 4], timestamps * 4);
+        optshdr[index + 3] = (IPOPT_TS_TSONLY | (overflow << 4)); /* next will overflow */
+
+        memset(&optshdr[index + 4], 0, timestamps * 4);
+        memset_random(&optshdr[index + 4], last_filled * 4);
 
         corruptDone = true;
     }
@@ -452,6 +452,53 @@ uint8_t HDRoptions::m_IPOPT_SID()
 /*
  * TCP OPTIONS
  */
+
+uint8_t HDRoptions::m_TCPOPT_NOP()
+{
+    if (available_opts_len < TCPOPT_NOP_SIZE)
+        return 0;
+
+    const uint8_t index = actual_opts_len;
+
+    optshdr[index] = TCPOPT_NOP;
+
+    LOG_PACKET("** %s at the index of %u total size of %u already present: %s avail %d",
+               "SJ_IPOPT_NOOP", index, TCPOPT_NOP_SIZE,
+               optTrack[SJ_TCPOPT_NOP].size() ? "true" : "false",
+               available_opts_len - TCPOPT_NOP_SIZE
+               );
+
+    registerOptOccurrence(SJ_TCPOPT_NOP, index, TCPOPT_NOP_SIZE);
+
+    return TCPOPT_NOP_SIZE;
+}
+
+uint8_t HDRoptions::m_TCPOPT_MD5SIG()
+{
+    /* this option corrupts the packet if repeated. */
+
+    const uint8_t index = actual_opts_len;
+
+    if (available_opts_len < TCPOPT_MD5SIG_SIZE)
+        return 0;
+
+    optshdr[index] = TCPOPT_MD5SIG;
+    optshdr[index + 1] = TCPOPT_MD5SIG_SIZE;
+    memset_random(&optshdr[index + 2], TCPOPT_MD5SIG_SIZE - 2);
+
+    corruptDone = true;
+
+    LOG_PACKET("** %s at the index of %u total size of %u already present: %s avail %d",
+               "SJ_TCPOPT_MD5SIG", index, TCPOPT_MD5SIG_SIZE,
+               optTrack[SJ_TCPOPT_MD5SIG].size() ? "true" : "false",
+               available_opts_len - TCPOPT_MD5SIG_SIZE
+               );
+
+    registerOptOccurrence(SJ_TCPOPT_MD5SIG, index, TCPOPT_MD5SIG_SIZE);
+
+    return TCPOPT_MD5SIG_SIZE;
+}
+
 uint8_t HDRoptions::m_TCPOPT_PAWSCORRUPT()
 {
 #define TCPOPT_TIMESTAMP_SIZE 10
@@ -496,6 +543,10 @@ HDRoptions::option_mapping HDRoptions::optMap[SUPPORTED_OPTIONS] = {
     { true, ONESHOT, &HDRoptions::m_IPOPT_SEC, IPOPT_SEC, IPPROTO_IP, "Security"},
     /* SJ_IPOPT_SID_VALID */
     { true, TWOSHOT, &HDRoptions::m_IPOPT_SID, IPOPT_SID, IPPROTO_IP, "Session ID"},
+    /* SJ_TCPOPT_NOOP */
+    { true, NOT_CORRUPT, &HDRoptions::m_TCPOPT_NOP, TCPOPT_NOP, IPPROTO_TCP, "TCP NOOP"},
+    /* SJ_TCPOPT_MD5SIG */
+    { false, ONESHOT, &HDRoptions::m_TCPOPT_MD5SIG, TCPOPT_MD5SIG, IPPROTO_TCP, "TCP MD5SIG"},
     /* SJ_TCPOPT_PAWSCORRUPT */
     { false, ONESHOT, &HDRoptions::m_TCPOPT_PAWSCORRUPT, RFC_UNEXISTENT_CODE, IPPROTO_TCP, "TCP Timestamp corrupt PAWS"},
     /* SJ_TCPOPT_TIMESTAMP */
@@ -507,23 +558,22 @@ HDRoptions::option_mapping HDRoptions::optMap[SUPPORTED_OPTIONS] = {
 };
 
 /* Now start the implementation of HDRoptions member */
-HDRoptions::HDRoptions(injector_t t, bool corruptRequest, uint8_t *optionStart, uint8_t protohdrlen, uint8_t target_protolen) :
+HDRoptions::HDRoptions(injector_t t, Packet &pkt, TTLFocus &ttlfocus) :
 type(t),
-corruptRequest(corruptRequest),
+pkt(pkt),
+ttlfocus(ttlfocus),
+corruptRequest(false),
 corruptDone(false),
 nextPlannedInj(NULL)
 {
-    /* initialize the option tracking usage to 0 */
-    memset((void *) optTrack, 0x00, sizeof (optTrack));
-
     switch (type)
     {
     case IPOPTS_INJECTOR:
-
-        actual_opts_len = protohdrlen - sizeof (struct iphdr);
-        target_opts_len = target_protolen - sizeof (struct iphdr);
-        optshdr.resize(target_opts_len, IPOPT_EOL);
-        memcpy((void *) &optshdr[0], optionStart, actual_opts_len);
+        actual_opts_len = pkt.iphdrlen - sizeof (struct iphdr);
+        target_opts_len = actual_opts_len;
+        available_opts_len = MAXIPOPTIONS - actual_opts_len;
+        optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
+        memcpy((void *) &optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), actual_opts_len);
 
         if (!checkupIPopt())
             throw exception();
@@ -531,25 +581,17 @@ nextPlannedInj(NULL)
         break;
 
     case TCPOPTS_INJECTOR:
-
-        actual_opts_len = protohdrlen - sizeof (struct tcphdr);
-        target_opts_len = target_protolen - sizeof (struct tcphdr);
-        optshdr.resize(target_opts_len, TCPOPT_EOL);
-        memcpy((void *) &optshdr[0], optionStart, actual_opts_len);
+        actual_opts_len = pkt.tcphdrlen - sizeof (struct tcphdr);
+        target_opts_len = actual_opts_len;
+        available_opts_len = MAXTCPOPTIONS - actual_opts_len;
+        optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
+        memcpy((void *) &optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), actual_opts_len);
 
         if (!checkupTCPopt())
             throw exception();
 
         break;
     }
-
-    available_opts_len = target_opts_len - actual_opts_len;
-
-    LOG_DEBUG("+ loading %s for %s with goal %s total_opt_len|%u  (avail %u)",
-              __func__, type == IPOPTS_INJECTOR ? "IP" : "TCP",
-              corruptRequest ? "CORRUPT" : "NOT CORRUPT",
-              actual_opts_len, target_opts_len, available_opts_len
-              );
 }
 
 void HDRoptions::setupOption(struct option_discovery * sessionDiscovery)
@@ -733,6 +775,35 @@ void HDRoptions::registerOptOccurrence(uint8_t opt, uint8_t off, uint8_t len)
     optTrack[opt].push_back(occ);
 }
 
+uint32_t HDRoptions::alignOpthdr()
+{
+
+    uint8_t alignBytes = (actual_opts_len % 4) ? 4 - (actual_opts_len % 4) : 0;
+    if (alignBytes)
+    {
+        uint8_t eolcode = (type == IPOPTS_INJECTOR) ? IPOPT_EOL : TCPOPT_EOL;
+
+        optshdr[actual_opts_len] = eolcode;
+
+        actual_opts_len += alignBytes;
+
+        LOG_PACKET("*+ aligned to %u for %d bytes", actual_opts_len, alignBytes);
+    }
+
+    return actual_opts_len;
+}
+
+void HDRoptions::copyOpthdr(uint8_t * dst)
+{
+
+    memcpy(dst, &optshdr[0], actual_opts_len);
+}
+
+bool HDRoptions::isGoalAchieved()
+{
+    return corruptRequest == corruptDone;
+}
+
 uint32_t HDRoptions::randomInjector()
 {
     uint32_t randomStart, lastOpt, firstOpt, tries;
@@ -752,9 +823,10 @@ uint32_t HDRoptions::randomInjector()
         tries = LAST_TCPOPT_NAME - LAST_IPOPT_NAME + 1;
     }
 
-    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u)",
+    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
                type == IPOPTS_INJECTOR ? "IP" : "TCP",
-               actual_opts_len, target_opts_len, available_opts_len);
+               actual_opts_len, target_opts_len, available_opts_len,
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
     uint32_t i = randomStart;
     while (available_opts_len && --tries)
@@ -804,6 +876,8 @@ uint32_t HDRoptions::randomInjector()
 
     }
 
+    alignOpthdr();
+
     LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
                type == IPOPTS_INJECTOR ? "IP" : "TCP",
                actual_opts_len, target_opts_len, available_opts_len,
@@ -811,39 +885,6 @@ uint32_t HDRoptions::randomInjector()
 
     /* random Injection return the progressing growing of the option header */
     return actual_opts_len;
-}
-
-/*
- * this is used if a plugin wants to inject a specific option;
- * in this case the value corruptRequest and corruptDone are ignored
- */
-bool HDRoptions::customInjector(uint8_t opt)
-{
-    if ((this->*(optMap[opt].optApply))())
-        return true;
-
-    else
-        return false;
-}
-
-uint32_t HDRoptions::alignOpthdr(uint8_t alignN)
-{
-
-    uint8_t nopcode = (type == IPOPTS_INJECTOR) ? IPOPT_NOOP : TCPOPT_NOP;
-
-    memset(&optshdr[actual_opts_len], nopcode, alignN);
-
-    actual_opts_len += alignN;
-
-    LOG_PACKET("*+ aligned to %u for %d bytes", actual_opts_len, alignN);
-
-    return actual_opts_len;
-}
-
-void HDRoptions::copyOpthdr(uint8_t * dst)
-{
-
-    memcpy(dst, &optshdr[0], actual_opts_len);
 }
 
 bool HDRoptions::removeOption(uint8_t opt)
@@ -866,8 +907,99 @@ bool HDRoptions::removeOption(uint8_t opt)
     return true;
 }
 
-bool HDRoptions::isGoalAchieved()
+bool HDRoptions::injectIPOpts(bool corrupt, bool strip_previous)
 {
-    return corruptRequest == corruptDone;
+    bool goalAchieved = false;
+
+    uint16_t freespace = MTU - pkt.pbuf.size();
+
+    pkt.SELFLOG("before ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.ippayloadlen, pkt.pbuf.size());
+
+    if (strip_previous)
+    {
+        freespace += actual_opts_len;
+        actual_opts_len = 0;
+    }
+
+    // iphdrlen must be a multiple of 4, we decrement by the modulus keeping count of MTU
+    freespace -= freespace % 4;
+    if (freespace == 0)
+        return false;
+
+    target_opts_len = MAXIPOPTIONS;
+    if (freespace < target_opts_len)
+        target_opts_len = freespace;
+
+    available_opts_len = target_opts_len - actual_opts_len;
+
+    try
+    {
+        corruptRequest = corrupt;
+
+        uint8_t options_size = randomInjector();
+
+        goalAchieved = isGoalAchieved();
+        if (goalAchieved)
+        {
+            pkt.iphdrResize(sizeof (struct iphdr) +options_size);
+            copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
+        }
+    }
+    catch (exception &e)
+    {
+        pkt.SELFLOG("IPOpts injection not possible");
+    }
+
+    pkt.SELFLOG("after ip injection strip|%u iphdrlen|%u ippayloadlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.ippayloadlen, pkt.pbuf.size());
+
+    return goalAchieved;
 }
 
+bool HDRoptions::injectTCPOpts(bool corrupt, bool strip_previous)
+{
+    bool goalAchieved = false;
+
+    uint16_t freespace = MTU - pkt.pbuf.size();
+
+    pkt.SELFLOG("before TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.tcphdrlen, pkt.tcppayloadlen, pkt.pbuf.size());
+
+    if (strip_previous)
+    {
+        freespace += actual_opts_len;
+        actual_opts_len = 0;
+    }
+
+    // iphdrlen must be a multiple of 4, we decrement by the modulus keeping count of MTU
+    freespace -= freespace % 4;
+
+    if (freespace == 0)
+        return false;
+
+    target_opts_len = MAXTCPOPTIONS;
+    if (freespace < target_opts_len)
+        target_opts_len = freespace;
+
+    available_opts_len = target_opts_len - actual_opts_len;
+
+    try
+    {
+        corruptRequest = corrupt;
+
+        uint8_t options_size = randomInjector();
+
+        goalAchieved = isGoalAchieved();
+        if (goalAchieved)
+        {
+            pkt.tcphdrResize(sizeof (struct tcphdr) +options_size);
+            copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
+        }
+    }
+    catch (exception &e)
+    {
+        pkt.SELFLOG("TCPOpts injection not possibile");
+    }
+
+    pkt.SELFLOG("after TCPOpts injection strip|%u iphdrlen|%u tcphdrlen|%u ippayload|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.tcphdrlen, pkt.tcppayloadlen, pkt.pbuf.size());
+
+    return goalAchieved;
+}

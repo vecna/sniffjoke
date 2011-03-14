@@ -25,7 +25,6 @@
 
 #include "Utils.h"
 #include "Packet.h"
-#include "HDRoptions.h"
 
 /* IT'S FUNDAMENTAL TO HAVE ALL THIS ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
@@ -34,15 +33,12 @@ enum ttlsearch_t
     TTL_KNOWN = 1, TTL_BRUTEFORCE = 2, TTL_UNKNOWN = 4
 };
 
-struct usefulHDRopt
+
+struct option_discovery
 {
-    /* this is set by default in every IP/TCP options */
-    bool usefull;
-    /* this is set when the MALFORMED scramble is not randomic but aim 
-     * to test a specific option, waiting in the incoming Filter if an
-     * error is returned or not, after this test, the option will be
-     * set usefull = false */
     bool underTesting;
+    bool confirmed;
+    bool defaultWorking;
 };
 
 class TTLFocus
