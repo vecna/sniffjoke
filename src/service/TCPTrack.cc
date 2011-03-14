@@ -180,12 +180,9 @@ uint8_t TCPTrack::discernAvailScramble(const Packet &pkt)
      */
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
-    const TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
-
-    if (it != ttlfocus_map.end() && !(it->second->status & (TTL_UNKNOWN | TTL_BRUTEFORCE)))
-    {
+    TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
+    if (ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))
         retval |= SCRAMBLE_TTL;
-    }
 
     return retval;
 }
@@ -638,28 +635,22 @@ bool TCPTrack::injectHack(Packet &origpkt)
  * a non applicable hack it's degraded to the next;
  * at worst GUILTY it's always applied.
  */
-bool TCPTrack::lastPktFix(Packet & pkt)
+bool TCPTrack::lastPktFix(Packet &pkt)
 {
     /* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
-    /*
-     * here we call the map find();
-     * the function returns end() if the ttlfocus it's not present.
-     * in this situation and in situation where the focus status is
-     * UNKNOWN or BRUTEFORCE the packet has TTL randomized in order
-     * to don't disclose him real hop distance.
-     */
-    TTLFocusMap::iterator it = ttlfocus_map.find(pkt.ip->daddr);
-    if (it != ttlfocus_map.end() && (*it->second).status == TTL_KNOWN)
+
+    TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
+    if (ttlfocus.status == TTL_KNOWN)
     {
         if (pkt.wtf == PRESCRIPTION)
         {
-            pkt.ip->ttl = (*it->second).ttl_estimate - (1 + (random() % 5)); /* [-1, -5], 5 values */
+            pkt.ip->ttl = ttlfocus.ttl_estimate - (1 + (random() % 5)); /* [-1, -5], 5 values */
         }
         else
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
-                pkt.ip->ttl = (*it->second).ttl_estimate + (random() % 5); /* [+0, +4], 5 values */
+                pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 5); /* [+0, +4], 5 values */
         }
     }
     else
@@ -696,14 +687,16 @@ bool TCPTrack::lastPktFix(Packet & pkt)
         bool malformed = false;
         if (pkt.fragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
         {
-            if (!(pkt.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+            HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
+            if (!(IPInjector.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
                 pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
             else
                 malformed = true;
         }
         else
         {
-            if (!(pkt.injectTCPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+            HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
+            if (!(TCPInjector.injectTCPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
                 pkt.SELFLOG("injectTCPOpts failed to corrupt pkt");
             else
                 malformed = true;
@@ -723,9 +716,19 @@ bool TCPTrack::lastPktFix(Packet & pkt)
         /* MISTIFICATION FOR WTF != MALFORMED ALSO ON DOWNGRADE */
 
         /* apply mistification if MALFORMED is globally enabled */
-        if (ISSET_MALFORMED(plugin_pool.enabledScrambles()) && RANDOMPERCENT(66))
+        if (ISSET_MALFORMED(plugin_pool.enabledScrambles()))
         {
-            pkt.injectIPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+            if (RANDOMPERCENT(66))
+            {
+                HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
+                IPInjector.injectIPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+            }
+
+            if (RANDOMPERCENT(66))
+            {
+                HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
+                TCPInjector.injectTCPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+            }
         }
     }
 

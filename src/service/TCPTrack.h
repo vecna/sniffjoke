@@ -31,6 +31,7 @@
 #include "PacketFilter.h"
 #include "SessionTrack.h"
 #include "TTLFocus.h"
+#include "HDRoptions.h"
 #include "PluginPool.h"
 
 class TCPTrack

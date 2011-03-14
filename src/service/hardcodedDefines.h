@@ -137,6 +137,35 @@
 #define AGG_LONGPEEK            2048
 #define AGG_N_LONGPEEK          "LONGPEEK"
 
+/*
+ * these are the IP/TCP options supported in detection, injection,
+ * corruption and so on. in the start of HDRoptions.cc this index are
+ * used for fill the description structure
+ */
+#define SJ_IPOPT_NOOP               0
+#define SJ_IPOPT_TIMESTAMP          1
+#define SJ_IPOPT_LSRR               2
+#define SJ_IPOPT_RR                 3
+#define SJ_IPOPT_RA                 4
+#define SJ_IPOPT_CIPSO              5
+#define SJ_IPOPT_SEC                6
+#define SJ_IPOPT_SID                7
+/* you need to update this, when another IP options is added */
+#define LAST_IPOPT_NAME             SJ_IPOPT_SID
+
+#define SJ_TCPOPT_NOP               LAST_IPOPT_NAME + 1
+#define SJ_TCPOPT_MD5SIG            LAST_IPOPT_NAME + 2
+#define SJ_TCPOPT_PAWSCORRUPT       LAST_IPOPT_NAME + 3
+#define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT_NAME + 4
+#define SJ_TCPOPT_MSS               LAST_IPOPT_NAME + 5
+#define SJ_TCPOPT_SACK              LAST_IPOPT_NAME + 6
+
+/* this too */
+#define LAST_TCPOPT_NAME            SJ_TCPOPT_SACK
+
+/* the last code + 1 */
+#define SUPPORTED_OPTIONS           (LAST_TCPOPT_NAME + 1)
+
 #define TCPTRACK_QUEUE_MAX_LEN                  1024
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
 #define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
