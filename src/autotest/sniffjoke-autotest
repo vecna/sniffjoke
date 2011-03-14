@@ -72,8 +72,8 @@ start_test() {
     mkdir -p $workingdir
     echo $SERVER_IP > "$workingdir/ipwhitelist.conf"
     echo -e "$red* Executing sniffjoke with $PLUGIN combo, using these options:$yellow"
-    echo -e "sniffjoke --debug 5 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist $white"
-    $SNIFFJOKEBIN --debug 5 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist &>$workingdir/binout.log
+    echo -e "sniffjoke --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist $white"
+    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist &>$workingdir/binout.log
     sleep 2
     $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
     cd $workingdir
@@ -233,7 +233,7 @@ PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 # generate the SPAREDATA file to send
 GENERATEDFILE="/tmp/$LOCATION/SPAREDATA.generated"
 # the number '6' is not used in the test because sniffjoke, when runned
-# in debug mode (--debug 5) instead of filling the random segment of data
+# in debug mode (--debug 6) instead of filling the random segment of data
 # inject with random data, use the number '6'. Is useful when debugging 
 # an hack.
 seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
@@ -307,3 +307,17 @@ echo "now you will start sniffjoke with the option --location $LOCATION when you
 
 # clearing gay colors
 tput sgr0
+
+echo "SniffJoke is in BETATESTING: if you want contribute, type your nick or a simple string: the test output will be compressed for be sent to sniffjoke-team@delirandom.net."
+echo "Otherwise, for don't generate the tar.gz, leave the string empty:"
+echo -n "testerID: "
+read testerID
+
+if [ -z $testerID ]; then
+    echo "empty string: test finished"
+else
+    pushd /tmp
+    dFname="Sj-test-$testerID-$LOCATION.tar.gz"
+    tar zcf $dFname $LOCATION/
+    echo "thanks, $dFname has been generated, you will sent it to sniffjoke-team@delirandom.net, no one of your data will be disclosed outside the developers and no other use beside analysis and statistics will be done"
+fi
