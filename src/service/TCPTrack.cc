@@ -688,7 +688,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         if (pkt.fragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
-            if (!(IPInjector.injectIPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+            if (!(IPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true)))
                 pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
             else
                 malformed = true;
@@ -696,7 +696,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         else
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
-            if (!(TCPInjector.injectTCPOpts(/* corrupt ? */ true, /* strip previous options */ true)))
+            if (!(TCPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true)))
                 pkt.SELFLOG("injectTCPOpts failed to corrupt pkt");
             else
                 malformed = true;
@@ -721,13 +721,13 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             if (RANDOMPERCENT(66))
             {
                 HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
-                IPInjector.injectIPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
             }
 
             if (RANDOMPERCENT(66))
             {
                 HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
-                TCPInjector.injectTCPOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                TCPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
             }
         }
     }

@@ -150,21 +150,22 @@
 #define SJ_IPOPT_CIPSO              5
 #define SJ_IPOPT_SEC                6
 #define SJ_IPOPT_SID                7
-/* you need to update this, when another IP options is added */
-#define LAST_IPOPT_NAME             SJ_IPOPT_SID
 
-#define SJ_TCPOPT_NOP               LAST_IPOPT_NAME + 1
-#define SJ_TCPOPT_MD5SIG            LAST_IPOPT_NAME + 2
-#define SJ_TCPOPT_PAWSCORRUPT       LAST_IPOPT_NAME + 3
-#define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT_NAME + 4
-#define SJ_TCPOPT_MSS               LAST_IPOPT_NAME + 5
-#define SJ_TCPOPT_SACK              LAST_IPOPT_NAME + 6
+#define FIRST_IPOPT                 SJ_IPOPT_NOOP
+#define LAST_IPOPT                  SJ_IPOPT_SID
 
-/* this too */
-#define LAST_TCPOPT_NAME            SJ_TCPOPT_SACK
+#define SJ_TCPOPT_NOP               LAST_IPOPT + 1
+#define SJ_TCPOPT_MD5SIG            LAST_IPOPT + 2
+#define SJ_TCPOPT_PAWSCORRUPT       LAST_IPOPT + 3
+#define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT + 4
+#define SJ_TCPOPT_MSS               LAST_IPOPT + 5
+#define SJ_TCPOPT_SACK              LAST_IPOPT + 6
+
+#define FIRST_TCPOPT                SJ_TCPOPT_NOP
+#define LAST_TCPOPT                 SJ_TCPOPT_SACK
 
 /* the last code + 1 */
-#define SUPPORTED_OPTIONS           (LAST_TCPOPT_NAME + 1)
+#define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)
 
 #define TCPTRACK_QUEUE_MAX_LEN                  1024
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
