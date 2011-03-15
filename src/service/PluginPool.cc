@@ -296,3 +296,4 @@ uint8_t PluginPool::enabledScrambles()
 {
     return globalEnabledScrambles;
 }
+

@@ -826,7 +826,7 @@ void HDRoptions::injector(uint8_t opt)
 
 void HDRoptions::randomInjector()
 {
-    uint8_t randomStart, tries;
+    uint8_t randomStart = 0, tries;
 
     switch (type)
     {
@@ -1087,3 +1087,4 @@ bool HDRoptions::removeOption(uint8_t opt)
 
     return true;
 }
+
