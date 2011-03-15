@@ -658,11 +658,20 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         if (pkt.wtf == PRESCRIPTION)
         {
             if (ISSET_MALFORMED(pkt.choosableScramble))
+            {
+                pkt.SELFLOG("failed to corrupt pkt using prescription: pkt downgraded to MALFORMED");
                 pkt.wtf = MALFORMED;
+            }
             else if (ISSET_CHECKSUM(pkt.choosableScramble))
+            {
+                pkt.SELFLOG("failed to corrupt pkt using prescription: pkt downgraded to GUILTY");
                 pkt.wtf = GUILTY;
+            }
             else
+            {
+                pkt.SELFLOG("failed to corrupt pkt using prescription: pkt dropped");
                 goto drop_packet;
+            }
         }
 
         if (pkt.wtf != PRESCRIPTION)
@@ -687,27 +696,43 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         bool malformed = false;
         if (pkt.fragment == true || pkt.proto != TCP || RANDOM_PERCENT(50))
         {
-            HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
-            if (!(IPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true)))
-                pkt.SELFLOG("injectIPOpts failed to corrupt pkt");
-            else
-                malformed = true;
+            try
+            {
+                HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
+                if (IPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true))
+                    malformed = true;
+            }
+            catch (exception e)
+            {
+                pkt.SELFLOG("inject corrupt IP opts not possible: bad real opt present");
+            }
         }
         else
         {
-            HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
-            if (!(TCPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true)))
-                pkt.SELFLOG("injectTCPOpts failed to corrupt pkt");
-            else
-                malformed = true;
+            try
+            {
+                HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
+                if (TCPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true))
+                    malformed = true;
+            }
+            catch (exception e)
+            {
+                pkt.SELFLOG("inject corrupt TCP opts not possible: bad real opt present");
+            }
         }
 
         if (!malformed)
         {
             if (ISSET_CHECKSUM(pkt.choosableScramble))
+            {
+                pkt.SELFLOG("failed to corrupt pkt using MALFORMED: pkt downgraded to GUILTY");
                 pkt.wtf = GUILTY;
+            }
             else
+            {
+                pkt.SELFLOG("failed to corrupt pkt using MALFORMED: pkt dropped");
                 goto drop_packet;
+            }
         }
     }
 
@@ -720,15 +745,30 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         {
             if (RANDOM_PERCENT(66))
             {
-                HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
-                IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                try
+                {
+                    HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
+                    IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                }
+                catch (exception e)
+                {
+                    pkt.SELFLOG("inject mistify IP opts not possible: bad real opt present");
+                }
             }
 
             if (RANDOM_PERCENT(66))
             {
-                HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
-                TCPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                try
+                {
+                    HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
+                    TCPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                }
+                catch (exception e)
+                {
+                    pkt.SELFLOG("inject mistify TCP opts not possible: bad real opt present");
+                }
             }
+
         }
     }
 

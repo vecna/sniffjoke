@@ -678,9 +678,13 @@ bool HDRoptions::checkupTCPopt(void)
         uint8_t option_len = (uint8_t) optshdr[i + 1];
         if (option_len == 0 || option_len > (actual_opts_len - i))
         {
-            /* injection regardless of the corrupt value.  */
+            /*
+             * the packet contains invalid options
+             * we avoid injection regardless of the corrupt value.
+             */
             return false;
         }
+
         i += option_len;
 
         bool identified = false;
