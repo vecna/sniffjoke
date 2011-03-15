@@ -72,7 +72,7 @@ public:
 
         pkt->randomizeID();
 
-        if (RANDOMPERCENT(33))
+        if (RANDOM_PERCENT(33))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
         else
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));

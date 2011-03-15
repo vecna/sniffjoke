@@ -302,14 +302,16 @@ echo -e "$yellow \n\nFINISHED!\n"
 echo -e " $red $failure_count combinations of hack+scramble have not worked"
 echo -e " $green $success_count combinations of hack+scramble have worked correctly"
 
-echo -e "$blue\ncopyed in $WORKPATH/$LOCATION with the other default configuration file. You now could customize your location"
-echo "now you will start sniffjoke with the option --location $LOCATION when you are in this network environment."
+echo -e "$blue\ncopyed in $WORKPATH/$LOCATION with the other default configuration file."
+echo -e "for custom configuration this config file can be text edited."
+echo "now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION"
 
 # clearing gay colors
 tput sgr0
 
-echo "SniffJoke is in BETATESTING: if you want contribute, type your nick or a simple string: the test output will be compressed for be sent to sniffjoke-team@delirandom.net."
-echo "Otherwise, for don't generate the tar.gz, leave the string empty:"
+echo "SniffJoke is in BETATESTING: if you want to contribute, please type your nick or a simple string."
+echo "The typed string will be used to generate the name of the compressed data archive"
+echo "Otherwise, to don't generate the tar.gz, leave the string empty:"
 echo -n "testerID: "
 read testerID
 
@@ -319,5 +321,6 @@ else
     pushd /tmp
     dFname="Sj-test-$testerID-$LOCATION.tar.gz"
     tar zcf $dFname $LOCATION/
-    echo "thanks, $dFname has been generated, you will sent it to sniffjoke-team@delirandom.net, no one of your data will be disclosed outside the developers and no other use beside analysis and statistics will be done"
+    echo "Thanks! $dFname has been generated; please send it to sniffjoke-team@delirandom.net;"
+    echo "We assure that all data collected will be used only for research purpose and will be disclosed oly to SniffJoke developers"
 fi

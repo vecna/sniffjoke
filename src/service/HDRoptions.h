@@ -112,7 +112,7 @@ private:
 
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
-    uint8_t(HDRoptions::*nextPlannedInj)();
+    uint8_t nextPlannedInj;
 
     /*
      * options we need to check the presence for;
@@ -122,20 +122,17 @@ private:
     bool checkupTCPopt(void);
     bool checkCondition(uint8_t);
 
-    bool prepareInjection(bool, bool);
     uint8_t getBestRandsize(uint8_t, uint8_t, uint8_t, uint8_t);
     void registerOptOccurrence(uint8_t, uint8_t, uint8_t);
     uint32_t alignOpthdr();
     void copyOpthdr(uint8_t *);
     bool isGoalAchieved();
 
+    bool prepareInjection(bool, bool);
+    void completeInjection();
+
     void injector(uint8_t);
     void randomInjector();
-
-    bool injectIPOpt(bool, bool, uint8_t);
-    bool injectTCPOpt(bool, bool, uint8_t);
-    bool injectRandomIPOpts(bool, bool);
-    bool injectRandomTCPOpts(bool, bool);
 
     uint8_t m_IPOPT_NOOP();
     uint8_t m_IPOPT_TIMESTAMP();
@@ -155,6 +152,7 @@ public:
 
     bool injectOpt(bool, bool, uint8_t);
     bool injectRandomOpts(bool, bool);
+
     bool removeOption(uint8_t);
 };
 

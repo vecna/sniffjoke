@@ -436,7 +436,7 @@ uint8_t HDRoptions::m_IPOPT_SID()
         corruptDone = true;
 
     if (corruptRequest && !corruptDone)
-        nextPlannedInj = (!nextPlannedInj) ? &HDRoptions::m_IPOPT_SID : NULL;
+        nextPlannedInj = (!nextPlannedInj) ? SJ_IPOPT_SID : SJ_NULL_OPT;
 
     LOG_PACKET("** %s at the index of %u total size of %u already present: %s (avail %u)",
                "SJ_IPOPT_SID", index, IPOPT_SID_SIZE,
@@ -565,7 +565,7 @@ ttlfocus(ttlfocus),
 corruptRequest(false),
 corruptNow(false),
 corruptDone(false),
-nextPlannedInj(NULL)
+nextPlannedInj(SJ_NULL_OPT)
 {
     switch (type)
     {
@@ -722,7 +722,7 @@ bool HDRoptions::checkCondition(uint8_t opt)
      * and we also alter the probability for the first injection
      * in favour of good injection.
      */
-    if (corruptNow && (corruptDone || ((actual_opts_len < 4) && RANDOMPERCENT(40))))
+    if (corruptNow && (corruptDone || ((actual_opts_len < 4) && RANDOM_PERCENT(40))))
         corruptNow = false;
 
     if (corruptNow)
@@ -736,7 +736,7 @@ bool HDRoptions::checkCondition(uint8_t opt)
         /* if we have decided to no corrupt we must avoid ONESHOT and repeated options */
         if ((optMap[opt].corruptionType != ONESHOT) && !optTrack[opt].size())
         {
-            nextPlannedInj = NULL;
+            nextPlannedInj = SJ_NULL_OPT;
             return true;
         }
     }
@@ -803,96 +803,6 @@ bool HDRoptions::isGoalAchieved()
     return corruptRequest == corruptDone;
 }
 
-void HDRoptions::injector(uint8_t opt)
-{
-    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
-               type == IPOPTS_INJECTOR ? "IP" : "TCP",
-               actual_opts_len, target_opts_len, available_opts_len,
-               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
-
-    if (checkCondition(opt))
-    {
-        actual_opts_len += (this->*(optMap[opt].optApply))();
-        available_opts_len = target_opts_len - actual_opts_len;
-
-        alignOpthdr();
-    }
-
-    LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
-               type == IPOPTS_INJECTOR ? "IP" : "TCP",
-               actual_opts_len, target_opts_len, available_opts_len,
-               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
-}
-
-void HDRoptions::randomInjector()
-{
-    uint8_t randomStart, tries;
-
-    switch (type)
-    {
-    case IPOPTS_INJECTOR:
-        randomStart = GET_RANDOM_IPOPT;
-        tries = LAST_IPOPT - FIRST_IPOPT + 1;
-        break;
-
-    case TCPOPTS_INJECTOR:
-        randomStart = GET_RANDOM_TCPOPT;
-        tries = LAST_TCPOPT - FIRST_TCPOPT + 1;
-        break;
-    }
-
-    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
-               type == IPOPTS_INJECTOR ? "IP" : "TCP",
-               actual_opts_len, target_opts_len, available_opts_len,
-               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
-
-    uint32_t i = randomStart;
-    while (available_opts_len && --tries)
-    {
-        /* this loop is intended to be partially random without be too much intensive */
-        if (i > lastOpt)
-            i = firstOpt;
-        else
-            i++;
-
-        if (!checkCondition(i))
-            continue;
-
-        actual_opts_len += (this->*(optMap[i].optApply))();
-        available_opts_len = target_opts_len - actual_opts_len;
-
-        /* the planned option is used when a TWOSHOT define the second shot */
-        if (nextPlannedInj != NULL)
-        {
-            uint8_t ret = (this->*nextPlannedInj)();
-            if (ret)
-            {
-                actual_opts_len += ret;
-                available_opts_len = target_opts_len - actual_opts_len;
-            }
-            else
-            {
-                /* TWOSHOT FAIL: and now ?! no problem!
-                 *
-                 *      1) an other injection tries will follow;
-                 *      2) if all the tries will fail probably a scramble downgrade will
-                 *         solve the problem with no inconvenience.
-                 */
-            }
-
-            nextPlannedInj = NULL;
-        }
-    }
-
-    alignOpthdr();
-
-    LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
-               type == IPOPTS_INJECTOR ? "IP" : "TCP",
-               actual_opts_len, target_opts_len, available_opts_len,
-               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
-
-}
-
 bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 {
     uint16_t freespace = MTU - pkt.pbuf.size();
@@ -919,135 +829,191 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
     return true;
 }
 
-bool HDRoptions::injectIPOpt(bool corrupt, bool strip_previous, uint8_t opt)
+void HDRoptions::completeInjection()
 {
-    bool goalAchieved = false;
-
-    pkt.SELFLOG("before single ipopt injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
-
-    if (!prepareInjection(corrupt, strip_previous))
-        return false;
-
-    injector(opt);
-
-    goalAchieved = isGoalAchieved();
-    if (goalAchieved)
+    if (type == IPOPTS_INJECTOR)
     {
         pkt.iphdrResize(sizeof (struct iphdr) +actual_opts_len);
         copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
     }
-
-    pkt.SELFLOG("after single IP opt injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
-
-    return goalAchieved;
-}
-
-bool HDRoptions::injectTCPOpt(bool corrupt, bool strip_previous, uint8_t opt)
-{
-    bool goalAchieved = false;
-
-    pkt.SELFLOG("before single TCP opt injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.tcphdrlen, pkt.pbuf.size());
-
-    if (!prepareInjection(corrupt, strip_previous))
-        return false;
-
-    injector(opt);
-
-    goalAchieved = isGoalAchieved();
-    if (goalAchieved)
+    else
     {
         pkt.tcphdrResize(sizeof (struct tcphdr) +actual_opts_len);
         copyOpthdr((uint8_t *) pkt.ip + sizeof (struct tcphdr));
     }
-
-    pkt.SELFLOG("after single TCP opt injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
-
-    return goalAchieved;
 }
 
-bool HDRoptions::injectRandomIPOpts(bool corrupt, bool strip_previous)
+void HDRoptions::injector(uint8_t opt)
 {
-    bool goalAchieved = false;
+    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
+               type == IPOPTS_INJECTOR ? "IP" : "TCP",
+               actual_opts_len, target_opts_len, available_opts_len,
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
-    pkt.SELFLOG("before random IP opts injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
-
-    if (!prepareInjection(corrupt, strip_previous))
-        return false;
-
-    randomInjector();
-
-    goalAchieved = isGoalAchieved();
-    if (goalAchieved)
+    if (checkCondition(opt))
     {
-        pkt.iphdrResize(sizeof (struct iphdr) +actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
+        uint8_t ret = (this->*(optMap[opt].optApply))();
+        if (ret)
+        {
+            actual_opts_len += ret;
+            available_opts_len = target_opts_len - actual_opts_len;
+
+            /* the planned option is used when a TWOSHOT define the second shot */
+            if (nextPlannedInj != SJ_NULL_OPT)
+            {
+                ret = (this->*(optMap[nextPlannedInj].optApply))();
+                if (ret)
+                {
+                    actual_opts_len += ret;
+                    available_opts_len = target_opts_len - actual_opts_len;
+                }
+                else
+                {
+                    /* TWOSHOT FAIL: and now ?! no problem!
+                     *
+                     *      1) an other injection tries will follow;
+                     *      2) if all the tries will fail probably a scramble downgrade will
+                     *         solve the problem with no inconvenience.
+                     */
+                }
+
+                nextPlannedInj = SJ_NULL_OPT;
+            }
+
+            alignOpthdr();
+        }
     }
 
-    pkt.SELFLOG("after random IP opts injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
-
-    return goalAchieved;
+    LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
+               type == IPOPTS_INJECTOR ? "IP" : "TCP",
+               actual_opts_len, target_opts_len, available_opts_len,
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
-bool HDRoptions::injectRandomTCPOpts(bool corrupt, bool strip_previous)
+void HDRoptions::randomInjector()
 {
-    bool goalAchieved = false;
+    uint8_t randomStart, tries;
 
-    pkt.SELFLOG("before random TCP opts injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.tcphdrlen, pkt.pbuf.size());
-
-    if (!prepareInjection(corrupt, strip_previous))
-        return false;
-
-    randomInjector();
-
-    goalAchieved = isGoalAchieved();
-    if (goalAchieved)
+    if (type == IPOPTS_INJECTOR)
     {
-        pkt.tcphdrResize(sizeof (struct tcphdr) +actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
+        randomStart = RANDOM_IPOPT;
+        tries = LAST_IPOPT - FIRST_IPOPT + 1;
+    }
+    else
+    {
+        randomStart = RANDOM_TCPOPT;
+        tries = LAST_TCPOPT - FIRST_TCPOPT + 1;
     }
 
-    pkt.SELFLOG("after random TCP opts injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.tcphdrlen, pkt.pbuf.size());
+    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
+               type == IPOPTS_INJECTOR ? "IP" : "TCP",
+               actual_opts_len, target_opts_len, available_opts_len,
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
-    return goalAchieved;
+    uint32_t i = randomStart;
+    while (available_opts_len && --tries)
+    {
+        /* this loop is intended to be partially random without be too much intensive */
+        if (i > lastOpt)
+            i = firstOpt;
+        else
+            i++;
+
+        if (!checkCondition(i))
+            continue;
+
+        uint8_t ret = (this->*(optMap[i].optApply))();
+        if (ret)
+        {
+            actual_opts_len += ret;
+            available_opts_len = target_opts_len - actual_opts_len;
+
+            /* the planned option is used when a TWOSHOT define the second shot */
+            if (nextPlannedInj != SJ_NULL_OPT)
+            {
+                ret = (this->*(optMap[nextPlannedInj].optApply))();
+                if (ret)
+                {
+                    actual_opts_len += ret;
+                    available_opts_len = target_opts_len - actual_opts_len;
+                }
+                else
+                {
+                    /* TWOSHOT FAIL: and now ?! no problem!
+                     *
+                     *      1) an other injection tries will follow;
+                     *      2) if all the tries will fail probably a scramble downgrade will
+                     *         solve the problem with no inconvenience.
+                     */
+                }
+
+                nextPlannedInj = SJ_NULL_OPT;
+            }
+        }
+    }
+
+    alignOpthdr();
+
+    LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
+               type == IPOPTS_INJECTOR ? "IP" : "TCP",
+               actual_opts_len, target_opts_len, available_opts_len,
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+
 }
 
 bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t opt)
 {
-    bool ret = false;
-
     if (opt < firstOpt || opt > lastOpt)
         return false;
 
-    switch (type)
-    {
-    case IPOPTS_INJECTOR:
-        ret = injectIPOpt(corrupt, strip_previous, opt);
-        break;
+    bool goalAchieved = false;
 
-    case TCPOPTS_INJECTOR:
-        ret = injectTCPOpt(corrupt, strip_previous, opt);
-        break;
+    if (type == IPOPTS_INJECTOR)
+        pkt.SELFLOG("before single IP injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
+    else
+        pkt.SELFLOG("before single TCP opt injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.tcphdrlen, pkt.pbuf.size());
+
+    if (prepareInjection(corrupt, strip_previous))
+    {
+        injector(opt);
+
+        goalAchieved = isGoalAchieved();
+        if (goalAchieved)
+            completeInjection();
     }
 
-    return ret;
+    if (type == IPOPTS_INJECTOR)
+        pkt.SELFLOG("after single IP opt injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
+    else
+        pkt.SELFLOG("after single TCP opt injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
+
+    return goalAchieved;
 }
 
 bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
-    bool ret = false;
+    bool goalAchieved = false;
 
-    switch (type)
+    if (type == IPOPTS_INJECTOR)
+        pkt.SELFLOG("before random IP injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
+    else
+        pkt.SELFLOG("before random TCP opt injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.tcphdrlen, pkt.pbuf.size());
+
+    if (prepareInjection(corrupt, strip_previous))
     {
-    case IPOPTS_INJECTOR:
-        ret = injectRandomIPOpts(corrupt, strip_previous);
-        break;
+        randomInjector();
 
-    case TCPOPTS_INJECTOR:
-        ret = injectRandomTCPOpts(corrupt, strip_previous);
-        break;
+        goalAchieved = isGoalAchieved();
+        if (goalAchieved)
+            completeInjection();
     }
 
-    return ret;
+    if (type == IPOPTS_INJECTOR)
+        pkt.SELFLOG("after random IP opts injection strip|%u iphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
+    else
+        pkt.SELFLOG("after random TCP opts injection strip|%u tcphdrlen|%u pktlen|%u", strip_previous, pkt.iphdrlen, pkt.pbuf.size());
+
+    return goalAchieved;
 }
 
 bool HDRoptions::removeOption(uint8_t opt)
@@ -1072,18 +1038,7 @@ bool HDRoptions::removeOption(uint8_t opt)
 
     alignOpthdr();
 
-    switch (type)
-    {
-    case IPOPTS_INJECTOR:
-        pkt.iphdrResize(sizeof (struct iphdr) +actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
-        break;
-
-    case TCPOPTS_INJECTOR:
-        pkt.tcphdrResize(sizeof (struct tcphdr) +actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
-        break;
-    }
+    completeInjection();
 
     return true;
 }

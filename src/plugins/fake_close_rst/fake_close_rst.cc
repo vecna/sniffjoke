@@ -67,7 +67,7 @@ private:
         if (pkts > MAX_INJECTED_PKTS)
             return false;
 
-        return (RANDOMPERCENT(100 - (pkts * MAX_INJECTED_PKTS)));
+        return (RANDOM_PERCENT(100 - (pkts * MAX_INJECTED_PKTS)));
     }
 
 public:

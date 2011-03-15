@@ -142,14 +142,16 @@
  * corruption and so on. in the start of HDRoptions.cc this index are
  * used for fill the description structure
  */
-#define SJ_IPOPT_NOOP               0
-#define SJ_IPOPT_TIMESTAMP          1
-#define SJ_IPOPT_LSRR               2
-#define SJ_IPOPT_RR                 3
-#define SJ_IPOPT_RA                 4
-#define SJ_IPOPT_CIPSO              5
-#define SJ_IPOPT_SEC                6
-#define SJ_IPOPT_SID                7
+
+#define SJ_NULL_OPT                 0
+#define SJ_IPOPT_NOOP               1
+#define SJ_IPOPT_TIMESTAMP          2
+#define SJ_IPOPT_LSRR               3
+#define SJ_IPOPT_RR                 4
+#define SJ_IPOPT_RA                 5
+#define SJ_IPOPT_CIPSO              6
+#define SJ_IPOPT_SEC                7
+#define SJ_IPOPT_SID                8
 
 #define FIRST_IPOPT                 SJ_IPOPT_NOOP
 #define LAST_IPOPT                  SJ_IPOPT_SID

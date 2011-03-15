@@ -685,7 +685,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     if (pkt.wtf == MALFORMED)
     {
         bool malformed = false;
-        if (pkt.fragment == true || pkt.proto != TCP || RANDOMPERCENT(50))
+        if (pkt.fragment == true || pkt.proto != TCP || RANDOM_PERCENT(50))
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
             if (!(IPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true)))
@@ -718,13 +718,13 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         /* apply mistification if MALFORMED is globally enabled */
         if (ISSET_MALFORMED(plugin_pool.enabledScrambles()))
         {
-            if (RANDOMPERCENT(66))
+            if (RANDOM_PERCENT(66))
             {
                 HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
                 IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
             }
 
-            if (RANDOMPERCENT(66))
+            if (RANDOM_PERCENT(66))
             {
                 HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
                 TCPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);

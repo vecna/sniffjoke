@@ -65,7 +65,7 @@ private:
         if (pkts > MAX_INJECTED_PKTS)
             return false;
 
-        return (RANDOMPERCENT(100 - (pkts * MAX_INJECTED_PKTS)));
+        return (RANDOM_PERCENT(100 - (pkts * MAX_INJECTED_PKTS)));
     }
 
 public:
@@ -141,7 +141,7 @@ public:
         /* we have two guess:
          * 1) the sniffer trust the FIN because has the last sequence number + 1
          * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
-        if (RANDOMPERCENT(50))
+        if (RANDOM_PERCENT(50))
             pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
         /* else, the sequence number is not changed and will be acked after,
          * because the remote host is receiving this data */

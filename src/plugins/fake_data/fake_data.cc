@@ -135,9 +135,9 @@ public:
          * same hack for both packets.
          */
         judge_t selectedScramble;
-        if (ISSET_TTL(availableScrambles & supportedScrambles) && RANDOMPERCENT(90))
+        if (ISSET_TTL(availableScrambles & supportedScrambles) && RANDOM_PERCENT(90))
             selectedScramble = PRESCRIPTION;
-        else if (ISSET_MALFORMED(availableScrambles & supportedScrambles) && RANDOMPERCENT(90))
+        else if (ISSET_MALFORMED(availableScrambles & supportedScrambles) && RANDOM_PERCENT(90))
             selectedScramble = MALFORMED;
         else /* the 99% of the times */
             selectedScramble = GUILTY;
