@@ -99,7 +99,7 @@
   So the difference between   min and max is 8(40bytes).
  */
 #define MTU                     1500
-#define MTU_FAKE                11420
+#define MTU_FAKE                1420
 
 #define PORTSNUMBER             65536
 

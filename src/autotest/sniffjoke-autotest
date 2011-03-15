@@ -72,8 +72,8 @@ start_test() {
     mkdir -p $workingdir
     echo $SERVER_IP > "$workingdir/ipwhitelist.conf"
     echo -e "$red* Executing sniffjoke with $PLUGIN combo, using these options:$yellow"
-    echo -e "sniffjoke --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist $white"
-    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --whitelist &>$workingdir/binout.log
+    echo -e "sniffjoke --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --no-udp --whitelist $white"
+    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --no-udp --whitelist &>$workingdir/binout.log
     sleep 2
     $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
     cd $workingdir
@@ -81,7 +81,6 @@ start_test() {
     INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
     echo "starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80 and host $SERVER_IP or icmp"
     (tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp) &
-    ps axf > $workingdir/ps-axf.log
     route -n > $workingdir/route-n.log
     sleep 1
     for i in `seq 1 $TESTN`;
@@ -91,7 +90,9 @@ start_test() {
             -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.curl_output"
         sleep 1
     done
-    $SNIFFJOKECLIBIN quit > $workingdir/dumped_quit.log
+    $SNIFFJOKECLIBIN info > $workingdir/dumpService_info.log
+    $SNIFFJOKECLIBIN ttlmap > $workingdir/dumpService_ttlmap.log
+    $SNIFFJOKECLIBIN quit > $workingdir/dumpService_stat.log
     sleep 1
     killall -TERM tcpdump
     for i in `seq 1 $TESTN`;
@@ -311,16 +312,19 @@ tput sgr0
 
 echo "SniffJoke is in BETATESTING: if you want to contribute, please type your nick or a simple string."
 echo "The typed string will be used to generate the name of the compressed data archive"
-echo "Otherwise, to don't generate the tar.gz, leave the string empty:"
+echo -e "$red Otherwise, to don't generate the tar.gz, leave the string empty."
+
+tput sgr0
+
 echo -n "testerID: "
 read testerID
 
 if [ -z $testerID ]; then
-    echo "empty string: test finished"
+    echo "empty string: sniffjoke-autotest done."
 else
     pushd /tmp
     dFname="Sj-test-$testerID-$LOCATION.tar.gz"
     tar zcf $dFname $LOCATION/
-    echo "Thanks! $dFname has been generated; please send it to sniffjoke-team@delirandom.net;"
+    echo "Thanks you! $dFname has been generated and saved in /tmp dir; please send it to sniffjoke-team@delirandom.net;"
     echo "We assure that all data collected will be used only for research purpose and will be disclosed oly to SniffJoke developers"
 fi

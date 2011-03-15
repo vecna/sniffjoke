@@ -843,7 +843,7 @@ void HDRoptions::completeInjection()
     else
     {
         pkt.tcphdrResize(sizeof (struct tcphdr) +actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.ip + sizeof (struct tcphdr));
+        copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
     }
 }
 
@@ -896,7 +896,7 @@ void HDRoptions::injector(uint8_t opt)
 
 void HDRoptions::randomInjector()
 {
-    uint8_t randomStart, tries;
+    uint8_t randomStart = 0, tries;
 
     if (type == IPOPTS_INJECTOR)
     {
@@ -1046,3 +1046,4 @@ bool HDRoptions::removeOption(uint8_t opt)
 
     return true;
 }
+

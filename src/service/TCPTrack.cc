@@ -702,7 +702,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 if (IPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true))
                     malformed = true;
             }
-            catch (exception e)
+            catch (exception &e)
             {
                 pkt.SELFLOG("inject corrupt IP opts not possible: bad real opt present");
             }
@@ -715,7 +715,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 if (TCPInjector.injectRandomOpts(/* corrupt ? */ true, /* strip previous options */ true))
                     malformed = true;
             }
-            catch (exception e)
+            catch (exception &e)
             {
                 pkt.SELFLOG("inject corrupt TCP opts not possible: bad real opt present");
             }
@@ -750,7 +750,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                     HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
                     IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
                 }
-                catch (exception e)
+                catch (exception &e)
                 {
                     pkt.SELFLOG("inject mistify IP opts not possible: bad real opt present");
                 }
@@ -763,7 +763,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                     HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
                     TCPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
                 }
-                catch (exception e)
+                catch (exception &e)
                 {
                     pkt.SELFLOG("inject mistify TCP opts not possible: bad real opt present");
                 }
