@@ -94,6 +94,8 @@ private:
     bool corruptDone;
 
     vector<unsigned char> optshdr;
+    uint8_t lastOpt;
+    uint8_t firstOpt;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
     uint8_t available_opts_len; /* max value 40 on IP and TCP too */
     uint8_t target_opts_len; /* max value 40 on IP and TCP too */
@@ -120,14 +122,20 @@ private:
     bool checkupTCPopt(void);
     bool checkCondition(uint8_t);
 
+    bool prepareInjection(bool, bool);
     uint8_t getBestRandsize(uint8_t, uint8_t, uint8_t, uint8_t);
     void registerOptOccurrence(uint8_t, uint8_t, uint8_t);
     uint32_t alignOpthdr();
     void copyOpthdr(uint8_t *);
     bool isGoalAchieved();
 
-    uint32_t randomInjector();
-    bool customInjector(uint8_t);
+    void injector(uint8_t);
+    void randomInjector();
+
+    bool injectIPOpt(bool, bool, uint8_t);
+    bool injectTCPOpt(bool, bool, uint8_t);
+    bool injectRandomIPOpts(bool, bool);
+    bool injectRandomTCPOpts(bool, bool);
 
     uint8_t m_IPOPT_NOOP();
     uint8_t m_IPOPT_TIMESTAMP();
@@ -144,10 +152,9 @@ private:
 public:
 
     HDRoptions(injector_t, Packet &, TTLFocus &);
-    void setupOption(struct option_discovery *);
 
-    bool injectIPOpts(bool, bool);
-    bool injectTCPOpts(bool, bool);
+    bool injectOpt(bool, bool, uint8_t);
+    bool injectRandomOpts(bool, bool);
     bool removeOption(uint8_t);
 };
 
