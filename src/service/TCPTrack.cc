@@ -704,7 +704,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             }
             catch (exception &e)
             {
-                pkt.SELFLOG("inject corrupt IP opts not possible: bad real opt present");
+                LOG_ALL("inject corrupt IP opts not possible: %s", e.what());
             }
         }
         else
@@ -717,7 +717,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             }
             catch (exception &e)
             {
-                pkt.SELFLOG("inject corrupt TCP opts not possible: bad real opt present");
+                LOG_ALL("inject corrupt TCP opts not possible: %s", e.what());
             }
         }
 
@@ -752,7 +752,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
                 catch (exception &e)
                 {
-                    pkt.SELFLOG("inject mistify IP opts not possible: bad real opt present");
+                    LOG_ALL("inject mistify IP opts not possible: %s", e.what());
                 }
             }
 
@@ -765,10 +765,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
                 catch (exception &e)
                 {
-                    pkt.SELFLOG("inject mistify TCP opts not possible: bad real opt present");
+                    LOG_ALL("inject mistify TCP opts not possible: %s", e.what());
                 }
             }
-
         }
     }
 

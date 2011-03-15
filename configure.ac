@@ -97,7 +97,7 @@ AC_CHECK_HEADERS(sys/un.h,,exit 1)
 AC_CONFIG_FILES(
 		Makefile
 		src/Makefile
-		src/service/Makefile
+		src/autotest/Makefile
 		src/client/Makefile
 		src/plugins/Makefile
 		src/plugins/fake_close_fin/Makefile
@@ -111,6 +111,7 @@ AC_CONFIG_FILES(
 		src/plugins/overlap_packet/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
+		src/service/Makefile
 )
 
 

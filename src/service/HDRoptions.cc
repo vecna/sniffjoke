@@ -578,9 +578,6 @@ nextPlannedInj(SJ_NULL_OPT)
         optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
         memcpy((void *) &optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), actual_opts_len);
 
-        if (!checkupIPopt())
-            throw exception();
-
         break;
 
     case TCPOPTS_INJECTOR:
@@ -592,8 +589,7 @@ nextPlannedInj(SJ_NULL_OPT)
         optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
         memcpy((void *) &optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), actual_opts_len);
 
-        if (!checkupTCPopt())
-            throw exception();
+        checkupTCPopt();
 
         break;
     }
@@ -625,7 +621,7 @@ bool HDRoptions::checkupIPopt(void)
              * the packet contains invalid options
              * we avoid injection regardless of the corrupt value.
              */
-            return false;
+            RUNTIME_EXCEPTION("invalid ip opt: option|%02x option_len|%u residual|%u", *option, option_len, (actual_opts_len - i));
         }
         i += option_len;
 
@@ -682,7 +678,7 @@ bool HDRoptions::checkupTCPopt(void)
              * the packet contains invalid options
              * we avoid injection regardless of the corrupt value.
              */
-            return false;
+            RUNTIME_EXCEPTION("invalid tcp opt: option|%02x option_len|%u residual|%u", *option, option_len, (actual_opts_len - i));
         }
 
         i += option_len;
@@ -896,7 +892,7 @@ void HDRoptions::injector(uint8_t opt)
 
 void HDRoptions::randomInjector()
 {
-    uint8_t randomStart = 0, tries;
+    uint8_t randomStart, tries;
 
     if (type == IPOPTS_INJECTOR)
     {

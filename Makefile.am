@@ -22,5 +22,3 @@ installconf:
 	fi; \
 	echo "Copying generic location installation" && \
 	cp -r conf/generic $(localstatedir)/sniffjoke;
-	@echo "Installing sniffjoke-autotest in $(bindir)" && \
-	cp -p src/autotest/sniffjoke-autotest $(bindir)/

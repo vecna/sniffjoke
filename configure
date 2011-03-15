@@ -16647,7 +16647,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/service/Makefile src/client/Makefile src/plugins/Makefile src/plugins/fake_close_fin/Makefile src/plugins/fake_close_rst/Makefile src/plugins/fake_data/Makefile src/plugins/fake_seq/Makefile src/plugins/fake_syn/Makefile src/plugins/fake_window/Makefile src/plugins/fragmentation/Makefile src/plugins/segmentation/Makefile src/plugins/overlap_packet/Makefile src/plugins/shift_ack/Makefile src/plugins/valid_rst_fake_seq/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/autotest/Makefile src/client/Makefile src/plugins/Makefile src/plugins/fake_close_fin/Makefile src/plugins/fake_close_rst/Makefile src/plugins/fake_data/Makefile src/plugins/fake_seq/Makefile src/plugins/fake_syn/Makefile src/plugins/fake_window/Makefile src/plugins/fragmentation/Makefile src/plugins/segmentation/Makefile src/plugins/overlap_packet/Makefile src/plugins/shift_ack/Makefile src/plugins/valid_rst_fake_seq/Makefile src/service/Makefile"
 
 
 
@@ -17761,7 +17761,7 @@ do
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
-    "src/service/Makefile") CONFIG_FILES="$CONFIG_FILES src/service/Makefile" ;;
+    "src/autotest/Makefile") CONFIG_FILES="$CONFIG_FILES src/autotest/Makefile" ;;
     "src/client/Makefile") CONFIG_FILES="$CONFIG_FILES src/client/Makefile" ;;
     "src/plugins/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/Makefile" ;;
     "src/plugins/fake_close_fin/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/fake_close_fin/Makefile" ;;
@@ -17775,6 +17775,7 @@ do
     "src/plugins/overlap_packet/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/overlap_packet/Makefile" ;;
     "src/plugins/shift_ack/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/shift_ack/Makefile" ;;
     "src/plugins/valid_rst_fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/valid_rst_fake_seq/Makefile" ;;
+    "src/service/Makefile") CONFIG_FILES="$CONFIG_FILES src/service/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5 ;;
   esac

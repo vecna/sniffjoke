@@ -96,6 +96,7 @@ private:
     vector<unsigned char> optshdr;
     uint8_t lastOpt;
     uint8_t firstOpt;
+
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
     uint8_t available_opts_len; /* max value 40 on IP and TCP too */
     uint8_t target_opts_len; /* max value 40 on IP and TCP too */

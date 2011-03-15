@@ -98,11 +98,10 @@ bool SessionTrackKey::operator<(SessionTrackKey comp) const
     }
 }
 
-SessionTrackMap::SessionTrackMap(void)
+SessionTrackMap::SessionTrackMap(void) :
+manage_timeout(sj_clock)
 {
     LOG_DEBUG("");
-
-    manage_timeout = sj_clock;
 }
 
 SessionTrackMap::~SessionTrackMap(void)

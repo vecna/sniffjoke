@@ -135,6 +135,5 @@ void Plugin::upgradeChainFlag(Packet *pkt)
     case FINALHACK:
         LOG_ALL("Warning: a non hackable-again packet has requested an increment status: check packet_id %u",
                 pkt->SjPacketId);
-        pkt->chainflag = FINALHACK;
     }
 }
