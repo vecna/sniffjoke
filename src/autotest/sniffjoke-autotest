@@ -72,7 +72,7 @@ start_test() {
     echo "${blue}Plugin Name\t${yellow}\t[$PNAME]"
     echo "${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
     echo "${blue}TestID\t\t${yellow}\t[$TESTID]"
-    echo "${blue}\nTest directory\t${yellow}\t[$workingdir]"
+    echo "${blue}Test directory\t${yellow}\t[$workingdir]"
     mkdir -p $workingdir
     echo $SERVER_IP > "$workingdir/ipwhitelist.conf"
     echo "${yellow}* Executing sniffjoke with $PLUGIN combo, using these options:"
@@ -90,7 +90,7 @@ start_test() {
     for i in `seq 1 $TESTN`;
     do
         echo "${yellow}* Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring ${green}(${yellow}test repetition #$i of $TESTN${green})${white}"
-        nohup curl --limit-rate 15k --retry 0 --max-time 10 -o "$PNAME-$SCRAMBLE-$i.received" \
+        nohup curl --retry 0 --max-time 10 -o "$PNAME-$SCRAMBLE-$i.received" \
             -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.curl_output"
         sleep 1
     done
@@ -153,7 +153,7 @@ do
              ;;
          ?)
              usage
-             exit
+             exit 1
              ;;
      esac
 done

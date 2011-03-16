@@ -237,7 +237,6 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
             injpkt->wtf = INNOCENT;
             injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
             injpkt->ip->ttl = ttlfocus.sent_probe;
-            injpkt->tcp->source = htons(ttlfocus.puppet_port);
             injpkt->tcp->seq = htonl(ttlfocus.rand_key + ttlfocus.sent_probe);
 
             injpkt->fixIPTCPSum();
