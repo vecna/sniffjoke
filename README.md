@@ -116,10 +116,10 @@ Wireshark thread about Sj 0.3:
     uid                  vecna <vecna@delirandom.net>
     sub   3072g/E8157737 2009-08-25 [expires: 2011-08-25]
 
+    X-2:~ X$ gpg --keyserver pgp.mit.edu --recv-key D9A950DE
     X-2:~ X$ gpg --fingerprint --list-keys D9A950DE
     pub   1024D/D9A950DE 2009-05-10 [expires: 2014-05-09]
           Key fingerprint = C1ED 5C8F DB6A 1C74 A807  5695 91EC 9BB8 D9A9 50DE
     uid                  Giovanni Pellerano <giovanni.pellerano@evilaliv3.org>
     sub   4096g/50A7F150 2009-05-10 [expires: 2014-05-09]
-    X-2:~ X$ gpg --keyserver pgp.mit.edu --recv-key D9A950DE
     
