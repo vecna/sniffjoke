@@ -9,6 +9,12 @@ If you have some truble with the version of libtool (will happen if you have an 
 
     ./autogen.sh && ./configure && make && make install
 
+Supports 
+
+    make uninstall 
+
+when you want to clean your system, but keep the status directory (usually /usr/local/var/sniffjoke), and because contains some logs, you will prefere remove it.
+
 # Simple immediate verbose execution
     root@linux# sniffjoke --debug 6 --start --foreground
 
@@ -100,4 +106,7 @@ Wireshark thread about Sj 0.3:
 # Italian music support
     http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
     http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica
+
+# GPG public keys
+
 

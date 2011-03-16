@@ -1,3 +1,53 @@
+
+                            SNIFFJOKE 0.4 BETATESTING INVITE
+
+What's SniffJoke ?
+
+Sj is a Linux free software that injects packets in your TCP connections. 
+The injection doesn't interfere with the contents of your connections, 
+but a sniffer in the path will not be able to reassemble the flow.
+
+How can you help us testing SniffJoke ?
+
+Get the software: http://github.com/vecna/sniffjoke under a Linux system.
+
+./configure && make && make install. 
+
+the default configuration will create a "generic" location (usually, depends 
+from your system defaults): /usr/local/var/sniffjoke, in this dir you will 
+find the logfiles and the configuration files.
+
+Start the autotest of your network, with the autotesting script:
+sniffjoke-autotest -l office -d /usr/local/var/sniffjoke -n 4
+
+This will generate /usr/local/var/sniffjoke/office directory, and starting sniffjoke with:
+sniffjoke --debug 5 --location office --start
+
+BETATESTING: use it on the client or default gateway: when Sj is running, make your 
+daily activities and check the usability of the internet connection. If you have some problem, 
+run "sniffjokectl stop" and retry: if the problem doesn't happen: you've found a bug :(
+
+optional configurability: 
+
+[1] set a blacklisting/whitelisting IP sets, causing sniffjoke to mangle only the session 
+directed versus specific IP addresses. 
+
+[2] set the strength (aggressivity) for each TCP/UDP port 
+
+[3] every kind of attack that will bring down a sniffer is implemented in a plugin, 
+you will easily enable or disable a plugin 
+
+[4] to start/stop sniffjoke, use the client sniffjokeclt, it is connected to the 
+default UDP port where sniffjoke service is binded: 127.0.0.1:8844, useful commands:
+sniffjokectl info, sniffjokectl stat, sniffjokectl ttlmap
+
+Testing in unusual network environments is especially appreciated. Check the effects 
+in the sniffer/IDS (already tested vs: wireshark, dsniff, xplico: all broken) and report 
+the results sniffjoke-team@delirandom.net
+
+
+                                THIS IS THE OLD BETATESTING INVITE:
+
 Hi betatester, I'm glad you are reading this file:
 
 simple usage:
