@@ -589,9 +589,9 @@ nextPlannedInj(SJ_NULL_OPT)
         target_opts_len = actual_opts_len;
         available_opts_len = MAXTCPOPTIONS - actual_opts_len;
         optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
-        //'memcpy((void *) &optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), actual_opts_len);
+        memcpy((void *) &optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), actual_opts_len);
 
-        //checkupTCPopt();
+        checkupTCPopt();
 
         break;
     }
