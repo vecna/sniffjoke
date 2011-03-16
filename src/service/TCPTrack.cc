@@ -747,8 +747,8 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             {
                 try
                 {
-                    //HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
-                    //IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                    HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
+                    IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
                 }
                 catch (exception &e)
                 {
