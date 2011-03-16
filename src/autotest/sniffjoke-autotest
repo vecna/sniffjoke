@@ -331,7 +331,7 @@ echo "Otherwise, to don't generate the tar.gz, leave the string empty."
 tput sgr0
 
 echo "\n"
-echo "testerID: "
+echo -n "testerID: "
 read testerID
 
 if [ -z $testerID ]; then

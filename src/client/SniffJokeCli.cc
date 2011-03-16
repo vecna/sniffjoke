@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ * Copyright (C) 2010, 2011 vecna <vecna@delirandom.net>
+ *                          evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 #include "SniffJokeCli.h"
 #include "service/internalProtocol.h"
 #include "service/PortConf.h"
-
 
 #include <errno.h>
 #include <fcntl.h>
