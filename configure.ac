@@ -107,8 +107,8 @@ AC_CONFIG_FILES(
 		src/plugins/fake_syn/Makefile
 		src/plugins/fake_window/Makefile
 		src/plugins/fragmentation/Makefile
-		src/plugins/segmentation/Makefile
 		src/plugins/overlap_packet/Makefile
+                src/plugins/segmentation/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
 		src/service/Makefile

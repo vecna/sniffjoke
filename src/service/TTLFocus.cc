@@ -35,22 +35,28 @@ sent_probe(0),
 received_probe(0),
 daddr(pkt.ip->daddr),
 ttl_estimate(0xff),
-ttl_synack(0),
-probe_dummy(pkt)
+ttl_synack(0)
 {
-    probe_dummy.iphdrResize(sizeof (struct iphdr));
-    probe_dummy.tcphdrResize(sizeof (struct tcphdr));
-    probe_dummy.tcppayloadResize(0);
-    probe_dummy.tcp->fin = 0;
-    probe_dummy.tcp->syn = 1;
-    probe_dummy.tcp->rst = 0;
-    probe_dummy.tcp->psh = 0;
-    probe_dummy.tcp->ack = 0;
-    probe_dummy.tcp->urg = 0;
-    probe_dummy.tcp->res1 = 0;
-    probe_dummy.tcp->res2 = 0;
+    struct iphdr *newip = (struct iphdr *) probe_dummy;
+    struct tcphdr *newtcp = (struct tcphdr *) (probe_dummy + sizeof (struct iphdr));
 
-    selectPuppetPort();
+    memcpy(newip, &pkt.pbuf[0], sizeof (struct iphdr) + 4); /* 4 byte for the two port TCP/UDP =) */
+
+    newip->ihl = 5; /* 20 >> 4 */
+    newip->protocol = IPPROTO_TCP;
+    newip->tot_len = htons(40);
+    newtcp->doff = 5; /* 20 >> 4 */
+
+    newtcp->fin = 0;
+    newtcp->syn = 1;
+    newtcp->rst = 0;
+    newtcp->psh = 0;
+    newtcp->ack = 0;
+    newtcp->urg = 0;
+    newtcp->res1 = 0;
+    newtcp->res2 = 0;
+
+    newtcp->source = selectPuppetPort(ntohs(newtcp->source));
 
     SELFLOG("");
 }
@@ -65,26 +71,31 @@ sent_probe(0),
 received_probe(0),
 daddr(cpy.daddr),
 ttl_estimate(cpy.ttl_estimate),
-ttl_synack(cpy.ttl_synack),
-probe_dummy(cpy.probe_dummy, sizeof (cpy.probe_dummy))
+ttl_synack(cpy.ttl_synack)
 {
-    selectPuppetPort();
+    memcpy(probe_dummy, cpy.probe_dummy, 40);
 
     SELFLOG("");
 }
 
 TTLFocus::~TTLFocus(void)
 {
+
     SELFLOG("");
 }
 
-void TTLFocus::selectPuppetPort(void)
+uint16_t TTLFocus::selectPuppetPort(uint16_t realport)
 {
-    uint16_t realport = ntohs(probe_dummy.tcp->source);
+    uint16_t puppet_port;
 
-    do {
-        puppet_port = (random() % (32767 - 1024) ) + 1024;
-    } while ( (puppet_port >> 4) == (realport >> 4) );
+    do
+    {
+        puppet_port = (random() % (32767 - 1024)) + 1024;
+    }
+
+    while (puppet_port == realport);
+
+    return puppet_port;
 }
 
 void TTLFocus::selflog(const char *func, const char *format, ...) const
@@ -102,6 +113,7 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
 
     switch (status)
     {
+
     case TTL_KNOWN: status_name = "KNOWN";
         break;
     case TTL_BRUTEFORCE: status_name = "BRUTEFORCE";
@@ -119,6 +131,7 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
 TTLFocusMap::TTLFocusMap(void) :
 manage_timeout(sj_clock)
 {
+
     LOG_DEBUG("");
 
     load();
@@ -132,6 +145,7 @@ TTLFocusMap::~TTLFocusMap(void)
 
     for (TTLFocusMap::iterator it = begin(); it != end();)
     {
+
         delete &(*it->second);
         erase(it++);
     }
@@ -147,6 +161,7 @@ TTLFocus& TTLFocusMap::get(const Packet &pkt)
 
     if (it != end()) /* on hit: return the ttlfocus object. */
         ttlfocus = &(*it->second);
+
     else /* on miss: create a new ttlfocus and insert it into the map */
         ttlfocus = &(*insert(pair<uint32_t, TTLFocus*>(pkt.ip->daddr, new TTLFocus(pkt))).first->second);
 
@@ -203,6 +218,7 @@ void TTLFocusMap::manage(void)
 
         do
             delete tmp[index];
+
         while (++index != map_size);
 
         delete[] tmp;
@@ -226,6 +242,7 @@ void TTLFocusMap::load(void)
 
     while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream)) == 1)
     {
+
         ++records_num;
         TTLFocus *ttlfocus = new TTLFocus(tmp);
         insert(pair<uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
@@ -272,7 +289,7 @@ void TTLFocusMap::dump(void)
          * a ttlprobe packet is always 40 bytes (min iphdr + min tcphdr),
          * ipopts, tcpopts, and payload are stripped of on creation
          */
-        memcpy(cache_record.probe_dummy, &(tmp->probe_dummy.pbuf[0]), 40);
+        memcpy(cache_record.probe_dummy, &(tmp->probe_dummy[0]), 40);
 
         if (fwrite(&cache_record, sizeof (struct ttlfocus_cache_record), 1, dumpstream) != 1)
         {

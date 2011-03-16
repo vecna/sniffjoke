@@ -33,7 +33,6 @@ enum ttlsearch_t
     TTL_KNOWN = 1, TTL_BRUTEFORCE = 2, TTL_UNKNOWN = 4
 };
 
-
 struct option_discovery
 {
     bool underTesting;
@@ -67,14 +66,16 @@ public:
     /* per-dest tracking of which IP|TCP options will be effective or became dropped */
     struct option_discovery OptMap[SUPPORTED_OPTIONS];
 
-    Packet probe_dummy; /* dummy ttlprobe packet generated from the packet
-                           that scattered the ttlfocus creation. */
+    unsigned char probe_dummy[40]; /* dummy ttlprobe packet generated from the packet
+                                      that scattered the ttlfocus creation.
+                                      the packet size is always 40 bytes long,
+                                      (sizeof(struct iphdr) + sizeof(struct tcphdr)) */
 
     TTLFocus(void);
     TTLFocus(const Packet &pkt);
     TTLFocus(const struct ttlfocus_cache_record &);
     ~TTLFocus(void);
-    void selectPuppetPort(void);
+    uint16_t selectPuppetPort(uint16_t);
 
     /* utilities */
     void selflog(const char *func, const char *format, ...) const;

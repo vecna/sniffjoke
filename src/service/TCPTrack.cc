@@ -232,7 +232,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         else
         {
             ++ttlfocus.sent_probe;
-            injpkt = new Packet(ttlfocus.probe_dummy);
+            injpkt = new Packet(ttlfocus.probe_dummy, sizeof (ttlfocus.probe_dummy));
             injpkt->source = TRACEROUTE;
             injpkt->wtf = INNOCENT;
             injpkt->ip->id = htons((ttlfocus.rand_key % 64) + ttlfocus.sent_probe);
@@ -747,8 +747,8 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             {
                 try
                 {
-                    HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
-                    IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                    //HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
+                    //IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
                 }
                 catch (exception &e)
                 {
@@ -756,7 +756,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
             }
 
-            if (RANDOM_PERCENT(66))
+            if (RANDOM_PERCENT(66) && pkt.proto == TCP)
             {
                 try
                 {

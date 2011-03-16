@@ -578,6 +578,8 @@ nextPlannedInj(SJ_NULL_OPT)
         optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
         memcpy((void *) &optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), actual_opts_len);
 
+        checkupIPopt();
+
         break;
 
     case TCPOPTS_INJECTOR:
@@ -587,9 +589,9 @@ nextPlannedInj(SJ_NULL_OPT)
         target_opts_len = actual_opts_len;
         available_opts_len = MAXTCPOPTIONS - actual_opts_len;
         optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
-        memcpy((void *) &optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), actual_opts_len);
+        //'memcpy((void *) &optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), actual_opts_len);
 
-        checkupTCPopt();
+        //checkupTCPopt();
 
         break;
     }
@@ -623,7 +625,6 @@ bool HDRoptions::checkupIPopt(void)
              */
             RUNTIME_EXCEPTION("invalid ip opt: option|%02x option_len|%u residual|%u", *option, option_len, (actual_opts_len - i));
         }
-        i += option_len;
 
         bool identified = false;
         for (uint8_t j = 0; j < SUPPORTED_OPTIONS; j++)
@@ -648,6 +649,8 @@ bool HDRoptions::checkupIPopt(void)
              */
             LOG_PACKET("INFO: a non trapped IP-options: %02x", *option);
         }
+
+        i += option_len;
     }
 
     return true;
@@ -681,8 +684,6 @@ bool HDRoptions::checkupTCPopt(void)
             RUNTIME_EXCEPTION("invalid tcp opt: option|%02x option_len|%u residual|%u", *option, option_len, (actual_opts_len - i));
         }
 
-        i += option_len;
-
         bool identified = false;
         for (uint8_t j = 0; j < SUPPORTED_OPTIONS; j++)
         {
@@ -699,6 +700,8 @@ bool HDRoptions::checkupTCPopt(void)
             /* read the same analysis written into checkupIPopt for IP unknow options */
             LOG_PACKET("INFO: a non trapped TCP-options: %02x", *option);
         }
+
+        i += option_len;
     }
 
     return true;
