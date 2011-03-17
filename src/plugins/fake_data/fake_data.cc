@@ -98,7 +98,7 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble)
+    virtual bool init(uint8_t configuredScramble, const char *pluginOption)
     {
         supportedScrambles = configuredScramble;
         return true;

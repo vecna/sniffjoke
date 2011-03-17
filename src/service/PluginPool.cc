@@ -292,7 +292,7 @@ void PluginPool::parseEnablerFile(void)
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
-        if(!parseScrambleOpt(const_cast<const char *>(comma), &enabledScrambles, pluginOpt))
+        if(!parseScrambleOpt(const_cast<const char *>(comma), &enabledScrambles, &pluginOpt))
         {
             RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
                               line, enablerentry, FILE_PLUGINSENABLER);

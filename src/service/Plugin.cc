@@ -97,7 +97,7 @@ judge_t Plugin::pktRandomDamage(uint8_t scrambles)
     return GUILTY;
 }
 
-bool Plugin::init(uint8_t configuredScramble)
+bool Plugin::init(uint8_t configuredScramble, const char *)
 {
     return true;
 }

@@ -49,7 +49,7 @@ public:
     {
     }
 
-    virtual bool init(uint8_t configuredScramble)
+    virtual bool init(uint8_t configuredScramble, const char *pluginOption)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
