@@ -105,7 +105,7 @@ globalEnabledScrambles(0)
     char enabledScramblesStr[LARGEBUF];
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), globalEnabledScrambles);
     LOG_ALL("loaded plugins globally enabled scrambles: [%s]", enabledScramblesStr);
-    LOG_ALL("sniffjoke will use this configuration to create confusion also on real packet");
+    LOG_ALL("sniffjoke will use this configuration to create confusion also on real packets");
 }
 
 PluginPool::~PluginPool(void)
@@ -234,7 +234,7 @@ void PluginPool::parseOnlyPlugin(void)
 
     snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
 
-    if(!parseScrambleOpt(const_cast<const char *>(comma), &pluginEnabledScrambles, &pluginOpt))
+    if(!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
     importPlugin(plugabspath, runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);

@@ -23,9 +23,9 @@ every plugin it's tested with one of each scrambling tech.
 
 OPTIONS:
    -h      show this message
-   -l      location name                                    (required)
-   -d      path of 'generic/' location, acting as default   (required)
-   -n      number of tests to be passed for the single hack (default 1)
+   -l      location name                                       (required)
+   -d      path of 'generic/' location, acting as default      (required)
+   -n      number of replicas to be passed for the single hack (default 1)
 
 it's required a LOCATION name, eg: office, home, nickhome, starbucks...
 sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment

@@ -93,10 +93,9 @@ void SniffJokeCli::send_command(const char *cmdstring)
     if (nfds == 1)
     {
         /* the same size declared in io_buf SniffJoke.cc service */
-        uint8_t received_data[HUGEBUF * 4];
-        uint8_t received_buf[LARGEBUF];
+        uint8_t received_data[HUGEBUF * 4] = {0};
+        uint8_t received_buf[LARGEBUF] = {0};
         uint32_t progressive_recvl = 0;
-        memset(received_data, 0x00, HUGEBUF);
         int fromlen = sizeof (struct sockaddr_in);
 
         do
@@ -135,11 +134,8 @@ void SniffJokeCli::send_command(const char *cmdstring)
 
 char *SniffJokeCli::fillWithSpace(uint16_t p)
 {
-    static char spaces[MEDIUMBUF];
-    char testingline[MEDIUMBUF];
-
-    memset(testingline, 0x00, MEDIUMBUF);
-    memset(spaces, 0x00, MEDIUMBUF);
+    static char spaces[MEDIUMBUF] = {0};
+    char testingline[MEDIUMBUF] = {0};
 
     sprintf(testingline, "%d", p);
 
@@ -151,11 +147,8 @@ char *SniffJokeCli::fillWithSpace(uint16_t p)
 
 char *SniffJokeCli::fillWithSpace(uint16_t s, uint16_t e)
 {
-    static char spaces[MEDIUMBUF];
-    char testingline[MEDIUMBUF];
-
-    memset(testingline, 0x00, MEDIUMBUF);
-    memset(spaces, 0x00, MEDIUMBUF);
+    static char spaces[MEDIUMBUF] = {0};
+    char testingline[MEDIUMBUF] = {0};
 
     sprintf(testingline, "%d:%d", s, e);
 
@@ -402,18 +395,19 @@ bool SniffJokeCli::printSJTTL(const uint8_t *received, uint32_t rcvdlen)
     struct ttl_record *tr;
     uint32_t cnt = 1, i = 0;
 
+    struct tm *tm;
+    char access[SMALLBUF] = {0};
+    char nextprobe[SMALLBUF] = {0};
+
     while (i < rcvdlen)
     {
-        struct tm *tm;
-        char access[SMALLBUF], nextprobe[SMALLBUF];
+       tr = (struct ttl_record *) &received[i];
 
-        tr = (struct ttl_record *) &received[i];
+        tm = localtime(&tr->access);
+        strftime(access, SMALLBUF, "%d %H:%M:%S", tm);
 
-        tm = localtime(const_cast<const time_t *> (&tr->access));
-        strftime(access, SMALLBUF, "%d %H:%M:%S", const_cast<const struct tm *> (tm));
-
-        tm = localtime(const_cast<const time_t *> (&tr->nextprobe));
-        strftime(nextprobe, SMALLBUF, "%d %H:%M:%S", const_cast<const struct tm *> (tm));
+        tm = localtime(&tr->nextprobe);
+        strftime(nextprobe, SMALLBUF, "%d %H:%M:%S", tm);
 
         printf(" %02d) %s [%s %s] sent #%d recv #%d incoming TTL (%d) ext hop dist %d\n",
                cnt,
@@ -437,8 +431,6 @@ bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
 {
     char resolvedInfo[MEDIUMBUF];
 
-    int32_t parsedlen = 0;
-
     /* the first goal is to detect the de-facto default in your conf */
     uint16_t mostValue = AGG_NONE;
     uint16_t checkingValue = AGG_NONE;
@@ -448,7 +440,7 @@ bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
     {
         uint16_t checking_occ = 0;
 
-        for (parsedlen = 0; parsedlen < blocklen; parsedlen += sizeof (struct port_info))
+        for (uint32_t parsedlen = 0; parsedlen < blocklen; parsedlen += sizeof (struct port_info))
         {
             struct port_info *pInfo = (struct port_info *) &statblock[parsedlen];
 
@@ -466,7 +458,7 @@ bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
     }
     while (checkingValue <= AGG_LONGPEEK);
 
-    for (parsedlen = 0; parsedlen < blocklen; parsedlen += sizeof (struct port_info))
+    for (uint32_t parsedlen = 0; parsedlen < blocklen; parsedlen += sizeof (struct port_info))
     {
         struct port_info *pInfo = (struct port_info *) &statblock[parsedlen];
 

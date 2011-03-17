@@ -461,21 +461,18 @@ void Packet::udppayloadResize(uint16_t size)
 
 void Packet::ippayloadRandomFill(void)
 {
-
     const uint16_t diff = pbuf.size() - iphdrlen;
     memset_random(ippayload, diff);
 }
 
 void Packet::tcppayloadRandomFill(void)
 {
-
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
 }
 
 void Packet::udppayloadRandomFill(void)
 {
-
     const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
     memset_random(udppayload, diff);
 }

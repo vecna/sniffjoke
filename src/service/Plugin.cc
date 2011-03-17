@@ -97,11 +97,6 @@ judge_t Plugin::pktRandomDamage(uint8_t scrambles)
     return GUILTY;
 }
 
-bool Plugin::init(uint8_t configuredScramble, const char *)
-{
-    return true;
-}
-
 bool Plugin::condition(const Packet &, uint8_t availableScrambles)
 {
     return true;
