@@ -88,8 +88,6 @@ public:
             pkt->tcppayloadResize(diff);
         }
 
-        pkt->tcppayloadRandomFill();
-
         pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);

@@ -56,7 +56,8 @@ ttl_synack(0)
     newtcp->res1 = 0;
     newtcp->res2 = 0;
 
-    newtcp->source = selectPuppetPort(ntohs(newtcp->source));
+    puppet_port = selectPuppetPort(ntohs(newtcp->source));
+    newtcp->source = htons(puppet_port);
 
     SELFLOG("");
 }
@@ -73,6 +74,7 @@ daddr(cpy.daddr),
 ttl_estimate(cpy.ttl_estimate),
 ttl_synack(cpy.ttl_synack)
 {
+
     memcpy(probe_dummy, cpy.probe_dummy, 40);
 
     SELFLOG("");
@@ -93,7 +95,7 @@ uint16_t TTLFocus::selectPuppetPort(uint16_t realport)
         puppet_port = (random() % (32767 - 1024)) + 1024;
     }
 
-    while (puppet_port == realport);
+    while ((puppet_port >> 4) == (realport >> 4));
 
     return puppet_port;
 }
