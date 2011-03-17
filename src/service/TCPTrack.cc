@@ -770,6 +770,10 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         }
     }
 
+    if(pkt.wtf != INNOCENT) {
+        pkt.payloadRandomFill();
+    }
+
     /* fixing the mangled packet */
     pkt.fixSum();
 

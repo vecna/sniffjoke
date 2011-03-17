@@ -181,6 +181,7 @@ public:
     void ippayloadRandomFill(void);
     void tcppayloadRandomFill(void);
     void udppayloadRandomFill(void);
+    void payloadRandomFill(void);
 
     /* MALFORMED hacks and distortion of INNOCENT packets */
     bool injectIPOpts(bool, bool);

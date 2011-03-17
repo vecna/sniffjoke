@@ -57,8 +57,6 @@ private:
     {
         Packet * const pkt = new Packet(origpkt);
 
-        pkt->ippayloadRandomFill();
-
         return pkt;
     }
 
@@ -84,16 +82,12 @@ private:
             pkt->tcp->urg = 0;
         }
 
-        pkt->tcppayloadRandomFill();
-
         return pkt;
     }
 
     Packet* fake_datagram(const Packet &origpkt)
     {
         Packet * const pkt = new Packet(origpkt);
-
-        pkt->udppayloadRandomFill();
 
         return pkt;
     }

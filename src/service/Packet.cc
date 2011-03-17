@@ -480,6 +480,28 @@ void Packet::udppayloadRandomFill(void)
     memset_random(udppayload, diff);
 }
 
+void Packet::payloadRandomFill(void)
+{
+    if (fragment == false)
+    {
+        switch (proto)
+        {
+        case TCP:
+            tcppayloadRandomFill();
+            break;
+        case UDP:
+            udppayloadRandomFill();
+            break;
+        default:
+            ippayloadRandomFill();
+        }
+    }
+    else
+    {
+        ippayloadRandomFill();
+    }
+}
+
 void Packet::selflog(const char *func, const char *format, ...) const
 {
     if (debug.level() == SUPPRESS_LEVEL)
