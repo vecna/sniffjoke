@@ -43,7 +43,7 @@ public:
     Plugin* selfObj;
     bool failInit;
 
-    PluginTrack(const char *, uint8_t);
+    PluginTrack(const char *, uint8_t, const char *);
 };
 
 class PluginPool : public vector<PluginTrack *>
@@ -51,10 +51,10 @@ class PluginPool : public vector<PluginTrack *>
 private:
     const sj_config &runcfg;
     uint8_t globalEnabledScrambles;
-    void importPlugin(const char *, const char *, uint8_t);
+    void importPlugin(const char *, const char *, uint8_t, const char *);
     void parseOnlyPlugin(void);
     void parseEnablerFile(void);
-    uint8_t parseScrambleList(const char *);
+    bool parseScrambleOpt(const char *, uint8_t *, const char **);
 
 public:
     PluginPool(const sj_config &);

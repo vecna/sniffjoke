@@ -25,7 +25,7 @@
 
 #include <dlfcn.h>
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles)
+PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, const char *plugOpt)
 {
     LOG_VERBOSE("%s", plugabspath);
 
@@ -68,7 +68,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles)
 
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
-    failInit = !selfObj->init(enabledScrambles);
+    failInit = !selfObj->init(enabledScrambles, plugOpt);
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
@@ -127,12 +127,12 @@ PluginPool::~PluginPool(void)
     }
 }
 
-void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble)
+void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, const char *pOpt)
 {
     try
     {
         /* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the plugin */
-        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble);
+        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, pOpt);
         if (plugin->failInit)
         {
             LOG_DEBUG("failed initialization of %s: require scramble unsupported in the enabler file",
@@ -152,16 +152,15 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
 
 }
 
-uint8_t PluginPool::parseScrambleList(const char *list_str)
+bool PluginPool::parseScrambleOpt(const char *list_str, uint8_t *retval, const char **opt)
 {
-#define SCRAMBLE_SUPPORTED    4
-
     struct scrambleparm
     {
         const char *keyword;
         uint8_t scramble;
     };
 
+#define SCRAMBLE_SUPPORTED    4
     const struct scrambleparm availablescramble[SCRAMBLE_SUPPORTED] = {
         { SCRAMBLE_TTL_STR, SCRAMBLE_TTL},
         { SCRAMBLE_MALFORMED_STR, SCRAMBLE_MALFORMED},
@@ -169,27 +168,49 @@ uint8_t PluginPool::parseScrambleList(const char *list_str)
         { SCRAMBLE_INNOCENT_STR, SCRAMBLE_INNOCENT}
     };
 
-    int retval = 0;
     bool foundScramble = false;
+    char copyStr[MEDIUMBUF] = {0}, *optParse = NULL;
+
+    memcpy(copyStr, list_str, strlen(list_str));
+
+    /* check if the option is used, the char used for separation is '+' 
+     * optParse and copyStr are used for sanity check ONLY */
+    if( (optParse = strchr(copyStr, '+')) != NULL)
+    {
+        (*optParse) = 0x00;
+        (optParse)++;
+
+        if( *optParse == 0x00 )
+        {
+            LOG_ALL("no valid option passed after the control char '+': %s", list_str);
+            goto invalid_parsing;
+        }
+
+        /* no other symbol are accepted */
+        if(!isalnum(*optParse))
+        {
+            LOG_ALL("invalid char after '+' only alphanumeric and digit accepted: %s", list_str);
+            goto invalid_parsing;
+        }
+
+        /* const assigment */
+        (*opt) = strchr(list_str, '+');
+        ++(*opt);
+    }
 
     /*   the plugin_enable.conf.$LOCATION file has this format:
      *   plugin.so,SCRAMBLE1[,SCRAMBLE2][,SCRAMBLE3]         */
     for (uint32_t i = 0; i < SCRAMBLE_SUPPORTED; i++)
     {
-        if (strstr(list_str, availablescramble[i].keyword))
+        if (strstr(copyStr, availablescramble[i].keyword))
         {
             foundScramble = true;
-            retval |= availablescramble[i].scramble;
+            (*retval) |= availablescramble[i].scramble;
         }
     }
 
-    if (!foundScramble)
-    {
-        LOG_ALL("in parser file, error@ [%s]", list_str);
-        return 0;
-    }
-
-    return retval;
+invalid_parsing:
+    return foundScramble;
 }
 
 void PluginPool::parseOnlyPlugin(void)
@@ -198,6 +219,7 @@ void PluginPool::parseOnlyPlugin(void)
     LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
 
     char *comma;
+    const char *pluginOpt = NULL;
     char onlyplugin_cpy[MEDIUMBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
     uint8_t pluginEnabledScrambles;
@@ -212,12 +234,10 @@ void PluginPool::parseOnlyPlugin(void)
 
     snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
 
-    pluginEnabledScrambles = parseScrambleList(comma);
-
-    if (!(pluginEnabledScrambles))
+    if(!parseScrambleOpt(const_cast<const char *>(comma), &pluginEnabledScrambles, &pluginOpt))
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
-    importPlugin(plugabspath, runcfg.onlyplugin, pluginEnabledScrambles);
+    importPlugin(plugabspath, runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
 
     /* we keep track of enabled scramble to apply confusion on real good packets */
     globalEnabledScrambles |= pluginEnabledScrambles;
@@ -240,6 +260,7 @@ void PluginPool::parseEnablerFile(void)
     do
     {
         char enablerentry[LARGEBUF], *comma;
+        const char *pluginOpt = NULL;
         uint8_t enabledScrambles = 0;
 
         fgets(enablerentry, LARGEBUF, plugfile);
@@ -271,8 +292,7 @@ void PluginPool::parseEnablerFile(void)
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
-        enabledScrambles = parseScrambleList(comma);
-        if (!(enabledScrambles))
+        if(!parseScrambleOpt(const_cast<const char *>(comma), &enabledScrambles, pluginOpt))
         {
             RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
                               line, enablerentry, FILE_PLUGINSENABLER);
@@ -281,7 +301,7 @@ void PluginPool::parseEnablerFile(void)
         snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
         LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
-        importPlugin(plugabspath, enablerentry, enabledScrambles);
+        importPlugin(plugabspath, enablerentry, enabledScrambles, pluginOpt);
 
         /* we keep track of enabled scramble to apply confusion on real good packets */
         globalEnabledScrambles |= enabledScrambles;

@@ -94,7 +94,7 @@ public:
 
     Plugin(const char *, uint16_t);
     judge_t pktRandomDamage(uint8_t);
-    virtual bool init(uint8_t) = 0 ; /* Plugin is an abstract class */
+    virtual bool init(uint8_t, const char *) = 0 ; /* Plugin is an abstract class */
     virtual bool condition(const Packet &, uint8_t);
     virtual void apply(const Packet &, uint8_t);
     virtual void mangleIncoming(Packet &);
