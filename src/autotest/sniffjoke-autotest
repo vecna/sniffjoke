@@ -141,10 +141,10 @@ do
              exit 1
              ;;
          l)
-             LOCATION=$OPTARG
+             LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          d)
-             WORKPATH=$OPTARG
+             WORKPATH=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          n)
              REPN=$OPTARG
@@ -221,7 +221,7 @@ if [ ! -d $WORKPATH/generic ]; then
     exit;
 fi
 
-if [ ! -d $WORKPATH/$LOCATION ]; then
+if [ -d $WORKPATH/$LOCATION ]; then
     usage
     # call me old, but I don't put a blind rm -rf on a script run by root :P (vecna)
     echo "\n${red}"
@@ -309,9 +309,9 @@ echo "# this plugins_enabled.conf are dumped for location: $LOCATION" >> $PeL
 success_count=0
 success=`ls */success`
 for hack in $success; do
-    hackName=`basename $hack | sed -es/success//`
-    scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-    echo "$hackName,$scramble" | sed -es/,\$// >> $PeL
+    hackName=`echo $hack | awk 'BEGIN { FS = "-" } ; { print $1 }'`
+    scramble=`echo $hack | awk 'BEGIN { FS = "-"; RS = "/" } ; { print $2 }'`
+    echo "$hackName,$scramble" >> $PeL
     success_count=$(($success_count+1));
 done
 
@@ -319,9 +319,9 @@ echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in en
 failure_count=0
 failure=`ls */fail`
 for hack in $failure ; do
-    hackName=`basename $hack | sed -es/fail//`
-    scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-    echo "# $hackName,$scramble" | sed -es/,\$// >> $PeL
+    hackName=`echo $hack | awk 'BEGIN { FS = "-" } ; { print $1 }'`
+    scramble=`echo $hack | awk 'BEGIN { FS = "-"; RS = "/" } ; { print $2 }'`
+    echo "# $hackName,$scramble" >> $PeL
     failure_count=$(($failure_count+1));
 done
 
