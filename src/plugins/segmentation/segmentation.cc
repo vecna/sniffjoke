@@ -43,7 +43,7 @@ class segmentation : public Plugin
 
 #define MIN_SPLIT_PAYLOAD 2 /* bytes */
 #define MIN_SPLIT_PKTS    2
-#define MAX_SPLIT_PKTS    10
+#define MAX_SPLIT_PKTS    5
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
