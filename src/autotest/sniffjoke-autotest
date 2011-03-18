@@ -309,7 +309,7 @@ echo "# you are invited to regenerate this file" >> $PeL
 echo "# this plugins_enabled.conf are dumped for location: $LOCATION" >> $PeL
 
 success_count=0
-for PLUGIN in `ls */working_scrambles &2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
+for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
     SCRAMBLES=`cat $PLUGIN | tr " " "," | tr [:cntrl:] ","`
     echo "$PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     success_count=$(($success_count+1));
@@ -317,7 +317,7 @@ done
 
 echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure_count=0
-for PLUGIN in `ls */failed_scrambles &2>/dev/null | sed -e 's/\/failed_scrambles//'` ; do
+for PLUGIN in `ls */failed_scrambles 2>/dev/null | sed -e 's/\/failed_scrambles//'` ; do
     SCRAMBLES=`cat $PLUGIN | tr " " "," | tr [:cntrl:] ","`
     echo "# $PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     failure_count=$(($failure_count+1));
