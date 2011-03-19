@@ -25,7 +25,7 @@
 
 #include "Utils.h"
 
-#define DEBUGBUFFER 8 /* 64k */
+#define DEBUGBUFFER 65536 /* 64k */
 
 class Debug
 {
