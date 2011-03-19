@@ -39,10 +39,10 @@ private:
     const char* session_logstream_file;
     const char* packet_logstream_file;
     FILE *logstream;
-    char logstream_buf[DEBUGBUFFER];
     FILE *session_logstream;
-    char session_logstream_buf[DEBUGBUFFER];
     FILE *packet_logstream;
+    char logstream_buf[DEBUGBUFFER];
+    char session_logstream_buf[DEBUGBUFFER];
     char packet_logstream_buf[DEBUGBUFFER];
 
     void setLogstream(const char *lsf);
