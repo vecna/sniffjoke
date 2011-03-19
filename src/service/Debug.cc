@@ -91,7 +91,6 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
     if (errorlevel <= debuglevel)
     {
         va_list arguments;
-        time_t now = time(NULL);
         FILE *output_flow;
 
         if (logstream != NULL)
@@ -102,13 +101,13 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
         if (errorlevel == PACKET_LEVEL && packet_logstream != NULL)
             output_flow = packet_logstream;
 
-        if (errorlevel == SESSION_LEVEL && session_logstream != NULL)
+        else if (errorlevel == SESSION_LEVEL && session_logstream != NULL)
             output_flow = session_logstream;
 
         char time_str[MEDIUMBUF];
         memset(time_str, 0x00, sizeof (time_str));
 
-        strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
+        strftime(time_str, sizeof (time_str), "%F %T", localtime(&sj_clock));
 
         va_start(arguments, msg);
 
@@ -161,12 +160,11 @@ pluginLogHandler::~pluginLogHandler(void)
 void pluginLogHandler::completeLog(const char *msg, ...)
 {
     va_list arguments;
-    time_t now = time(NULL);
 
     char time_str[MEDIUMBUF];
     memset(time_str, 0x00, sizeof (time_str));
 
-    strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
+    strftime(time_str, sizeof (time_str), "%F %T", localtime(&sj_clock));
     fprintf(logstream, "%s ", time_str);
 
     va_start(arguments, msg);

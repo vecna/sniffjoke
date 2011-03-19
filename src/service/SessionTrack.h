@@ -26,8 +26,6 @@
 #include "Utils.h"
 #include "Packet.h"
 
-using namespace std;
-
 class SessionTrack
 {
     friend class SessionTrackMap;

@@ -32,8 +32,6 @@
 #include "SessionTrack.h"
 #include "PluginPool.h"
 
-using namespace std;
-
 class SniffJoke
 {
 public:
