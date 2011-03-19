@@ -27,10 +27,6 @@
 #include <getopt.h>
 #include <stdint.h>
 
-/* global variables */
-Debug debug;
-time_t sj_clock;
-
 static auto_ptr<SniffJoke> sniffjoke;
 
 /* defined here, is needed by SniffJoke.cc */

@@ -54,10 +54,10 @@ using namespace std;
 
 /*
  * there is a single clock in sniffjoke;
- * it global and defined by main.cc
- * it's updated by the NetIO module (network_io)
+ * it global and defined/initialized/updated by Sniffjoke.cc
  */
 extern time_t sj_clock;
+extern char sj_clock_str[MEDIUMBUF];
 
 #define ISSET_TTL(byte)         (byte & SCRAMBLE_TTL)
 #define ISSET_CHECKSUM(byte)    (byte & SCRAMBLE_CHECKSUM)
@@ -73,7 +73,7 @@ void* memset_random(void *, size_t);
 int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 #define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
-std::runtime_error runtime_exception(const char *, const char *, int32_t, const char *, ...);
+std::runtime_error runtime_exception(const char *, const char *, uint32_t, const char *, ...);
 
 
 #endif /* SJ_UTILS_H */

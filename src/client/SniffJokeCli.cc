@@ -36,7 +36,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-SniffJokeCli::SniffJokeCli(char* serveraddr, uint16_t serverport, uint32_t ms_timeout) :
+SniffJokeCli::SniffJokeCli(const char* serveraddr, uint16_t serverport, uint32_t ms_timeout) :
 serveraddr(serveraddr),
 serverport(serverport),
 ms_timeout(ms_timeout)
@@ -132,30 +132,20 @@ void SniffJokeCli::send_command(const char *cmdstring)
 
 #define SPACESIZE   20
 
-char *SniffJokeCli::fillWithSpace(uint16_t p)
+uint32_t SniffJokeCli::fillingSpaces(uint16_t p)
 {
-    static char spaces[MEDIUMBUF] = {0};
     char testingline[MEDIUMBUF] = {0};
-
     sprintf(testingline, "%d", p);
 
-    for (uint32_t i = strlen(testingline); i < SPACESIZE; i++)
-        spaces[ i - strlen(testingline) ] = ' ';
-
-    return spaces;
+    return (SPACESIZE - strlen(testingline));
 }
 
-char *SniffJokeCli::fillWithSpace(uint16_t s, uint16_t e)
+uint32_t SniffJokeCli::fillingSpace(uint16_t s, uint16_t e)
 {
-    static char spaces[MEDIUMBUF] = {0};
     char testingline[MEDIUMBUF] = {0};
-
     sprintf(testingline, "%d:%d", s, e);
 
-    for (uint32_t i = strlen(testingline); i < SPACESIZE; i++)
-        spaces[ i - strlen(testingline) ] = ' ';
-
-    return spaces;
+    return (SPACESIZE - strlen(testingline));
 }
 
 void SniffJokeCli::resolveWeight(char *buf, size_t len, uint32_t weight)
@@ -199,7 +189,7 @@ void SniffJokeCli::resolveWeight(char *buf, size_t len, uint32_t weight)
 }
 
 /* TODO in the stable release: implement a sort of cryptography, resolving issue of authentication */
-bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
+bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, uint32_t rcvdlen)
 {
     struct command_ret blockInfo;
 
@@ -266,9 +256,9 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, int32_t rcvdlen)
                 |  len N | who N  | data N  |
                 +--------+--------+---------+
  */
-bool SniffJokeCli::printSJStat(const uint8_t *statblock, int32_t blocklen)
+bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
 {
-    int32_t parsedlen = 0;
+    uint32_t parsedlen = 0;
     struct single_block *singleData;
 
     while (parsedlen < blocklen)
@@ -427,7 +417,7 @@ bool SniffJokeCli::printSJTTL(const uint8_t *received, uint32_t rcvdlen)
     return true;
 }
 
-bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
+bool SniffJokeCli::printSJPort(const uint8_t *statblock, uint32_t blocklen)
 {
     char resolvedInfo[MEDIUMBUF];
 
@@ -469,11 +459,11 @@ bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
 
         if (pInfo->start == pInfo->end)
         {
-            printf("%d%s%s\n", pInfo->start, fillWithSpace(pInfo->start), resolvedInfo);
+            printf("%d%*s%s\n", pInfo->start, fillingSpaces(pInfo->start), " ", resolvedInfo);
         }
         else
         {
-            printf("%d:%d%s%s\n", pInfo->start, pInfo->end, fillWithSpace(pInfo->start, pInfo->end), resolvedInfo);
+            printf("%d:%d%*s%s\n", pInfo->start, pInfo->end, fillingSpace(pInfo->start, pInfo->end), " ", resolvedInfo);
         }
     }
 
@@ -482,7 +472,7 @@ bool SniffJokeCli::printSJPort(const uint8_t *statblock, int32_t blocklen)
     return true;
 }
 
-bool SniffJokeCli::printSJError(const uint8_t *statblock, int32_t blocklen)
+bool SniffJokeCli::printSJError(const uint8_t *statblock, uint32_t blocklen)
 {
     printf("error - not implemented the parsing of an error - ATM\n");
 

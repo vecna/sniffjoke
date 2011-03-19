@@ -25,6 +25,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+/* global variables */
+time_t sj_clock;
+char sj_clock_str[MEDIUMBUF];
+Debug debug;
+
 /* the main must implement it */
 void sigtrap(int);
 
@@ -35,6 +40,7 @@ userconf(opts),
 proc(userconf.runcfg),
 service_pid(0)
 {
+    updateClock();
     LOG_DEBUG("");
 }
 
@@ -154,7 +160,7 @@ void SniffJoke::run(void)
         /* main block */
         while (alive)
         {
-            sj_clock = time(NULL);
+            updateClock();
 
             proc.sigtrapDisable();
 
@@ -165,6 +171,12 @@ void SniffJoke::run(void)
             proc.sigtrapEnable();
         }
     }
+}
+
+void SniffJoke::updateClock(void)
+{
+    sj_clock = time(NULL);
+    strftime(sj_clock_str, sizeof (sj_clock_str), "%F %T", localtime(&sj_clock));
 }
 
 void SniffJoke::setupDebug(void)
@@ -312,24 +324,6 @@ void SniffJoke::handleAdminSocket(void)
         if (!debug.resetLevel())
             RUNTIME_EXCEPTION("changing logfile settings");
     }
-}
-
-int SniffJoke::recvCommand(int sock, char *databuf, int bufsize, struct sockaddr *from, FILE *error_flow, const char *usermsg)
-{
-    memset(databuf, 0x00, bufsize);
-
-    int fromlen = sizeof (struct sockaddr_in), ret;
-
-    if ((ret = recvfrom(sock, databuf, bufsize, MSG_WAITALL, from, (socklen_t *) & fromlen)) == -1)
-    {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return 0;
-
-        RUNTIME_EXCEPTION("unable to receive from local socket: %s: %s",
-                          usermsg, strerror(errno));
-    }
-
-    return ret;
 }
 
 uint8_t * SniffJoke::handleCmd(const char *cmd)
@@ -615,6 +609,7 @@ void SniffJoke::writeSJTTLmap(uint8_t type)
         TTLFocus &TT = *((*it).second);
         accumulen += appendSJTTLInfo(&io_buf[accumulen], TT);
     }
+
     retInfo.cmd_len = accumulen;
     retInfo.cmd_type = type;
     memcpy(io_buf, &retInfo, sizeof (retInfo));
@@ -695,6 +690,7 @@ uint32_t SniffJoke::appendSJStatus(uint8_t *p, int32_t WHO, uint32_t len, const 
 
         len += sizeof (singleData);
     }
+
     return len;
 }
 
