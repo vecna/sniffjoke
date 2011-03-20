@@ -104,6 +104,7 @@ void Packet::updatePacketMetadata(void)
     if (ip->frag_off & htons(0x3FFF))
     {
         fragment = true;
+        proto = OTHER_IP;
         return;
     }
 
@@ -288,7 +289,7 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 
     if (proto == PROTOUNASSIGNED)
     {
-        LOG_ALL("in %s not set \"proto\" field, required", pluginName);
+        LOG_ALL("in %s not set \"proto\" field, required %u", pluginName, pbuf.size());
         goto errorinfo;
     }
 
@@ -305,7 +306,6 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
     }
 
     return true;
-
 errorinfo:
     LOG_DEBUG("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
     return false;

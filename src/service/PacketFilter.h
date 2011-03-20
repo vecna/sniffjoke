@@ -45,12 +45,14 @@ private:
     multiset<FilterEntry> *first;
     multiset<FilterEntry> *second;
 
+    /* called automagically */
+    void manage(void);
+
 public:
     FilterMultiset(void);
     ~FilterMultiset(void);
     bool check(const FilterEntry &);
     void add(const FilterEntry &);
-    void manage(void);
 };
 
 class PacketFilter

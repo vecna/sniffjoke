@@ -102,14 +102,13 @@ public:
         if (!ret)
             return false;
 
-        uint32_t *previouslyInjected;
-        vector<cacheRecord *>::iterator it = cache.cacheCheck(&filter, origpkt);
+        cacheRecord *record = cache.check(&filter, origpkt);
 
-        if (it == cache.end())
+        if (record == NULL)
         {
             uint32_t firstCached = 1;
 
-            cache.cacheAdd(origpkt, (const unsigned char*) &firstCached, sizeof (firstCached));
+            cache.add(origpkt, (const unsigned char*) &firstCached, sizeof (firstCached));
 
             pLH.completeLog("cache created for %s:%u",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
@@ -119,7 +118,7 @@ public:
             /* an hack like Fake RST will be useful few times, not for all the
              * connections: we are keeping a cache record to count every injected RST and after
              * a randomic number (between a min of 4 and 12), the RST is not injected again */
-            previouslyInjected = (uint32_t*)&((*it)->cached_data[0]);
+            uint32_t *previouslyInjected = (uint32_t*)&(record->cached_data[0]);
 
             /* we use the pointer to updat the cached data directly */
             ++(*previouslyInjected);

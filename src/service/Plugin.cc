@@ -23,7 +23,10 @@
 #include "Plugin.h"
 
 PluginCache::PluginCache(time_t timeout) :
-cacheTimeout(timeout)
+timeout_len(timeout),
+manage_timeout(sj_clock + timeout),
+first(&fm[0]),
+second(&fm[1])
 {
     LOG_DEBUG("");
 }
@@ -32,53 +35,88 @@ PluginCache::~PluginCache()
 {
     LOG_DEBUG("");
 
-    for (vector<cacheRecord *>::iterator it = begin(); it != end(); it = erase(it))
+    for (vector<cacheRecord *>::iterator it = first->begin(); it != first->end(); it = first->erase(it))
+        delete *it;
+
+    for (vector<cacheRecord *>::iterator it = second->begin(); it != second->end(); it = second->erase(it))
         delete *it;
 }
 
-vector<cacheRecord *>::iterator PluginCache::cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
+cacheRecord* PluginCache::check(bool(*filter)(const cacheRecord &, const Packet &), const Packet &pkt)
 {
-    for (vector<cacheRecord *>::iterator it = begin(); it != end();)
-    {
-        cacheRecord &record = **it;
-        if (filter(record, pkt))
-        {
-            record.access_timestamp = sj_clock; /* update the access timestamp */
-            return it;
-        }
+    manage();
 
-        if (record.access_timestamp < sj_clock - cacheTimeout)
+    for (vector<cacheRecord *>::iterator it = first->begin(); it != first->end(); ++it)
+    {
+        if (filter(**it, pkt))
         {
-            it = cacheDelete(it); /* the ++ is done internally by the cacheDelete
-                                     to keep the iterator valid */
-        }
-        else
-        {
-            it++;
+            cacheRecord *record = *it;
+            /* update entry timeout moving it to the freshest vector */
+            first->erase(it);
+            second->push_back(record);
+            return record;
         }
     }
 
-    return end();
+    for (vector<cacheRecord *>::iterator it = second->begin(); it != second->end(); ++it)
+    {
+        if (filter(**it, pkt))
+            return *it;
+    }
+
+    return NULL;
 }
 
-vector<cacheRecord *>::iterator PluginCache::cacheAdd(const Packet &pkt)
+cacheRecord* PluginCache::add(const Packet &pkt)
 {
     cacheRecord *newrecord = new cacheRecord(pkt);
-    push_back(newrecord);
-    return end() - 1;
+    second->push_back(newrecord);
+    return newrecord;
 }
 
-vector<cacheRecord *>::iterator PluginCache::cacheAdd(const Packet &pkt, const unsigned char *data, size_t data_size)
+cacheRecord* PluginCache::add(const Packet &pkt, const unsigned char *data, size_t data_size)
 {
     cacheRecord *newrecord = new cacheRecord(pkt, data, data_size);
-    push_back(newrecord);
-    return end() - 1;
+    second->push_back(newrecord);
+    return newrecord;
 }
 
-vector<cacheRecord *>::iterator PluginCache::cacheDelete(vector<struct cacheRecord *>::iterator it)
+void PluginCache::explicitDelete(struct cacheRecord *record)
 {
-    delete *it;
-    return erase(it);
+    for (vector<cacheRecord *>::iterator it = first->begin(); it != first->end(); ++it)
+    {
+        if (*it == record)
+        {
+            delete *it;
+            first->erase(it);
+            return;
+        }
+    }
+
+    for (vector<cacheRecord *>::iterator it = second->begin(); it != second->end(); ++it)
+    {
+        if (*it == record)
+        {
+            delete *it;
+            second->erase(it);
+            return;
+        }
+    }
+}
+
+void PluginCache::manage(void)
+{
+    if (manage_timeout > sj_clock - timeout_len)
+        return;
+
+    for (vector<cacheRecord *>::iterator it = first->begin(); it != first->end(); it = first->erase(it))
+        delete *it;
+
+    vector<struct cacheRecord *> *tmp = first;
+    first = second;
+    second = tmp;
+
+    manage_timeout = sj_clock + timeout_len;
 }
 
 Plugin::Plugin(const char* pluginName, uint16_t pluginFrequency) :
