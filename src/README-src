@@ -1,19 +1,19 @@
-service:
-	the sniffjoke software, when you start it will run in background, every
-	documentation referred for the most in him options
+/service:
+        contains the main sources for the sniffjoke software
 
-client:
-	this is a command line interface written to manage sniffjoke service,
-	in doc/ you will find the file SJ-PROTOCOL.txt, if you want to 
-	write a GTK or other cool-GUI sniffjoke manager, we are glad to 
-	import here. sniffjokectl is the binary used for manage and check
-	sniffjoke running 
+/client:
+        contains sources for a command line interface written to manage
+        sniffjoke service;
+        in doc/ you will find the file SJ-PROTOCOL.txt, ad document that
+        describe the protocol used for service-client communication.
+        if you want to write a QT or other cool-GUI sniffjoke manager,
+        we are glad to import it.
 
-plugins:
-	sniffjoke is an "anti sniffing SDK" or a "framework for userspace 
-	connection mangling" and the plugins are in fact the funny little 
-	code able to crumble to dust the thausand-dollar IDS apparatus
-	your boos has buy.
+/plugins:
+        sniffjoke is an "anti sniffing SDK" or a "framework for userspace
+        connection mangling" and the plugins are in fact the funny little
+        code able to crumble to dust the thousand-dollar IDS apparatus
+        your boss has buyed.
 
-	inside the are the hack_skeleton.skel that show you how to develop
-	yours. --> REMIND, hack_skeleton.skel need to be updated
+        inside the dir there is the file hack_skeleton.skel, a skeleton that
+        shows you how to develop yours. --> REMIND, hack_skeleton.skel need to be updated
