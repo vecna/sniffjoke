@@ -1,7 +1,7 @@
 #! /bin/sh
 
-libtoolize --automake --copy --force\
-&& aclocal \
+libtoolize --force --copy\
+&& aclocal --force\
 && autoheader --force\
 && automake --copy --add-missing --force-missing\
 && autoconf --force \

@@ -339,7 +339,7 @@ void Packet::iphdrResize(uint8_t size)
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
-        pbuf.insert(it + iphdrlen, size - iphdrlen, 0); //IPOPT_NOOP);
+        pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
     }
     else
     { /* iphdrlen > size */

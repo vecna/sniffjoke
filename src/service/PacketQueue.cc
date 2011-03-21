@@ -30,8 +30,8 @@ next_pkt(NULL)
 {
     LOG_DEBUG("");
 
-    memset(front, NULL, sizeof (Packet*)*(QUEUE_NUM));
-    memset(back, NULL, sizeof (Packet*)*(QUEUE_NUM));
+    memset(front, 0, sizeof (Packet*)*(QUEUE_NUM));
+    memset(back, 0, sizeof (Packet*)*(QUEUE_NUM));
 }
 
 PacketQueue::~PacketQueue(void)
