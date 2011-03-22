@@ -8,4 +8,5 @@ SUBDIRS =	fake_close_fin \
         overlap_packet \
 		segmentation \
 		shift_ack \
-		valid_rst_fake_seq
+		valid_rst_fake_seq \
+		HDRoptions_probe

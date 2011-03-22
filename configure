@@ -28383,7 +28383,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/autotest/Makefile src/client/Makefile src/plugins/Makefile src/plugins/fake_close_fin/Makefile src/plugins/fake_close_rst/Makefile src/plugins/fake_data/Makefile src/plugins/fake_seq/Makefile src/plugins/fake_syn/Makefile src/plugins/fake_window/Makefile src/plugins/fragmentation/Makefile src/plugins/overlap_packet/Makefile src/plugins/segmentation/Makefile src/plugins/shift_ack/Makefile src/plugins/valid_rst_fake_seq/Makefile src/service/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/autotest/Makefile src/client/Makefile src/plugins/Makefile src/plugins/fake_close_fin/Makefile src/plugins/fake_close_rst/Makefile src/plugins/fake_data/Makefile src/plugins/fake_seq/Makefile src/plugins/fake_syn/Makefile src/plugins/fake_window/Makefile src/plugins/fragmentation/Makefile src/plugins/overlap_packet/Makefile src/plugins/segmentation/Makefile src/plugins/shift_ack/Makefile src/plugins/valid_rst_fake_seq/Makefile src/plugins/HDRoptions_probe/Makefile src/service/Makefile"
 
 
 
@@ -29006,6 +29006,7 @@ do
     "src/plugins/segmentation/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/segmentation/Makefile" ;;
     "src/plugins/shift_ack/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/shift_ack/Makefile" ;;
     "src/plugins/valid_rst_fake_seq/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/valid_rst_fake_seq/Makefile" ;;
+    "src/plugins/HDRoptions_probe/Makefile") CONFIG_FILES="$CONFIG_FILES src/plugins/HDRoptions_probe/Makefile" ;;
     "src/service/Makefile") CONFIG_FILES="$CONFIG_FILES src/service/Makefile" ;;
 
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5

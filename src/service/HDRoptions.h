@@ -157,4 +157,28 @@ public:
     bool removeOption(uint8_t);
 };
 
+/*
+ * The following class read the file 'option-support.conf' and setup
+ * correctly the optMap struct when HDRoptions require it.
+ *
+ * Is called also from the HDRoptions_probe.cc plugin for option test
+ */
+struct option_descript
+{
+    uint8_t optProtocol;
+    uint8_t optValue;
+    const char *optName;
+    corruption_t availableUsage;
+};
+
+class optionLoader
+{
+private:
+    struct option_descript optionStorage[SUPPORTED_OPTIONS];
+public:
+    void initOptMap(struct option_mapping &);
+    struct option_descript *getOptionDesc(uint8_t);
+    optionLoader(const char *, bool);
+};
+
 #endif /* HDROPTIONS_H */

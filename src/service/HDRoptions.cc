@@ -1046,3 +1046,26 @@ bool HDRoptions::removeOption(uint8_t opt)
     return true;
 }
 
+/* the optionLoader class work as instructor for the HDRoptions */
+void optionLoader::initOptMap(struct option_mapping &optionsToMap)
+{
+    /* scorriti le due mappe e copia il corruption_t */
+}
+
+struct option_descript * optionLoader::getOptionDesc(uint8_t sjOptIndex)
+{
+    return (struct option_descript *)&optionStorage[sjOptIndex];
+}
+
+optionLoader::optionLoader(const char *fname, bool testUsage)
+{
+    memset( (void *)&optionStorage, 0x00, sizeof(optionStorage));
+
+    optionStorage[0] = { .optProtocol = IPPROTO_IP, .optValue = 1, .optName = "TEST-CORRUPT", .availableUsage = ONESHOT };
+  //  optionStorage[1] = { IPPROTO_IP, 2, "TEST-INNOCENT", NOT_CORRUPT };
+
+    if(!testUsage)
+    {
+        /* handle fname and load the data */
+    }
+}
