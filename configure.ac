@@ -2,17 +2,15 @@ AC_INIT
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
-PACKAGE_VERSION=`grep SW_VERSION\  ./src/service/hardcodedDefines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
-AC_SUBST(PACKAGE_VERSION)
-
-AC_PREFIX_DEFAULT(/usr/local)
+VERSION=`grep SW_VERSION\  ./src/service/hardcodedDefines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
 
 AH_TEMPLATE(RUNUSER)
-AH_TEMPLATE(RUNGROUP)
-# for distribution package, here will be better use dedicated user/group
-AC_DEFINE(RUNUSER, "nobody")
-AC_DEFINE(RUNGROUP, "nogroup")
+AC_DEFINE_UNQUOTED(RUNUSER, `eval grep DEFAULT_USER\  ./src/service/hardcodedDefines.h | cut -f2 -d'"' | sed 's/ /-/g'`)
 
+AH_TEMPLATE(RUNGROUP)
+AC_DEFINE_UNQUOTED(RUNGROUP, `eval grep DEFAULT_GROUP\  ./src/service/hardcodedDefines.h | cut -f2 -d'"' | sed 's/ /-/g'`)
+
+AC_PREFIX_DEFAULT(/usr/local)
 if test "$prefix" = "NONE"; then
    prefix="/usr/local"
 fi
@@ -35,7 +33,7 @@ AC_DEFINE_UNQUOTED(INSTALL_LIBDIR, "`eval echo $libdir/sniffjoke/`")
 AH_TEMPLATE(INSTALL_BINDIR, [where can I find the sniffjoke executable ?])
 AC_DEFINE_UNQUOTED(INSTALL_BINDIR, "`eval echo $bindir`")
 
-AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
+AM_INIT_AUTOMAKE(sniffjoke,$VERSION)
 
 AC_PROG_CXX
 AC_LANG([C++])

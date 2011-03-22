@@ -45,10 +45,11 @@
 #define DEFAULT_NO_UDP          false
 #define DEFAULT_USE_WHITELIST   false
 #define DEFAULT_USE_BLACKLIST   false
-#define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_START_STOPPED   false /* sniffjoke start stopped and is false to be true
                                          (http://freeworld.thc.org/root/phun/unmaintain.html)*/
 #define DEFAULT_GO_FOREGROUND   false
+#define DEFAULT_FORCE_RESTART   false
+#define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_MAX_TTLPROBE    35
 
 /* this is not configurabile anyway in some (wrong) local network the

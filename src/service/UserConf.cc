@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
+ *
  *   Copyright (C) 2010 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
@@ -22,15 +22,12 @@
 
 #include "UserConf.h"
 
-/* 
+/*
  * rules for parms:
- * sj_cmdline_opts contain only the option passed to the command line
- * ther other information are used as default.
+ * sj_cmdline_opts contains only the option passed to the command line.
+ * for uninitializated values will be used default ones.
  *
- * are used for detect the user specified working directory and 
- * location, or use the default.
- *
- * when the configuration file are found, the priority is given to
+ * when a configuration file is present, the priority is given to
  * 1) command line options
  * 2) configuration files
  * 3) defaults
@@ -171,6 +168,7 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
     FILE *foca;
     char imp_str[SMALLBUF];
     uint8_t i;
+
     snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- 2>/dev/null",
              runcfg.interface);
 
@@ -291,10 +289,10 @@ void UserConf::networkSetup(void)
 }
 
 /*
- * BELOW FOLLOW THE LIST OF PARSING METHOD. 
+ * BELOW FOLLOW THE LIST OF PARSING METHOD.
  * some also low level, with strstr, memcmp, sscanf, ...
  *
- * IN THE FUTURE MAYBE SPLITTED IN ANOTHER CLASS, BUT UNTIL WE AUGMENT 
+ * IN THE FUTURE MAYBE SPLITTED IN ANOTHER CLASS, BUT UNTIL WE AUGMENT
  * THE NUMBER OF CONFIGURATION FILES, IS NOT A PRIORITY.
  *
  * BETTER WILL BE CREATE A CLASS like IPListMap, with Port instead of IP.
@@ -303,10 +301,10 @@ void UserConf::networkSetup(void)
  */
 
 /* internal function called by the overloaded parseMatch */
-bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keyword)
+bool UserConf::parseLine(FILE *cf, char* userchoose, const char *keyword)
 {
     rewind(cf);
-    char line[MEDIUMBUF];
+    char line[MEDIUMBUF] = {0};
 
     do
     {
@@ -333,10 +331,63 @@ bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keywor
     return false;
 }
 
-/* start with the less used (only one time, for this reason differ) parseMatch overloaded name */
-void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, const bool difolt)
+void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
 {
-    char useropt[SMALLBUF] = {0};
+    char useropt[MEDIUMBUF] = {0};
+    const char *debugfmt = NULL;
+
+    /* command line priority always */
+    if (cmdopt != NULL && strlen(cmdopt) && (difolt == NULL ? true : memcmp(cmdopt, difolt, strlen(difolt))))
+    {
+        debugfmt = "%s/string: keyword %s command line %s used";
+        strncpy(dst, cmdopt, MEDIUMBUF);
+        goto EndparseMatchString;
+    }
+
+    if (cf != NULL && parseLine(cf, useropt, name))
+    {
+        debugfmt = "string: parsed keyword %s [%s] option in conf file";
+        strncpy(dst, useropt, MEDIUMBUF);
+        goto EndparseMatchString;
+    }
+
+    strncpy(dst, difolt, strlen(difolt));
+    debugfmt = "string: %s not found in config file, used default %s";
+
+EndparseMatchString:
+    LOG_DEBUG(debugfmt, name, dst);
+}
+
+void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, uint16_t difolt)
+{
+    char useropt[MEDIUMBUF] = {0};
+    const char *debugfmt = NULL;
+
+    /* command line priority always */
+    if (cmdopt != difolt)
+    {
+        debugfmt = "uint16: for %s used command line option %d";
+        dst = cmdopt;
+        goto EndparseMatchShort;
+    }
+
+    if (cf != NULL && parseLine(cf, useropt, name))
+    {
+        debugfmt = "uint16: parsed keyword %s [%d] option in conf file";
+        dst = atoi(useropt);
+        goto EndparseMatchShort;
+    }
+
+    debugfmt = "uint16: %s not found in config file, used default %d";
+    dst = difolt;
+
+EndparseMatchShort:
+    LOG_DEBUG(debugfmt, name, dst);
+}
+
+void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, bool difolt)
+{
+    char useropt[MEDIUMBUF] = {0};
     const char *debugfmt = NULL;
 
     /* command line priority always */
@@ -347,112 +398,18 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
         goto EndparseMatchBool;
     }
 
-    if (cf == NULL)
-    {
-        dst = difolt;
-        debugfmt = "bool: keyword %s config file not present, used default: [%s]";
-        goto EndparseMatchBool;
-    }
-
-    /* in the configuration file, if a boolean is present, then is TRUE */
-    if (parseLine(cf, useropt, name))
+    if (cf != NULL && parseLine(cf, useropt, name))
     {
         dst = true;
         debugfmt = "bool: keyword %s read from config file: [%s]";
+        goto EndparseMatchBool;
     }
-    else
-    {
-        dst = difolt;
-        debugfmt = "bool: not found %s option in conf file, using default: [%s]";
-    }
+
+    dst = difolt;
+    debugfmt = "bool: not found %s option in conf file, using default: [%s]";
 
 EndparseMatchBool:
     LOG_DEBUG(debugfmt, name, dst ? "true" : "false");
-}
-
-void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
-{
-    char useropt[SMALLBUF] = {0};
-    const char *debugfmt = NULL;
-
-    if (cmdopt != NULL && strlen(cmdopt) && (difolt == NULL ? true : memcmp(cmdopt, difolt, strlen(difolt))))
-    {
-        debugfmt = "%s/string: keyword %s command line %s used";
-        memcpy(dst, cmdopt, strlen(cmdopt));
-        goto EndparseMatchString;
-    }
-
-    /* only-plugin will be empty, no other cases */
-    if (cf == NULL && difolt == NULL)
-    {
-        debugfmt = "string: conf file not found and option neither: used no value in %s";
-        memset(dst, 0x00, MEDIUMBUF);
-        goto EndparseMatchString;
-    }
-
-    /* if the file is NULL, the default is used */
-    if (cf == NULL)
-    {
-        debugfmt = "string: conf file not found, for %s used default %s";
-        memcpy(dst, difolt, strlen(difolt));
-        goto EndparseMatchString;
-    }
-
-    if (parseLine(cf, useropt, name))
-    {
-        debugfmt = "string: parsed keyword %s [%s] option in conf file";
-        /* dst is large MEDIUMBUF, and none useropt will overflow this size */
-        memcpy(dst, useropt, strlen(useropt));
-        goto EndparseMatchString;
-    }
-
-    /* if was not found in the file, the default is used */
-    if (difolt != NULL)
-    {
-        memset(dst, 0x00, MEDIUMBUF);
-        memcpy(dst, difolt, strlen(difolt));
-        debugfmt = "string: %s not found in config file, used default %s";
-    }
-
-EndparseMatchString:
-    LOG_DEBUG(debugfmt, name, dst);
-}
-
-void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, uint16_t difolt)
-{
-    char useropt[SMALLBUF] = {0};
-    const char *debugfmt = NULL;
-
-    if (cmdopt != difolt && cmdopt != 0)
-    {
-        debugfmt = "uint16: for %s used command line option %d";
-        dst = cmdopt;
-        goto EndparseMatchShort;
-    }
-
-    /* if the file is NULL, the default is used */
-    if (cf == NULL)
-    {
-        memcpy((void *) &dst, (void *) &difolt, sizeof (difolt));
-        debugfmt = "uint16: conf file not found, for %s used default %d";
-        goto EndparseMatchShort;
-    }
-
-    if (parseLine(cf, useropt, name))
-    {
-        debugfmt = "uint16: parsed keyword %s [%d] option in conf file";
-        dst = atoi(useropt);
-        goto EndparseMatchShort;
-    }
-
-    if (difolt)
-    {
-        debugfmt = "uint16: %s not found in config file, used default %d";
-        dst = difolt;
-    }
-
-EndparseMatchShort:
-    LOG_DEBUG(debugfmt, name, dst);
 }
 
 /* this is the function that load the settings, it merge the command line options with
@@ -506,7 +463,7 @@ void UserConf::loadAggressivity(void)
 {
     FILE *loadstream;
 
-    for (int32_t i = 0; i < PORTSNUMBER; i++)
+    for (uint32_t i = 0; i < PORTSNUMBER; i++)
         runcfg.portconf[i] = AGG_NONE;
 
     if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
@@ -671,4 +628,3 @@ bool UserConf::syncIPListsFiles(void)
     /* TODO */
     return true;
 }
-

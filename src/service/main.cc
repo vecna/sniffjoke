@@ -88,6 +88,7 @@ int main(int argc, char **argv)
     memset(&useropt, 0x00, sizeof (useropt));
 
     /* ordered initialization of all boolean/uint values to the default */
+    useropt.admin_port = DEFAULT_ADMIN_PORT;
     useropt.chaining = DEFAULT_CHAINING;
     useropt.no_tcp = DEFAULT_NO_TCP;
     useropt.no_udp = DEFAULT_NO_UDP;
@@ -95,6 +96,7 @@ int main(int argc, char **argv)
     useropt.use_blacklist = DEFAULT_USE_BLACKLIST;
     useropt.active = DEFAULT_START_STOPPED;
     useropt.go_foreground = DEFAULT_GO_FOREGROUND;
+    useropt.debug_level = DEFAULT_DEBUG_LEVEL;
     useropt.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
     useropt.force_restart = false;
 

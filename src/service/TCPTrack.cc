@@ -525,11 +525,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
         bool applicable = true;
 
         applicable &= pt->selfObj->condition(origpkt, availableScrambles);
-        applicable &= percentage(
-                                 sessiontrack.packet_number,
-                                 pt->selfObj->pluginFrequency,
-                                 getUserFrequency(origpkt)
-                                 );
+        applicable &= percentage(sessiontrack.packet_number, pt->selfObj->pluginFrequency, getUserFrequency(origpkt));
 
         if (applicable)
             applicable_hacks.push_back(pt);
@@ -771,9 +767,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     }
 
     if (pkt.wtf != INNOCENT)
-    {
         pkt.payloadRandomFill();
-    }
 
     /* fixing the mangled packet */
     pkt.fixSum();
@@ -909,9 +903,7 @@ void TCPTrack::handleKeepPackets(void)
     for (p_queue.select(KEEP); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
-        {
             p_queue.insert(*pkt, HACK);
-        }
     }
 }
 
@@ -935,9 +927,7 @@ void TCPTrack::handleHackPackets(void)
     for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (!lastPktFix(*pkt))
-        {
             RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
-        }
 
         if (injectHack(*pkt))
         {
@@ -965,9 +955,7 @@ void TCPTrack::handleHackPackets(void)
     }
 
     for (p_queue.select(HACK); ((pkt = p_queue.get()) != NULL);)
-    {
         p_queue.insert(*pkt, SEND);
-    }
 }
 
 /* the packet is added in the packet queue here to be analyzed in a second time */
@@ -978,7 +966,7 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
         Packet * const pkt = new Packet(buff, nbyte);
         pkt->source = source;
         pkt->wtf = INNOCENT;
-        pkt->choosableScramble = INNOCENT | MALFORMED;
+        pkt->choosableScramble = INNOCENT; /* on innocent pkts this variable is meaningless */
 
         /* Sniffjoke does handle only TCP, UDP and ICMP */
         if (runcfg.active && (pkt->proto & mangled_proto_mask))

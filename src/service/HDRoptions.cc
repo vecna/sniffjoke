@@ -899,11 +899,6 @@ void HDRoptions::randomInjector()
 
     if (type == IPOPTS_INJECTOR)
     {
-        randomStart = RANDOM_IPOPT;
-        tries = LAST_IPOPT - FIRST_IPOPT + 1;
-    }
-    else
-    {
         randomStart = RANDOM_TCPOPT;
         tries = LAST_TCPOPT - FIRST_TCPOPT + 1;
     }
@@ -1028,16 +1023,18 @@ bool HDRoptions::removeOption(uint8_t opt)
     if (optTrack[opt].size() == false)
         return false;
 
+    uint8_t freed_mem = 0;
     for (vector<option_occurrence>::iterator it = optTrack[opt].begin(); it != optTrack[opt].end(); it = optTrack[opt].erase(it))
     {
-
         vector<unsigned char>::iterator start = optshdr.begin() + it->off;
         vector<unsigned char>::iterator end = start + it->len;
         optshdr.erase(start, end);
 
-        target_opts_len -= it->len;
-        actual_opts_len -= it->len;
+        target_opts_len += it->len;
     }
+
+    target_opts_len -= freed_mem;
+    actual_opts_len -= freed_mem;
 
     alignOpthdr();
 

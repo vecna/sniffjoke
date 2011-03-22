@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
+ *
  *   Copyright (C) 2010 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
@@ -35,7 +35,7 @@
 struct sj_cmdline_opts
 {
     /* these date are not present in sj_config because the
-     * effective configuration directory is generated as private 
+     * effective configuration directory is generated as private
      * data inside UserConf classes */
     char basedir[MEDIUMBUF];
     char location[MEDIUMBUF];
@@ -60,8 +60,8 @@ struct sj_cmdline_opts
     bool force_restart;
 };
 
-/* this is the struct keeping the sniffjoke variables, is loaded 
- * by the configuration file, when a command line option is specified 
+/* this is the struct keeping the sniffjoke variables, is loaded
+ * by the configuration file, when a command line option is specified
  * the command line override the loaded data. the data here present will
  * be dumped overriding the previous config file
  */
