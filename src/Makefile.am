@@ -1,1 +1,1 @@
-SUBDIRS =		plugins autotest client service
+SUBDIRS = plugins autotest client service

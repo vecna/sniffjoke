@@ -11,8 +11,8 @@
 Sniffjoke service is listening in UDP, waiting for a TEXTUAL COMMAND, followed 
 optionally by a binary options
 
-for every command sent, an operation in sniffjoke is performend, and a binary
-answer are send via UDP to the client.
+for every command sent, an operation in sniffjoke is performed, and a binary
+answer is sent via UDP to the client.
 
 this is not an RFC-like document, is a documented series of C structures used
 for data exchange.
@@ -21,8 +21,8 @@ for data exchange.
                                     SENT DATA:
 
 
-a variable string in an UDP packet, that will contains the following value
-for be accepted by the service:
+a variable string in an UDP packet, that will contain the following value
+to be accepted by the service:
 
     start               start the mangling + return updated "stat"
     stop                stop the mangling + return updated "stat"
@@ -59,7 +59,7 @@ struct command_ret
     uint32_t cmd_type;
 };
 
-the cmd_type has one of the _COMMAND_TYPE value, the cmd_len contains
+the cmd_type has one of the *_COMMAND_TYPE value, the cmd_len contains
 the entire lenght of the packet. 
 
 the return type will be of few type: stat, ttl mapping, port configuration,
@@ -94,8 +94,8 @@ struct single_block
 #define STAT_BLACKLIST  17
 #define STAT_ONLYP      18
 
-after every sinble block structured there are the data described by "WHO", WHO
-take the value of the previously defined STAT_
+after every single block structured there are the data described by "WHO", WHO
+take the value of the previously defined STAT_*
 
 the SHOWPORT return:
 
@@ -106,9 +106,9 @@ struct port_info
     uint16_t weight;
 }
 
-weight is the or-value containing the different strenght of injection applied to the
-range of port from "start" to "end". there are a list of there structured until all
-ports range are reported.
+weight is the or-value containing the different strength values of injection applied
+to the range of port from "start" to "end". there are a list of there structured until
+all ports range are reported.
 
 the SESSION list:
 
@@ -122,7 +122,7 @@ struct sex_record
     uint32_t injected_pktnumber;
 }
 
-Every session is described in a list of "sex_record" until all are reported.
+every session is described in a list of "sex_record" until all are reported.
 
 struct ttl_record
 {
@@ -135,4 +135,4 @@ struct ttl_record
     uint8_t ttlestimate;
 }
 
-Every host tracked is described in a list of "ttl_record" until all are reported.
+rvery host tracked is described in a list of "ttl_record" until all are reported.

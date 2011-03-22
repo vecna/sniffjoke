@@ -26,10 +26,6 @@ AC_DEFINE_UNQUOTED(INSTALL_PREFIX, "`eval echo $prefix`")
 AH_TEMPLATE(INSTALL_EXECPREFIX, [the exec_prefix passed by configure])
 AC_DEFINE_UNQUOTED(INSTALL_EXECPREFIX, "`eval echo $exec_prefix`")
 
-# this will not be useful ATM
-# AH_TEMPLATE(INSTALL_SYSCONFDIR, [where can I find my sysconf file ?])
-# AC_DEFINE_UNQUOTED(INSTALL_SYSCONFDIR, "`eval echo $sysconfdir/sniffjoke/`")
-
 AH_TEMPLATE(INSTALL_STATEDIR, [where can I find my running track ?])
 AC_DEFINE_UNQUOTED(INSTALL_STATEDIR, "`eval echo $localstatedir/sniffjoke/`")
 
@@ -39,21 +35,17 @@ AC_DEFINE_UNQUOTED(INSTALL_LIBDIR, "`eval echo $libdir/sniffjoke/`")
 AH_TEMPLATE(INSTALL_BINDIR, [where can I find the sniffjoke executable ?])
 AC_DEFINE_UNQUOTED(INSTALL_BINDIR, "`eval echo $bindir`")
 
-
 AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
-
 
 AC_PROG_CXX
 AC_LANG([C++])
 AC_PROG_INSTALL
 
-AC_DISABLE_STATIC
-AC_LIBTOOL_WIN32_DLL
-AC_LIBTOOL_DLOPEN
-AM_PROG_LIBTOOL
-AC_SEARCH_LIBS(dlopen,c dl,,)
-AC_SEARCH_LIBS(lt_dlopen,c dl ltdl,,ac_ec_lt_dlopen=no)
-AC_LIB_LTDL
+ACLOCAL_AMFLAGS = -I m4
+AC_CONFIG_MACRO_DIR([m4])
+
+LT_INIT
+AC_SUBST([LIBTOOL_DEPS])
 
 AC_CHECK_HEADERS(algorithm,,exit 1)
 AC_CHECK_HEADERS(cerrno,,exit 1)
@@ -66,6 +58,7 @@ AC_CHECK_HEADERS(ctime,,exit 1)
 AC_CHECK_HEADERS(cctype,,exit 1)
 AC_CHECK_HEADERS(map,,exit 1)
 AC_CHECK_HEADERS(memory,,exit 1)
+AC_CHECK_HEADERS(set,,exit 1)
 AC_CHECK_HEADERS(sstream,,exit 1)
 AC_CHECK_HEADERS(stdexcept,,exit 1)
 AC_CHECK_HEADERS(vector,,exit 1)
@@ -108,15 +101,13 @@ AC_CONFIG_FILES(
 		src/plugins/fake_window/Makefile
 		src/plugins/fragmentation/Makefile
 		src/plugins/overlap_packet/Makefile
-        src/plugins/segmentation/Makefile
+                src/plugins/segmentation/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
-		src/plugins/HDRoptions_probe/Makefile
 		src/service/Makefile
 )
 
-
-CFLAGS="-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros"
+CFLAGS="-O3 -ansi -pedantic -Wall -Wno-variadic-macros"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

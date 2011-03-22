@@ -43,7 +43,7 @@ class fragmentation : public Plugin
 
 #define MIN_SPLIT_PAYLOAD 8 /* bytes */
 #define MIN_SPLIT_PKTS    2
-#define MAX_SPLIT_PKTS    10
+#define MAX_SPLIT_PKTS    5
 #define MIN_IP_PAYLOAD    (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
@@ -127,9 +127,6 @@ public:
 
             if (pkts < (pkts_n - 1)) /* first (pkt - 1) segments */
             {
-                /* common in my code */
-                ip->id = htons(ntohs(ip->id) - 10 + (random() % 20));
-
                 ip->tot_len = htons(origpkt.iphdrlen + split_size);
                 ip->frag_off = htons(offset | IP_MF);
                 pktbuf.insert(pktbuf.end(), it, it + split_size);
@@ -138,9 +135,6 @@ public:
             }
             else /* last segment */
             {
-                /* marker useful when I feel drunk and confused by tcpdump */
-                ip->id = 1;
-
                 ip->tot_len = htons(origpkt.iphdrlen + carry);
                 if (justfragmented)
                     ip->frag_off = htons(offset | IP_MF);

@@ -48,7 +48,7 @@ void Debug::setPacketLogstream(const char *lsf)
     packet_logstream = NULL;
 }
 
-bool Debug::appendOpen(uint8_t thislevel, const char *fname, FILE **previously)
+bool Debug::appendOpen(uint8_t thislevel, const char *fname, char *buf, FILE **previously)
 {
     if (*previously == stdout)
         return true;
@@ -66,6 +66,8 @@ bool Debug::appendOpen(uint8_t thislevel, const char *fname, FILE **previously)
         if ((fname == NULL) || ((*previously = fopen(fname, "a+")) == NULL))
             return false;
 
+        setbuffer(*previously, buf, DEBUGBUFFER);
+
         log(thislevel, __func__, "opened logfile %s successful with debug level %d", fname, debuglevel);
     }
 
@@ -74,13 +76,13 @@ bool Debug::appendOpen(uint8_t thislevel, const char *fname, FILE **previously)
 
 bool Debug::resetLevel(void)
 {
-    if (!appendOpen(ALL_LEVEL, logstream_file, &logstream))
+    if (!appendOpen(ALL_LEVEL, logstream_file, logstream_buf, &logstream))
         return false;
 
-    if (!appendOpen(SESSION_LEVEL, session_logstream_file, &session_logstream))
+    if (!appendOpen(SESSION_LEVEL, session_logstream_file, session_logstream_buf, &session_logstream))
         return false;
 
-    if (!appendOpen(PACKET_LEVEL, packet_logstream_file, &packet_logstream))
+    if (!appendOpen(PACKET_LEVEL, packet_logstream_file, session_logstream_buf, &packet_logstream))
         return false;
 
     return true;
@@ -90,8 +92,6 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
 {
     if (errorlevel <= debuglevel)
     {
-        va_list arguments;
-        time_t now = time(NULL);
         FILE *output_flow;
 
         if (logstream != NULL)
@@ -102,26 +102,21 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
         if (errorlevel == PACKET_LEVEL && packet_logstream != NULL)
             output_flow = packet_logstream;
 
-        if (errorlevel == SESSION_LEVEL && session_logstream != NULL)
+        else if (errorlevel == SESSION_LEVEL && session_logstream != NULL)
             output_flow = session_logstream;
-
-        char time_str[MEDIUMBUF];
-        memset(time_str, 0x00, sizeof (time_str));
-
-        strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
-
-        va_start(arguments, msg);
 
         /* the debug level used in development include function/pid/uid addictional infos */
         if (errorlevel == DEBUG_LEVEL)
-            fprintf(output_flow, "%s %s %d/%d ", time_str, funcname, getpid(), getuid());
+            fprintf(output_flow, "%s %s %d/%d ", sj_clock_str, funcname, getpid(), getuid());
         else
-            fprintf(output_flow, "%s ", time_str);
+            fprintf(output_flow, "%s ", sj_clock_str);
 
+        va_list arguments;
+        va_start(arguments, msg);
         vfprintf(output_flow, msg, arguments);
-        fprintf(output_flow, "\n");
-        fflush(output_flow);
         va_end(arguments);
+
+        fprintf(output_flow, "\n");
     }
 }
 
@@ -141,13 +136,14 @@ void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
         fchown(fileno(session_logstream), uid, gid);
 }
 
-/* -----
- * Class pluginLogHandler used by plugins for selective logging */
+/* Class pluginLogHandler used by plugins for selective logging */
 pluginLogHandler::pluginLogHandler(const char *sN, const char *LfN) :
 selfName(sN)
 {
     if ((logstream = fopen(LfN, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s: %s", LfN, strerror(errno));
+
+    setbuffer(logstream, logstream_buf, DEBUGBUFFER);
 
     completeLog("opened file %s successful for handler %s", LfN, selfName);
 }
@@ -160,20 +156,12 @@ pluginLogHandler::~pluginLogHandler(void)
 
 void pluginLogHandler::completeLog(const char *msg, ...)
 {
+    fprintf(logstream, "%s ", sj_clock_str);
+
     va_list arguments;
-    time_t now = time(NULL);
-
-    char time_str[MEDIUMBUF];
-    memset(time_str, 0x00, sizeof (time_str));
-
-    strftime(time_str, sizeof (time_str), "%F %T", localtime(&now));
-    fprintf(logstream, "%s ", time_str);
-
     va_start(arguments, msg);
-
     vfprintf(logstream, msg, arguments);
     fprintf(logstream, "\n");
-    fflush(logstream);
     va_end(arguments);
 }
 
@@ -181,9 +169,7 @@ void pluginLogHandler::simpleLog(const char *msg, ...)
 {
     va_list arguments;
     va_start(arguments, msg);
-
     vfprintf(logstream, msg, arguments);
     fprintf(logstream, "\n");
-    fflush(logstream);
     va_end(arguments);
 }

@@ -120,13 +120,13 @@ public:
         /* is cached the amount of data cached in the first segment */
         uint32_t sentData;
 
-        vector<cacheRecord *>::iterator it = cache.cacheCheck(&filter, origpkt);
+        cacheRecord *record = cache.check(&filter, origpkt);
 
-        if (it == cache.end())
+        if (record == NULL)
         {
             sentData = (origpkt.tcppayloadlen / 2);
 
-            it = cache.cacheAdd(origpkt, (const unsigned char*) &sentData, sizeof(sentData));
+            cache.add(origpkt, (const unsigned char*) &sentData, sizeof(sentData));
 
             pkt->tcppayloadResize(sentData);
             pkt->tcp->psh = 0;
@@ -139,9 +139,9 @@ public:
         else
         {
 
-            sentData = *(uint32_t*)&((*it)->cached_data[0]);
+            sentData = *(uint32_t*)&(record->cached_data[0]);
 
-            cache.cacheDelete(it);
+            cache.explicitDelete(record);
 
             memset_random(pkt->tcppayload, sentData);
 

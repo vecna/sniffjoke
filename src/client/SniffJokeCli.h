@@ -48,19 +48,19 @@ private:
     uint32_t ms_timeout;
     const char *cmd_buffer;
 
-    char *fillWithSpace(uint16_t);
-    char *fillWithSpace(uint16_t, uint16_t);
+    uint32_t fillingSpaces(uint16_t);
+    uint32_t fillingSpace(uint16_t, uint16_t);
     void resolveWeight(char *, size_t, uint32_t);
 
-    bool parse_SjinternalProto(uint8_t *, int32_t);
-    bool printSJStat(const uint8_t *, int32_t);
-    bool printSJPort(const uint8_t *, int32_t);
-    bool printSJError(const uint8_t *, int32_t);
-    bool printSJSessionInfo(const uint8_t*, uint32_t);
+    bool parse_SjinternalProto(uint8_t *, uint32_t);
+    bool printSJStat(const uint8_t *, uint32_t);
+    bool printSJPort(const uint8_t *, uint32_t);
+    bool printSJError(const uint8_t *, uint32_t);
+    bool printSJSessionInfo(const uint8_t *, uint32_t);
     bool printSJTTL(const uint8_t *, uint32_t);
 
 public:
-    SniffJokeCli(char *, uint16_t, uint32_t);
+    SniffJokeCli(const char *, uint16_t, uint32_t);
     void send_command(const char *cmdstring);
 };
 

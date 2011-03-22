@@ -37,4 +37,4 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			SniffJoke.h \
 			main.cc
 
-sniffjoke_LDFLAGS =	-lrt -Wl,-export-dynamic
+sniffjoke_LDFLAGS =	-lrt -ldl -Wl,-export-dynamic

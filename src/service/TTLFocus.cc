@@ -22,8 +22,6 @@
 
 #include "TTLFocus.h"
 
-using namespace std;
-
 TTLFocus::TTLFocus(const Packet &pkt) :
 access_timestamp(sj_clock),
 next_probe_time(sj_clock),

@@ -13,7 +13,7 @@ white="\e[1;39m"
 #default values
 LOCATION=
 WORKPATH=
-TESTN=1
+REPN=1
 
 usage()
 {
@@ -28,16 +28,16 @@ every plugin it's tested with one of each scrambling tech.
 
 OPTIONS:
    -h      show this message
-   -l      location name                                    (required)
-   -d      path of 'generic/' location, acting as default   (required)
-   -n      number of tests to be passed for the single hack (default 1)
+   -l      location name                                       (required)
+   -d      path of 'generic/' location, acting as default      (required)
+   -n      number of replicas to be passed for the single hack (default 1)
 EOF
 }
 
 dump_plugin_file() {
-cat >> $PLUGINLIST << __EOF__
+cat >> $PLUGINLIST <<__EOF__
 fake_close_fin,PRESCRIPTION
-fake_close_fin,MALFORMED
+fake_close_fin,MALFORMED,conf
 fake_close_fin,GUILTY
 fake_close_rst,PRESCRIPTION
 fake_close_rst,MALFORMED
@@ -64,75 +64,75 @@ __EOF__
 }
 
 start_test() {
-    PNAME=`echo $PLUGIN | sed -es/\\,.*//`
-    SCRAMBLE=`echo $PLUGIN | sed -es/.*\,//`
-    TESTID=`echo $PLUGIN | tr "," "-"`
-    workingdir="/tmp/$LOCATION/$TESTID"
+    if [[ $PLUGIN =~ ([a-z_]+),([A-Z0-9\+]+) ]]; then
+        PNAME=${BASH_REMATCH[1]}
+        SCRAMBLE=${BASH_REMATCH[2]}
+        TESTID=$PNAME/$SCRAMBLE
+    fi
+    mkdir -p $TESTID
     echo "${green}* COMBINATION OF TESTS (${yellow}$PLUGNDX/$PLUGIN_NUMBER${green})"
     echo "${blue}Plugin Name\t${yellow}\t[$PNAME]"
     echo "${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
     echo "${blue}TestID\t\t${yellow}\t[$TESTID]"
-    echo "${blue}Test directory\t${yellow}\t[$workingdir]"
-    mkdir -p $workingdir
-    echo $SERVER_IP > "$workingdir/ipwhitelist.conf"
-    echo "${yellow}* Executing sniffjoke with $PLUGIN combo, using these options:"
-    echo "${white}sniffjoke --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --no-udp --whitelist${white}"
-    $SNIFFJOKEBIN --debug 6 --start --dir /tmp/$LOCATION --location $TESTID --only-plugin $PLUGIN --no-udp --whitelist &>$workingdir/binout.log
-    sleep 2
-    $SNIFFJOKECLIBIN stat > $workingdir/dumped_stat.log
-    cd $workingdir
+    echo "${blue}Test directory\t${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
     # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
-    INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
-    echo "${yellow}* Starting tcpdump in $INTERFACE dumping $workingdir/$PNAME-$SCRAMBLE.pcap tcp port 80 and host $SERVER_IP or icmp${white}"
-    (tcpdump -i $INTERFACE -w $workingdir/$PNAME-$SCRAMBLE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp) &
-    route -n > $workingdir/route-n.log
-    sleep 1
-    for i in `seq 1 $TESTN`;
+    for i in `seq 1 $REPN`;
     do
-        echo "${yellow}* Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring ${green}(${yellow}test repetition #$i of $TESTN${green})${white}"
-        nohup curl --retry 0 --max-time 10 -o "$PNAME-$SCRAMBLE-$i.received" \
-            -d "sparedata=`cat $GENERATEDFILE`" $SERVER > "$PNAME-$SCRAMBLE-$i.curl_output"
+        WORKDIR=$TESTID/replica-${i}
+        mkdir -p $TESTID/replica-${i}
+        echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
+        echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
+        echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
+        echo "sniffjoke --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
+        route -n > $WORKDIR/route-n-before.log
+        $SNIFFJOKEBIN --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
+        sleep 2
+        route -n > $WORKDIR/route-n-after.log
+        INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
+        route -n > $WORKDIR/route-n-after.log
+        $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
+        echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+        echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
+        tcpdump -i $INTERFACE -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
         sleep 1
-    done
-    $SNIFFJOKECLIBIN info > $workingdir/dumpService_info.log
-    $SNIFFJOKECLIBIN ttlmap > $workingdir/dumpService_ttlmap.log
-    $SNIFFJOKECLIBIN quit > $workingdir/dumpService_stat.log
-    sleep 1
-    killall -TERM tcpdump
+        echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
+        curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >$WORKDIR/output.curl 2>&1
+        $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
+        $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
+        $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_stat.log
+        sleep 1
+        killall -TERM tcpdump
+    done;
 
-    failed=0;
-    for i in `seq 1 $TESTN`;
+    echo 0 > $TESTID/passed_count
+    for i in `seq 1 $REPN`;
     do
-        if ! [ -e "$PNAME-$SCRAMBLE-$i.received" ]; then
-            CHECKSUM="{unexistent-output-file}"
+        WORKDIR=$TESTID/replica-${i}
+        if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; then
+            CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED" | cut -b -32`
         else
-            CHECKSUM=`md5sum "$PNAME-$SCRAMBLE-$i.received" | cut -b -32`
+            CHECKSUM="{unexistent-output-file}"
         fi
 
-        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> /tmp/$LOCATION/SjcollectedFeedback
+        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> plugins-collected-feedback
         if [ $VERIFYSUM != $CHECKSUM ];
         then
-            # the .failed_hacks and the .working_hacks is generated and treated in the same style
-            echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.failed_hacks"
+            # the failed_hacks and the working_hacks are generated and treated in the same style
             # the follow are useful infos for debug
-            echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE-$i" >> "/tmp/$LOCATION/$PNAME.failed_info"
-            cat "$PNAME-$SCRAMBLE-$i.curl_output" >> "/tmp/$LOCATION/$PNAME.failed_info"
-            failed=1;        
-	    break
+            echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE replica $i" >> $TESTID/failed_info
         else
-            echo $i >> "$PNAME-$SCRAMBLE.passed_count"
+            echo $i > $TESTID/passed_count
         fi
     done
 
-    if [ $failed -eq 0 ];
+    if [ `cat $TESTID/passed_count` -eq $REPN ];
     then
-        echo "$SCRAMBLE" >> "/tmp/$LOCATION/$PNAME.working_hacks"
-        echo "${yellow}* Finished test $TESTID: ${green}TEST PASSED${white}\n"
+        echo $SCRAMBLE >> $PNAME/working_scrambles
+        echo "${yellow}* FINISHED TEST $TESTID: ${green}TEST PASSED${white}\n"
     else
-        echo "${yellow}* Finished test $TESTID: ${red}TEST FAILED${white}\n"
+        echo $SCRAMBLE >> $PNAME/failed_scrambles
+        echo "${yellow}* FINISHED TEST $TESTID: ${red}TEST FAILED${white}\n"
     fi
-
-    cd ..
 }
 
 while getopts “hl:d:n:” OPTION
@@ -143,13 +143,13 @@ do
              exit 1
              ;;
          l)
-             LOCATION=$OPTARG
+             LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          d)
-             WORKPATH=$OPTARG
+             WORKPATH=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          n)
-             TESTN=$OPTARG
+             REPN=$OPTARG
              ;;
          ?)
              usage
@@ -157,6 +157,27 @@ do
              ;;
      esac
 done
+
+TEMPDIR="/tmp"
+cd $TEMPDIR
+
+SNIFFJOKEBIN=`which sniffjoke`
+if [ -z $SNIFFJOKEBIN ]; then
+    echo "\n${red}"
+    echo "\"which sniffjoke\" has found nothing"
+    echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
+    echo "${white}"
+    exit;
+fi
+
+SNIFFJOKECLIBIN=`which sniffjokectl`
+if [ -z $SNIFFJOKECLIBIN ]; then
+    echo "\n${red}"
+    echo "\"which sniffjokectl\" has found nothing"
+    echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
+    echo "${white}"
+    exit;
+fi
 
 USERID=`id -u`
 if [ $USERID != "0" ]; then
@@ -166,91 +187,96 @@ fi
 
 if [ -z $LOCATION ]; then
     usage
-    echo "\n"
+    echo "\n${red}"
     echo "it's required a LOCATION name, eg: office, home, nickhome, starbucks..."
     echo "sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment"
     echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
     echo "will be created a new directory describing your location. after you will customize the options"
+    echo "${white}"
     exit;
 fi
 
 if [ -z $WORKPATH ]; then
     usage
-    echo "\n"
+    echo "\n${red}"
     echo "it's required the PATH of commonly used working dir, where 'generic' is installed"
     echo "usually it's /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
     echo "been installed in your distro"
+    echo "${white}"
     exit;
 fi
 
 if [ ! -d $WORKPATH ]; then
     usage
-    echo "\n"
+    echo "\n${red}"
     echo "option \"-d\" wrong argument: no such directory exist"
+    echo "${white}"
     exit;
 fi
 
-if [ ! -d "$WORKPATH/generic" ]; then
+if [ ! -d $WORKPATH/generic ]; then
     usage
-    echo "\n"
+    echo "\n${red}"
     echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
     echo "sniffjoke-autotest create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
+    echo "${white}"
     exit;
 fi
 
-if [ -d "/tmp/$LOCATION" ]; then
-    echo "\n"
-    echo "- remove your /tmp/$LOCATION directory: already present"
-    # call me old, but I don't put a blind rm -rf on a script run by root :P
+if [ -d $WORKPATH/$LOCATION ]; then
+    usage
+    # call me old, but I don't put a blind rm -rf on a script run by root :P (vecna)
+    echo "\n${red}"
+    echo "- warning: $WORKPATH/$LOCATION directory already present"
+    echo "${white}"
     exit;
+else
+    mkdir $WORKPATH/$LOCATION
 fi
 
-SNIFFJOKEBIN=`which sniffjoke`
-if [ -z $SNIFFJOKEBIN ]; then
-    echo "\n"
-    echo "\"which sniffjoke\" has found nothing"
-    echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
+if [ -d $TEMPDIR/$LOCATION ]; then
+    # call me old too (evilaliv3)
+    usage
+    echo "\n${red}"
+    echo "- warning: $TEMPDIR/$LOCATION directory already present"
+    echo "${white}"
     exit;
+else
+    mkdir $TEMPDIR/$LOCATION
 fi
 
-SNIFFJOKECLIBIN=`which sniffjokectl`
-if [ -z $SNIFFJOKECLIBIN ]; then
-        echo "\"which sniffjokectl\" has found nothing"
-        echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
-        exit;
-fi
+cd $TEMPDIR/$LOCATION
 
-echo "+ Starting SniffJoke hacks test"
+echo "${yellow}+ Starting SniffJoke hacks test"
 echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
-$SNIFFJOKECLIBIN quit
+$SNIFFJOKECLIBIN quit >/dev/null 2>&1
 
 PPATH="/usr/local/lib/sniffjoke"
-echo "* using plugin path $PPATH"
+echo "* The test will use path $PPATH" to load plugins
 
 FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
-echo "retrivering multi-OS testing server list ($FILEURL)"
-SERVERFILE="/tmp/testsuite.info"
-wget -O $SERVERFILE $FILEURL
-
+echo "* retrivering multi-OS testing server list ($FILEURL)"
+SERVERFILE="testsuite.info"
+wget -O $SERVERFILE $FILEURL  >/dev/null 2>&1
 if ! [ -e $SERVERFILE ]; then
+    echo "\n${red}"
     echo "- unable to retriver $SERVERFILE with [$FILEURL]"
+    echo "${white}"
     exit;
 fi
 
-PLUGINLIST="/tmp/$LOCATION/sniffjoke-testsuite-plugins"
-if ! [ -e $PLUGINLIST ]; then
-    mkdir /tmp/$LOCATION
-    dump_plugin_file
-fi
+PLUGINLIST="plugins-testsuite"
+dump_plugin_file
 PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 
 # generate the SPAREDATA file to send
-GENERATEDFILE="/tmp/$LOCATION/SPAREDATA.generated"
+GENERATEDFILE="SPAREDATA"
 # the number '6' is not used in the test because sniffjoke, when runned
 # in debug mode (--debug 6) instead of filling the random segment of data
 # inject with random data, use the number '6'. Is useful when debugging 
 # an hack.
 seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
+GENERATEDDATA=`cat $GENERATEDFILE`
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
@@ -276,29 +302,24 @@ done
 
 # parse analysis output to build a plugins_enabler.conf
 
-success=`ls /tmp/$LOCATION/*.working_hacks`
-PeL="/tmp/$LOCATION/plugins-enabled.conf"
+PeL="plugins-enabled.conf"
 echo "# this is an autogenerated file by sniffjoke-autotest " > $PeL
 echo "# wheneven your network router, provider or some malfunction is detected" >> $PeL
 echo "# you are invited to regenerate this file" >> $PeL
 echo "# this plugins_enabled.conf are dumped for location: $LOCATION" >> $PeL
-echo "\n" >> $PeL
 
 success_count=0
-for hack in $success; do
-    hackName=`basename $hack | sed -es/.working_hacks//`
-    scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-    echo "$hackName,$scramble" | sed -es/,\$// >> $PeL
+for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
+    SCRAMBLES=`cat $PLUGIN/working_scrambles | tr " " "," | tr [:cntrl:] ","`
+    echo "$PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     success_count=$(($success_count+1));
 done
 
 echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
 failure_count=0
-failure=`ls /tmp/$LOCATION/*.failed_hacks`
-for hack in $failure ; do
-    hackName=`basename $hack | sed -es/.failed_hacks//`
-    scramble=`cat $hack | tr " " "," | tr [:cntrl:] ","`
-    echo "# $hackName,$scramble" | sed -es/,\$// >> $PeL
+for PLUGIN in `ls */failed_scrambles 2>/dev/null | sed -e 's/\/failed_scrambles//'` ; do
+    SCRAMBLES=`cat $PLUGIN/failed_scrambles | tr " " "," | tr [:cntrl:] ","`
+    echo "# $PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     failure_count=$(($failure_count+1));
 done
 
@@ -307,28 +328,22 @@ echo "\n# Generated in date: $now\n" >> $PeL
 
 echo "${yellow}FINISHED!\n"
 echo " ${red} $failure_count combinations of hack+scramble have not worked"
-echo " ${green} $success_count combinations of hack+scramble have worked correctly"
+echo " ${green} $success_count combinations of hack+scramble have worked correctly${white}"
 
-tput sgr0
-
-chmod 444 /tmp/$LOCATION/plugins-enabled.conf
-mkdir $WORKPATH/$LOCATION
+chmod 444 plugins-enabled.conf
+mkdir -p $WORKPATH/$LOCATION
 cp $WORKPATH/generic/port-aggressivity.conf $WORKPATH/$LOCATION
 cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
-cp /tmp/$LOCATION/plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
+cp plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
 
-echo "\n${yellow}* sniffjoke-autotest has generated a conf file /tmp/$LOCATION/plugins_enabled.conf"
+echo "\n${yellow}* sniffjoke-autotest has  a conf file /$TEMPDIR/$LOCATION/plugins_enabled.conf"
 echo "* that conf has been copyed in $WORKPATH/$LOCATION with the other default configuration file."
 echo "* for custom configuration this config file can be text edited."
-echo "* now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION\n"
-
-tput sgr0
+echo "* now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION${white}"
 
 echo "\n${violet}SniffJoke is in BETATESTING: if you want to contribute, please type your nick or a simple string."
 echo "The typed string will be used to generate the name of the compressed data archive"
-echo "Otherwise, to don't generate the tar.gz, leave the string empty."
-
-tput sgr0
+echo "Otherwise, to don't generate the tar.gz, leave the string empty.${white}"
 
 echo "\n"
 echo -n "testerID: "
@@ -337,14 +352,12 @@ read testerID
 if [ -z $testerID ]; then
     echo "empty string: sniffjoke-autotest done."
 else
-    cd /tmp
     dFname="Sj-test-$testerID-$LOCATION.tar.gz"
-    tar zcf $dFname $LOCATION/
+    tar zcf $dFname *
     echo "\n"
-    echo "${green}Thanks you! ${white}$dFname has been generated and saved in /tmp dir; please send it to sniffjoke-team@delirandom.net;"
+    echo "${green}Thanks you $testerID! ${white}$dFname has been generated and saved in $TEMPDIR/$LOCATION dir; please send it to sniffjoke-team@delirandom.net;"
     echo "We assure that all data collected will be used only for research purpose and will be disclosed oly to SniffJoke developers"
 fi
 
 # clearing gay colors
 tput sgr0
-

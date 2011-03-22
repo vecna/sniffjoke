@@ -25,23 +25,15 @@
 
 #include "Utils.h"
 
-/* Facility to support debug and dumping by the plugins */
-class pluginLogHandler
-{
-private:
-    const char *selfName;
-    FILE *logstream;
-public:
-    pluginLogHandler(const char *, const char *);
-    ~pluginLogHandler(void);
-    void completeLog(const char *, ...);
-    void simpleLog(const char *, ...);
-};
+#define DEBUGBUFFER 65536 /* 64k */
 
 class Debug
 {
 private:
+
     friend class SniffJoke;
+    friend class Process;
+
     uint8_t debuglevel;
     const char* logstream_file;
     const char* session_logstream_file;
@@ -49,30 +41,51 @@ private:
     FILE *logstream;
     FILE *session_logstream;
     FILE *packet_logstream;
-    bool appendOpen(uint8_t thislevel, const char *fname, FILE **previously);
+    char logstream_buf[DEBUGBUFFER];
+    char session_logstream_buf[DEBUGBUFFER];
+    char packet_logstream_buf[DEBUGBUFFER];
 
-public:
-    Debug(void);
     void setLogstream(const char *lsf);
     void setSessionLogstream(const char *lsf);
     void setPacketLogstream(const char *lsf);
+    bool appendOpen(uint8_t thislevel, const char *fname, char* buf, FILE **previously);
+    void downgradeOpenlog(uid_t, gid_t);
+    bool resetLevel(void);
+
+public:
+    Debug(void);
+
+    void log(uint8_t, const char *, const char *, ...);
 
     uint8_t level(void)
     {
         return debuglevel;
     };
-
-    bool resetLevel(void);
-    void log(uint8_t, const char *, const char *, ...);
-    void downgradeOpenlog(uid_t, gid_t);
 };
 
-extern Debug debug;
+/* Facility to support debug and dumping by the plugins */
+class pluginLogHandler
+{
+private:
+    const char *selfName;
+    FILE *logstream;
+    char logstream_buf[DEBUGBUFFER];
+public:
+    pluginLogHandler(const char *, const char *);
+    ~pluginLogHandler(void);
+    void completeLog(const char *, ...);
+    void simpleLog(const char *, ...);
+};
+
 
 #define LOG_ALL(...)     debug.log(ALL_LEVEL, __func__, __VA_ARGS__)
 #define LOG_VERBOSE(...) debug.log(VERBOSE_LEVEL, __func__, __VA_ARGS__)
 #define LOG_DEBUG(...)   debug.log(DEBUG_LEVEL, __func__, __VA_ARGS__)
 #define LOG_SESSION(...) debug.log(SESSION_LEVEL, __func__, __VA_ARGS__)
 #define LOG_PACKET(...)  debug.log(PACKET_LEVEL, __func__, __VA_ARGS__)
+
+
+/* global debug object defined into Debug.cc and exported by this module */
+extern Debug debug;
 
 #endif /* SJ_DEBUG_H */

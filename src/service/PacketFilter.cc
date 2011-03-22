@@ -93,6 +93,8 @@ FilterMultiset::~FilterMultiset(void)
  */
 bool FilterMultiset::check(const FilterEntry &hash)
 {
+    manage();
+
     if (first->erase(hash) || second->erase(hash))
         return true;
 

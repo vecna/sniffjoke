@@ -32,8 +32,6 @@
 #include "SessionTrack.h"
 #include "PluginPool.h"
 
-using namespace std;
-
 class SniffJoke
 {
 public:
@@ -67,6 +65,7 @@ private:
     /* used to copy structs for command I/O */
     uint8_t io_buf[HUGEBUF * 4];
 
+    void updateClock(void);
     void setupDebug(void);
     void cleanDebug(void);
     void cleanServerRoot(void);
@@ -75,7 +74,6 @@ private:
     void handleAdminSocket(void);
 
     /* internalProtocol handling */
-    int recvCommand(int sock, char *, int, struct sockaddr *, FILE *, const char *);
     uint8_t* handleCmd(const char *);
 
     /* single command management */

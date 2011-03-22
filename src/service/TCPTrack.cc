@@ -416,23 +416,23 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
 
     for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
     {
-        PluginTrack *hppe = *it;
+        PluginTrack *pt = *it;
 
-        hppe->selfObj->mangleIncoming(origpkt);
+        pt->selfObj->mangleIncoming(origpkt);
 
         /* it will be rare for a hack mangleIncoming to generate one or more packet, anyway we keep this possibility possible */
-        for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
+        for (vector<Packet*>::iterator hack_it = pt->selfObj->pktVector.begin(); hack_it < pt->selfObj->pktVector.end(); ++hack_it)
         {
             Packet &injpkt = **hack_it;
 
-            if (!injpkt.selfIntegrityCheck(hppe->selfObj->pluginName))
+            if (!injpkt.selfIntegrityCheck(pt->selfObj->pluginName))
             {
-                LOG_ALL("%s: invalid pkt generated", hppe->selfObj->pluginName);
-                injpkt.SELFLOG("%s: bad integrity", hppe->selfObj->pluginName);
+                LOG_ALL("%s: invalid pkt generated", pt->selfObj->pluginName);
+                injpkt.SELFLOG("%s: bad integrity", pt->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runcfg.debug_level == PACKET_LEVEL)
-                    RUNTIME_EXCEPTION("%s: invalid pkt generated", hppe->selfObj->pluginName);
+                    RUNTIME_EXCEPTION("%s: invalid pkt generated", pt->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -444,7 +444,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
                 continue;
 
             injpkt.SELFLOG("%s: generated packet, the original will be %s",
-                           hppe->selfObj->pluginName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+                           pt->selfObj->pluginName, pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
             /* injpkt.position is ignored in this section because mangleIncoming
              * is called on the YOUNG queue.
@@ -453,10 +453,10 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
             p_queue.insert(injpkt, SEND);
         }
 
-        if (hppe->selfObj->removeOrigPkt == true)
+        if (pt->selfObj->removeOrigPkt == true)
             removeOrig = true;
 
-        hppe->selfObj->reset();
+        pt->selfObj->reset();
     }
 
     origpkt.SELFLOG("orig pkt: after incoming mangle");
@@ -509,30 +509,30 @@ bool TCPTrack::injectHack(Packet &origpkt)
     for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
     {
 
-        PluginTrack *hppe = *it;
+        PluginTrack *pt = *it;
 
         /*
          * this represents a preliminar check common to all hacks.
          * more specific ones related to the origpkt will be checked in
          * the condition function implemented by a specific hack.
          */
-        if (!(availableScrambles & hppe->selfObj->supportedScrambles))
+        if (!(availableScrambles & pt->selfObj->supportedScrambles))
         {
-            origpkt.SELFLOG("%s: no scramble available", hppe->selfObj->pluginName);
+            origpkt.SELFLOG("%s: no scramble available", pt->selfObj->pluginName);
             continue;
         }
 
         bool applicable = true;
 
-        applicable &= hppe->selfObj->condition(origpkt, availableScrambles);
+        applicable &= pt->selfObj->condition(origpkt, availableScrambles);
         applicable &= percentage(
                                  sessiontrack.packet_number,
-                                 hppe->selfObj->pluginFrequency,
+                                 pt->selfObj->pluginFrequency,
                                  getUserFrequency(origpkt)
                                  );
 
         if (applicable)
-            applicable_hacks.push_back(hppe);
+            applicable_hacks.push_back(pt);
     }
 
     /* -- RANDOMIZE HACKS APPLICATION */
@@ -542,24 +542,24 @@ bool TCPTrack::injectHack(Packet &origpkt)
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)
     {
 
-        PluginTrack *hppe = *it;
+        PluginTrack *pt = *it;
 
-        hppe->selfObj->apply(origpkt, availableScrambles);
+        pt->selfObj->apply(origpkt, availableScrambles);
 
-        for (vector<Packet*>::iterator hack_it = hppe->selfObj->pktVector.begin(); hack_it < hppe->selfObj->pktVector.end(); ++hack_it)
+        for (vector<Packet*>::iterator hack_it = pt->selfObj->pktVector.begin(); hack_it < pt->selfObj->pktVector.end(); ++hack_it)
         {
             Packet &injpkt = **hack_it;
             /*
              * we trust in the external developer, but it's required a
              * simple safety check by sniffjoke :)
              */
-            if (!injpkt.selfIntegrityCheck(hppe->selfObj->pluginName))
+            if (!injpkt.selfIntegrityCheck(pt->selfObj->pluginName))
             {
-                injpkt.SELFLOG("%s: invalid pkt generated: bad integrity", hppe->selfObj->pluginName);
+                injpkt.SELFLOG("%s: invalid pkt generated: bad integrity", pt->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
                 if (runcfg.debug_level == PACKET_LEVEL)
-                    RUNTIME_EXCEPTION("%s invalid pkt generated: bad integrity", hppe->selfObj->pluginName);
+                    RUNTIME_EXCEPTION("%s invalid pkt generated: bad integrity", pt->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
                 delete &injpkt;
@@ -577,7 +577,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
             packet_filter.add(injpkt);
 
             injpkt.SELFLOG("%s: generated pkt, the original will be %s",
-                           hppe->selfObj->pluginName, hppe->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+                           pt->selfObj->pluginName, pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
             switch (injpkt.position)
             {
@@ -598,10 +598,10 @@ bool TCPTrack::injectHack(Packet &origpkt)
             }
         }
 
-        if (hppe->selfObj->removeOrigPkt == true)
+        if (pt->selfObj->removeOrigPkt == true)
             removeOrig = true;
 
-        hppe->selfObj->reset();
+        pt->selfObj->reset();
     }
 
     origpkt.SELFLOG("after hacks injection");
@@ -770,7 +770,8 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         }
     }
 
-    if(pkt.wtf != INNOCENT) {
+    if (pkt.wtf != INNOCENT)
+    {
         pkt.payloadRandomFill();
     }
 
@@ -840,7 +841,7 @@ void TCPTrack::handleYoungPackets(void)
 
             if (packet_filter.match(*pkt))
             {
-                pkt->SELFLOG("removal requested by PacketFilter");
+                pkt->SELFLOG("removal requested by PacketFilter\n\n\n\n\n");
                 p_queue.drop(*pkt);
                 continue;
             }

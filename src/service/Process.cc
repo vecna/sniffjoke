@@ -106,7 +106,6 @@ int Process::detach(void)
 
 void Process::jail(const char *chroot_dir)
 {
-    mkdir(chroot_dir, 0700);
 
     if (chown(chroot_dir, userinfo.pw_uid, groupinfo.gr_gid))
     {

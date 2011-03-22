@@ -68,7 +68,7 @@ SniffJoke search in your location the plugins-enabled.conf file:
 	valid_rst_fake_seq.so,TYPEOFSCRAMBLESUPPORTED
 	# regards
 
-this is the plugins-enalbed.conf file inside the "generic" location, acting as default
+this is the plugins-enabled.conf file inside the "generic" location, acting as default
 for the user who don't have run sniffjoke-autotest.
 
 the type of scramble depends on your network, because some type of combination

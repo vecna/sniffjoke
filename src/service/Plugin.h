@@ -41,28 +41,31 @@
 class cacheRecord
 {
 public:
-    time_t access_timestamp;
-
     const Packet cached_packet;
     vector<unsigned char>cached_data;
 
     cacheRecord(const Packet& pkt) :
-    access_timestamp(sj_clock),
     cached_packet(pkt)
     {
     };
 
     cacheRecord(const Packet& pkt, const unsigned char* data, size_t data_size) :
-    access_timestamp(sj_clock),
     cached_packet(pkt),
     cached_data(data, data + data_size)
     {
     };
 };
 
-class PluginCache : public vector<cacheRecord *>
+class PluginCache
 {
-    time_t cacheTimeout;
+    time_t timeout_len;
+    time_t manage_timeout;
+    vector<cacheRecord*> fm[2];
+    vector<cacheRecord*> *first;
+    vector<cacheRecord*> *second;
+
+    /* called automagically */
+    void manage(void);
 
 public:
 
@@ -73,10 +76,10 @@ public:
       we export the iterator as return to permit explicit cache removal;
       this is not a requirement for plugins, due to the mangage routine included in cacheCheck
      */
-    vector<cacheRecord *>::iterator cacheCheck(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
-    vector<cacheRecord *>::iterator cacheAdd(const Packet &);
-    vector<cacheRecord *>::iterator cacheAdd(const Packet &, const unsigned char*, size_t);
-    vector<cacheRecord *>::iterator cacheDelete(vector<struct cacheRecord *>::iterator it);
+    cacheRecord* check(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
+    cacheRecord* add(const Packet &);
+    cacheRecord* add(const Packet &, const unsigned char*, size_t);
+    void explicitDelete(struct cacheRecord *);
 };
 
 class Plugin
@@ -94,7 +97,7 @@ public:
 
     Plugin(const char *, uint16_t);
     judge_t pktRandomDamage(uint8_t);
-    virtual bool init(uint8_t, const char *) = 0 ; /* Plugin is an abstract class */
+    virtual bool init(uint8_t, const char *) = 0; /* Plugin is an abstract class */
     virtual bool condition(const Packet &, uint8_t);
     virtual void apply(const Packet &, uint8_t);
     virtual void mangleIncoming(Packet &);

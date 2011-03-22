@@ -43,7 +43,7 @@ class segmentation : public Plugin
 
 #define MIN_SPLIT_PAYLOAD 2 /* bytes */
 #define MIN_SPLIT_PKTS    2
-#define MAX_SPLIT_PKTS    10
+#define MAX_SPLIT_PKTS    5
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
 
 private:
@@ -192,16 +192,16 @@ public:
                             (pkts + 1), pkts_n, ntohl(pkt->tcp->seq));
         }
 
-        cache.cacheAdd(origpkt);
+        cache.add(origpkt);
 
         removeOrigPkt = true;
     }
 
     void mangleIncoming(Packet &pkt)
     {
-        vector<cacheRecord *>::iterator it = cache.cacheCheck(&filter, pkt);
+        cacheRecord *record = cache.check(&filter, pkt);
 
-        if (it != cache.end())
+        if (record != NULL)
         {
             const char *p;
             char saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};
@@ -210,7 +210,6 @@ public:
             p = inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr)));
             strncpy(daddr, p, sizeof (daddr));
 
-            pkt.SELFLOG("requesting packet removal due to segmented ack");
             pLH.completeLog("requesting packet removal due to segmented ack: %s:%u -> %s:%u ack_seq|%x",
                             saddr, ntohs(pkt.tcp->source), daddr, ntohs(pkt.tcp->dest),
                             ntohl(pkt.tcp->ack_seq));

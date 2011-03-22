@@ -20,22 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hardcodedDefines.h"
-
 #include "Utils.h"
 #include "UserConf.h"
 #include "SniffJoke.h"
 
-#include <stdexcept>
-
 #include <getopt.h>
 #include <stdint.h>
-
-using namespace std;
-
-/* global variables */
-Debug debug;
-time_t sj_clock;
 
 static auto_ptr<SniffJoke> sniffjoke;
 

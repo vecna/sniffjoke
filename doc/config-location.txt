@@ -1,62 +1,61 @@
-the directory 'generic/' contains the default configuration settings.
+The directory 'generic/' contains the default configuration settings.
+it's copied in /usr/local/var/sniffjoke/
+this directory will contain the "location" directories
 
-is copied in /usr/local/var/sniffjoke/ 
-
-this directory contains the "location directory"
-
-the concept of location stands for a network place where you use sniffjoke;
+The concept of location stands for a network place where you use sniffjoke;
 sniffjoke can configure and optimize itself for every location separately and 
 and the generic will work instead for the most of the time.
 
 * WHAT IS sniffjoke-autotest ? 
 
-Is a script performing some sniffjoke tests and verifications to detect which kind of attack
-can be used for be used in your network., this are the parameters required:
+It's a script performing some sniffjoke tests and verifications to detect which kind of attack
+can be used in your network;
+this are the parameters required:
 
 usage: /usr/local/bin/sniffjoke-autotest options
 
 This script runs plugins test along different destinations OS
-to determinate the selection of plugins that correctly works
+to determinate the selection of plugins that correctly work
 in the current location.
 
-every plugin it's tested with one of each scrambling tech.
+Every plugin it's tested with one of each scrambling tech.
 
 OPTIONS:
    -h      show this message
-   -l      location name                                    (required)
-   -d      path of 'generic/' location, acting as default   (required)
-   -n      number of tests to be passed for the single hack (default 1)
+   -l      location name                                       (required)
+   -d      path of 'generic/' location, acting as default      (required)
+   -n      number of replicas to be passed for the single hack (default 1)
 
-it's required a LOCATION name, eg: office, home, nickhome, starbucks...
+It's required a LOCATION name, eg: office, home, nickhome, starbucks...
 sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment
-at the end of the tests (that include continuos restarting of sniffjoke with different options)
-will be created a new directory describing your location. after you will customize the options
+at the end of the tests (that include continuous restarting of sniffjoke with different options)
+will be created a new directory describing your location.
+at the and of the test options can be also text-customized for special applications.
 
 * WHY sniffjoke-autotest EXISTS ?
 
 The problem solved by the autotest suite arise because not every kind of evasion technology
 can work in every network.
-The script takes as argumet the location name, creates the new directory /usr/local/var/sniffjoke/$NEWLOCATION
-and prepare all the related configuration files inside.
+The script takes as argument the location name, creates the new directory /usr/local/var/sniffjoke/$NEWLOCATION
+and prepares all the related configuration files inside.
 
 When you need to use a specific locaton, you have to run sniffjoke with --location $LOCATIONNAME and
-the related directory will be used for the chrook; from that time on sniffjoke will use that directory as 
+the related directory will be used for the chroot; from that time on sniffjoke will use that directory as
 storage dir for logs and caches.
 
 * WHAT THE MEANING OF EVERY SINGLE CONFIG FILE ?
 
-***	plugins-enabled.conf
+***    plugins-enabled.conf
 
 It contains the list of the plugins to be used in your sniffjoke service. The plugins
-are the shared object contained in src/plugins and installed in 
-/usr/local/lib/sniffjoke/*.so
+are the shared object contained in src/plugins and installed in /usr/local/lib/sniffjoke/*.so
 
 The configuration file contains these information:
 
 # comment
 plugin_name,SCRAMBLETECHSUPPORTED1,SCRAMBLETECHSUPPORTED2,...
 
-the plugin_name is exposed without path and intended to be found in the 
+The plugin_name is exposed without path and intended to be found in the
 /usr/local/lib/sniffjoke directory. the scramble technology are separated by
 a comma and without whitespace, where the accepted scramble values are:
 
@@ -68,7 +67,7 @@ INNOCENT
     is a valid packet injected inside the stream
 
 MALFORMED
-    is a packet with rfc-valid but incoherent for the usege
+    is a packet with rfc-valid but incoherent for the usage
     in relation with the connection state of IP and TCP options
     or other malformation based on IP/TCP options header.
 GUILTY
@@ -76,57 +75,57 @@ GUILTY
     but accepted by the sniffer (used as last resort is the less useful
     scramble but useful in the sniffjoke logic)
 
-***	sniffjoke-service.conf
+***    sniffjoke-service.conf
 
 It does contain the same options that will be passed by command line:
 
 
 active
     will be present or not present, and is used if sniffjoke must start 
-	active in hijacking/injection or start and silently make mitm in
-	the network without packet injection and session tracking
-	default: not present
+    active in hijacking/injection or start and silently make mitm in
+    the network without packet injection and session tracking
+    default: not present
 user
     specify the username to use for the privileges downgrade after the chroot
-	default: nobody
-	suggested: it's suggested to a packet mantainer to create a sniffjoke user
+    default: nobody
+    suggested: it's suggested to a packet maintainer to create a sniffjoke user
 group
     the same as for user
-	default: nogroup
-	suggested: it's suggested to a packet mantainer to create a sniffjoke group
+    default: nogroup
+    suggested: it's suggested to a packet maintainer to create a sniffjoke group
 management-address
-	is the ip address where sniffjoke will bind the administrative socket,
-	it's a required configuration parameter if you plan to use sniffjoke in a gateway 
-	and you want to manage the service by a different host
-	default: 127.0.0.1
+    is the ip address where sniffjoke will bind the administrative socket,
+    it's a required configuration parameter if you plan to use sniffjoke in a gateway
+    and you want to manage the service by a different host
+    default: 127.0.0.1
 management-port
-	the UDP port for the administrative traffic
-	default: 8844
+    the UDP port for the administrative traffic
+    default: 8844
 
-	note: the two management info, need to be passed in the sniffjokeclt
-	(the client managing sniffjoke service) to the command line.
+    note: the two management info, need to be passed in the sniffjokectl
+    (the client managing sniffjoke service) to the command line.
 
 debug
     the verbosity level used by sniffjoke:
  0: suppress log, 1: common, 2: verbose, 3: debug, 4: session 5: packets
 
-	0: suppress log, no one line are provided 
-	1: common, startup info and error reporting, generted the file sniffjoke.log inside
+    0: suppress log, no one line are provided
+    1: common, startup info and error reporting, generated the file sniffjoke.log inside
        the choosed location.
-	2: verbose, description and check of I/O operation, use sniffjoke.log only too
-	3: debug, intensive and complete I/O description, in sniffjoke.log always
-	4: session, creation of sniffjoke.log.session and session debug 
-	5: packets, creation of sniffjoke.log.packet and debug of every packet
+    2: verbose, description and check of I/O operation, use sniffjoke.log only too
+    3: debug, intensive and complete I/O description, in sniffjoke.log always
+    4: session, creation of sniffjoke.log.session and session debug
+    5: packets, creation of sniffjoke.log.packet and debug of every packet
 
-	default: 1
+    default: 1
 
 foreground
-	it's an optional parameter used to make the sniffjoke service run in foreground
-	default: no
+    it's an optional parameter used to make the sniffjoke service run in foreground
+    default: no
 
 *** ipblacklist.conf
 
-the file containts a list of ip address, written without every other information, and
+the file contains a list of ip address, written without every other information, and
 whenever the blacklist is set in sniffjoke, the connection destinated to a
 matching IP address will work untouched by sniffjoke
 
@@ -151,10 +150,10 @@ this is how the default and simplest section appears:
 you need to select the destination TCP ports, use as separator "," or ":"
 with the "," you should address the single port and with the ":" a range.
 
-Those value are tell "Frequencies" and describe the frequency of the injection.
-related to the kind of session (IRC is really different, from sensibiliy of the
+Those value are called "Frequencies" and describe the frequency of the injection.
+related to the kind of session (IRC is really different, from sensibility of the
 data, amount of bytes and number of packets, from HTTP and peer2peer), those value
-should be mixed togheder, using the ","
+should be mixed together, using the ","
 
 #
 # NONE .................. never used the hack (0% probability)
@@ -165,9 +164,9 @@ should be mixed togheder, using the ","
 # ALWAYS ................ 100%
 # PEEK10PKT ............. packer number 9, 10, 11 = 80%, other 2%
 # PEEK30PKT ............. packet number 29, 30, 31, = 90%, other 2%
-# EVERY5SECONDS ......... if the number of seconds are divisibile by 5= 90%
+# EVERY5SECONDS ......... if the number of seconds are divisible by 5= 90%
 #                         other moments, 2%
-# EVERY20SECONDS ........ if the number of seconds are divisibile by 20= 90%
+# EVERY20SECONDS ........ if the number of seconds are divisible by 20= 90%
 #                         other moment, 2%
 # PEEKATSTART ........... the first 20 packets = 65%, up to the 40th= 20%, after 2%
 # LONGPEEK .............. the first 60 pkts = 65%, up to the 120th= 20%, after 2%
@@ -183,11 +182,14 @@ How an user will manage those variables ?
 
 FACTS about injection:
 
-1) A single injected packet will broke the reassembly apply by a sniffer, for this reason is not require inject a large amount of packet (will result a bandwidth loss).
+1) A single injected packet will broke the reassembly applyed by a sniffer,
+   for this reason is not required injection a large amount of packet (will result a bandwidth loss).
 
-2) sniffer/IDS making patter detection (string comparisation, heuristic analysis, etc...)will make this detection also without having the correctly assembled stream (fake_data.so plusing prevent from this)
+2) sniffer/IDS making patter detection (string comparison, heuristic analysis, etc...)
+   will make this detection also without having the correctly rassembled stream (fake_data.so prevent from this)
 
-3) Every sniffjoke injected packet will happen and will not, because the SniffJoke strength is based on the randomness. A non random patter will be detected and managed, a random one, will not.
+3) Every sniffjoke injected packet will happen and will not, because the SniffJoke strength is based on the randomness.
+   A non random patter will be detected and managed, a random one, will not.
 
 port-aggressivity has a strong influence about the injection happening, and the coder of the plugin too.
 The ALWAYS is used when the non-documentation option --only-plugin is called, an option used for testing a single

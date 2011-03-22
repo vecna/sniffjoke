@@ -32,8 +32,6 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-using namespace std;
-
 /* IT'S FUNDAMENTAL TO HAVE ALL ENUMS VALUES AS POWERS OF TWO TO PERMIT OR MASKS */
 
 /* queue_t is a a reflection variable used by packet to know in what queue it's inserted */

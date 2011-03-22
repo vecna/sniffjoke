@@ -22,7 +22,7 @@
 
 #include "Utils.h"
 
-runtime_error runtime_exception(const char* func, const char* file, int32_t line, const char* format, ...)
+runtime_error runtime_exception(const char* func, const char* file, uint32_t line, const char* format, ...)
 {
     char error[LARGEBUF];
     char complete_error[LARGEBUF];

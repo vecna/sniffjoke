@@ -104,6 +104,7 @@ void Packet::updatePacketMetadata(void)
     if (ip->frag_off & htons(0x3FFF))
     {
         fragment = true;
+        proto = OTHER_IP;
         return;
     }
 
@@ -288,7 +289,7 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 
     if (proto == PROTOUNASSIGNED)
     {
-        LOG_ALL("in %s not set \"proto\" field, required", pluginName);
+        LOG_ALL("in %s not set \"proto\" field, required %u", pluginName, pbuf.size());
         goto errorinfo;
     }
 
@@ -305,7 +306,6 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
     }
 
     return true;
-
 errorinfo:
     LOG_DEBUG("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
     return false;
@@ -339,7 +339,7 @@ void Packet::iphdrResize(uint8_t size)
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
-        pbuf.insert(it + iphdrlen, size - iphdrlen, 0); //IPOPT_NOOP);
+        pbuf.insert(it + iphdrlen, size - iphdrlen, IPOPT_NOOP);
     }
     else
     { /* iphdrlen > size */
@@ -461,21 +461,18 @@ void Packet::udppayloadResize(uint16_t size)
 
 void Packet::ippayloadRandomFill(void)
 {
-
     const uint16_t diff = pbuf.size() - iphdrlen;
     memset_random(ippayload, diff);
 }
 
 void Packet::tcppayloadRandomFill(void)
 {
-
     const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
     memset_random(tcppayload, diff);
 }
 
 void Packet::udppayloadRandomFill(void)
 {
-
     const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
     memset_random(udppayload, diff);
 }

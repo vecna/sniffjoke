@@ -46,7 +46,9 @@ cmdline_opts(cmdline_opts)
     /* generating referringdir and configfile (public) */
     if (cmdline_opts.basedir[0])
     {
-        LOG_ALL("%s", cmdline_opts.basedir);
+        if (cmdline_opts.basedir[0] != '/')
+            RUNTIME_EXCEPTION("--dir must have absolute resolution");
+
         if (access(cmdline_opts.basedir, X_OK))
             RUNTIME_EXCEPTION("--dir parameter is not accessible");
         else
@@ -334,7 +336,7 @@ bool UserConf::parseLine(FILE *cf, char userchoose[SMALLBUF], const char *keywor
 /* start with the less used (only one time, for this reason differ) parseMatch overloaded name */
 void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, const bool difolt)
 {
-    char useropt[SMALLBUF];
+    char useropt[SMALLBUF] = {0};
     const char *debugfmt = NULL;
 
     /* command line priority always */
@@ -351,8 +353,6 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, co
         debugfmt = "bool: keyword %s config file not present, used default: [%s]";
         goto EndparseMatchBool;
     }
-
-    memset(useropt, 0x00, SMALLBUF);
 
     /* in the configuration file, if a boolean is present, then is TRUE */
     if (parseLine(cf, useropt, name))
@@ -372,10 +372,8 @@ EndparseMatchBool:
 
 void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmdopt, const char *difolt)
 {
-    char useropt[SMALLBUF];
+    char useropt[SMALLBUF] = {0};
     const char *debugfmt = NULL;
-
-    memset(useropt, 0x00, SMALLBUF);
 
     if (cmdopt != NULL && strlen(cmdopt) && (difolt == NULL ? true : memcmp(cmdopt, difolt, strlen(difolt))))
     {
@@ -422,7 +420,7 @@ EndparseMatchString:
 
 void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cmdopt, uint16_t difolt)
 {
-    char useropt[SMALLBUF];
+    char useropt[SMALLBUF] = {0};
     const char *debugfmt = NULL;
 
     if (cmdopt != difolt && cmdopt != 0)
@@ -439,7 +437,6 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
         debugfmt = "uint16: conf file not found, for %s used default %d";
         goto EndparseMatchShort;
     }
-    memset(useropt, 0x00, SMALLBUF);
 
     if (parseLine(cf, useropt, name))
     {
