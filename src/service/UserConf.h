@@ -119,7 +119,7 @@ private:
     void parseOnlyParam(const char*);
 
     /* config file load/dump support*/
-    bool parseLine(FILE *, char *, const char *);
+    bool parseKeyword(FILE *, char *, const char *);
     void parseMatch(char *, const char *, FILE *, const char *, const char *);
     void parseMatch(uint16_t &, const char *, FILE *, uint16_t, uint16_t);
     void parseMatch(bool &, const char *, FILE *, bool, bool);

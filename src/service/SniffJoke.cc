@@ -78,7 +78,7 @@ void SniffJoke::run(void)
             /* we have to do quite the same as in sniffjoke_server_cleanup,
              * but relative to the service_pid read with readPidfile;
              * here we can not use the waitpid because the process to kill it's not a child of us;
-             * we can use a sleep(2) instead. */
+             * we can use a sleep(1) instead. */
             kill(old_service_pid, SIGTERM);
             sleep(1);
             kill(old_service_pid, SIGKILL);

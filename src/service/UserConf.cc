@@ -58,13 +58,15 @@ cmdline_opts(cmdline_opts)
 
     if (cmdline_opts.location[0])
     {
-        LOG_VERBOSE("is highly suggestes to use sniffjoke specifying a location (--location option)");
-        LOG_VERBOSE("a defined location means that the network it's profiled for the best results");
-        LOG_VERBOSE("a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
         selected_location = cmdline_opts.location;
     }
     else
+    {
+        LOG_VERBOSE("is highly suggestes to use sniffjoke specifying a location (--location option)");
+        LOG_VERBOSE("a defined location means that the network it's profiled for the best results");
+        LOG_VERBOSE("a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
         selected_location = DEFAULT_LOCATION;
+    }
 
     /* length sanity check, the input value are MEDIUMBUF (256) the generated buf are LARGEBUF (1024) */
     if (strlen(selected_basedir) + strlen(selected_location) > (LARGEBUF - strlen(FILE_CONF) - 1))
@@ -167,7 +169,6 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
     char cmd[MEDIUMBUF];
     FILE *foca;
     char imp_str[SMALLBUF];
-    uint8_t i;
 
     snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- 2>/dev/null",
              runcfg.interface);
@@ -178,7 +179,7 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
     fgets(imp_str, SMALLBUF, foca);
     pclose(foca);
 
-    for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
+    for (uint8_t i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
         runcfg.local_ip_addr[i] = imp_str[i];
 
     LOG_ALL("acquired local ip address: %s", runcfg.local_ip_addr);
@@ -189,7 +190,6 @@ void UserConf::autodetectGWIPAddress(void)
     const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32 2>/dev/null";
     FILE *foca;
     char imp_str[SMALLBUF];
-    uint8_t i;
 
     LOG_ALL("detecting gateway ip address with [%s]", cmd);
 
@@ -197,7 +197,7 @@ void UserConf::autodetectGWIPAddress(void)
     fgets(imp_str, SMALLBUF, foca);
     pclose(foca);
 
-    for (i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
+    for (uint8_t i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
         runcfg.gw_ip_addr[i] = imp_str[i];
 
     if (strlen(runcfg.gw_ip_addr) < 7)
@@ -212,22 +212,17 @@ void UserConf::autodetectGWMACAddress(void)
 {
     char cmd[MEDIUMBUF];
     FILE *foca;
-    char imp_str[SMALLBUF];
+    char imp_str[SMALLBUF] = {0};
     uint8_t i;
+
     snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s 2>/dev/null", runcfg.gw_ip_addr);
-
     LOG_ALL("pinging %s trying to populate ARP table [%s]", runcfg.gw_ip_addr, cmd);
-
-    foca = popen(cmd, "r");
     /* we do not need the output of ping, we need to wait the ping to finish
      * and pclose does this =) */
-    pclose(foca);
+    pclose(popen(cmd, "r"));
 
-    memset(cmd, 0x00, sizeof (cmd));
     snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50 2>/dev/null", runcfg.gw_ip_addr);
-
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
-
     foca = popen(cmd, "r");
     fgets(imp_str, SMALLBUF, foca);
     pclose(foca);
@@ -254,7 +249,6 @@ void UserConf::autodetectFirstAvailableTunnelInterface(void)
     char imp_str[SMALLBUF];
 
     LOG_ALL("detecting first unused tunnel device with [%s]", cmd);
-
     foca = popen(cmd, "r");
     for (runcfg.tun_number = 0;; ++runcfg.tun_number)
     {
@@ -301,10 +295,11 @@ void UserConf::networkSetup(void)
  */
 
 /* internal function called by the overloaded parseMatch */
-bool UserConf::parseLine(FILE *cf, char* userchoose, const char *keyword)
+bool UserConf::parseKeyword(FILE *cf, char* userchoose, const char *keyword)
 {
-    rewind(cf);
     char line[MEDIUMBUF] = {0};
+
+    rewind(cf);
 
     do
     {
@@ -313,16 +308,13 @@ bool UserConf::parseLine(FILE *cf, char* userchoose, const char *keyword)
         if (line[0] == '#' || line[0] == '\n' || line[0] == ' ')
             continue;
 
-        if (strlen(line) < (strlen(keyword) + 3))
-            continue;
+        if (line[strlen(line) - 1] == '\n')
+            line[strlen(line) - 1] = 0x00;
 
-        if (!memcmp(keyword, line, strlen(keyword)))
+        if (!strncmp(keyword, line, strlen(keyword)))
         {
-            /* C's chop() */
-            if (line[strlen(line) - 1] == '\n')
-                line[strlen(line) - 1] = 0x00;
-
-            memcpy(userchoose, (&line[strlen(keyword) + 1]), strlen(line) - strlen(keyword) - 1);
+            if (strlen(line) > strlen(keyword))
+                strncpy(userchoose, (&line[strlen(keyword) + 1]), strlen(line) - strlen(keyword) - 1);
             return true;
         }
     }
@@ -337,24 +329,22 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     const char *debugfmt = NULL;
 
     /* command line priority always */
-    if (cmdopt != NULL && strlen(cmdopt) && (difolt == NULL ? true : memcmp(cmdopt, difolt, strlen(difolt))))
+    if (cmdopt != NULL && (difolt == NULL ? true : strncmp(cmdopt, difolt, strlen(cmdopt))))
     {
-        debugfmt = "%s/string: keyword %s command line %s used";
+        debugfmt = "%s/string: option %s read from command line: [%s]";
         strncpy(dst, cmdopt, MEDIUMBUF);
-        goto EndparseMatchString;
     }
-
-    if (cf != NULL && parseLine(cf, useropt, name))
+    else if (cf != NULL && parseKeyword(cf, useropt, name))
     {
-        debugfmt = "string: parsed keyword %s [%s] option in conf file";
+        debugfmt = "string: option %s read from config file: [%s]";
         strncpy(dst, useropt, MEDIUMBUF);
-        goto EndparseMatchString;
+    }
+    else
+    {
+        strncpy(dst, difolt, strlen(difolt));
+        debugfmt = "string: not found %s option in conf file, using default: [%s]";
     }
 
-    strncpy(dst, difolt, strlen(difolt));
-    debugfmt = "string: %s not found in config file, used default %s";
-
-EndparseMatchString:
     LOG_DEBUG(debugfmt, name, dst);
 }
 
@@ -366,22 +356,20 @@ void UserConf::parseMatch(uint16_t &dst, const char *name, FILE *cf, uint16_t cm
     /* command line priority always */
     if (cmdopt != difolt)
     {
-        debugfmt = "uint16: for %s used command line option %d";
+        debugfmt = "uint16: option %s read from command line: [%d]";
         dst = cmdopt;
-        goto EndparseMatchShort;
     }
-
-    if (cf != NULL && parseLine(cf, useropt, name))
+    else if (cf != NULL && parseKeyword(cf, useropt, name))
     {
-        debugfmt = "uint16: parsed keyword %s [%d] option in conf file";
+        debugfmt = "uint16: option %s read from config file: [%d]";
         dst = atoi(useropt);
-        goto EndparseMatchShort;
+    }
+    else
+    {
+        debugfmt = "uint16: not found %s option in conf file, using default: [%d]";
+        dst = difolt;
     }
 
-    debugfmt = "uint16: %s not found in config file, used default %d";
-    dst = difolt;
-
-EndparseMatchShort:
     LOG_DEBUG(debugfmt, name, dst);
 }
 
@@ -394,21 +382,19 @@ void UserConf::parseMatch(bool &dst, const char *name, FILE *cf, bool cmdopt, bo
     if (cmdopt != difolt)
     {
         dst = cmdopt;
-        debugfmt = "bool: keyword %s used command line value: [%s]";
-        goto EndparseMatchBool;
+        debugfmt = "bool: option %s read from command line: [%s]";
     }
-
-    if (cf != NULL && parseLine(cf, useropt, name))
+    else if (cf != NULL && parseKeyword(cf, useropt, name))
     {
         dst = true;
-        debugfmt = "bool: keyword %s read from config file: [%s]";
-        goto EndparseMatchBool;
+        debugfmt = "bool: option %s read from config file: [%s]";
+    }
+    else
+    {
+        dst = difolt;
+        debugfmt = "bool: not found %s option in conf file, using default: [%s]";
     }
 
-    dst = difolt;
-    debugfmt = "bool: not found %s option in conf file, using default: [%s]";
-
-EndparseMatchBool:
     LOG_DEBUG(debugfmt, name, dst ? "true" : "false");
 }
 
@@ -420,9 +406,8 @@ EndparseMatchBool:
  * is checked in the constructor of UserConf */
 bool UserConf::loadDiskConfiguration(void)
 {
-    FILE *loadstream;
-
-    if ((loadstream = fopen(FILE_CONF, "r")) == NULL)
+    FILE *loadstream = fopen(FILE_CONF, "r");
+    if (loadstream == NULL)
         LOG_ALL("configuration file %s not accessible: %s, using default", configfile, strerror(errno));
     else
         LOG_DEBUG("opening configuration file: %s", configfile);
@@ -442,9 +427,6 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
     parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
-    /* those files act in portconf[PORTNUMBER]; array, merging the ports configuration */
-    loadAggressivity();
-
     /* loading of IP lists, in future also the source IP address should be useful */
     if (runcfg.use_blacklist)
         runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
@@ -455,20 +437,22 @@ bool UserConf::loadDiskConfiguration(void)
     if (loadstream)
         fclose(loadstream);
 
+    /* those files act in portconf[PORTNUMBER]; array, merging the ports configuration */
+    loadAggressivity();
+
     return true;
 }
 
 /* function for loading of the TCP port files */
 void UserConf::loadAggressivity(void)
 {
-    FILE *loadstream;
-
     for (uint32_t i = 0; i < PORTSNUMBER; i++)
         runcfg.portconf[i] = AGG_NONE;
 
-    if ((loadstream = fopen(FILE_AGGRESSIVITY, "r")) == NULL)
+    FILE *loadstream = fopen(FILE_AGGRESSIVITY, "r");
+    if (loadstream == NULL)
     {
-        LOG_ALL("port aggrssivity specifications in %s/%s: %s, using defaults",
+        LOG_ALL("port aggressivity specifications in %s/%s: %s, using defaults",
                 runcfg.working_dir, FILE_AGGRESSIVITY, strerror(errno));
 
         /* the default is NONE. in the file port-aggrssivity.conf
@@ -482,35 +466,29 @@ void UserConf::loadAggressivity(void)
         return;
     }
 
-    /* the classes portLine has been written specifically for parse
-     * ... without Boost
-     * is defined in portConfParsing.h and implemented in PortConfParsing.cc
-     */
-    portLine pl;
-    char line[MEDIUMBUF];
     uint32_t linecnt = 0;
 
     /* the minimum length of a line is 6 */
     while (!feof(loadstream))
     {
         ++linecnt;
-        fgets(line, MEDIUMBUF, loadstream);
 
-        /* C's chop() */
-        if (line[strlen(line) - 1] == '\n')
-            line[strlen(line) - 1] = 0x00;
+        char line[MEDIUMBUF];
+        fgets(line, MEDIUMBUF, loadstream);
 
         if (!strlen(line) || line[0] == '#' || line[0] == '\n')
             continue;
 
-        /* setup function clear the previously used private variables */
-        pl.setup(line);
+        if (line[strlen(line) - 1] == '\n')
+            line[strlen(line) - 1] = 0x00;
 
+        portLine pl;
+        pl.setup(line);
         pl.extractPorts();
         pl.extractValue();
 
         if (pl.error_message)
-            RUNTIME_EXCEPTION("Unable to parse aggressivity file %s/%s line %d: %s", runcfg.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
+            RUNTIME_EXCEPTION("unable to parse aggressivity file %s/%s line %d: %s", runcfg.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
 
         pl.mergeLine(runcfg.portconf);
     }
@@ -522,29 +500,28 @@ void UserConf::loadAggressivity(void)
 uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, char *data, const char* difolt)
 {
     uint32_t written = 0;
-    return 0;
 
-    if (data != NULL && strncmp(data, difolt, strlen(data)))
+    if (data != NULL && (difolt == NULL || strncmp(data, difolt, strlen(difolt))))
         written = fprintf(out, "%s:%s\n", name, data);
 
     return written;
 }
 
-uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, uint16_t shortdat, uint16_t difolt)
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, uint16_t data, uint16_t difolt)
 {
     uint32_t written = 0;
 
-    if (shortdat != difolt)
-        written = fprintf(out, "%s:%u\n", name, shortdat);
+    if (data != difolt)
+        written = fprintf(out, "%s:%u\n", name, data);
 
     return written;
 }
 
-uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool yndata, bool difolt)
+uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool data, bool difolt)
 {
     uint32_t written = 0;
 
-    if (yndata != difolt)
+    if (data != difolt)
         written = fprintf(out, "%s\n", name);
 
     return written;
@@ -560,7 +537,7 @@ bool UserConf::syncDiskConfiguration(void)
 
     if ((out = fopen(tempdumpfname, "w")) == NULL)
     {
-        LOG_ALL("Abort operation: unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
+        LOG_ALL("unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
         return false;
     }
 
@@ -578,7 +555,6 @@ bool UserConf::syncDiskConfiguration(void)
     written += dumpIfPresent(out, "active", runcfg.active, DEFAULT_START_STOPPED);
     written += dumpIfPresent(out, "foreground", runcfg.go_foreground, DEFAULT_GO_FOREGROUND);
     written += dumpIfPresent(out, "debug", runcfg.debug_level, DEFAULT_DEBUG_LEVEL);
-    written += dumpIfPresent(out, "only-plugin", runcfg.onlyplugin, NULL);
     written += dumpIfPresent(out, "max-ttl-probe", runcfg.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     if (!syncPortsFiles() || !syncIPListsFiles())
@@ -589,9 +565,7 @@ bool UserConf::syncDiskConfiguration(void)
 
     if ((uint32_t) ftell(out) != written)
     {
-        LOG_ALL("the written size of the new configuration file unable to open new configuration file %s: %s",
-                tempdumpfname, strerror(errno));
-
+        LOG_ALL("incomplete data written for the new configuration file: %s", strerror(errno));
         goto faultyreturn;
     }
 
