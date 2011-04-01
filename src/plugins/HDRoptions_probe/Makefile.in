@@ -32,7 +32,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = src/plugins/fragmentation
+subdir = src/plugins/HDRoptions_probe
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -50,12 +50,12 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 pkglibLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-fragmentation_la_LIBADD =
-am_fragmentation_la_OBJECTS = fragmentation.lo
-fragmentation_la_OBJECTS = $(am_fragmentation_la_OBJECTS)
-fragmentation_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+HDRoptions_probe_la_LIBADD =
+am_HDRoptions_probe_la_OBJECTS = HDRoptions_probe.lo
+HDRoptions_probe_la_OBJECTS = $(am_HDRoptions_probe_la_OBJECTS)
+HDRoptions_probe_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(fragmentation_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(CXXFLAGS) $(HDRoptions_probe_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -68,8 +68,8 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(fragmentation_la_SOURCES)
-DIST_SOURCES = $(fragmentation_la_SOURCES)
+SOURCES = $(HDRoptions_probe_la_SOURCES)
+DIST_SOURCES = $(HDRoptions_probe_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -182,9 +182,9 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-pkglib_LTLIBRARIES = fragmentation.la
-fragmentation_la_SOURCES = fragmentation.cc
-fragmentation_la_LDFLAGS = -module -avoid-version
+pkglib_LTLIBRARIES = HDRoptions_probe.la
+HDRoptions_probe_la_SOURCES = HDRoptions_probe.cc
+HDRoptions_probe_la_LDFLAGS = -module -avoid-version
 all: all-am
 
 .SUFFIXES:
@@ -198,9 +198,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  src/plugins/fragmentation/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  src/plugins/HDRoptions_probe/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu  src/plugins/fragmentation/Makefile
+	  $(AUTOMAKE) --gnu  src/plugins/HDRoptions_probe/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -245,8 +245,8 @@ clean-pkglibLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-fragmentation.la: $(fragmentation_la_OBJECTS) $(fragmentation_la_DEPENDENCIES) 
-	$(fragmentation_la_LINK) -rpath $(pkglibdir) $(fragmentation_la_OBJECTS) $(fragmentation_la_LIBADD) $(LIBS)
+HDRoptions_probe.la: $(HDRoptions_probe_la_OBJECTS) $(HDRoptions_probe_la_DEPENDENCIES) 
+	$(HDRoptions_probe_la_LINK) -rpath $(pkglibdir) $(HDRoptions_probe_la_OBJECTS) $(HDRoptions_probe_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -254,7 +254,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fragmentation.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HDRoptions_probe.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

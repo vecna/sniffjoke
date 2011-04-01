@@ -28,6 +28,7 @@
 #include "IPList.h"
 #include "SessionTrack.h"
 #include "TTLFocus.h"
+#include "HDRoptions.h"
 #include "internalProtocol.h"
 
 #include <net/ethernet.h>
@@ -130,6 +131,7 @@ private:
     /* import of the file containing the port range settings, and load the
      * default if not present, it use portLine class in portConfParsing.cc */
     void loadAggressivity(void);
+    void initOptionLoader(void);
 
     bool syncPortsFiles(void);
     bool syncIPListsFiles(void);

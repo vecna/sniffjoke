@@ -41,11 +41,14 @@ AC_PROG_CXX
 AC_LANG([C++])
 AC_PROG_INSTALL
 
-ACLOCAL_AMFLAGS = -I m4
+# ACLOCAL_FLAGS = -I m4 
 AC_CONFIG_MACRO_DIR([m4])
 
-LT_INIT
+# LT_INIT
+AC_PROG_CXX
 AC_SUBST([LIBTOOL_DEPS])
+
+AC_PROG_LIBTOOL
 
 AC_CHECK_HEADERS(algorithm,,exit 1)
 AC_CHECK_HEADERS(cerrno,,exit 1)
@@ -101,9 +104,10 @@ AC_CONFIG_FILES(
 		src/plugins/fake_window/Makefile
 		src/plugins/fragmentation/Makefile
 		src/plugins/overlap_packet/Makefile
-                src/plugins/segmentation/Makefile
+        src/plugins/segmentation/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
+		src/plugins/HDRoptions_probe/Makefile
 		src/service/Makefile
 )
 

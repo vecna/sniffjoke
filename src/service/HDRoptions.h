@@ -46,7 +46,6 @@
  *     http://www.networksorcery.com/enp/protocol/tcp.htm
  */
 
-
 #define IPOPT_NOOP_SIZE     1
 #define IPOPT_CIPSO         (6 |IPOPT_CONTROL|IPOPT_COPY)
 #define IPOPT_CIPSO_SIZE    10
@@ -58,7 +57,7 @@
 #define TCPOPT_MSS          2
 #define TCPOPT_MSS_SIZE     4
 
-#define RFC_UNEXISTENT_CODE 255
+#define DUMMY_OPCODE        255
 
 enum injector_t
 {
@@ -74,10 +73,87 @@ enum corruption_t
     UNASSIGNED_VALUE = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
 };
 
+/*
+ * The following class read the file 'option-support.conf' and setup
+ * correctly the optMap struct when HDRoptions require it.
+ *
+ * Is called also from the HDRoptions_probe.cc plugin for option test
+ */
+
+struct optionInfo
+{
+    bool enabled;
+    corruption_t availableUsage;
+    uint8_t optValue;
+    uint8_t optProtocol;
+    const char *optName;
+};
+
+struct optHdrData
+{
+    vector<unsigned char> optshdr;
+    uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
+    uint8_t available_opts_len; /* max value 40 on IP and TCP too */
+    uint8_t target_opts_len; /* max value 40 on IP and TCP too */
+};
+
+class optionImplement
+{
+public:
+    struct optionInfo info;
+    uint8_t sjOptIndex;
+
+    uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
+
+    /* 
+     * this is overloaded in the IPTCPoptions.cc implementation as protected virtual
+     */
+    virtual uint8_t optApply(struct optHdrData *);
+    optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+//    optionImplement();
+    virtual ~optionImplement() = 0;
+};
+
+class optionLoader
+{
+private:
+    static optionImplement *loadedOptions[SUPPORTED_OPTIONS];
+
+    /* these static vars are used by getInitializedOpts, getNextOpts */
+    static uint8_t settedProto;
+    static uint8_t counter;
+
+public:
+    static bool isFileLoaded;
+
+    /* methods for popoulate <vector>availOpts in HDRoptions */
+    optionImplement * getSingleOption(uint8_t);
+    void getInitializedOpts(uint8_t);
+    optionImplement * getNextOpts(void);
+
+    /* construction is overloaded because in the UserConf routine the 
+     * configuration file is loaded and the static variable is setup.
+     *
+     * in hijacking time the constructor is called without any args */
+    optionLoader(const char *);
+    optionLoader(void);
+
+    corruption_t lineParser(FILE *, uint8_t);
+};
+
+/* these struct are used inside HDRoptions for an easy handling */
 struct option_occurrence
 {
     uint8_t off;
     uint8_t len;
+};
+
+struct protocolSpec
+{
+    uint8_t NOP_code;
+    uint8_t END_code;
+    const char *protoName;
+    
 };
 
 class HDRoptions
@@ -93,38 +169,29 @@ private:
     bool corruptNow;
     bool corruptDone;
 
-    vector<unsigned char> optshdr;
-    uint8_t lastOpt;
-    uint8_t firstOpt;
+    /* this struct is used for be passed to the optionImplement extensions */
+    struct optHdrData oD;
 
-    uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t available_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t target_opts_len; /* max value 40 on IP and TCP too */
+    /* this struct is used to track protocol reference, for use the same methods 
+     * both for IP and TCP where possible */
+    struct protocolSpec protD;
 
-    static struct option_mapping
-    {
-        bool enabled;
-        corruption_t corruptionType;
-        uint8_t(HDRoptions::*optApply)();
-        uint8_t optValue;
-        uint8_t applyProto;
-        const char *optName;
-    } optMap[SUPPORTED_OPTIONS];
-
+    vector<optionImplement *> availOpts;
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
-    uint8_t nextPlannedInj;
+    optionImplement *nextPlannedInj;
 
     /*
      * options we need to check the presence for;
      * some options are good but if repeated may corrupt the packet.
      */
-    bool checkupIPopt(void);
-    bool checkupTCPopt(void);
-    bool checkCondition(uint8_t);
+    bool acquirePresentOptions(void);
+    bool checkCondition(struct optionImplement *);
 
-    uint8_t getBestRandsize(uint8_t, uint8_t, uint8_t, uint8_t);
+    /* after the call to optApply, HDRoptions need to be sync */
+    optionImplement * updateCorruptAlign(optionImplement *, uint8_t);
     void registerOptOccurrence(uint8_t, uint8_t, uint8_t);
+
     uint32_t alignOpthdr();
     void copyOpthdr(uint8_t *);
     bool isGoalAchieved();
@@ -135,18 +202,6 @@ private:
     void injector(uint8_t);
     void randomInjector();
 
-    uint8_t m_IPOPT_NOOP();
-    uint8_t m_IPOPT_TIMESTAMP();
-    uint8_t m_IPOPT_LSRR();
-    uint8_t m_IPOPT_RR();
-    uint8_t m_IPOPT_RA();
-    uint8_t m_IPOPT_CIPSO();
-    uint8_t m_IPOPT_SEC();
-    uint8_t m_IPOPT_SID();
-    uint8_t m_TCPOPT_NOP();
-    uint8_t m_TCPOPT_MD5SIG();
-    uint8_t m_TCPOPT_PAWSCORRUPT();
-
 public:
 
     HDRoptions(injector_t, Packet &, TTLFocus &);
@@ -155,30 +210,6 @@ public:
     bool injectRandomOpts(bool, bool);
 
     bool removeOption(uint8_t);
-};
-
-/*
- * The following class read the file 'option-support.conf' and setup
- * correctly the optMap struct when HDRoptions require it.
- *
- * Is called also from the HDRoptions_probe.cc plugin for option test
- */
-struct option_descript
-{
-    uint8_t optProtocol;
-    uint8_t optValue;
-    const char *optName;
-    corruption_t availableUsage;
-};
-
-class optionLoader
-{
-private:
-    struct option_descript optionStorage[SUPPORTED_OPTIONS];
-public:
-    void initOptMap(struct option_mapping &);
-    struct option_descript *getOptionDesc(uint8_t);
-    optionLoader(const char *, bool);
 };
 
 #endif /* HDROPTIONS_H */
