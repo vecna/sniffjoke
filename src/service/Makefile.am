@@ -7,6 +7,8 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			Utils.cc \
 			HDRoptions.h \
 			HDRoptions.cc \
+			IPTCPoptApply.h \
+			IPTCPoptApply.cc \
 			Packet.h \
 			Packet.cc \
 			PacketQueue.h \
@@ -29,8 +31,8 @@ sniffjoke_SOURCES =	hardcodedDefines.h \
 			Process.cc \
 			IPList.h \
 			IPList.cc \
-                        PortConf.h \
-                        PortConf.cc \
+			PortConf.h \
+			PortConf.cc \
 			UserConf.h \
 			UserConf.cc \
 			SniffJoke.cc \

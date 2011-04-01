@@ -434,6 +434,8 @@ bool UserConf::loadDiskConfiguration(void)
     if (runcfg.use_whitelist)
         runcfg.whitelist = new IPListMap(FILE_IPWHITELIST);
 
+    initOptionLoader();
+
     if (loadstream)
         fclose(loadstream);
 
@@ -441,6 +443,14 @@ bool UserConf::loadDiskConfiguration(void)
     loadAggressivity();
 
     return true;
+}
+
+void UserConf::initOptionLoader(void)
+{
+    optionLoader initializeOptions(FILE_IPTCPOPT_CONF);
+
+    if(initializeOptions.isFileLoaded == false)
+        RUNTIME_EXCEPTION("Unable to load %s for initialize the optionLoader", FILE_IPTCPOPT_CONF);
 }
 
 /* function for loading of the TCP port files */
