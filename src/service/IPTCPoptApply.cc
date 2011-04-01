@@ -2,9 +2,9 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
- *   
- * Copyright (C) 2011 vecna <vecna@delirandom.net>
- *                    evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *
+ *  Copyright (C) 2010, 2011 vecna <vecna@delirandom.net>
+ *                           evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "HDRoptions.h"
 #include "IPTCPoptApply.h"
 #include "Utils.h"
@@ -30,6 +29,12 @@
  * in HDRoptions you will found the code SniffJoke-side for the corret choose
  * between the available options
  */
+
+Io_NOOP::Io_NOOP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
 uint8_t Io_NOOP::optApply(struct optHdrData *oD)
 {
     if (oD->available_opts_len < IPOPT_NOOP_SIZE)
@@ -45,9 +50,6 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
     return IPOPT_NOOP_SIZE;
 }
 
-Io_NOOP::Io_NOOP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
-
 /*
  * IP TIMESTAMP hacking:
  *
@@ -61,28 +63,33 @@ optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
  * reference: http://tools.ietf.org/rfc/rfc781.txt
  */
 
+Io_TIMESTAMP::Io_TIMESTAMP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
 uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 {
 
-/*
- * it has been tested that some networks (Fastweb) do silently filter packets
- * with this option set for security reasons.
- * so at the time we can't use this as a good for !corrupt packets.
- *
- * some interesting informations regarding this recomendations can also be found at:
- * http://tools.ietf.org/html/draft-gont-opsec-ip-options-filtering-00
- * http://yurisk.info/2010/01/23/ip-options-are-evil
- * http://tinyurl.com/63gs5ce (Juniper configuration)
- * http://technet.microsoft.com/en-us/library/cc302652.aspx
- * microsoft isa as contromisure for CAN-2005-0048 seems to block by default:
- * - Record Route (7)
- * - Time Stamp (68)
- * - Loose Source Route (131)
- * - Strict Source Route (137)
- *
- * the same can be found on CISCO and Juniper (http://www.cisco.com/en/US/docs/ios/12_3t/12_3t4/feature/guide/gtipofil.html)
- *
- */
+    /*
+     * it has been tested that some networks (Fastweb) do silently filter packets
+     * with this option set for security reasons.
+     * so at the time we can't use this as a good for !corrupt packets.
+     *
+     * some interesting informations regarding this recomendations can also be found at:
+     * http://tools.ietf.org/html/draft-gont-opsec-ip-options-filtering-00
+     * http://yurisk.info/2010/01/23/ip-options-are-evil
+     * http://tinyurl.com/63gs5ce (Juniper configuration)
+     * http://technet.microsoft.com/en-us/library/cc302652.aspx
+     * microsoft isa as contromisure for CAN-2005-0048 seems to block by default:
+     * - Record Route (7)
+     * - Time Stamp (68)
+     * - Loose Source Route (131)
+     * - Strict Source Route (137)
+     *
+     * the same can be found on CISCO and Juniper (http://www.cisco.com/en/US/docs/ios/12_3t/12_3t4/feature/guide/gtipofil.html)
+     *
+     */
 
     const uint8_t size_timestamp = getBestRandsize(oD, 4, 9, 9, 4);
     const uint8_t timestamps = (size_timestamp - 4) / 4;
@@ -107,8 +114,15 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
     return size_timestamp;
 }
 
-Io_TIMESTAMP::Io_TIMESTAMP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+Io_TIMESTOVERFLOW::Io_TIMESTOVERFLOW(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
+void Io_TIMESTOVERFLOW::setupTTLFocus(TTLFocus *refttlp)
+{
+    ttlfocus = refttlp;
+}
 
 uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
 {
@@ -150,54 +164,51 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     return size_timestamp;
 }
 
-Io_TIMESTOVERFLOW::Io_TIMESTOVERFLOW(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
-
-void Io_TIMESTOVERFLOW::setupTTLFocus(TTLFocus *refttlp)
+Io_LSRR::Io_LSRR(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
 {
-    ttlfocus = refttlp;
 }
 
 uint8_t Io_LSRR::optApply(struct optHdrData *oD)
 {
-/* http://tools.ietf.org/html/rfc1812
- *
- * "A router MUST NOT originate a datagram containing multiple
- * source route options.  What a router should do if asked to
- * forward a packet containing multiple source route options is
- * described in Section [5.2.4.1]."
- *
- * From [5.2.4.1]:
- * "It is an error for more than one source route option to appear in a
- * datagram.  If it receives such a datagram, it SHOULD discard the
- * packet and reply with an ICMP Parameter Problem message whose pointer
- * points at the beginning of the second source route option.
- *
- * Extract from: net/ipv4/ip_options.c
- *
- *    case IPOPT_SSRR:
- *    case IPOPT_LSRR:
- *
- *        [...]
- *
- *         / * NB: cf RFC-1812 5.2.4.1 * /
- *         if (opt->srr) {
- *                pp_ptr = optptr;
- *                goto error;
- *         }
- *
- *  so to corrupt we need to inject this option twice.
- *
- *  DOUBTS:
- *    - 1) the packet will be discarded at the first router that correctly implements the rfc.
- *         if all does this this corruption is useles :(
- *    - 2) the filled address are random, so the packet will quite surely dropped at first hop.
- *         or sent onto a random path so probably will not reach the sniffer to.
- *         (useful only dealing with a near sniffer)
- *
- *  using SSRR is also possibile but using with withe packet will be surely trashed by the
- *  first router.
- */
+    /* http://tools.ietf.org/html/rfc1812
+     *
+     * "A router MUST NOT originate a datagram containing multiple
+     * source route options.  What a router should do if asked to
+     * forward a packet containing multiple source route options is
+     * described in Section [5.2.4.1]."
+     *
+     * From [5.2.4.1]:
+     * "It is an error for more than one source route option to appear in a
+     * datagram.  If it receives such a datagram, it SHOULD discard the
+     * packet and reply with an ICMP Parameter Problem message whose pointer
+     * points at the beginning of the second source route option.
+     *
+     * Extract from: net/ipv4/ip_options.c
+     *
+     *    case IPOPT_SSRR:
+     *    case IPOPT_LSRR:
+     *
+     *        [...]
+     *
+     *         / * NB: cf RFC-1812 5.2.4.1 * /
+     *         if (opt->srr) {
+     *                pp_ptr = optptr;
+     *                goto error;
+     *         }
+     *
+     *  so to corrupt we need to inject this option twice.
+     *
+     *  DOUBTS:
+     *    - 1) the packet will be discarded at the first router that correctly implements the rfc.
+     *         if all does this this corruption is useles :(
+     *    - 2) the filled address are random, so the packet will quite surely dropped at first hop.
+     *         or sent onto a random path so probably will not reach the sniffer to.
+     *         (useful only dealing with a near sniffer)
+     *
+     *  using SSRR is also possibile but using with withe packet will be surely trashed by the
+     *  first router.
+     */
 
     const uint8_t size_lsrr = getBestRandsize(oD, 3, 1, 4, 4);
     const uint8_t index = oD->actual_opts_len;
@@ -217,8 +228,10 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
     return size_lsrr;
 }
 
-Io_LSRR::Io_LSRR(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+Io_RR::Io_RR(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t Io_RR::optApply(struct optHdrData *oD)
 {
@@ -262,8 +275,10 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
     return size_rr;
 }
 
-Io_RR::Io_RR(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+Io_RA::Io_RA(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t Io_RA::optApply(struct optHdrData *oD)
 {
@@ -300,8 +315,10 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
     return IPOPT_RA_SIZE;
 }
 
-Io_RA::Io_RA(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+Io_CIPSO::Io_CIPSO(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
 {
@@ -344,8 +361,10 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
     return IPOPT_CIPSO_SIZE;
 }
 
-Io_CIPSO::Io_CIPSO(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+Io_SEC::Io_SEC(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t Io_SEC::optApply(struct optHdrData *oD)
 {
@@ -389,8 +408,10 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
     return IPOPT_SEC_SIZE;
 }
 
-Io_SEC::Io_SEC(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+Io_SID::Io_SID(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t Io_SID::optApply(struct optHdrData *oD)
 {
@@ -410,12 +431,14 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
     return IPOPT_SID_SIZE;
 }
 
-Io_SID::Io_SID(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
-
 /*
  * TCP OPTIONS
  */
+
+To_NOP::To_NOP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t To_NOP::optApply(struct optHdrData *oD)
 {
@@ -432,8 +455,10 @@ uint8_t To_NOP::optApply(struct optHdrData *oD)
     return TCPOPT_NOP_SIZE;
 }
 
-To_NOP::To_NOP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+To_MD5SIG::To_MD5SIG(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
 {
@@ -453,8 +478,10 @@ uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
     return TCPOPT_MD5SIG_SIZE;
 }
 
-To_MD5SIG::To_MD5SIG(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }
+To_PAWSCORRUPT::To_PAWSCORRUPT(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
 
 uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 {
@@ -474,6 +501,3 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 
     return TCPOPT_TIMESTAMP_SIZE;
 }
-
-To_PAWSCORRUPT::To_PAWSCORRUPT(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
-optionImplement::optionImplement(enable, sjI, n, proto, opcode, c) { }

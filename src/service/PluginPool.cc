@@ -154,6 +154,7 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
 
 bool PluginPool::parseScrambleOpt(const char *list_str, uint8_t *retval, const char **opt)
 {
+
     struct scrambleparm
     {
         const char *keyword;
@@ -175,19 +176,19 @@ bool PluginPool::parseScrambleOpt(const char *list_str, uint8_t *retval, const c
 
     /* check if the option is used, the char used for separation is '+' 
      * optParse and copyStr are used for sanity check ONLY */
-    if( (optParse = strchr(copyStr, '+')) != NULL)
+    if ((optParse = strchr(copyStr, '+')) != NULL)
     {
         (*optParse) = 0x00;
         (optParse)++;
 
-        if( *optParse == 0x00 )
+        if (*optParse == 0x00)
         {
             LOG_ALL("no valid option passed after the control char '+': %s", list_str);
             goto invalid_parsing;
         }
 
         /* no other symbol are accepted */
-        if(!isalnum(*optParse))
+        if (!isalnum(*optParse))
         {
             LOG_ALL("invalid char after '+' only alphanumeric and digit accepted: %s", list_str);
             goto invalid_parsing;
@@ -234,7 +235,7 @@ void PluginPool::parseOnlyPlugin(void)
 
     snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
 
-    if(!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
+    if (!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
 
     importPlugin(plugabspath, runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
@@ -292,7 +293,7 @@ void PluginPool::parseEnablerFile(void)
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
-        if(!parseScrambleOpt(const_cast<const char *>(comma), &enabledScrambles, &pluginOpt))
+        if (!parseScrambleOpt(const_cast<const char *> (comma), &enabledScrambles, &pluginOpt))
         {
             RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
                               line, enablerentry, FILE_PLUGINSENABLER);

@@ -67,7 +67,7 @@ void SniffJoke::run(void)
     {
         if (!opts.force_restart)
         {
-            LOG_ALL("SniffJoke is already runconfig, use --force or check --help");
+            LOG_ALL("SniffJoke is already running, use --force or check --help");
             LOG_ALL("the pidfile %s contains the apparently running pid: %d", SJ_PIDFILE, old_service_pid);
             return;
         }
@@ -78,7 +78,7 @@ void SniffJoke::run(void)
             /* we have to do quite the same as in sniffjoke_server_cleanup,
              * but relative to the service_pid read with readPidfile;
              * here we can not use the waitpid because the process to kill it's not a child of us;
-             * we can use a sleep(1) instead. */
+             * we can use a sleep(2) instead. */
             kill(old_service_pid, SIGTERM);
             sleep(1);
             kill(old_service_pid, SIGKILL);
@@ -420,7 +420,7 @@ void SniffJoke::handleCmdStop(void)
 {
     if (userconf.runcfg.active != false)
         LOG_VERBOSE("stopped SniffJoke as requested!");
-    else /* SniffJoke is already runconfig */
+    else /* SniffJoke is already running */
         LOG_VERBOSE("SniffJoke it's already in stop status");
 
     userconf.runcfg.active = false;

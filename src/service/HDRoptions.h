@@ -105,10 +105,7 @@ public:
 
     uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
 
-    /* 
-     * this is overloaded in the IPTCPoptions.cc implementation as protected virtual
-     */
-    virtual uint8_t optApply(struct optHdrData *);
+    virtual uint8_t optApply(struct optHdrData *) = 0;
     optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
     virtual ~optionImplement() = 0;
 };

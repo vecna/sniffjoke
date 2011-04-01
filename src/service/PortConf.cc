@@ -10,7 +10,6 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * Love and Trolls - Boxxy - http://www.youtube.com/watch?v=6bMLrA_0O5I
  * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of

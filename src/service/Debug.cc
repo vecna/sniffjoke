@@ -2,7 +2,7 @@
  *   SniffJoke is a software able to confuse the Internet traffic analysis,
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
-    
+ *
  *   Copyright (C) 2010 vecna <vecna@delirandom.net>
  *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
