@@ -2,15 +2,17 @@ AC_INIT
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([src/config.h])
 
-VERSION=`grep SW_VERSION\  ./src/service/hardcodedDefines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
-
-AH_TEMPLATE(RUNUSER)
-AC_DEFINE_UNQUOTED(RUNUSER, `eval grep DEFAULT_USER\  ./src/service/hardcodedDefines.h | cut -f2 -d'"' | sed 's/ /-/g'`)
-
-AH_TEMPLATE(RUNGROUP)
-AC_DEFINE_UNQUOTED(RUNGROUP, `eval grep DEFAULT_GROUP\  ./src/service/hardcodedDefines.h | cut -f2 -d'"' | sed 's/ /-/g'`)
+PACKAGE_VERSION=`grep SW_VERSION\  ./src/service/hardcodedDefines.h | cut -f2 -d"\"" | sed 's/ /-/g'`
+AC_SUBST(PACKAGE_VERSION)
 
 AC_PREFIX_DEFAULT(/usr/local)
+
+AH_TEMPLATE(RUNUSER)
+AH_TEMPLATE(RUNGROUP)
+# for distribution package, here will be better use dedicated user/group
+AC_DEFINE(RUNUSER, "nobody")
+AC_DEFINE(RUNGROUP, "nogroup")
+
 if test "$prefix" = "NONE"; then
    prefix="/usr/local"
 fi
@@ -33,7 +35,7 @@ AC_DEFINE_UNQUOTED(INSTALL_LIBDIR, "`eval echo $libdir/sniffjoke/`")
 AH_TEMPLATE(INSTALL_BINDIR, [where can I find the sniffjoke executable ?])
 AC_DEFINE_UNQUOTED(INSTALL_BINDIR, "`eval echo $bindir`")
 
-AM_INIT_AUTOMAKE(sniffjoke,$VERSION)
+AM_INIT_AUTOMAKE(sniffjoke,$PACKAGE_VERSION)
 
 AC_PROG_CXX
 AC_LANG([C++])
@@ -102,14 +104,14 @@ AC_CONFIG_FILES(
 		src/plugins/fake_window/Makefile
 		src/plugins/fragmentation/Makefile
 		src/plugins/overlap_packet/Makefile
-        src/plugins/segmentation/Makefile
+		src/plugins/segmentation/Makefile
 		src/plugins/shift_ack/Makefile
 		src/plugins/valid_rst_fake_seq/Makefile
 		src/plugins/HDRoptions_probe/Makefile
 		src/service/Makefile
 )
 
-CFLAGS="-O3 -ansi -pedantic -Wall -Wno-variadic-macros"
+CFLAGS="-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros"
 CXXFLAGS="$CFLAGS"
 
 AC_OUTPUT

@@ -110,7 +110,6 @@ public:
      */
     virtual uint8_t optApply(struct optHdrData *);
     optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
-//    optionImplement();
     virtual ~optionImplement() = 0;
 };
 
@@ -153,7 +152,6 @@ struct protocolSpec
     uint8_t NOP_code;
     uint8_t END_code;
     const char *protoName;
-    
 };
 
 class HDRoptions
@@ -169,10 +167,10 @@ private:
     bool corruptNow;
     bool corruptDone;
 
-    /* this struct is used for be passed to the optionImplement extensions */
+    /* this struct is used to be passed to the optionImplement extensions */
     struct optHdrData oD;
 
-    /* this struct is used to track protocol reference, for use the same methods 
+    /* this struct is used to track protocol reference, to use the same methods 
      * both for IP and TCP where possible */
     struct protocolSpec protD;
 
