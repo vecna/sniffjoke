@@ -1,3 +1,9 @@
+1 Apr 2011:		Release 0.4 under betatesting
+		- options testable in different environments
+		- new hacks, scramble implemented
+		- renew of TCPTrack.cc class 
+		- client/service are two separate software with an internal protocol
+
 30 Dec 2010:	Stabilized 0.4 release
 		- sniffjoke-autotest generate the location file
 		- plugin configuration
@@ -38,7 +44,7 @@
 
 1 Jan 2009:	stabilization of SniffJoke 0.3 beta release
 		Features available:
-			swill web interface,
-			standard hacks (ttl, bad checksum, innocent)
-			TCP port not available
-			autodetect in Linux system
+		swill web interface,
+		standard hacks (ttl, bad checksum, innocent)
+		TCP port not available
+		autodetect in Linux system

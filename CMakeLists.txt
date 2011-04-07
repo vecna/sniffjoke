@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 2.4)
+
+SET( PREFIX "/usr/local")
+SET( VERSION_MAJOR 0 )
+SET( VERSION_MINOR 4 )
+SET( SUFFIX "-beta5" )
+PROJECT(SniffJoke)
+CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h )
+include_directories(src src/service)
+ADD_SUBDIRECTORY(src)

@@ -1,0 +1,1 @@
+ADD_LIBRARY(valid_rst_fake_seq SHARED valid_rst_fake_seq.cc)
