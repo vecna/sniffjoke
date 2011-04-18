@@ -3,20 +3,38 @@
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
 # Installation
-    mkdir Linux-build && cd Linux-build && cmake .. && make 
+    sudo -s && cd Linux-build && make install
 
-# or, in the future, to be tested
-    cd $YOUR_OS && make
+and you could check the exaclty installed file by
+    cat install_manifest.txt
 
-At the moment, only Linux is supported:
-    cd Linux-build && make
-
-Because I don't know exactly how cmake work, anyway I'm expecting will work like an automake and the packager will have only the makefiles
+# or, if you're makin some code modify
+    mkdir your_build
+    cd your_build
+    cmake ..
+    make 
+    make install
 
 when you want to clean your system, but keep the status directory (usually /usr/local/var/sniffjoke), and because contains some logs, you will prefere remove it.
 
 # Simple immediate verbose execution
     root@linux# sniffjoke --debug 6 --start --foreground
+
+# config files installed in the 'generic' location
+    ipblacklist.conf
+    iptcp-options.conf
+    ipwhitelist.conf
+    plugins-enabled.conf
+    port-aggressivity.conf
+    sniffjoke-service.conf
+
+# cache and logfile that should be generated in a location
+    plugin.fake_close_fin.log
+    plugin.fragmentation.log
+    plugin.segmentation.log
+    ttlfocusmap.bin
+
+the plugin.*.log, depends by the plugins loaded and internal version
 
 # Requirements
 

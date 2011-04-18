@@ -36,30 +36,30 @@ EOF
 
 dump_plugin_file() {
 cat >> $PLUGINLIST <<__EOF__
-fake_close_fin,PRESCRIPTION
-fake_close_fin,MALFORMED,conf
-fake_close_fin,GUILTY
-fake_close_rst,PRESCRIPTION
-fake_close_rst,MALFORMED
-fake_close_rst,GUILTY
-fake_data,PRESCRIPTION
-fake_data,MALFORMED
-fake_data,GUILTY
-fake_seq,PRESCRIPTION
-fake_seq,MALFORMED
-fake_seq,GUILTY
-fake_syn,PRESCRIPTION
-fake_syn,MALFORMED
-fake_syn,GUILTY
-fake_window,PRESCRIPTION
-fake_window,MALFORMED
-fake_window,GUILTY
-fragmentation,INNOCENT
-segmentation,INNOCENT
-shift_ack,PRESCRIPTION
-shift_ack,MALFORMED
-shift_ack,GUILTY
-valid_rst_fake_seq,INNOCENT
+libfake_close_fin,PRESCRIPTION
+libfake_close_fin,MALFORMED,conf
+libfake_close_fin,GUILTY
+libfake_close_rst,PRESCRIPTION
+libfake_close_rst,MALFORMED
+libfake_close_rst,GUILTY
+libfake_data,PRESCRIPTION
+libfake_data,MALFORMED
+libfake_data,GUILTY
+libfake_seq,PRESCRIPTION
+libfake_seq,MALFORMED
+libfake_seq,GUILTY
+libfake_syn,PRESCRIPTION
+libfake_syn,MALFORMED
+libfake_syn,GUILTY
+libfake_window,PRESCRIPTION
+libfake_window,MALFORMED
+libfake_window,GUILTY
+libfragmentation,INNOCENT
+libsegmentation,INNOCENT
+libshift_ack,PRESCRIPTION
+libshift_ack,MALFORMED
+libshift_ack,GUILTY
+libvalid_rst_fake_seq,INNOCENT
 __EOF__
 }
 

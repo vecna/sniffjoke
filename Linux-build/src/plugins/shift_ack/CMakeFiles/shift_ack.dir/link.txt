@@ -1,0 +1,1 @@
+/usr/bin/c++  -fPIC    -shared -Wl,-soname,libshift_ack.so -o libshift_ack.so "CMakeFiles/shift_ack.dir/shift_ack.o" 

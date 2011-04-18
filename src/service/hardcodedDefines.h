@@ -31,7 +31,7 @@
 #define SJ_DEFINES_H
 
 #define SW_NAME                 "SniffJoke"
-#define SW_VERSION              "0.4-beta4"
+#define SW_VERSION              "0.4-rc1"
 
 /* Sniffjoke defaults config values */
 #define DEFAULT_DIR             INSTALL_STATEDIR

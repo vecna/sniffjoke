@@ -1,0 +1,1 @@
+/usr/bin/c++  -fPIC    -shared -Wl,-soname,libfake_seq.so -o libfake_seq.so "CMakeFiles/fake_seq.dir/fake_seq.o" 
