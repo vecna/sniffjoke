@@ -180,5 +180,5 @@ sniffjokecli_help:
     }
 
     SniffJokeCli cli(useropt.admin_address, useropt.admin_port, useropt.ms_timeout);
-    cli.send_command(useropt.cmd_buffer);
+    return cli.send_command(useropt.cmd_buffer);
 }

@@ -33,6 +33,8 @@ using namespace std;
 #define SJCTL_VERSION           "0.4.0"
 
 #define SJCTL_DEFAULT_TIMEOUT   500
+#define SJ_ERROR                1
+#define SJ_OK                   0
 
 struct command
 {
@@ -61,7 +63,8 @@ private:
 
 public:
     SniffJokeCli(const char *, uint16_t, uint32_t);
-    void send_command(const char *cmdstring);
+    /* 0 on success, 1 on error */
+    int32_t send_command(const char *cmdstring);
 };
 
 #endif /* SJ_SNIFFJOKECLI_H */

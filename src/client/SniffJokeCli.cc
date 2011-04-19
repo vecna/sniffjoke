@@ -43,7 +43,7 @@ ms_timeout(ms_timeout)
 {
 }
 
-void SniffJokeCli::send_command(const char *cmdstring)
+int32_t SniffJokeCli::send_command(const char *cmdstring)
 {
     int sock;
     struct sockaddr_in service_sin; /* address of service */
@@ -54,7 +54,7 @@ void SniffJokeCli::send_command(const char *cmdstring)
     if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
     {
         fprintf(stderr, "FATAL: unable to open UDP socket for connect to SniffJoke service: %s", strerror(errno));
-        return;
+        return SJ_ERROR;
     }
 
     memset(&service_sin, 0x00, sizeof (service_sin));
@@ -64,14 +64,14 @@ void SniffJokeCli::send_command(const char *cmdstring)
     if (!inet_aton(serveraddr, &service_sin.sin_addr))
     {
         fprintf(stderr, "FATAL: unable to accept hostname (%s): only IP address allow", serveraddr);
-        return;
+        return SJ_ERROR;
     }
 
     if (sendto(sock, cmdstring, strlen(cmdstring), 0, (const struct sockaddr *) &service_sin, sizeof (service_sin)) == -1)
     {
         fprintf(stderr, "FATAL: unable to send message [%s] via %s:%d: %s",
                 cmdstring, serveraddr, serverport, strerror(errno));
-        return;
+        return SJ_ERROR;
     }
 
     /* because we loop over the socket file description, is required a non blocking mode */
@@ -80,7 +80,7 @@ void SniffJokeCli::send_command(const char *cmdstring)
     {
         fprintf(stderr, "FATAL: unable to set non blocking mode in listening socket: %s", strerror(errno));
         fprintf(stderr, "anyway: the command has been sent to sniffjoke service, without error in sending");
-        return;
+        return SJ_ERROR;
     }
 
     /* poll is required for timeout pourpose checking, because only one file desciption is used */
@@ -108,7 +108,7 @@ void SniffJokeCli::send_command(const char *cmdstring)
                 if (errno != EAGAIN)
                 {
                     printf("unable to receive from local socket: %s\n", strerror(errno));
-                    return;
+                    return SJ_ERROR;
                 }
                 break;
             }
@@ -120,14 +120,17 @@ void SniffJokeCli::send_command(const char *cmdstring)
         if (!(parse_SjinternalProto(received_data, progressive_recvl)))
         {
             fprintf(stderr, "error in parsing received message\n");
+            return SJ_ERROR;
         }
     }
     else
     {
         printf("connection timeout: SniffJoke is not running, or --timeout too low\n");
+        return SJ_ERROR;
     }
 
     close(sock);
+    return SJ_OK;
 }
 
 #define SPACESIZE   20
