@@ -2,20 +2,16 @@
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
-# Installation
-    sudo -s && cd Linux-build && make install
-
-and you could check the exaclty installed file by
-    cat install_manifest.txt
-
 # or, if you're makin some code modify
     mkdir your_build
     cd your_build
     cmake ..
     make 
+    sudo -s
     make install
 
-when you want to clean your system, but keep the status directory (usually /usr/local/var/sniffjoke), and because contains some logs, you will prefere remove it.
+and you could check the exaclty installed file by
+    cat install_manifest.txt
 
 # Simple immediate verbose execution
     root@linux# sniffjoke --debug 6 --start --foreground

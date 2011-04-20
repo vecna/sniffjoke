@@ -1,1 +1,0 @@
-/usr/bin/c++  -fPIC    -shared -Wl,-soname,libvalid_rst_fake_seq.so -o libvalid_rst_fake_seq.so "CMakeFiles/valid_rst_fake_seq.dir/valid_rst_fake_seq.o" 
