@@ -63,6 +63,10 @@ libvalid_rst_fake_seq,INNOCENT
 __EOF__
 }
 
+routing_table_log() {
+    route -n > $WORKDIR/route-n-$1.log
+}
+
 start_test() {
     if [[ $PLUGIN =~ ([a-z_]+),([A-Z0-9\+]+) ]]; then
         PNAME=${BASH_REMATCH[1]}
@@ -84,14 +88,28 @@ start_test() {
         echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
         echo "sniffjoke --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
-        route -n > $WORKDIR/route-n-before.log
+
+        routing_table_log "before"
         $SNIFFJOKEBIN --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
         sleep 2
-        route -n > $WORKDIR/route-n-after.log
-        INTERFACE=`$SNIFFJOKECLIBIN stat | grep "hijacked interface" | cut -b 21-`
-        route -n > $WORKDIR/route-n-after.log
+        routing_table_log "after"
+
         $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
-        echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+        if [ "$?" -eq 0 ]; then
+            echo "${green}sniffjoke is correctly running${white}"
+        else
+            echo "${red}sniffjoke is not running - fatal error - remove $TEMPDIR/$LOCATION by hand${white}"
+            exit
+        fi
+
+        INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface" | cut -b 21-`
+        if [ $INTERFACE -n ]; then
+            echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+        else
+            echo "${red}Unable to detect hijacked interface by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
+            exit
+        fi
+
         echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
         tcpdump -i $INTERFACE -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
         sleep 1
@@ -99,7 +117,7 @@ start_test() {
         curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >$WORKDIR/output.curl 2>&1
         $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
         $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
-        $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_stat.log
+        $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
         sleep 1
         killall -TERM tcpdump
     done;
