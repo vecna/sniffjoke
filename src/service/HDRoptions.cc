@@ -649,6 +649,8 @@ optionLoader::optionLoader(const char *fname)
     /* testing modality - all options are loaded without a corruption defined */
     if (fname == NULL && isFileLoaded)
     {
+        LOG_DEBUG("file has been loaded previously, loading uninitalized value");
+
         sjI = SJ_IPOPT_NOOP;
         loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, UNASSIGNED_VALUE);
 
@@ -684,16 +686,21 @@ optionLoader::optionLoader(const char *fname)
 
         sjI = SJ_TCPOPT_PAWSCORRUPT;
         loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, UNASSIGNED_VALUE);
+
 #if 0
+        /* not implemented ATM */
         loadedOptions[SJ_TCPOPT_TIMESTAMP] =
-                loadedOptions[SJ_TCPOPT_MSS] =
-                loadedOptions[SJ_TCPOPT_SACK] =
+        loadedOptions[SJ_TCPOPT_MSS] =
+        loadedOptions[SJ_TCPOPT_SACK] =
 #endif
-                return;
+        return;
     }
 
     if (isFileLoaded)
+    {
+        LOG_DEBUG("Request of HDRoptions two times!");
         RUNTIME_EXCEPTION("Request IP/TCP option loaded before file initialization");
+    }
 
     /* loadinf the configuration file, containings which option bring corruption for your ISP */
     /* NOW - sets with the default used by vecna & evilaliv3 */
@@ -703,7 +710,7 @@ optionLoader::optionLoader(const char *fname)
     FILE *optInput = fopen(fname, "r");
 
     if (optInput == NULL)
-        RUNTIME_EXCEPTION("Unable to open in reading %s: %s", fname, strerror(errno));
+        RUNTIME_EXCEPTION("Unable to open in reading options configuration %s: %s", fname, strerror(errno));
 
     sjI = SJ_IPOPT_NOOP;
     writUsage = lineParser(optInput, sjI);
