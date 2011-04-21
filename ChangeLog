@@ -1,3 +1,8 @@
+20 Apr 2011:	Betatesting continue, (beta5!?)
+		- HDRoptions_probe will check option on the route
+		- IPTCPOptions use an efficent implementation for every location
+		- how ironic: in the 30/12/2010 was "stabilized" :P
+
 1 Apr 2011:		Release 0.4 under betatesting
 		- options testable in different environments
 		- new hacks, scramble implemented

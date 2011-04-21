@@ -429,10 +429,18 @@ bool UserConf::loadDiskConfiguration(void)
 
     /* loading of IP lists, in future also the source IP address should be useful */
     if (runcfg.use_blacklist)
+    {
         runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
+        if((*(runcfg.blacklist)).empty())
+            RUNTIME_EXCEPTION("Requested blacklist but blacklist file not found or empty");
+    }
 
     if (runcfg.use_whitelist)
+    {
         runcfg.whitelist = new IPListMap(FILE_IPWHITELIST);
+        if((*(runcfg.whitelist)).empty())
+            RUNTIME_EXCEPTION("Requested whitelist but whitelist file not found or empty");
+    }
 
     initOptionLoader();
 

@@ -465,20 +465,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
 }
 
 /*
- * injectHack is one of the core function in sniffjoke and handles the hack ijection.
- *
- * the hacks are, for the most, of three kinds.
- *
- * one kind requires the knowledge of the exact hop distance between the two
- * end points, to forge packets able to expire an hop before reaching the destination;
- * this permits to insert packet accepted in the session tracked by the sniffer.
- *
- * the second kind of hack does not have special requirements (as the third),
- * and it's based on particular malformed ip/tcp options that would lead the real
- * destination peer to drop the fake packet.
- *
- * the latter kind of attack works forging packets with a bad ip/tcp checksum.
- *
+ * injectHack is one of the core function in sniffjoke and handles the hack injection.
  *
  * the function returns TRUE if a plugins has requested the removal of the packet.
  */
@@ -501,7 +488,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
     char availableScramblesStr[LARGEBUF] = {0};
     snprintfScramblesList(availableScramblesStr, sizeof (availableScramblesStr), availableScrambles);
 
-    origpkt.SELFLOG("before hacks injection available scrambles [%s])", availableScramblesStr);
+    origpkt.SELFLOG("system available scrambles [%s])", availableScramblesStr);
 
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
@@ -516,9 +503,12 @@ bool TCPTrack::injectHack(Packet &origpkt)
          * more specific ones related to the origpkt will be checked in
          * the condition function implemented by a specific hack.
          */
-        if (!(availableScrambles & pt->selfObj->supportedScrambles))
+        if ( (!(availableScrambles & pt->selfObj->supportedScrambles)) && (runcfg.debug_level == PACKET_LEVEL) )
         {
-            origpkt.SELFLOG("%s: no scramble available", pt->selfObj->pluginName);
+            char pluginavaileScrambStr[LARGEBUF] = {0};
+            snprintfScramblesList(pluginavaileScrambStr, sizeof(pluginavaileScrambStr), pt->selfObj->supportedScrambles);
+
+            origpkt.SELFLOG("%s: no scramble matching between sys avail [%s] and plugin %s [%s]", pt->selfObj->pluginName);
             continue;
         }
 
@@ -530,6 +520,9 @@ bool TCPTrack::injectHack(Packet &origpkt)
         if (applicable)
             applicable_hacks.push_back(pt);
     }
+
+    if( !applicable_hacks.size() && (runcfg.debug_level == PACKET_LEVEL) )
+        origpkt.SELFLOG("No one hack has been passed the selection");
 
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
@@ -599,8 +592,6 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         pt->selfObj->reset();
     }
-
-    origpkt.SELFLOG("after hacks injection");
 
     return removeOrig;
 }
