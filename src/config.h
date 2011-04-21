@@ -4,19 +4,19 @@
 #define CONFIG_H
        
 /* Define to 1 if you have the `clock_gettime' function. */
-/* #undef HAVE_CLOCK_GETTIME 1 */
+/* #undef HAVE_CLOCK_GETTIME */
 /* "use syscall interface for clock_gettime" */
-/* #undef HAVE_CLOCK_SYSCALL 1 */
+/* #undef HAVE_CLOCK_SYSCALL */
 /* Define to 1 if you have the `epoll_ctl' function. */
-/* #undef HAVE_EPOLL_CTL 1 */
+/* #undef HAVE_EPOLL_CTL */
 /* Define to 1 if you have the `eventfd' function. */
-/* #undef HAVE_EVENTFD 1 */
+/* #undef HAVE_EVENTFD */
 /* Define to 1 if you have the `inotify_init' function. */
-/* #undef HAVE_INOTIFY_INIT 1 */
+/* #undef HAVE_INOTIFY_INIT */
 /* Define to 1 if you have the `kqueue' function. */
-/* #undef HAVE_KQUEUE 1 */
+/* #undef HAVE_KQUEUE */
 /* Define to 1 if you have the `nanosleep' function. */
-/* #undef HAVE_NANOSLEEP 1 */
+/* #undef HAVE_NANOSLEEP */
 /* Define to 1 if you have the `poll' function. */
 /* #undef HAVE_ERRNO_H */
 /* #undef HAVE_ERRNO */
@@ -25,27 +25,27 @@
  * yes yes yes: before the 1.0 release, SniffJoke will use libevent 
  \****          ^^^^^^ ^^^ ^^^ ^^^^^^^  ^^^^^^^^^ ^^^^ ^^^ ^^^^^^^^  */
 
-/* #undef HAVE_POLL 1 */
+/* #undef HAVE_POLL */
 /* Define to 1 if you have the <poll.h> header file. */
-/* #undef HAVE_POLL_H 1 */
+/* #undef HAVE_POLL_H */
 /* Define to 1 if you have the `select' function. */
-/* #undef HAVE_SELECT 1 */
+/* #undef HAVE_SELECT */
 /* Define to 1 if you have the <sys/epoll.h> header file. */
-/* #undef HAVE_SYS_EPOLL_H 1 */
+/* #undef HAVE_SYS_EPOLL_H */
 /* Define to 1 if you have the <sys/eventfd.h> header file. */
-/* #undef HAVE_SYS_EVENTFD_H 1 */
+/* #undef HAVE_SYS_EVENTFD_H */
 /* Define to 1 if you have the <sys/event.h> header file. */
-/* #undef HAVE_SYS_EVENT_H 1 */
+/* #undef HAVE_SYS_EVENT_H */
 
 /* end of the libevent wishlist: hey! if you know libevent and feel
  * yourself strangely attracted from sniffjoke, help us! */
 
 /* Define to 1 if you have the <sys/inotify.h> header file. */
-/* #undef HAVE_SYS_INOTIFY_H 1 */
+/* #undef HAVE_SYS_INOTIFY_H */
 /* Define to 1 if you have the <sys/queue.h> header file. */
-/* #undef HAVE_SYS_QUEUE_H 1 */
+/* #undef HAVE_SYS_QUEUE_H */
 /* Define to 1 if you have the <sys/select.h> header file. */
-/* #undef HAVE_SYS_SELECT_H 1 */
+/* #undef HAVE_SYS_SELECT_H */
 
 /* where can I find the sniffjoke executable ? */
 #define PREFIX "/usr/local"
@@ -62,9 +62,9 @@
 /* where can I find my running track ? */
 #define INSTALL_STATEDIR PREFIX"/var/sniffjoke/"
 
-/* #undef SNIffJOKE_VERSION_MAJOR 0 */
-/* #undef SNIffJOKE_VERSION_MINOR 4 */
-/* #undef SNIffJOKE_VERSION_SUffIX  */
+/* #undef SNIffJOKE_VERSION_MAJOR */
+/* #undef SNIffJOKE_VERSION_MINOR */
+/* #undef SNIffJOKE_VERSION_SUffIX */
 
 /* Version number of package */
 #ifdef SNIffJOKE_VERSION_SUffIX
