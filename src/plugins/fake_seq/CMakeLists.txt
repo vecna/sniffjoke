@@ -1,2 +1,5 @@
 ADD_LIBRARY(fake_seq SHARED fake_seq.cc)
-#INSTALL(TARGETS fake_seq RUNTIME DESTINATION /usr/local/var/sniffjoke)
+
+INSTALL(TARGETS fake_seq
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

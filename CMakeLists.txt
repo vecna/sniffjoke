@@ -1,32 +1,30 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+CMAKE_MINIMUM_REQUIRED( VERSION 2.6 )
 
-SET( PREFIX "/usr/local")
+PROJECT( sniffjoke )
+
+SET( PREFIX "/usr/local" )
 SET( VERSION_MAJOR 0 )
 SET( VERSION_MINOR 4 )
 SET( SUFFIX "-beta5" )
 
-PROJECT(SniffJoke)
-CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h )
-INCLUDE_DIRECTORIES(src src/service)
-
 SET(CMAKE_SHARED_LIBRARY_PREFIX "")
-ADD_SUBDIRECTORY(src)
 
-# installation of the library require some different usate, 
-# maybe I'm not implementing very well, but I'm learning cmake in this moment
+INCLUDE_DIRECTORIES( src src/service )
 
-INSTALL(FILES Linux-build/src/plugins/fake_seq/libfake_seq.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/fake_syn/libfake_syn.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/fake_data/libfake_data.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/shift_ack/libshift_ack.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/fake_window/libfake_window.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/segmentation/libsegmentation.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/fragmentation/libfragmentation.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/fake_close_fin/libfake_close_fin.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/fake_close_rst/libfake_close_rst.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/overlap_packet/liboverlap_packet.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/HDRoptions_probe/libHDRoptions_probe.so DESTINATION lib/sniffjoke/)
-INSTALL(FILES Linux-build/src/plugins/valid_rst_fake_seq/libvalid_rst_fake_seq.so DESTINATION lib/sniffjoke/)
+ADD_SUBDIRECTORY( src )
+ADD_SUBDIRECTORY( conf )
 
-# installation of default configuration
-INSTALL(DIRECTORY conf/generic DESTINATION var/sniffjoke)
+# uninstall target as officially explained on:
+#   - http://www.youtube.com/watch?v=fw-nJRD78tA
+#   - http://www.cmake.org/Wiki/CMake_FAQ#Can_I_do_.22make_uninstall.22_with_CMake.3F
+CONFIGURE_FILE(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY
+)
+
+ADD_CUSTOM_TARGET(
+    uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+)
+# end of uninstall target

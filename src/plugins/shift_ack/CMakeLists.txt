@@ -1,2 +1,5 @@
 ADD_LIBRARY(shift_ack SHARED shift_ack.cc)
-#INSTALL(TARGETS shift_ack RUNTIME DESTINATION /usr/local/var/sniffjoke)
+
+INSTALL(TARGETS shift_ack
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

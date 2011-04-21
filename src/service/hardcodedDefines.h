@@ -20,7 +20,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
+#include "config.h"
 
 /*
  * this is the define value used in sniffjoke. if you are making porting of sniffjoke

@@ -20,7 +20,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <Debug.h>
+#include "Debug.h"
 
 Debug::Debug(void) :
 debuglevel(ALL_LEVEL),

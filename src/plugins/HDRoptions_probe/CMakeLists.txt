@@ -1,2 +1,5 @@
 ADD_LIBRARY(HDRoptions_probe SHARED HDRoptions_probe.cc)
-#INSTALL(TARGETS HDRoptions_probe RUNTIME DESTINATION /usr/local/var/sniffjoke)
+
+INSTALL(TARGETS HDRoptions_probe
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

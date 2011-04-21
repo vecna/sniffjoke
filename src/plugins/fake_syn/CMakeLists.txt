@@ -1,2 +1,5 @@
 ADD_LIBRARY(fake_syn SHARED fake_syn.cc)
-#INSTALL(TARGETS fake_syn RUNTIME DESTINATION /usr/local/var/sniffjoke)
+
+INSTALL(TARGETS fake_syn
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
