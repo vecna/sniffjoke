@@ -44,6 +44,13 @@
  * ipoptions accepted by the router, and discarded from the remote host.
  */
 
+#include "hardcodedDefines.h"
+/* defined at the bottom of hardcodedDefines.h */
+#ifdef HEAVY_HDROPT_DEBUG
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 #include "HDRoptions.h"
 #include "IPTCPoptApply.h"
 #include "Utils.h"
@@ -521,6 +528,45 @@ bool HDRoptions::removeOption(uint8_t opt)
     return true;
 }
 
+HDRoptions::~HDRoptions()
+{
+#ifdef HEAVY_HDROPT_DEBUG
+#define HDR_PREFIX  "HDRoLog/"
+    optionLoader optConfigData;
+
+    char fname[MEDIUMBUF];
+    FILE *HDRoLog;
+    uint32_t i;
+
+    mkdir(HDR_PREFIX, 0770);
+    snprintf(fname, MEDIUMBUF, "%s%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))));
+
+    if((HDRoLog = fopen(fname, "a+")) == NULL)
+        RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
+
+    fprintf(HDRoLog, "%d %d%d%d\t",
+        pkt.SjPacketId, corruptRequest, corruptDone, corruptNow
+    );
+
+    for(i = 0; i < SUPPORTED_OPTIONS; i++)
+    {
+        if(optTrack[i].size() == false)
+            fprintf(HDRoLog, " ~%d", i);
+        else
+        {
+            optionImplement *yep = optConfigData.getSingleOption(i);
+            fprintf(HDRoLog, " %s", yep->info.optName);
+
+            for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); it++)
+                fprintf(HDRoLog, ":%d(%d)", it->off, it->len);
+        }
+    }
+    fprintf(HDRoLog, "\n");
+
+    fclose(HDRoLog);
+#endif
+}
+
 /* all the derived classes implemented in IPTCPoptApply call this constructor */
 optionImplement::optionImplement(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c)
 {
@@ -702,7 +748,7 @@ optionLoader::optionLoader(const char *fname)
         RUNTIME_EXCEPTION("Request IP/TCP option loaded before file initialization");
     }
 
-    /* loadinf the configuration file, containings which option bring corruption for your ISP */
+    /* loading the configuration file, containings which option bring corruption for your ISP */
     /* NOW - sets with the default used by vecna & evilaliv3 */
     /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
 

@@ -20,7 +20,8 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* defined at the bottom of hardcordDefines.h */
+#include "hardcodedDefines.h"
+/* defined at the bottom of hardcodedDefines.h */
 #ifdef HEAVY_PACKET_DEBUG
 #include <sys/stat.h>
 #include <sys/types.h>

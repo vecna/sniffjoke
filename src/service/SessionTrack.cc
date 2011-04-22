@@ -20,6 +20,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "hardcodedDefines.h"
 /* defined at the bottom of hardcodedDefines.h */
 #ifdef HEAVY_SESSION_DEBUG
 #include <sys/stat.h>
