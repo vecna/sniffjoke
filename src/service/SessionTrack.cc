@@ -20,6 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* defined at the bottom of hardcodedDefines.h */
+#ifdef HEAVY_SESSION_DEBUG
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 #include "SessionTrack.h"
 
 SessionTrack::SessionTrack(const Packet &pkt) :
@@ -47,6 +53,24 @@ injected_pktnumber(0)
 SessionTrack::~SessionTrack(void)
 {
     SELFLOG("");
+
+#ifdef HEAVY_SESSION_DEBUG
+#define SESSIONLOG_PREFIX   "sessionLog/"
+    char fname[MEDIUMBUF], sj_clock_str[MEDIUMBUF];
+    FILE *sessionLog;
+
+    mkdir(SESSIONLOG_PREFIX, 0770);
+    snprintf(fname, MEDIUMBUF, "%s%s", SESSIONLOG_PREFIX, inet_ntoa(*((struct in_addr *) &daddr)));
+
+    if((sessionLog = fopen(fname, "a+")) == NULL)
+        RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
+
+    strftime(sj_clock_str, sizeof (sj_clock_str), "%F %T", localtime(&access_timestamp));
+    fprintf(sessionLog, "%s\t%d:%d\t#%d, inj #%d\n", 
+            sj_clock_str, ntohs(sport), ntohs(dport), packet_number, injected_pktnumber);
+
+    fclose(sessionLog);
+#endif
 }
 
 void SessionTrack::selflog(const char *func, const char *format, ...) const

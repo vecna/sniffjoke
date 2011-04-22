@@ -183,4 +183,8 @@
 #define SESSIONTRACKMAP_MEMORY_THRESHOLD        1024    /* 1024 TCP SESSIONS */
 #define TTLPROBE_RETRY_ON_UNKNOWN               600     /* schedule time on UNKNOWN TTL status (10 MINUTES) */
 
+/* enable the intensive debug: DEVELOPERS AND TESTER ONLY! */
+#define HEAVY_SESSION_DEBUG
+#define HEAVY_PACKET_DEBUG
+
 #endif /* SJ_DEFINES_H */

@@ -172,7 +172,7 @@ public:
 
             pktVector.push_back(pkt);
 
-            pLH.completeLog(" chunk %d of %d", (pkts + 1), pkts);
+            pLH.completeLog(" INNOCENT chunk %d of %d size %d", pkts, pkts_n, pkt->pbuf.size());
         }
 
         removeOrigPkt = true;

@@ -3,8 +3,9 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *
- *   Copyright (C) 2008 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2008,2009,2010,2011
+ *                 vecna <vecna@delirandom.net>
+ *                 evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -181,7 +182,7 @@ uint8_t TCPTrack::discernAvailScramble(const Packet &pkt)
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
     TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-    if (ttlfocus.status & (TTL_UNKNOWN | TTL_BRUTEFORCE))
+    if (ttlfocus.status == TTL_KNOWN )
         retval |= SCRAMBLE_TTL;
 
     return retval;
@@ -245,7 +246,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
             /* the next ttl probe schedule is forced in the next cycle */
             ttlfocus.next_probe_time = sj_clock;
 
-            injpkt->SELFLOG("TTL_BRUTEFORCE #sent|%u ttl_estimate|%u]",
+            injpkt->SELFLOG("TTL_BRUTEFORCE #sent|%u ttl_estimate|%u",
                             ttlfocus.sent_probe, ttlfocus.ttl_estimate);
             break;
         }
@@ -466,7 +467,6 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
 
 /*
  * injectHack is one of the core function in sniffjoke and handles the hack injection.
- *
  * the function returns TRUE if a plugins has requested the removal of the packet.
  */
 bool TCPTrack::injectHack(Packet &origpkt)
@@ -757,8 +757,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         }
     }
 
-    if (pkt.wtf != INNOCENT)
-        pkt.payloadRandomFill();
+    /* in this place there WAS the randomPayload filling for packet != INNOCENT,
+     * this was not correct, because the plugins will supply a specific layer 5
+     * payload, for this reason I've moved the function in the plugins */
 
     /* fixing the mangled packet */
     pkt.fixSum();
@@ -826,7 +827,7 @@ void TCPTrack::handleYoungPackets(void)
 
             if (packet_filter.match(*pkt))
             {
-                pkt->SELFLOG("removal requested by PacketFilter\n\n\n\n\n");
+                pkt->SELFLOG("removal requested by PacketFilter");
                 p_queue.drop(*pkt);
                 continue;
             }

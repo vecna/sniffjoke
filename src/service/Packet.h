@@ -154,6 +154,7 @@ public:
 
     Packet(const unsigned char *, uint16_t);
     Packet(const Packet &);
+    ~Packet();
 
     void updatePacketMetadata(void);
 
@@ -187,6 +188,9 @@ public:
 
     /* utilities */
     void selflog(const char *, const char *, ...) const;
+    const char *getWtfStr(judge_t) const;
+    const char *getSourceStr(source_t) const;
+    const char *getChainStr(chaining_t) const;
 };
 
 #endif /* SJ_PACKET_H */

@@ -20,6 +20,12 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* defined at the bottom of hardcordDefines.h */
+#ifdef HEAVY_PACKET_DEBUG
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 #include "Packet.h"
 #include "HDRoptions.h"
 
@@ -510,7 +516,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
     vsnprintf(loginfo, sizeof (loginfo), format, arguments);
     va_end(arguments);
 
-    const char *sourcestr, *wtfstr, *p;
+    const char *p;
     char protoinfo[MEDIUMBUF] = {0}, saddr[MEDIUMBUF] = {0}, daddr[MEDIUMBUF] = {0};
 
     p = inet_ntoa(*((struct in_addr *) &(ip->saddr)));
@@ -519,33 +525,9 @@ void Packet::selflog(const char *func, const char *format, ...) const
     p = inet_ntoa(*((struct in_addr *) &(ip->daddr)));
     strncpy(daddr, p, sizeof (daddr));
 
-    switch (wtf)
-    {
-    case PRESCRIPTION: wtfstr = "ttlexpire";
-        break;
-    case INNOCENT: wtfstr = "innocent";
-        break;
-    case GUILTY: wtfstr = "badcksum";
-        break;
-    case MALFORMED: wtfstr = "malformed";
-        break;
-    default: case JUDGEUNASSIGNED: wtfstr = "UNASSIGNED-wtf";
-        break;
-    }
-
-    switch (source)
-    {
-    case TUNNEL: sourcestr = "tunnel";
-        break;
-    case NETWORK: sourcestr = "network";
-        break;
-    case PLUGIN: sourcestr = "hackapplication";
-        break;
-    case TRACEROUTE: sourcestr = "ttl bruteforce";
-        break;
-    default: case SOURCEUNASSIGNED: sourcestr = "UNASSIGNED-src";
-        break;
-    }
+    const char *sourcestr = getSourceStr(source);
+    const char *wtfstr = getWtfStr(wtf);
+    const char *chainstr = getChainStr(chainflag);
 
     if (!fragment)
     {
@@ -578,20 +560,111 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-        LOG_PACKET("%s: i%u %s|%s %s->%s [%s] ttl:%u %s",
+        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%u %s",
                    func, SjPacketId,
-                   sourcestr, wtfstr,
+                   sourcestr, wtfstr, chainstr,
                    saddr, daddr,
                    protoinfo,
                    ip->ttl, loginfo);
     }
     else
     {
-        LOG_PACKET("%s: i%u %s|%s %s->%s FRAGMENT:%u ttl:%u %s",
+        LOG_PACKET("%s: i%u %s|%s|%s %s->%s FRAGMENT:%u ttl:%u %s",
                    func, SjPacketId,
-                   sourcestr, wtfstr,
+                   sourcestr, wtfstr, chainstr,
                    saddr, daddr,
                    ntohs(ip->frag_off),
                    ip->ttl, loginfo);
+    }
+}
+
+Packet::~Packet()
+{
+#ifdef HEAVY_PACKET_DEBUG
+#define PACKETLOG_PREFIX_TCP   "TCPpktLog/"
+#define PACKETLOG_PREFIX_UDP   "UDPpktLog/"
+    char fname[MEDIUMBUF];
+    const char *protoprefix;
+    FILE *packetLog;
+    uint16_t sport, dport;
+
+    switch (proto)
+    {
+    case TCP:
+        protoprefix = PACKETLOG_PREFIX_TCP;
+        sport = ntohs(tcp->source);
+        dport = ntohs(tcp->dest);
+        break;
+    case UDP:
+        protoprefix = PACKETLOG_PREFIX_UDP;
+        sport = ntohs(udp->source);
+        dport = ntohs(udp->dest);
+        break;
+    case ICMP:
+        return;
+    }
+
+    mkdir(protoprefix, 0770);
+    snprintf(fname, MEDIUMBUF, "%s%s", protoprefix, inet_ntoa(*((struct in_addr *) &ip->daddr)));
+
+    if((packetLog = fopen(fname, "a+")) == NULL)
+        RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
+
+    fprintf(packetLog, "%d\t%d:%d\t%s\t%d\tchain %s, position %d, judge [%s], queue %d, from [%s]\n", 
+        SjPacketId, sport, dport, 
+        fragment ? "frg" : "", pbuf.size(), getChainStr(chainflag), 
+        position, getWtfStr(wtf), queue, getSourceStr(source) );
+
+    fclose(packetLog);
+#endif
+}
+
+const char * Packet::getWtfStr(judge_t wtf) const
+{
+    switch (wtf)
+    {
+    case PRESCRIPTION: 
+        return "ttlexpire";
+    case INNOCENT:
+        return "innocent";
+    case GUILTY: 
+        return "badcksum";
+    case MALFORMED: 
+        return "malformed";
+    case JUDGEUNASSIGNED: 
+    default: 
+        return "UNASSIGNED-wtf";
+    }
+}
+
+const char * Packet::getSourceStr(source_t source) const
+{
+    switch (source)
+    {
+    case TUNNEL: 
+        return "tunnel";
+    case NETWORK: 
+        return "network";
+    case PLUGIN: 
+        return "hackapplication";
+    case TRACEROUTE: 
+        return "ttl bruteforce";
+    case SOURCEUNASSIGNED: 
+    default: 
+        return "UNASSIGNED-src";
+    }
+}
+
+const char * Packet::getChainStr(chaining_t chainflag) const
+{
+    switch(chainflag)
+    {
+    case FINALHACK:
+        return "final";
+    case REHACKABLE:
+        return "reHackable";
+    case HACKUNASSIGNED:
+    default:
+        return "UNASSIGNED-chain";
     }
 }
