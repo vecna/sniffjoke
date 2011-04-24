@@ -69,6 +69,7 @@
 #define FILE_LOG_SESSION        "sniffjoke.log.sessions"
 #define FILE_LOG_PACKET         "sniffjoke.log.packets"
 #define FILE_IPTCPOPT_CONF      "iptcp-options.conf"
+#define IPTCPOPT_TEST_PLUGIN    "HDRoptions_probe"
 
 #define SMALLBUF                64
 #define MEDIUMBUF               256

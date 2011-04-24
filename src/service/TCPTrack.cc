@@ -624,19 +624,18 @@ bool TCPTrack::injectHack(Packet &origpkt)
 bool TCPTrack::lastPktFix(Packet &pkt)
 {
     /* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
-
     TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
     if (ttlfocus.status == TTL_KNOWN)
     {
         if (pkt.wtf == PRESCRIPTION)
         {
-            pkt.ip->ttl = ttlfocus.ttl_estimate - (1 + (random() % 2)); /* [-1, -5], 5 values */
+            pkt.ip->ttl = ttlfocus.ttl_estimate - (1 + (random() % 2)); /* [-1, -2], 2 values */
         }
         else
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
-                pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); /* [+0, +4], 5 values */
+                pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); /* [+0, +3], 4 values */
         }
     }
     else

@@ -84,7 +84,11 @@ start_test() {
     do
         WORKDIR=$TESTID/replica-${i}
         mkdir -p $TESTID/replica-${i}
+
+        # WARNING: read the other WARNING in this file,,, :(
+        cp $WORKPATH/generic/iptcp-options.conf $TESTID/replica-${i}
         echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
+
         echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
         echo "sniffjoke --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
@@ -103,7 +107,7 @@ start_test() {
         fi
 
         INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface" | cut -b 21-`
-        if [ $INTERFACE -n ]; then
+        if [ -n "$INTERFACE" ]; then
             echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
         else
             echo "${red}Unable to detect hijacked interface by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
@@ -310,6 +314,7 @@ for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
     SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
     SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
+    echo "${blue}Starting test vs Linux environment: ($SERVER_ADDR, $SERVER_IP)"
     start_test
 
 #    OS="OTHER"
@@ -352,6 +357,10 @@ chmod 444 plugins-enabled.conf
 mkdir -p $WORKPATH/$LOCATION
 cp $WORKPATH/generic/port-aggressivity.conf $WORKPATH/$LOCATION
 cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
+# WARNING: when HDRoptions_probe is finished, will be started before this script and 
+#          generate a location specific iptcp-options.conf file, NOW are used this 
+#          generic file but will cause a bad analyis about the "malformed" scramble
+cp $WORKPATH/generic/iptcp-options.conf $WORKPATH/$LOCATION
 cp plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
 
 echo "\n${yellow}* sniffjoke-autotest has  a conf file /$TEMPDIR/$LOCATION/plugins_enabled.conf"

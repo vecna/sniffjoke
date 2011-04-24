@@ -131,7 +131,7 @@ private:
     /* import of the file containing the port range settings, and load the
      * default if not present, it use portLine class in portConfParsing.cc */
     void loadAggressivity(void);
-    void initOptionLoader(void);
+    void initOptionLoader(const char *);
 
     bool syncPortsFiles(void);
     bool syncIPListsFiles(void);

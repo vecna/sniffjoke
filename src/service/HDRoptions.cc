@@ -712,14 +712,21 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
 
 optionLoader::optionLoader(const char *fname)
 {
-    uint8_t sjI; // SniffJoke Internal Option Indexing value */
+    /* SniffJoke Internal Option Indexing value */
+    uint8_t sjI; 
+
+    if (isFileLoaded)
+    {
+        LOG_DEBUG("Request of HDRoptions two times!");
+        RUNTIME_EXCEPTION("Request IP/TCP option loaded before file initialization");
+    }
 
     memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
 
-    /* testing modality - all options are loaded without a corruption defined */
-    if (fname == NULL && isFileLoaded)
+    /* testing modality - all options are loaded without a corruption definitions */
+    if (fname == NULL)
     {
-        LOG_DEBUG("file has been loaded previously, loading uninitalized value");
+        LOG_ALL("Option configuration (%s) not supply! Initialiting in testing mode");
 
         sjI = SJ_IPOPT_NOOP;
         loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, UNASSIGNED_VALUE);
@@ -775,16 +782,9 @@ optionLoader::optionLoader(const char *fname)
         return;
     }
 
-    if (isFileLoaded)
-    {
-        LOG_DEBUG("Request of HDRoptions two times!");
-        RUNTIME_EXCEPTION("Request IP/TCP option loaded before file initialization");
-    }
-
     /* loading the configuration file, containings which option bring corruption for your ISP */
     /* NOW - sets with the default used by vecna & evilaliv3 */
     /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
-
     corruption_t writUsage;
     FILE *optInput = fopen(fname, "r");
 
