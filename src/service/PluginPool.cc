@@ -72,7 +72,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
-    LOG_ALL("import of %s: %s with [%s] %s",
+    LOG_ALL("import of %s: %s + globally enabled Scramble %s: %s",
             plugabspath, selfObj->pluginName,
             enabledScramblesStr,
             failInit ? "fail" : "success"
@@ -92,20 +92,21 @@ PluginPool::PluginPool(const sj_config &runcfg) :
 runcfg(runcfg),
 globalEnabledScrambles(0)
 {
+    /* globalEnabledScrambles is set from the sum of each plugin configuration */
     if (runcfg.onlyplugin[0])
         parseOnlyPlugin();
     else
         parseEnablerFile();
 
     if (!size())
-        RUNTIME_EXCEPTION("loaded correctly 0 plugins");
+        RUNTIME_EXCEPTION("fatal error: loaded correctly 0 plugins");
     else
         LOG_ALL("loaded correctly %d plugins", size());
 
     char enabledScramblesStr[LARGEBUF];
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), globalEnabledScrambles);
-    LOG_ALL("loaded plugins globally enabled scrambles: [%s]", enabledScramblesStr);
-    LOG_ALL("sniffjoke will use this configuration to create confusion also on real packets");
+    LOG_ALL("Globally enabled scrambles: [%s]", enabledScramblesStr);
+    LOG_ALL("SniffJoke will use this configuration to create confusion also on real packets");
 }
 
 PluginPool::~PluginPool(void)

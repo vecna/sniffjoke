@@ -128,9 +128,9 @@ removeOrigPkt(false)
 
 judge_t Plugin::pktRandomDamage(uint8_t scrambles)
 {
-    if (ISSET_TTL(scrambles) && RANDOM_PERCENT(75))
+    if (ISSET_TTL(scrambles) && RANDOM_PERCENT(70))
         return PRESCRIPTION;
-    if (ISSET_MALFORMED(scrambles) && RANDOM_PERCENT(80))
+    if (ISSET_MALFORMED(scrambles) && RANDOM_PERCENT(95))
         return MALFORMED;
     return GUILTY;
 }

@@ -1,0 +1,1 @@
+INSTALL(DIRECTORY generic DESTINATION var/sniffjoke)

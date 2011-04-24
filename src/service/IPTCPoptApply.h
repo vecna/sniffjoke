@@ -126,4 +126,45 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
+class To_TIMESTAMP : public optionImplement
+{
+public:
+    To_TIMESTAMP(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
+class To_MSS : public optionImplement
+{
+public:
+    To_MSS(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
+
+class To_SACK : public optionImplement
+{
+public:
+    To_SACK(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
+class To_SACKPERM : public optionImplement
+{
+public:
+    To_SACKPERM(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
+class To_WINDOW : public optionImplement
+{
+public:
+    To_WINDOW(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
 #endif /* HDROPTIONS_H */

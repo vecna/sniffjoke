@@ -91,7 +91,7 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
      *
      */
 
-    const uint8_t size_timestamp = getBestRandsize(oD, 4, 9, 9, 4);
+    const uint8_t size_timestamp = getBestRandsize(oD, 4, 1, 6, 4);
     const uint8_t timestamps = (size_timestamp - 4) / 4;
     const uint8_t index = oD->actual_opts_len;
 
@@ -501,3 +501,55 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 
     return TCPOPT_TIMESTAMP_SIZE;
 }
+
+
+To_TIMESTAMP::To_TIMESTAMP(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
+uint8_t To_TIMESTAMP::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
+To_MSS::To_MSS(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
+uint8_t To_MSS::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
+To_SACK::To_SACK(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
+uint8_t To_SACK::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
+To_SACKPERM::To_SACKPERM(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
+uint8_t To_SACKPERM::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
+To_WINDOW::To_WINDOW(bool enable, uint8_t sjI, const char *n, uint8_t proto, uint8_t opcode, corruption_t c) :
+optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
+{
+}
+
+uint8_t To_WINDOW::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+

@@ -180,7 +180,8 @@ bool HDRoptions::acquirePresentOptions(void)
              * for this reason, in the beta and < 1.0 release the previous message
              * will be used for debug & progress pourposes.
              */
-            LOG_PACKET("INFO: a non trapped %s-options: %02x", protD.protoName, *option);
+            LOG_PACKET("INFO: a non trapped %s-options (pkt %d): hex: %02x dec: %d length %d", 
+                       protD.protoName, pkt.SjPacketId, *option, *option, option_len);
         }
 
         i += option_len;
@@ -207,7 +208,7 @@ bool HDRoptions::checkCondition(optionImplement *isUsable)
      * and we also alter the probability for the first injection
      * in favour of good injection.
      */
-    if (corruptNow && (corruptDone || ((oD.actual_opts_len < 4) && RANDOM_PERCENT(40))))
+    if (corruptNow && (corruptDone || ((oD.actual_opts_len < 4) && RANDOM_PERCENT(45))))
         corruptNow = false;
 
     if (corruptNow)
@@ -218,7 +219,7 @@ bool HDRoptions::checkCondition(optionImplement *isUsable)
     }
     else
     {
-        /* if we have decided to no corrupt we must avoid ONESHOT and repeated options */
+        /* if we have decided to not corrupt we must avoid ONESHOT and repeated options */
         if ((isUsable->info.availableUsage != ONESHOT) && !optTrack[isUsable->sjOptIndex].size())
         {
             nextPlannedInj = SJ_NULL_OPT;
@@ -239,6 +240,8 @@ void HDRoptions::registerOptOccurrence(uint8_t sjOptIndex, uint8_t offset, uint8
 
 struct optionImplement * HDRoptions::updateCorruptAlign(struct optionImplement *oDesc, uint8_t addedLength)
 {
+    struct optionImplement *ret = NULL;
+
     /* the first segment of code update the segments */
     oD.actual_opts_len += addedLength;
     oD.available_opts_len = oD.target_opts_len - oD.actual_opts_len;
@@ -249,14 +252,15 @@ struct optionImplement * HDRoptions::updateCorruptAlign(struct optionImplement *
     /* TWOSHOT management */
     if (oDesc->info.availableUsage == TWOSHOT)
     {
-        if (optTrack[oDesc->info.optValue].size())
-            corruptDone = true;
+    /* remember: don't need to be checked ? 
+     * if (optTrack[oDesc->info.optValue].size()) */
+        if( corruptRequest && !corruptDone)
+            ret = oDesc;
 
-        if (corruptRequest && !corruptDone)
-            return oDesc;
+        corruptDone = true;
     }
 
-    return NULL;
+    return ret;
 }
 
 uint32_t HDRoptions::alignOpthdr()
@@ -268,8 +272,9 @@ uint32_t HDRoptions::alignOpthdr()
         oD.optshdr[oD.actual_opts_len] = protD.END_code;
 
         oD.actual_opts_len += alignBytes;
+        oD.available_opts_len -= alignBytes;
 
-        LOG_PACKET("*+ aligned to %u for %d bytes", oD.actual_opts_len, alignBytes);
+        LOG_PACKET("*+ aligned to %u for %d bytes (avail %d)", oD.actual_opts_len, alignBytes, oD.available_opts_len);
     }
 
     return oD.actual_opts_len;
@@ -313,7 +318,7 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 
 void HDRoptions::completeInjection()
 {
-    /* we cant put those info in protocolSpec because under pkt is
+    /* we can't put those info in protocolSpec because under pkt is
      * called a different method for IP than TCP */
     if (type == IPOPTS_INJECTOR)
     {
@@ -342,7 +347,7 @@ void HDRoptions::injector(uint8_t optIndex)
     if (requested == NULL)
         RUNTIME_EXCEPTION("Invalid index %u in registered protocol %s", optIndex, protD.protoName);
 
-    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
+    LOG_PACKET("*1 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s",
                protD.protoName, oD.actual_opts_len, oD.target_opts_len,
                oD.available_opts_len, corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
@@ -359,6 +364,8 @@ void HDRoptions::injector(uint8_t optIndex)
 
             if (nextPlannedInj != SJ_NULL_OPT)
             {
+                LOG_PACKET("*@ double calling of %s", nextPlannedInj->info.optName);
+
                 ret = nextPlannedInj->optApply(&oD);
 
                 if (ret)
@@ -385,14 +392,14 @@ void HDRoptions::injector(uint8_t optIndex)
         }
     }
 
-    LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
+    LOG_PACKET("*2 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s ",
                protD.protoName, oD.actual_opts_len, oD.target_opts_len,
                oD.available_opts_len, isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
 void HDRoptions::randomInjector()
 {
-    LOG_PACKET("*1 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s",
+    LOG_PACKET("*1 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s",
                protD.protoName, oD.actual_opts_len, oD.target_opts_len,
                oD.available_opts_len, corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
@@ -443,7 +450,7 @@ void HDRoptions::randomInjector()
 
     alignOpthdr();
 
-    LOG_PACKET("*2 %s option: total_opt_len|%u target_opt_len|%u (avail %u) goal|%s ",
+    LOG_PACKET("*2 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s ",
                protD.protoName, oD.actual_opts_len, oD.target_opts_len,
                oD.available_opts_len, isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
@@ -455,23 +462,26 @@ bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
     if (optIndex >= SUPPORTED_OPTIONS)
         RUNTIME_EXCEPTION("Invalid use of optcode index");
 
-    pkt.SELFLOG("before %d opcode %s injection %sstrip iphdrlen|%u tcphdrlen|%u optshdr|%u pktlen|%u",
-                optIndex, type == IPOPTS_INJECTOR ? "IP" : "TCP",
-                strip_previous ? "" : "NOT ",
+    pkt.SELFLOG("BEfORE %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+                protD.protoName, optIndex, strip_previous ? "" : "NOT ",
                 pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
     if (prepareInjection(corrupt, strip_previous))
     {
         injector(optIndex);
 
+        /* in a single Injection request, we don't finalize if not reached the target */
         if ((goalAchieved = isGoalAchieved()) == true)
             completeInjection();
-    }
 
-    pkt.SELFLOG("after %d opcode %s injection %sstrip iphdrlen|%u tcphdrlen|%u optshdr|%u pktlen|%u",
-                optIndex, type == IPOPTS_INJECTOR ? "IP" : "TCP",
-                strip_previous ? "" : "NOT ",
-                pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
+        pkt.SELFLOG("AfTER %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+                    protD.protoName, optIndex, strip_previous ? "" : "NOT ",
+                    pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
+    }
+    else
+    {
+        pkt.SELFLOG("Unable to prepare injection");
+    }
 
     return goalAchieved;
 }
@@ -480,9 +490,8 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
     bool goalAchieved = false;
 
-    pkt.SELFLOG("before random %s injection %sstrip iphdrlen|%u tcphdrlen|%u optshdr|%u pktlen|%u",
-                type == IPOPTS_INJECTOR ? "IP" : "TCP",
-                strip_previous ? "" : "NOT ",
+    pkt.SELFLOG("BEfORE random %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+                protD.protoName, strip_previous ? "" : "NOT ",
                 pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
     if (prepareInjection(corrupt, strip_previous))
@@ -490,13 +499,14 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
         randomInjector();
 
         goalAchieved = isGoalAchieved();
-        if (goalAchieved)
-            completeInjection();
+
+        /* we copy the option either the goal has been reached or not, 
+         * in both cases, because the happening is managed also by the called routine */
+        completeInjection();
     }
 
-    pkt.SELFLOG("after random %s injection %sstrip iphdrlen|%u tcphdrlen|%u optshdr|%u pktlen|%u",
-                type == IPOPTS_INJECTOR ? "IP" : "TCP",
-                strip_previous ? "" : "NOT ",
+    pkt.SELFLOG("AfTER random %s %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+                protD.protoName, strip_previous ? "" : "NOT ",
                 pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
     return goalAchieved;
@@ -528,7 +538,7 @@ bool HDRoptions::removeOption(uint8_t opt)
     return true;
 }
 
-HDRoptions::~HDRoptions()
+HDRoptions::~HDRoptions(void)
 {
 #ifdef HEAVY_HDROPT_DEBUG
 #define HDR_PREFIX  "HDRoLog/"
@@ -536,30 +546,44 @@ HDRoptions::~HDRoptions()
 
     char fname[MEDIUMBUF];
     FILE *HDRoLog;
-    uint32_t i;
+    uint32_t start, end;
 
     mkdir(HDR_PREFIX, 0770);
-    snprintf(fname, MEDIUMBUF, "%s%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))));
+    snprintf(fname, MEDIUMBUF, "%s%s-%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))), protD.protoName);
 
     if((HDRoLog = fopen(fname, "a+")) == NULL)
         RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
 
-    fprintf(HDRoLog, "%d %d%d%d\t",
-        pkt.SjPacketId, corruptRequest, corruptDone, corruptNow
+    fprintf(HDRoLog, "RD %d%d%d %d\tSAPFR{%d%d%d%d%d}\t",
+        corruptRequest, corruptDone, corruptNow, pkt.SjPacketId,
+        pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst
     );
 
-    for(i = 0; i < SUPPORTED_OPTIONS; i++)
+    if(type == IPOPTS_INJECTOR)
     {
-        if(optTrack[i].size() == false)
-            fprintf(HDRoLog, " ~%d", i);
+        start = FIRST_IPOPT; end = LAST_IPOPT;
+    }
+    else
+    {
+        start = FIRST_TCPOPT; end = LAST_TCPOPT;
+    }
+
+    while(start <= end)
+    {
+        if(optTrack[start].size() == false)
+        {
+            fprintf(HDRoLog, " ~%d", start);
+        }
         else
         {
-            optionImplement *yep = optConfigData.getSingleOption(i);
+            optionImplement *yep = optConfigData.getSingleOption(start);
             fprintf(HDRoLog, " %s", yep->info.optName);
 
-            for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); it++)
+            for (vector<option_occurrence>::iterator it = optTrack[start].begin(); it != optTrack[start].end(); it++)
                 fprintf(HDRoLog, ":%d(%d)", it->off, it->len);
         }
+
+        start++;
     }
     fprintf(HDRoLog, "\n");
 
@@ -733,12 +757,21 @@ optionLoader::optionLoader(const char *fname)
         sjI = SJ_TCPOPT_PAWSCORRUPT;
         loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, UNASSIGNED_VALUE);
 
-#if 0
-        /* not implemented ATM */
-        loadedOptions[SJ_TCPOPT_TIMESTAMP] =
-        loadedOptions[SJ_TCPOPT_MSS] =
-        loadedOptions[SJ_TCPOPT_SACK] =
-#endif
+        sjI = SJ_TCPOPT_TIMESTAMP;
+        loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false, sjI, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP, UNASSIGNED_VALUE);
+
+        sjI = SJ_TCPOPT_MSS;
+        loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false, sjI, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG, UNASSIGNED_VALUE);
+
+        sjI = SJ_TCPOPT_SACK;
+        loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false, sjI, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK, UNASSIGNED_VALUE);
+
+        sjI = SJ_TCPOPT_SACKPERM;
+        loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false, sjI, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED, UNASSIGNED_VALUE);
+
+        sjI = SJ_TCPOPT_WINDOW;
+        loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false, sjI, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW, UNASSIGNED_VALUE);
+
         return;
     }
 
@@ -760,51 +793,71 @@ optionLoader::optionLoader(const char *fname)
 
     sjI = SJ_IPOPT_NOOP;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, NOT_CORRUPT);
+    loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, writUsage);
 
     sjI = SJ_IPOPT_TIMESTAMP;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_TIMESTAMP(true, sjI, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP, TWOSHOT);
+    loadedOptions[sjI] = new Io_TIMESTAMP(true, sjI, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP, writUsage);
 
     sjI = SJ_IPOPT_TIMESTOVERFLOW;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_TIMESTOVERFLOW(false, sjI, "IP time overflow", IPPROTO_IP, DUMMY_OPCODE, ONESHOT);
+    loadedOptions[sjI] = new Io_TIMESTOVERFLOW(false, sjI, "IP time overflow", IPPROTO_IP, DUMMY_OPCODE, writUsage);
 
     sjI = SJ_IPOPT_LSRR;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_LSRR(true, sjI, "Loose source routing", IPPROTO_IP, IPOPT_LSRR, ONESHOT);
+    loadedOptions[sjI] = new Io_LSRR(true, sjI, "Loose source routing", IPPROTO_IP, IPOPT_LSRR, writUsage);
 
     sjI = SJ_IPOPT_RR;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_RR(true, sjI, "Record route", IPPROTO_IP, IPOPT_RR, ONESHOT);
+    loadedOptions[sjI] = new Io_RR(true, sjI, "Record route", IPPROTO_IP, IPOPT_RR, writUsage);
 
     sjI = SJ_IPOPT_RA;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_RA(true, sjI, "Router advertising", IPPROTO_IP, IPOPT_RA, NOT_CORRUPT);
+    loadedOptions[sjI] = new Io_RA(true, sjI, "Router advertising", IPPROTO_IP, IPOPT_RA, writUsage);
 
     sjI = SJ_IPOPT_CIPSO;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_CIPSO(true, sjI, "Cipso", IPPROTO_IP, IPOPT_CIPSO, ONESHOT);
+    loadedOptions[sjI] = new Io_CIPSO(true, sjI, "Cipso", IPPROTO_IP, IPOPT_CIPSO, writUsage);
 
     sjI = SJ_IPOPT_SEC;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_SEC(true, sjI, "Security", IPPROTO_IP, IPOPT_SEC, ONESHOT);
+    loadedOptions[sjI] = new Io_SEC(true, sjI, "Security", IPPROTO_IP, IPOPT_SEC, writUsage);
 
     sjI = SJ_IPOPT_SID;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_SID(true, sjI, "Session ID", IPPROTO_IP, IPOPT_SID, TWOSHOT);
+    loadedOptions[sjI] = new Io_SID(true, sjI, "Session ID", IPPROTO_IP, IPOPT_SID, writUsage);
 
     sjI = SJ_TCPOPT_NOP;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new To_NOP(true, sjI, "TCP NOOP", IPPROTO_TCP, TCPOPT_NOP, NOT_CORRUPT);
+    loadedOptions[sjI] = new To_NOP(true, sjI, "TCP NOOP", IPPROTO_TCP, TCPOPT_NOP, writUsage);
 
     sjI = SJ_TCPOPT_MD5SIG;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new To_MD5SIG(false, sjI, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG, ONESHOT);
+    loadedOptions[sjI] = new To_MD5SIG(false, sjI, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG, writUsage);
 
     sjI = SJ_TCPOPT_PAWSCORRUPT;
     writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, ONESHOT);
+    loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, writUsage);
+
+    sjI = SJ_TCPOPT_TIMESTAMP;
+    writUsage = lineParser(optInput, sjI);
+    loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false, sjI, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP, writUsage);
+
+    sjI = SJ_TCPOPT_MSS;
+    writUsage = lineParser(optInput, sjI);
+    loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false, sjI, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG, writUsage);
+
+    sjI = SJ_TCPOPT_SACK;
+    writUsage = lineParser(optInput, sjI);
+    loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false, sjI, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK, writUsage);
+
+    sjI = SJ_TCPOPT_SACKPERM;
+    writUsage = lineParser(optInput, sjI);
+    loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false, sjI, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED, writUsage);
+
+    sjI = SJ_TCPOPT_WINDOW;
+    writUsage = lineParser(optInput, sjI);
+    loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false, sjI, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW, writUsage);
 
     fclose(optInput);
     isFileLoaded = true;

@@ -31,7 +31,7 @@
 #define SJ_DEFINES_H
 
 #define SW_NAME                 "SniffJoke"
-#define SW_VERSION              "0.4-rc1"
+#define SW_VERSION              "0.4-beta6"
 
 /* Sniffjoke defaults config values */
 #define DEFAULT_DIR             INSTALL_STATEDIR
@@ -165,9 +165,11 @@
 #define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT + 4
 #define SJ_TCPOPT_MSS               LAST_IPOPT + 5
 #define SJ_TCPOPT_SACK              LAST_IPOPT + 6
+#define SJ_TCPOPT_SACKPERM          LAST_IPOPT + 7
+#define SJ_TCPOPT_WINDOW            LAST_IPOPT + 8
 
 #define FIRST_TCPOPT                SJ_TCPOPT_NOP
-#define LAST_TCPOPT                 SJ_TCPOPT_SACK
+#define LAST_TCPOPT                 SJ_TCPOPT_WINDOW
 
 /* the last code + 1 */
 #define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)

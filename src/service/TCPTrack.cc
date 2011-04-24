@@ -630,13 +630,13 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     {
         if (pkt.wtf == PRESCRIPTION)
         {
-            pkt.ip->ttl = ttlfocus.ttl_estimate - (1 + (random() % 5)); /* [-1, -5], 5 values */
+            pkt.ip->ttl = ttlfocus.ttl_estimate - (1 + (random() % 2)); /* [-1, -5], 5 values */
         }
         else
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
-                pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 5); /* [+0, +4], 5 values */
+                pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); /* [+0, +4], 5 values */
         }
     }
     else
@@ -662,7 +662,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 
         if (pkt.wtf != PRESCRIPTION)
         {
-            /* MISTIFICATION FOR WTF != PRESCRIPTION ALSO ON DOWNGRADE */
+            /* MISTIFICATION APPLY ON DOWNGRADE, RANDOMIZING A BIT THE ORIGINAL TTL VALUE */
 
             /* apply mistification if PRESCRIPTION is globally enabled */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
@@ -724,9 +724,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 
     if (pkt.wtf != MALFORMED)
     {
-        /* MISTIFICATION FOR WTF != MALFORMED ALSO ON DOWNGRADE */
+        /* MISTIFICATION PACKET NOT CORRUPTED BY IP/TCP OPTIONS */
 
-        /* apply mistification if MALFORMED is globally enabled */
+        /* IP/TCP options scambling enabled globally (and/or for destination) */
         if (ISSET_MALFORMED(plugin_pool.enabledScrambles()))
         {
             if (RANDOM_PERCENT(66))
@@ -772,7 +772,17 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     if (pkt.wtf == GUILTY)
         pkt.corruptSum();
 
-    pkt.SELFLOG("pkt ready to be sent");
+    /* intensive debug before the packet release */ 
+    if(runcfg.debug_level >= PACKET_LEVEL) 
+    {
+        char enabled[SMALLBUF], choosable[SMALLBUF];
+
+        snprintfScramblesList(enabled, SMALLBUF, plugin_pool.enabledScrambles());
+        snprintfScramblesList(choosable, SMALLBUF, pkt.choosableScramble);
+
+        pkt.SELFLOG("pkt COMPLETED! global [%s], choosable [%s]", enabled, choosable);
+    }
+
     return true;
 
 drop_packet:
