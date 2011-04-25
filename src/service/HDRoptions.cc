@@ -134,17 +134,16 @@ bool HDRoptions::acquirePresentOptions(void)
     {
         uint8_t * const option = &oD.optshdr[i];
 
-        /* NOP_code will be IPOPT_NOOP or TCPOPT_NOP either */
         if (*option == protD.NOP_code)
         {
             i++;
             continue;
         }
 
-        if (*option == protD.END_code)
+        else if (*option == protD.END_code)
             break;
 
-        uint8_t option_len = (uint8_t) oD.optshdr[i + 1];
+        const uint8_t option_len = (uint8_t) oD.optshdr[i + 1];
         if (option_len == 0 || option_len > (oD.actual_opts_len - i))
         {
             /*
@@ -249,8 +248,8 @@ struct optionImplement * HDRoptions::updateCorruptAlign(struct optionImplement *
     if (oDesc->info.availableUsage == ONESHOT)
         corruptDone = true;
 
-    /* TWOSHOT management */
-    if (oDesc->info.availableUsage == TWOSHOT)
+        /* TWOSHOT management */
+    else if (oDesc->info.availableUsage == TWOSHOT)
     {
         if (corruptRequest && !corruptDone)
             ret = oDesc;
@@ -454,57 +453,29 @@ void HDRoptions::randomInjector()
 
 bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
 {
-    bool goalAchieved = false;
-
     if (optIndex >= SUPPORTED_OPTIONS)
         RUNTIME_EXCEPTION("invalid use of optcode index");
 
-    pkt.SELFLOG("BEFORE %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
-                protD.protoName, optIndex, strip_previous ? "" : "NOT ",
-                pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
-
     if (prepareInjection(corrupt, strip_previous))
-    {
         injector(optIndex);
 
-        /* in a single Injection request, we don't finalize if not reached the target */
-        if ((goalAchieved = isGoalAchieved()) == true)
-            completeInjection();
+    if (!isGoalAchieved())
+        return false;
 
-        pkt.SELFLOG("AFTER %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
-                    protD.protoName, optIndex, strip_previous ? "" : "NOT ",
-                    pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
-    }
-    else
-    {
-        pkt.SELFLOG("Unable to prepare injection");
-    }
-
-    return goalAchieved;
+    completeInjection();
+    return true;
 }
 
 bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
-    bool goalAchieved = false;
-
-
     if (prepareInjection(corrupt, strip_previous))
-    {
         randomInjector();
 
-        goalAchieved = isGoalAchieved();
+    if (!isGoalAchieved())
+        return false;
 
-        /* we copy the option either the goal has been reached or not, 
-         * in both cases, because the happening is managed also by the called routine */
-
-        completeInjection();
-    }
-
-    pkt.SELFLOG("AFTER random %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
-                protD.protoName, strip_previous ? "" : "NOT ",
-                pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
-
-    return goalAchieved;
+    completeInjection();
+    return true;
 }
 
 bool HDRoptions::removeOption(uint8_t opt)
@@ -638,7 +609,7 @@ void optionLoader::getInitializedOpts(uint8_t reqProto)
     counter = 0;
 }
 
-optionImplement * optionLoader::getNextOpts(void)
+optionImplement* optionLoader::getNextOpts(void)
 {
     ++counter;
 
@@ -651,7 +622,7 @@ optionImplement * optionLoader::getNextOpts(void)
         return getNextOpts();
 }
 
-optionImplement * optionLoader::getSingleOption(uint8_t sjOptIndex)
+optionImplement* optionLoader::getSingleOption(uint8_t sjOptIndex)
 {
     return (loadedOptions[sjOptIndex]);
 }
@@ -704,7 +675,7 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
     return retval;
 }
 
-optionLoader::optionLoader(const char *fname)
+void optionLoader::optionLoader(const char *fname)
 {
     /* SniffJoke Internal Option Indexing value */
     uint8_t sjI;
@@ -759,102 +730,102 @@ optionLoader::optionLoader(const char *fname)
         loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, UNASSIGNED_VALUE);
 
         sjI = SJ_TCPOPT_TIMESTAMP;
-        loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false, sjI, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP, UNASSIGNED_VALUE);
+        loadedOptions[sjI] = new To_TIMESTAMP(false, sjI, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP, UNASSIGNED_VALUE);
 
         sjI = SJ_TCPOPT_MSS;
-        loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false, sjI, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG, UNASSIGNED_VALUE);
+        loadedOptions[sjI] = new To_MSS(false, sjI, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG, UNASSIGNED_VALUE);
 
         sjI = SJ_TCPOPT_SACK;
-        loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false, sjI, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK, UNASSIGNED_VALUE);
+        loadedOptions[sjI] = new To_SACK(false, sjI, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK, UNASSIGNED_VALUE);
 
         sjI = SJ_TCPOPT_SACKPERM;
-        loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false, sjI, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED, UNASSIGNED_VALUE);
+        loadedOptions[sjI] = new To_SACKPERM(false, sjI, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED, UNASSIGNED_VALUE);
 
         sjI = SJ_TCPOPT_WINDOW;
-        loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false, sjI, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW, UNASSIGNED_VALUE);
-
-        return;
+        loadedOptions[sjI] = new To_WINDOW(false, sjI, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW, UNASSIGNED_VALUE);
     }
+    else
+    {
+        /* loading the configuration file, containings which option bring corruption for your ISP */
+        /* NOW - sets with the default used by vecna & evilaliv3 */
+        /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
+        corruption_t writUsage;
+        FILE *optInput = fopen(fname, "r");
 
-    /* loading the configuration file, containings which option bring corruption for your ISP */
-    /* NOW - sets with the default used by vecna & evilaliv3 */
-    /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
-    corruption_t writUsage;
-    FILE *optInput = fopen(fname, "r");
+        if (optInput == NULL)
+            RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", fname, strerror(errno));
 
-    if (optInput == NULL)
-        RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", fname, strerror(errno));
+        sjI = SJ_IPOPT_NOOP;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, writUsage);
 
-    sjI = SJ_IPOPT_NOOP;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, writUsage);
+        sjI = SJ_IPOPT_TIMESTAMP;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_TIMESTAMP(true, sjI, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP, writUsage);
 
-    sjI = SJ_IPOPT_TIMESTAMP;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_TIMESTAMP(true, sjI, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP, writUsage);
+        sjI = SJ_IPOPT_TIMESTOVERFLOW;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_TIMESTOVERFLOW(false, sjI, "IP time overflow", IPPROTO_IP, DUMMY_OPCODE, writUsage);
 
-    sjI = SJ_IPOPT_TIMESTOVERFLOW;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_TIMESTOVERFLOW(false, sjI, "IP time overflow", IPPROTO_IP, DUMMY_OPCODE, writUsage);
+        sjI = SJ_IPOPT_LSRR;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_LSRR(true, sjI, "Loose source routing", IPPROTO_IP, IPOPT_LSRR, writUsage);
 
-    sjI = SJ_IPOPT_LSRR;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_LSRR(true, sjI, "Loose source routing", IPPROTO_IP, IPOPT_LSRR, writUsage);
+        sjI = SJ_IPOPT_RR;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_RR(true, sjI, "Record route", IPPROTO_IP, IPOPT_RR, writUsage);
 
-    sjI = SJ_IPOPT_RR;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_RR(true, sjI, "Record route", IPPROTO_IP, IPOPT_RR, writUsage);
+        sjI = SJ_IPOPT_RA;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_RA(true, sjI, "Router advertising", IPPROTO_IP, IPOPT_RA, writUsage);
 
-    sjI = SJ_IPOPT_RA;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_RA(true, sjI, "Router advertising", IPPROTO_IP, IPOPT_RA, writUsage);
+        sjI = SJ_IPOPT_CIPSO;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_CIPSO(true, sjI, "Cipso", IPPROTO_IP, IPOPT_CIPSO, writUsage);
 
-    sjI = SJ_IPOPT_CIPSO;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_CIPSO(true, sjI, "Cipso", IPPROTO_IP, IPOPT_CIPSO, writUsage);
+        sjI = SJ_IPOPT_SEC;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_SEC(true, sjI, "Security", IPPROTO_IP, IPOPT_SEC, writUsage);
 
-    sjI = SJ_IPOPT_SEC;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_SEC(true, sjI, "Security", IPPROTO_IP, IPOPT_SEC, writUsage);
+        sjI = SJ_IPOPT_SID;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new Io_SID(true, sjI, "Session ID", IPPROTO_IP, IPOPT_SID, writUsage);
 
-    sjI = SJ_IPOPT_SID;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new Io_SID(true, sjI, "Session ID", IPPROTO_IP, IPOPT_SID, writUsage);
+        sjI = SJ_TCPOPT_NOP;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_NOP(true, sjI, "TCP NOOP", IPPROTO_TCP, TCPOPT_NOP, writUsage);
 
-    sjI = SJ_TCPOPT_NOP;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new To_NOP(true, sjI, "TCP NOOP", IPPROTO_TCP, TCPOPT_NOP, writUsage);
+        sjI = SJ_TCPOPT_MD5SIG;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_MD5SIG(false, sjI, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG, writUsage);
 
-    sjI = SJ_TCPOPT_MD5SIG;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new To_MD5SIG(false, sjI, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG, writUsage);
+        sjI = SJ_TCPOPT_PAWSCORRUPT;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, writUsage);
 
-    sjI = SJ_TCPOPT_PAWSCORRUPT;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[sjI] = new To_PAWSCORRUPT(false, sjI, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE, writUsage);
+        sjI = SJ_TCPOPT_TIMESTAMP;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_TIMESTAMP(false, sjI, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP, writUsage);
 
-    sjI = SJ_TCPOPT_TIMESTAMP;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false, sjI, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP, writUsage);
+        sjI = SJ_TCPOPT_MSS;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_MSS(false, sjI, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG, writUsage);
 
-    sjI = SJ_TCPOPT_MSS;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false, sjI, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG, writUsage);
+        sjI = SJ_TCPOPT_SACK;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_SACK(false, sjI, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK, writUsage);
 
-    sjI = SJ_TCPOPT_SACK;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false, sjI, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK, writUsage);
+        sjI = SJ_TCPOPT_SACKPERM;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_SACKPERM(false, sjI, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED, writUsage);
 
-    sjI = SJ_TCPOPT_SACKPERM;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false, sjI, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED, writUsage);
+        sjI = SJ_TCPOPT_WINDOW;
+        writUsage = lineParser(optInput, sjI);
+        loadedOptions[sjI] = new To_WINDOW(false, sjI, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW, writUsage);
 
-    sjI = SJ_TCPOPT_WINDOW;
-    writUsage = lineParser(optInput, sjI);
-    loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false, sjI, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW, writUsage);
+        fclose(optInput);
+        isFileLoaded = true;
 
-    fclose(optInput);
-    isFileLoaded = true;
-
-    LOG_DEBUG("option loaded correctly from %s, %d values", fname, sjI + 1);
+        LOG_DEBUG("option loaded correctly from %s, %d values", fname, sjI + 1);
+    }
 }
