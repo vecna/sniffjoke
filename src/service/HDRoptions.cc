@@ -282,7 +282,7 @@ uint32_t HDRoptions::alignOpthdr()
 
 void HDRoptions::copyOpthdr(uint8_t * dst)
 {
-    memcpy(dst, &oD.optshdr[0], oD.optshdr.size());
+    memcpy(dst, &oD.optshdr[0], oD.actual_opts_len);
 }
 
 bool HDRoptions::isGoalAchieved()
