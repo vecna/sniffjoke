@@ -343,6 +343,19 @@ void Packet::iphdrResize(uint8_t size)
 
     vector<unsigned char>::iterator it = pbuf.begin();
 
+    /* DEBUG */
+    int i = 0;
+    for (i = 0; i < iphdrlen; i++)
+    {
+        printf("%u %x\n", i, pbuf[i]);
+    }
+
+    for (int j = 0; j < tcphdrlen; j++)
+    {
+        printf("%u %x\n", i + j, pbuf[i + j]);
+    }
+    /* ENDEBUG */
+
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
@@ -354,6 +367,18 @@ void Packet::iphdrResize(uint8_t size)
         ip->tot_len = htons(pktlen - (iphdrlen - size));
         pbuf.erase(it + size, it + iphdrlen);
     }
+
+    /* DEBUG */
+    for (i = 0; i < size; i++)
+    {
+        printf("%u %x\n", i, pbuf[i]);
+    }
+
+    for (int j = 0; j < tcphdrlen; j++)
+    {
+        printf("%u %x\n", i + j, pbuf[i + j]);
+    }
+    /* ENDEBUG */
 
     updatePacketMetadata();
 }
@@ -557,7 +582,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
             snprintf(protoinfo, sizeof (protoinfo), "other proto: %d", ip->protocol);
             break;
         default:
-            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", proto);
+            RUNTIME_EXCEPTION("fATAL CODE [CYN1C]: please send a notification to the developers (%u)", proto);
             break;
         }
 
@@ -585,9 +610,11 @@ Packet::~Packet()
 #define PACKETLOG_PREFIX_TCP   "TCPpktLog/"
 #define PACKETLOG_PREFIX_UDP   "UDPpktLog/"
     char fname[MEDIUMBUF];
-    const char *protoprefix;
     FILE *packetLog;
-    uint16_t sport, dport;
+
+    const char *protoprefix = NULL;
+    uint16_t sport = 0;
+    uint16_t dport = 0;
 
     switch (proto)
     {
@@ -602,19 +629,22 @@ Packet::~Packet()
         dport = ntohs(udp->dest);
         break;
     case ICMP:
+    case OTHER_IP:
         return;
+    case PROTOUNASSIGNED:
+        RUNTIME_EXCEPTION("FATAL CODE [L3B0WSK1]: please send a notification to the developers (%u)", proto);
     }
 
     mkdir(protoprefix, 0770);
     snprintf(fname, MEDIUMBUF, "%s%s", protoprefix, inet_ntoa(*((struct in_addr *) &ip->daddr)));
 
-    if((packetLog = fopen(fname, "a+")) == NULL)
-        RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
+    if ((packetLog = fopen(fname, "a+")) == NULL)
+        RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
-    fprintf(packetLog, "%d\t%d:%d\t%s\t%d\tchain %s, position %d, judge [%s], queue %d, from [%s]\n", 
-        SjPacketId, sport, dport, 
-        fragment ? "frg" : "", pbuf.size(), getChainStr(chainflag), 
-        position, getWtfStr(wtf), queue, getSourceStr(source) );
+    fprintf(packetLog, "%d\t%d:%d\t%s\t%d\tchain %s, position %d, judge [%s], queue %d, from [%s]\n",
+            SjPacketId, sport, dport,
+            fragment ? "frg" : "", (unsigned int) pbuf.size(), getChainStr(chainflag),
+            position, getWtfStr(wtf), queue, getSourceStr(source));
 
     fclose(packetLog);
 #endif
@@ -624,16 +654,16 @@ const char * Packet::getWtfStr(judge_t wtf) const
 {
     switch (wtf)
     {
-    case PRESCRIPTION: 
+    case PRESCRIPTION:
         return "ttlexpire";
     case INNOCENT:
         return "innocent";
-    case GUILTY: 
+    case GUILTY:
         return "badcksum";
-    case MALFORMED: 
+    case MALFORMED:
         return "malformed";
-    case JUDGEUNASSIGNED: 
-    default: 
+    case JUDGEUNASSIGNED:
+    default:
         return "UNASSIGNED-wtf";
     }
 }
@@ -642,23 +672,23 @@ const char * Packet::getSourceStr(source_t source) const
 {
     switch (source)
     {
-    case TUNNEL: 
+    case TUNNEL:
         return "tunnel";
-    case NETWORK: 
+    case NETWORK:
         return "network";
-    case PLUGIN: 
+    case PLUGIN:
         return "hackapplication";
-    case TRACEROUTE: 
+    case TRACEROUTE:
         return "ttl bruteforce";
-    case SOURCEUNASSIGNED: 
-    default: 
+    case SOURCEUNASSIGNED:
+    default:
         return "UNASSIGNED-src";
     }
 }
 
 const char * Packet::getChainStr(chaining_t chainflag) const
 {
-    switch(chainflag)
+    switch (chainflag)
     {
     case FINALHACK:
         return "final";

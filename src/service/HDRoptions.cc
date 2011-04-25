@@ -69,7 +69,7 @@ nextPlannedInj(SJ_NULL_OPT)
     optionImplement *usableOption;
 
     if (optConfigData.isFileLoaded == false)
-        RUNTIME_EXCEPTION("Invalid use of HDRoptions: is not configured optionLoader statis objs");
+        RUNTIME_EXCEPTION("invalid use of HDRoptions: is not configured optionLoader statis objs");
 
     switch (type)
     {
@@ -180,8 +180,8 @@ bool HDRoptions::acquirePresentOptions(void)
              * for this reason, in the beta and < 1.0 release the previous message
              * will be used for debug & progress pourposes.
              */
-            LOG_PACKET("INFO: a non trapped %s-options (pkt %d): hex: %02x dec: %d length %d", 
-                       protD.protoName, pkt.SjPacketId, *option, *option, option_len);
+            RUNTIME_EXCEPTION("INFO: a non trapped %s-options (pkt %d): hex: %02x dec: %d length %d",
+                              protD.protoName, pkt.SjPacketId, *option, *option, option_len);
         }
 
         i += option_len;
@@ -252,12 +252,12 @@ struct optionImplement * HDRoptions::updateCorruptAlign(struct optionImplement *
     /* TWOSHOT management */
     if (oDesc->info.availableUsage == TWOSHOT)
     {
-    /* remember: don't need to be checked ? 
-     * if (optTrack[oDesc->info.optValue].size()) */
-        if( corruptRequest && !corruptDone)
+        if (corruptRequest && !corruptDone)
             ret = oDesc;
 
-        corruptDone = true;
+        /* check if this is the second injection */
+        if (optTrack[oDesc->sjOptIndex].size() > 1)
+            corruptDone = true;
     }
 
     return ret;
@@ -345,7 +345,7 @@ void HDRoptions::injector(uint8_t optIndex)
     }
 
     if (requested == NULL)
-        RUNTIME_EXCEPTION("Invalid index %u in registered protocol %s", optIndex, protD.protoName);
+        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", optIndex, protD.protoName);
 
     LOG_PACKET("*1 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s",
                protD.protoName, oD.actual_opts_len, oD.target_opts_len,
@@ -373,7 +373,7 @@ void HDRoptions::injector(uint8_t optIndex)
                     registerOptOccurrence(nextPlannedInj->info.optValue, oD.actual_opts_len, ret);
 
                     if (updateCorruptAlign(nextPlannedInj, ret) != SJ_NULL_OPT)
-                        RUNTIME_EXCEPTION("Invalid implementation of option #%d", nextPlannedInj->sjOptIndex);
+                        RUNTIME_EXCEPTION("invalid implementation of option #%d", nextPlannedInj->sjOptIndex);
                 }
                 else
                 {
@@ -428,10 +428,10 @@ void HDRoptions::randomInjector()
 
                 if (ret)
                 {
-                    registerOptOccurrence(nextPlannedInj->info.optValue, oD.actual_opts_len, ret);
+                    registerOptOccurrence(nextPlannedInj->sjOptIndex, oD.actual_opts_len, ret);
 
                     if (updateCorruptAlign(nextPlannedInj, ret) != SJ_NULL_OPT)
-                        RUNTIME_EXCEPTION("Invalid implementation of option #%d", nextPlannedInj->sjOptIndex);
+                        RUNTIME_EXCEPTION("invalid implementation of option #%d", nextPlannedInj->sjOptIndex);
                 }
                 else
                 {
@@ -460,9 +460,9 @@ bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
     bool goalAchieved = false;
 
     if (optIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("Invalid use of optcode index");
+        RUNTIME_EXCEPTION("invalid use of optcode index");
 
-    pkt.SELFLOG("BEfORE %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+    pkt.SELFLOG("BEFORE %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
                 protD.protoName, optIndex, strip_previous ? "" : "NOT ",
                 pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
@@ -470,11 +470,13 @@ bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
     {
         injector(optIndex);
 
+        alignOpthdr();
+
         /* in a single Injection request, we don't finalize if not reached the target */
         if ((goalAchieved = isGoalAchieved()) == true)
             completeInjection();
 
-        pkt.SELFLOG("AfTER %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+        pkt.SELFLOG("AFTER %d single opcode[%d] %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
                     protD.protoName, optIndex, strip_previous ? "" : "NOT ",
                     pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
     }
@@ -490,7 +492,7 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
     bool goalAchieved = false;
 
-    pkt.SELFLOG("BEfORE random %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+    pkt.SELFLOG("BEFORE random %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
                 protD.protoName, strip_previous ? "" : "NOT ",
                 pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
@@ -498,14 +500,17 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
     {
         randomInjector();
 
+        alignOpthdr();
+
         goalAchieved = isGoalAchieved();
 
         /* we copy the option either the goal has been reached or not, 
          * in both cases, because the happening is managed also by the called routine */
+
         completeInjection();
     }
 
-    pkt.SELFLOG("AfTER random %s %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
+    pkt.SELFLOG("AFTER random %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
                 protD.protoName, strip_previous ? "" : "NOT ",
                 pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
@@ -515,10 +520,10 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 bool HDRoptions::removeOption(uint8_t opt)
 {
     if (opt >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("Invalid use of optcode index");
+        RUNTIME_EXCEPTION("invalid use of optcode index");
 
     /* if an option is request to be deleted, we need to check if it exists! */
-    if (optTrack[opt].size() == false)
+    if (optTrack[opt].size() == 0)
         return false;
 
     for (vector<option_occurrence>::iterator it = optTrack[opt].begin(); it != optTrack[opt].end(); it = optTrack[opt].erase(it))
@@ -551,26 +556,28 @@ HDRoptions::~HDRoptions(void)
     mkdir(HDR_PREFIX, 0770);
     snprintf(fname, MEDIUMBUF, "%s%s-%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))), protD.protoName);
 
-    if((HDRoLog = fopen(fname, "a+")) == NULL)
-        RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
+    if ((HDRoLog = fopen(fname, "a+")) == NULL)
+        RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
     fprintf(HDRoLog, "RD %d%d%d %d\tSAPFR{%d%d%d%d%d}\t",
-        corruptRequest, corruptDone, corruptNow, pkt.SjPacketId,
-        pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst
-    );
+            corruptRequest, corruptDone, corruptNow, pkt.SjPacketId,
+            pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst
+            );
 
-    if(type == IPOPTS_INJECTOR)
+    if (type == IPOPTS_INJECTOR)
     {
-        start = FIRST_IPOPT; end = LAST_IPOPT;
+        start = FIRST_IPOPT;
+        end = LAST_IPOPT;
     }
     else
     {
-        start = FIRST_TCPOPT; end = LAST_TCPOPT;
+        start = FIRST_TCPOPT;
+        end = LAST_TCPOPT;
     }
 
-    while(start <= end)
+    while (start <= end)
     {
-        if(optTrack[start].size() == false)
+        if (optTrack[start].size() == false)
         {
             fprintf(HDRoLog, " ~%d", start);
         }
@@ -666,7 +673,7 @@ optionImplement * optionLoader::getSingleOption(uint8_t sjOptIndex)
 optionLoader::optionLoader(void)
 {
     if (!isFileLoaded)
-        RUNTIME_EXCEPTION("Request IP/TCP option loaded before file initialization");
+        RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
 }
 
 corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
@@ -691,19 +698,19 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
         sscanf(line, "%d,%d", &readedIndex, &readedCorruption);
 
         if (readedIndex < 1 || readedIndex > (SUPPORTED_OPTIONS - 1))
-            RUNTIME_EXCEPTION("In option file invalid index at line %d", linecnt);
+            RUNTIME_EXCEPTION("in option file invalid index at line %d", linecnt);
 
         if (readedIndex == optLooked)
             retval = (corruption_t) readedCorruption;
         else
-            RUNTIME_EXCEPTION("Found index %d instead of the expected %d (line %d)",
+            RUNTIME_EXCEPTION("found index %d instead of the expected %d (line %d)",
                               readedIndex, optLooked, linecnt);
 
     }
     while (retval == UNASSIGNED_VALUE);
 
     if (retval == UNASSIGNED_VALUE)
-        RUNTIME_EXCEPTION("Unable to found option index %d in the option config file", optLooked);
+        RUNTIME_EXCEPTION("unable to found option index %d in the option config file", optLooked);
 
     LOG_VERBOSE("option index %d found value corruption value of %d", optLooked, (uint8_t) retval);
 
@@ -713,12 +720,12 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
 optionLoader::optionLoader(const char *fname)
 {
     /* SniffJoke Internal Option Indexing value */
-    uint8_t sjI; 
+    uint8_t sjI;
 
     if (isFileLoaded)
     {
         LOG_DEBUG("Request of HDRoptions two times!");
-        RUNTIME_EXCEPTION("Request IP/TCP option loaded before file initialization");
+        RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
     }
 
     memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
@@ -789,7 +796,7 @@ optionLoader::optionLoader(const char *fname)
     FILE *optInput = fopen(fname, "r");
 
     if (optInput == NULL)
-        RUNTIME_EXCEPTION("Unable to open in reading options configuration %s: %s", fname, strerror(errno));
+        RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", fname, strerror(errno));
 
     sjI = SJ_IPOPT_NOOP;
     writUsage = lineParser(optInput, sjI);

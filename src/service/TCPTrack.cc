@@ -583,7 +583,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
                     p_queue.insertAfter(injpkt, origpkt);
                 break;
             case POSITIONUNASSIGNED:
-                RUNTIME_EXCEPTION("FATAL CODE [D4L1]: please send a notification to the developers");
+                RUNTIME_EXCEPTION("fATAL CODE [D4L1]: please send a notification to the developers");
             }
         }
 
@@ -882,7 +882,7 @@ void TCPTrack::handleYoungPackets(void)
 
         default:
 
-            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
+            RUNTIME_EXCEPTION("fATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
         }
     }
 }
@@ -928,7 +928,7 @@ void TCPTrack::handleHackPackets(void)
     for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (!lastPktFix(*pkt))
-            RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
+            RUNTIME_EXCEPTION("fATAL CODE [M4CH3T3]: please send a notification to the developers");
 
         if (injectHack(*pkt))
         {

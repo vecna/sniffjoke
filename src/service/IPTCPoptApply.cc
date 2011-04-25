@@ -70,7 +70,6 @@ optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
 
 uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 {
-
     /*
      * it has been tested that some networks (Fastweb) do silently filter packets
      * with this option set for security reasons.
@@ -284,6 +283,8 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
 {
 #define IPOPT_RA_SIZE 4
 
+    return 0;
+
     /*
      * by literature it's not clear if this option could
      * corrupt the packet.
@@ -415,6 +416,7 @@ optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
 
 uint8_t Io_SID::optApply(struct optHdrData *oD)
 {
+    
     /* this option corrupts the packet if repeated. */
     const uint8_t index = oD->actual_opts_len;
 
@@ -423,7 +425,7 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
 
     oD->optshdr[index] = IPOPT_SID;
     oD->optshdr[index + 1] = IPOPT_SID_SIZE;
-    memset_random(&oD->optshdr[index + 2], 2);
+    //memset_random(&oD->optshdr[index + 2], 2);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
                info.optName, index, IPOPT_SID_SIZE, oD->available_opts_len);

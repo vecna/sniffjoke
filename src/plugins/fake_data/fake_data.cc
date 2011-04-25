@@ -168,7 +168,7 @@ public:
 
             pkt->wtf = selectedScramble;
             pkt->choosableScramble = (availableScrambles & supportedScrambles);
-            pkt->payloadRandomFill();
+            pkt->tcppayloadRandomFill();
 
             upgradeChainFlag(pkt);
 

@@ -81,6 +81,7 @@ public:
         pkt->position = ANY_POSITION;
         pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);
+        pkt->payloadRandomFill();
 
         upgradeChainFlag(pkt);
 

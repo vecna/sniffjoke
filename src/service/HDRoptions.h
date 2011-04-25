@@ -100,8 +100,8 @@ struct optHdrData
 class optionImplement
 {
 public:
-    struct optionInfo info;
     uint8_t sjOptIndex;
+    struct optionInfo info;
 
     uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
 

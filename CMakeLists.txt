@@ -8,6 +8,7 @@ SET( VERSION_MINOR 4 )
 SET( SUFFIX "-beta5" )
 
 SET(CMAKE_SHARED_LIBRARY_PREFIX "")
+SET(CMAKE_CXX_FLAGS "-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros ${CMAKE_CXX_FLAGS}")
 
 INCLUDE_DIRECTORIES( src src/service )
 

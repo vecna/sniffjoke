@@ -98,7 +98,7 @@ cmdline_opts(cmdline_opts)
 
     /* loadDiskConfiguration() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
     if (chdir(runcfg.working_dir))
-        RUNTIME_EXCEPTION("Unable to chdir in the specifiy location");
+        RUNTIME_EXCEPTION("unable to chdir in the specifiy location");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     loadDiskConfiguration();
 
@@ -432,14 +432,14 @@ bool UserConf::loadDiskConfiguration(void)
     {
         runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
         if((*(runcfg.blacklist)).empty())
-            RUNTIME_EXCEPTION("Requested blacklist but blacklist file not found or empty");
+            RUNTIME_EXCEPTION("requested blacklist but blacklist file not found or empty");
     }
 
     if (runcfg.use_whitelist)
     {
         runcfg.whitelist = new IPListMap(FILE_IPWHITELIST);
         if((*(runcfg.whitelist)).empty())
-            RUNTIME_EXCEPTION("Requested whitelist but whitelist file not found or empty");
+            RUNTIME_EXCEPTION("requested whitelist but whitelist file not found or empty");
     }
 
     /* when is loaded the single plugin HDRoptions_probe, the option loader is instanced w/ NULL */
@@ -463,7 +463,7 @@ void UserConf::initOptionLoader(const char *toLoad)
     optionLoader initializeOptions(toLoad);
 
     if(initializeOptions.isFileLoaded == false)
-        RUNTIME_EXCEPTION("Unable to load %s for initialize the optionLoader", toLoad);
+        RUNTIME_EXCEPTION("unable to load %s for initialize the optionLoader", toLoad);
 }
 
 /* function for loading of the TCP port files */

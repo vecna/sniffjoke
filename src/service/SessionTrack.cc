@@ -64,7 +64,7 @@ SessionTrack::~SessionTrack(void)
     snprintf(fname, MEDIUMBUF, "%s%s", SESSIONLOG_PREFIX, inet_ntoa(*((struct in_addr *) &daddr)));
 
     if((sessionLog = fopen(fname, "a+")) == NULL)
-        RUNTIME_EXCEPTION("Unable to open %s:%s", fopen, strerror(errno));
+        RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
     strftime(sj_clock_str, sizeof (sj_clock_str), "%F %T", localtime(&access_timestamp));
     fprintf(sessionLog, "%s\t%d:%d\t#%d, inj #%d\n", 
