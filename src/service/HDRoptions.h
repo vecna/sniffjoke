@@ -202,7 +202,7 @@ public:
     HDRoptions(injector_t, Packet &, TTLFocus &);
     ~HDRoptions();
 
-    bool injectOpt(bool, bool, uint8_t);
+    bool injectSingleOpt(bool, bool, uint8_t);
     bool injectRandomOpts(bool, bool);
 
     bool removeOption(uint8_t);

@@ -343,19 +343,6 @@ void Packet::iphdrResize(uint8_t size)
 
     vector<unsigned char>::iterator it = pbuf.begin();
 
-    /* DEBUG */
-    int i = 0;
-    for (i = 0; i < iphdrlen; i++)
-    {
-        printf("%u %x\n", i, pbuf[i]);
-    }
-
-    for (int j = 0; j < tcphdrlen; j++)
-    {
-        printf("%u %x\n", i + j, pbuf[i + j]);
-    }
-    /* ENDEBUG */
-
     if (iphdrlen < size)
     {
         ip->tot_len = htons(pktlen + (size - iphdrlen));
@@ -367,18 +354,6 @@ void Packet::iphdrResize(uint8_t size)
         ip->tot_len = htons(pktlen - (iphdrlen - size));
         pbuf.erase(it + size, it + iphdrlen);
     }
-
-    /* DEBUG */
-    for (i = 0; i < size; i++)
-    {
-        printf("%u %x\n", i, pbuf[i]);
-    }
-
-    for (int j = 0; j < tcphdrlen; j++)
-    {
-        printf("%u %x\n", i + j, pbuf[i + j]);
-    }
-    /* ENDEBUG */
 
     updatePacketMetadata();
 }

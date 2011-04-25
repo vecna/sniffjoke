@@ -451,7 +451,7 @@ void HDRoptions::randomInjector()
                oD.available_opts_len, isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
-bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
+bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
 {
     bool goalAchieved = false;
 
@@ -546,8 +546,9 @@ HDRoptions::~HDRoptions(void)
     if ((HDRoLog = fopen(fname, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
-    fprintf(HDRoLog, "RD %d%d%d %d\tSAPFR{%d%d%d%d%d}\t",
+    fprintf(HDRoLog, "RD %d%d%d %d\t%u SAPFR{%d%d%d%d%d}\t",
             corruptRequest, corruptDone, corruptNow, pkt.SjPacketId,
+            ntohs(pkt.ip->id),
             pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst
             );
 
