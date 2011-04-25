@@ -282,7 +282,7 @@ uint32_t HDRoptions::alignOpthdr()
 
 void HDRoptions::copyOpthdr(uint8_t * dst)
 {
-    memcpy(dst, &oD.optshdr[0], oD.actual_opts_len);
+    memcpy(dst, &oD.optshdr[0], oD.optshdr.size());
 }
 
 bool HDRoptions::isGoalAchieved()
@@ -318,8 +318,8 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 
 void HDRoptions::completeInjection()
 {
-    /* we can't put those info in protocolSpec because under pkt is
-     * called a different method for IP than TCP */
+    alignOpthdr();
+
     if (type == IPOPTS_INJECTOR)
     {
         pkt.iphdrResize(sizeof (struct iphdr) +oD.actual_opts_len);
@@ -387,8 +387,6 @@ void HDRoptions::injector(uint8_t optIndex)
 
                 nextPlannedInj = SJ_NULL_OPT;
             }
-
-            alignOpthdr();
         }
     }
 
@@ -448,8 +446,6 @@ void HDRoptions::randomInjector()
         }
     }
 
-    alignOpthdr();
-
     LOG_PACKET("*2 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s ",
                protD.protoName, oD.actual_opts_len, oD.target_opts_len,
                oD.available_opts_len, isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
@@ -469,8 +465,6 @@ bool HDRoptions::injectOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
     if (prepareInjection(corrupt, strip_previous))
     {
         injector(optIndex);
-
-        alignOpthdr();
 
         /* in a single Injection request, we don't finalize if not reached the target */
         if ((goalAchieved = isGoalAchieved()) == true)
@@ -492,15 +486,10 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
     bool goalAchieved = false;
 
-    pkt.SELFLOG("BEFORE random %s injection %sstrip iphdrlen %u tcphdrlen %u optshdr %u pktlen %u",
-                protD.protoName, strip_previous ? "" : "NOT ",
-                pkt.iphdrlen, pkt.tcphdrlen, oD.optshdr.size(), pkt.pbuf.size());
 
     if (prepareInjection(corrupt, strip_previous))
     {
         randomInjector();
-
-        alignOpthdr();
 
         goalAchieved = isGoalAchieved();
 
@@ -535,8 +524,6 @@ bool HDRoptions::removeOption(uint8_t opt)
         oD.target_opts_len -= it->len;
         oD.actual_opts_len -= it->len;
     }
-
-    alignOpthdr();
 
     completeInjection();
 
