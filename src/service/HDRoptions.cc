@@ -318,6 +318,7 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 
 void HDRoptions::completeInjection()
 {
+
     alignOpthdr();
 
     if (type == IPOPTS_INJECTOR)
@@ -613,8 +614,7 @@ uint8_t optionImplement::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen
 
     if (oD->available_opts_len < minComputed)
         return 0;
-
-    if (oD->available_opts_len > maxComputed)
+    else if (oD->available_opts_len > maxComputed)
     {
         return (((random() % (maxRblks - minRblks + 1)) + minRblks) * blockSize) +fixedLen;
     }
@@ -711,7 +711,7 @@ optionLoader::optionLoader(const char *fname)
 
     if (isFileLoaded)
     {
-        LOG_DEBUG("Request of HDRoptions two times!");
+        LOG_DEBUG("request of HDRoptions two times!");
         RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
     }
 
@@ -720,7 +720,7 @@ optionLoader::optionLoader(const char *fname)
     /* testing modality - all options are loaded without a corruption definitions */
     if (fname == NULL)
     {
-        LOG_ALL("Option configuration (%s) not supply! Initialiting in testing mode");
+        LOG_ALL("option configuration not supplied! Initializing in testing mode");
 
         sjI = SJ_IPOPT_NOOP;
         loadedOptions[sjI] = new Io_NOOP(true, sjI, "IP NOOP", IPPROTO_IP, IPOPT_NOOP, UNASSIGNED_VALUE);
