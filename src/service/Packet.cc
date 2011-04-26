@@ -535,7 +535,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
         switch (proto)
         {
         case TCP:
-            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%d%d%d%d} len|%u(%u) seq|%x ack_seq|%x wndw|%u",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} len|%u(%u) seq|%x ack_seq|%x wndw|%u",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
                      tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
                      ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)

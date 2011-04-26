@@ -42,15 +42,15 @@ private:
     {
         TTLFocus dummy(target);
 
-        if(underTestOpt->info.optProtocol == IPPROTO_IP)
+        if(underTestOpt->optProto == IPPROTO_IP)
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, target, dummy);
-            IPInjector.injectSingleOpt(corrupt, true, underTestOpt->info.optValue);
+            IPInjector.injectSingleOpt(corrupt, true, underTestOpt->optValue);
         }
         else /* IPPROTO_TCP */
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, target, dummy);
-            TCPInjector.injectSingleOpt(corrupt, true, underTestOpt->info.optValue);
+            TCPInjector.injectSingleOpt(corrupt, true, underTestOpt->optValue);
         }
     }
 
@@ -103,7 +103,7 @@ public:
             underTestOpt = dummyConf.getSingleOption(optIndex);
 
             pLH->completeLog("Option index [%d] point to %s (opcode %d)", 
-                             optIndex, underTestOpt->info.optName, underTestOpt->info.optValue); 
+                             optIndex, underTestOpt->sjOptName, underTestOpt->optValue);
         }
         else
         {

@@ -70,7 +70,7 @@ enum injector_t
  * to be dumped by the remote host */
 enum corruption_t
 {
-    UNASSIGNED_VALUE = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
+    CORRUPTUNASSIGNED = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
 };
 
 /*
@@ -82,31 +82,35 @@ enum corruption_t
 
 struct optionInfo
 {
-    bool enabled;
-    corruption_t availableUsage;
-    uint8_t optValue;
-    uint8_t optProtocol;
-    const char *optName;
 };
 
 struct optHdrData
 {
     vector<unsigned char> optshdr;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t allocated_size;  /* Usually, 40 for IP and TCP too */
+    uint8_t allocated_size; /* Usually, 40 for IP and TCP too */
+
+    uint8_t getAvailableOptLen()
+    {
+        return allocated_size - actual_opts_len;
+    };
 };
 
 class optionImplement
 {
 public:
+    bool enabled;
     uint8_t sjOptIndex;
-    struct optionInfo info;
+    const char* const sjOptName;
+    uint8_t optProto;
+    uint8_t optValue;
+    corruption_t availableUsage;
 
     uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
 
+    optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t);
+    void optionConfigure(corruption_t);
     virtual uint8_t optApply(struct optHdrData *) = 0;
-    optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
-    virtual ~optionImplement() = 0;
 };
 
 class optionLoader

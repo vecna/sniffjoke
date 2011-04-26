@@ -27,14 +27,10 @@
 #include <netinet/tcp.h>
 #include "HDRoptions.h"
 
-/* must be used only inside optApply, may be safe use a private method inside optionImplement:
- * TODO */
-#define AVAILABLE_OLEN (oD->allocated_size - oD->actual_opts_len)
-
 class Io_NOOP : public optionImplement
 {
 public:
-    Io_NOOP(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_NOOP(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -42,7 +38,7 @@ protected:
 class Io_TIMESTAMP : public optionImplement
 {
 public:
-    Io_TIMESTAMP(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_TIMESTAMP(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -52,7 +48,7 @@ class Io_TIMESTOVERFLOW : public optionImplement
 private:
     TTLFocus *ttlfocus;
 public:
-    Io_TIMESTOVERFLOW(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_TIMESTOVERFLOW(bool);
     void setupTTLFocus(TTLFocus *);
 protected:
     uint8_t optApply(struct optHdrData *);
@@ -61,7 +57,7 @@ protected:
 class Io_LSRR : public optionImplement
 {
 public:
-    Io_LSRR(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_LSRR(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -69,7 +65,7 @@ protected:
 class Io_RR : public optionImplement
 {
 public:
-    Io_RR(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_RR(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -77,7 +73,7 @@ protected:
 class Io_RA : public optionImplement
 {
 public:
-    Io_RA(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_RA(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -85,7 +81,7 @@ protected:
 class Io_CIPSO : public optionImplement
 {
 public:
-    Io_CIPSO(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_CIPSO(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -93,7 +89,7 @@ protected:
 class Io_SEC : public optionImplement
 {
 public:
-    Io_SEC(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_SEC(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -101,7 +97,7 @@ protected:
 class Io_SID : public optionImplement
 {
 public:
-    Io_SID(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    Io_SID(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -109,7 +105,7 @@ protected:
 class To_NOP : public optionImplement
 {
 public:
-    To_NOP(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_NOP(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -117,7 +113,7 @@ protected:
 class To_MD5SIG : public optionImplement
 {
 public:
-    To_MD5SIG(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_MD5SIG(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -125,7 +121,7 @@ protected:
 class To_PAWSCORRUPT : public optionImplement
 {
 public:
-    To_PAWSCORRUPT(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_PAWSCORRUPT(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -133,7 +129,7 @@ protected:
 class To_TIMESTAMP : public optionImplement
 {
 public:
-    To_TIMESTAMP(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_TIMESTAMP(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -141,7 +137,7 @@ protected:
 class To_MSS : public optionImplement
 {
 public:
-    To_MSS(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_MSS(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -150,7 +146,7 @@ protected:
 class To_SACK : public optionImplement
 {
 public:
-    To_SACK(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_SACK(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -158,7 +154,7 @@ protected:
 class To_SACKPERM : public optionImplement
 {
 public:
-    To_SACKPERM(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_SACKPERM(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
@@ -166,7 +162,7 @@ protected:
 class To_WINDOW : public optionImplement
 {
 public:
-    To_WINDOW(bool, uint8_t, const char *, uint8_t, uint8_t, corruption_t);
+    To_WINDOW(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
