@@ -37,7 +37,7 @@ optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
 
 uint8_t Io_NOOP::optApply(struct optHdrData *oD)
 {
-    if (oD->available_opts_len < IPOPT_NOOP_SIZE)
+    if (AVAILABLE_OLEN < IPOPT_NOOP_SIZE)
         return 0;
 
     const uint8_t index = oD->actual_opts_len;
@@ -45,7 +45,7 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
     oD->optshdr[index] = IPOPT_NOOP;
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, IPOPT_NOOP_SIZE, oD->available_opts_len);
+               info.optName, index, IPOPT_NOOP_SIZE, AVAILABLE_OLEN);
 
     return IPOPT_NOOP_SIZE;
 }
@@ -108,7 +108,7 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
     memset(&oD->optshdr[index + 4], 0, timestamps * 4);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, size_timestamp, oD->available_opts_len);
+               info.optName, index, size_timestamp, AVAILABLE_OLEN);
 
     return size_timestamp;
 }
@@ -158,7 +158,7 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 4], last_filled * 4);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, size_timestamp, oD->available_opts_len);
+               info.optName, index, size_timestamp, AVAILABLE_OLEN);
 
     return size_timestamp;
 }
@@ -222,7 +222,7 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 3], (size_lsrr - 3));
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, size_lsrr, oD->available_opts_len);
+               info.optName, index, size_lsrr, AVAILABLE_OLEN);
 
     return size_lsrr;
 }
@@ -269,7 +269,7 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
     memset_random(&(oD->optshdr)[index + 3], (size_rr - 3));
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, size_rr, oD->available_opts_len);
+               info.optName, index, size_rr, AVAILABLE_OLEN);
 
     return size_rr;
 }
@@ -294,7 +294,7 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
      */
     const uint8_t index = oD->actual_opts_len;
 
-    if (oD->available_opts_len < IPOPT_RA_SIZE)
+    if (AVAILABLE_OLEN < IPOPT_RA_SIZE)
         return 0;
 
     oD->optshdr[index] = IPOPT_RA;
@@ -311,7 +311,7 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 2], 2);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, IPOPT_RA_SIZE, oD->available_opts_len);
+               info.optName, index, IPOPT_RA_SIZE, AVAILABLE_OLEN);
 
     return IPOPT_RA_SIZE;
 }
@@ -349,7 +349,7 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
     const uint8_t index = oD->actual_opts_len;
 
     /* this option always corrupts the packet */
-    if (oD->available_opts_len < IPOPT_CIPSO_SIZE)
+    if (AVAILABLE_OLEN < IPOPT_CIPSO_SIZE)
         return 0;
 
     oD->optshdr[index] = IPOPT_CIPSO;
@@ -357,7 +357,7 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 2], 8);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, IPOPT_CIPSO_SIZE, oD->available_opts_len);
+               info.optName, index, IPOPT_CIPSO_SIZE, AVAILABLE_OLEN);
 
     return IPOPT_CIPSO_SIZE;
 }
@@ -394,7 +394,7 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
      */
     const uint8_t index = oD->actual_opts_len;
 
-    if (oD->available_opts_len < IPOPT_SEC_SIZE)
+    if (AVAILABLE_OLEN < IPOPT_SEC_SIZE)
         return 0;
 
     /* TODO - cohorent data for security OPT */
@@ -404,7 +404,7 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 2], 9);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, IPOPT_SEC_SIZE, oD->available_opts_len);
+               info.optName, index, IPOPT_SEC_SIZE, AVAILABLE_OLEN);
 
     return IPOPT_SEC_SIZE;
 }
@@ -420,7 +420,7 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
     /* this option corrupts the packet if repeated. */
     const uint8_t index = oD->actual_opts_len;
 
-    if (oD->available_opts_len < IPOPT_SID_SIZE)
+    if (AVAILABLE_OLEN < IPOPT_SID_SIZE)
         return 0;
 
     oD->optshdr[index] = IPOPT_SID;
@@ -428,7 +428,7 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
     //memset_random(&oD->optshdr[index + 2], 2);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, IPOPT_SID_SIZE, oD->available_opts_len);
+               info.optName, index, IPOPT_SID_SIZE, AVAILABLE_OLEN);
 
     return IPOPT_SID_SIZE;
 }
@@ -444,7 +444,7 @@ optionImplement::optionImplement(enable, sjI, n, proto, opcode, c)
 
 uint8_t To_NOP::optApply(struct optHdrData *oD)
 {
-    if (oD->available_opts_len < TCPOPT_NOP_SIZE)
+    if (AVAILABLE_OLEN < TCPOPT_NOP_SIZE)
         return 0;
 
     const uint8_t index = oD->actual_opts_len;
@@ -452,7 +452,7 @@ uint8_t To_NOP::optApply(struct optHdrData *oD)
     oD->optshdr[index] = TCPOPT_NOP;
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, TCPOPT_NOP_SIZE, oD->available_opts_len);
+               info.optName, index, TCPOPT_NOP_SIZE, AVAILABLE_OLEN);
 
     return TCPOPT_NOP_SIZE;
 }
@@ -467,7 +467,7 @@ uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
     /* this option corrupts the packet if repeated. */
     const uint8_t index = oD->actual_opts_len;
 
-    if (oD->available_opts_len < TCPOPT_MD5SIG_SIZE)
+    if (AVAILABLE_OLEN < TCPOPT_MD5SIG_SIZE)
         return 0;
 
     oD->optshdr[index] = TCPOPT_MD5SIG;
@@ -475,7 +475,7 @@ uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 2], TCPOPT_MD5SIG_SIZE - 2);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, TCPOPT_MD5SIG_SIZE, oD->available_opts_len);
+               info.optName, index, TCPOPT_MD5SIG_SIZE, AVAILABLE_OLEN);
 
     return TCPOPT_MD5SIG_SIZE;
 }
@@ -490,7 +490,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 #define TCPOPT_TIMESTAMP_SIZE 10
     const uint8_t index = oD->actual_opts_len;
 
-    if (oD->available_opts_len < TCPOPT_TIMESTAMP_SIZE)
+    if (AVAILABLE_OLEN < TCPOPT_TIMESTAMP_SIZE)
         return 0;
 
     oD->optshdr[index] = TCPOPT_TIMESTAMP;
@@ -499,7 +499,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 6], 4);
 
     LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               info.optName, index, TCPOPT_TIMESTAMP_SIZE, oD->available_opts_len);
+               info.optName, index, TCPOPT_TIMESTAMP_SIZE, AVAILABLE_OLEN);
 
     return TCPOPT_TIMESTAMP_SIZE;
 }

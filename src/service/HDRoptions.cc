@@ -61,7 +61,6 @@ type(t),
 pkt(pkt),
 ttlfocus(ttlfocus),
 corruptRequest(false),
-corruptNow(false),
 corruptDone(false),
 nextPlannedInj(SJ_NULL_OPT)
 {
@@ -77,8 +76,7 @@ nextPlannedInj(SJ_NULL_OPT)
 
         /* initialization of header and index */
         oD.actual_opts_len = pkt.iphdrlen - sizeof (struct iphdr);
-        oD.target_opts_len = oD.actual_opts_len;
-        oD.available_opts_len = MAXIPOPTIONS - oD.actual_opts_len;
+        oD.allocated_size = MAXIPOPTIONS;
 
         oD.optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
         memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), oD.actual_opts_len);
@@ -102,8 +100,7 @@ nextPlannedInj(SJ_NULL_OPT)
 
     case TCPOPTS_INJECTOR:
         oD.actual_opts_len = pkt.tcphdrlen - sizeof (struct tcphdr);
-        oD.target_opts_len = oD.actual_opts_len;
-        oD.available_opts_len = MAXTCPOPTIONS - oD.actual_opts_len;
+        oD.allocated_size = MAXTCPOPTIONS;
 
         oD.optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
         memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), oD.actual_opts_len);
@@ -134,6 +131,9 @@ bool HDRoptions::acquirePresentOptions(void)
     {
         uint8_t * const option = &oD.optshdr[i];
 
+        /* remember :
+         * NOP_code will be IPOPT_NOOP or TCPOPT_NOP either,
+         * is set in the constructor, like every other protocol dependend values */
         if (*option == protD.NOP_code)
         {
             i++;
@@ -165,7 +165,7 @@ bool HDRoptions::acquirePresentOptions(void)
             if (*option == underVerify->info.optValue)
             {
                 identified = true;
-                registerOptOccurrence(underVerify->sjOptIndex, i, option_len);
+                registerOptOccurrence(underVerify, i, option_len);
                 break;
             }
         }
@@ -189,16 +189,19 @@ bool HDRoptions::acquirePresentOptions(void)
     return true;
 }
 
-/* return false if the condition doesn't fit */
-bool HDRoptions::checkCondition(optionImplement *isUsable)
+/*
+ * this is a core method inside HDRoptions, it:
+ * 1) check if a requested (will be random, will be by code) is enabled 
+ * 2) check if the goal is corrupt or not, and choose the option by the counter data 
+ */
+bool HDRoptions::evaluateInjectCoherence(optionImplement *requested, struct optHdrData *oD, uint8_t counterInj)
 {
-    corruptNow = corruptRequest;
 
     /*
      * 1st global check: can we use this option ?
      * at the time a global enabled variable is used to permit selective testing
      */
-    if (isUsable->info.enabled == false)
+    if (requested->info.enabled == false)
         return false;
 
     /*
@@ -207,59 +210,68 @@ bool HDRoptions::checkCondition(optionImplement *isUsable)
      * and we also alter the probability for the first injection
      * in favour of good injection.
      */
-    if (corruptNow && (corruptDone || ((oD.actual_opts_len < 4) && RANDOM_PERCENT(45))))
-        corruptNow = false;
-
-    if (corruptNow)
+    switch(requested->info.availableUsage)
     {
-        /* if we have decided to corrupt we must avoid only NOT_CORRUPT options */
-        if (isUsable->info.availableUsage != NOT_CORRUPT)
-            return true;
-    }
-    else
-    {
-        /* if we have decided to not corrupt we must avoid ONESHOT and repeated options */
-        if ((isUsable->info.availableUsage != ONESHOT) && !optTrack[isUsable->sjOptIndex].size())
-        {
-            nextPlannedInj = SJ_NULL_OPT;
-            return true;
-        }
+        case NOT_CORRUPT:
+            if(corruptRequest == false)
+                return true;
+
+            /* also on corruptRequest == true, the first options had not to be bad */
+            if( (oD->actual_opts_len < 8) && RANDOM_PERCENT(45))
+                return true;
+
+            break;
+        case ONESHOT:
+            /* I like to corrupt only once */
+            if(corruptRequest == true && corruptDone == false)
+                return true;
+
+            break;
+        case TWOSHOT:
+            if(corruptRequest == true && corruptDone == false)
+            {
+                if(counterInj == 0 || counterInj == 1)
+                    return true;
+            }
+            break;
+        default:
+            break;
     }
 
+    /* if the requested option don't fit with the goal+status, and thus the
+     * previous switch() has returned "true", the answer will be only a drop */
     return false;
 }
 
-void HDRoptions::registerOptOccurrence(uint8_t sjOptIndex, uint8_t offset, uint8_t len)
+/* this is called on acquiring present options and after the injection,
+ * it keep track of every option, absolute offset and length (because will be 
+ * request a selective deletion), and mark the corruption "done" if a
+ * bad option has been used 
+ */
+void HDRoptions::registerOptOccurrence(struct optionImplement *oDesc, uint8_t offset, uint8_t len)
 {
     struct option_occurrence occ;
-    occ.off = offset;
-    occ.len = len;
-    optTrack[sjOptIndex].push_back(occ);
-}
-
-struct optionImplement * HDRoptions::updateCorruptAlign(struct optionImplement *oDesc, uint8_t addedLength)
-{
-    struct optionImplement *ret = NULL;
-
-    /* the first segment of code update the segments */
-    oD.actual_opts_len += addedLength;
-    oD.available_opts_len = oD.target_opts_len - oD.actual_opts_len;
+    uint8_t sjOndx = oDesc->sjOptIndex;
 
     if (oDesc->info.availableUsage == ONESHOT)
         corruptDone = true;
 
-        /* TWOSHOT management */
-    else if (oDesc->info.availableUsage == TWOSHOT)
-    {
-        if (corruptRequest && !corruptDone)
-            ret = oDesc;
+    occ.off = offset;
+    occ.len = len;
 
-        /* check if this is the second injection */
-        if (optTrack[oDesc->sjOptIndex].size() > 1)
-            corruptDone = true;
-    }
+    if (oDesc->info.availableUsage == TWOSHOT && optTrack[sjOndx].size() > 1)
+        corruptDone = true;
 
-    return ret;
+    optTrack[sjOndx].push_back(occ);
+}
+
+/* this is an utility function, implemented as define in IPTCPoptions.h, and 
+ * in a future where the MTU 1500 - 8 (ADLS) - 80 (max addictional options) will
+ * not be an hardcoded limit
+ */
+uint8_t HDRoptions::availableOptsLen(void)
+{
+    return oD.allocated_size - oD.actual_opts_len;
 }
 
 uint32_t HDRoptions::alignOpthdr()
@@ -271,9 +283,8 @@ uint32_t HDRoptions::alignOpthdr()
         oD.optshdr[oD.actual_opts_len] = protD.END_code;
 
         oD.actual_opts_len += alignBytes;
-        oD.available_opts_len -= alignBytes;
 
-        LOG_PACKET("*+ aligned to %u for %d bytes (avail %d)", oD.actual_opts_len, alignBytes, oD.available_opts_len);
+        LOG_PACKET("*+ aligned to %u for %d bytes (avail %d)", oD.actual_opts_len, alignBytes, availableOptsLen() );
     }
 
     return oD.actual_opts_len;
@@ -304,12 +315,6 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
     if (freespace == 0)
         return false;
 
-    oD.target_opts_len = (type == IPOPTS_INJECTOR ? MAXIPOPTIONS : MAXTCPOPTIONS);
-    if (freespace < oD.target_opts_len)
-        oD.target_opts_len = freespace;
-
-    oD.available_opts_len = oD.target_opts_len - oD.actual_opts_len;
-
     corruptRequest = corrupt;
 
     return true;
@@ -335,6 +340,7 @@ void HDRoptions::completeInjection()
 void HDRoptions::injector(uint8_t optIndex)
 {
     optionImplement *requested = NULL;
+    uint8_t counterInj;
 
     for (vector<optionImplement *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
     {
@@ -347,108 +353,65 @@ void HDRoptions::injector(uint8_t optIndex)
     if (requested == NULL)
         RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", optIndex, protD.protoName);
 
-    LOG_PACKET("*1 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, oD.actual_opts_len, oD.target_opts_len,
-               oD.available_opts_len, corruptRequest ? "CORRUPT" : "NOT CORRUPT");
+    LOG_PACKET("*1 %s single opt [%d] option: actual_opt_len(%u) (avail %u) goal %s",
+               protD.protoName, optIndex, oD.actual_opts_len, availableOptsLen(),
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
-    if (checkCondition(requested))
+    /* if needed by corruption method, make two time the injection, otherwise 1, otherwise 0 */
+    for(counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); counterInj++)
     {
-        uint8_t ret = requested->optApply(&oD);
+        uint8_t writtedLen;
 
-        if (ret)
+        if ((writtedLen = requested->optApply(&oD)) > 0)
         {
-            registerOptOccurrence(requested->sjOptIndex, oD.actual_opts_len, ret);
-
-            /* the planned option is used when a TWOSHOT define the second shot */
-            nextPlannedInj = updateCorruptAlign(requested, ret);
-
-            if (nextPlannedInj != SJ_NULL_OPT)
-            {
-                LOG_PACKET("*@ double calling of %s", nextPlannedInj->info.optName);
-
-                ret = nextPlannedInj->optApply(&oD);
-
-                if (ret)
-                {
-                    registerOptOccurrence(nextPlannedInj->info.optValue, oD.actual_opts_len, ret);
-
-                    if (updateCorruptAlign(nextPlannedInj, ret) != SJ_NULL_OPT)
-                        RUNTIME_EXCEPTION("invalid implementation of option #%d", nextPlannedInj->sjOptIndex);
-                }
-                else
-                {
-                    /* TWOSHOT FAIL: and now ?! no problem!
-                     *
-                     *  1) an other injection tries will follow;
-                     *  2) if all the tries will fail probably a scramble downgrade will
-                     *     solve the problem with no inconvenience.
-                     */
-                }
-
-                nextPlannedInj = SJ_NULL_OPT;
-            }
+            oD.actual_opts_len += writtedLen;
+            registerOptOccurrence(requested, oD.actual_opts_len, writtedLen);
         }
     }
 
-    LOG_PACKET("*2 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, oD.actual_opts_len, oD.target_opts_len,
-               oD.available_opts_len, isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+    LOG_PACKET("*2 %s single opt [%d] : actual_opt_len(%u) (avail %u) goal %s ",
+               protD.protoName, optIndex, oD.actual_opts_len, availableOptsLen(), 
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
 void HDRoptions::randomInjector()
 {
-    LOG_PACKET("*1 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, oD.actual_opts_len, oD.target_opts_len,
-               oD.available_opts_len, corruptRequest ? "CORRUPT" : "NOT CORRUPT");
+    LOG_PACKET("*1 %s option: actual_opt_len(%u) (avail %u) goal %s",
+               protD.protoName, oD.actual_opts_len, availableOptsLen(),
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
     random_shuffle(availOpts.begin(), availOpts.end());
 
     for (vector<optionImplement *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
     {
+        uint8_t counterInj;
         optionImplement *randOpt = *it;
 
-        if (!checkCondition(randOpt))
-            continue;
-
-        uint8_t ret = randOpt->optApply(&oD);
-
-        if (ret)
+        for(counterInj = 0; evaluateInjectCoherence(randOpt, &oD, counterInj); counterInj++)
         {
-            registerOptOccurrence(randOpt->sjOptIndex, oD.actual_opts_len, ret);
+            uint8_t writtedLen;
 
-            /* the planned option is used when a TWOSHOT define the second shot */
-            nextPlannedInj = updateCorruptAlign(randOpt, ret);
-
-            /* the planned option is used when a TWOSHOT define the second shot */
-            if (nextPlannedInj != SJ_NULL_OPT)
+            if ((writtedLen = randOpt->optApply(&oD)) > 0)
             {
-                ret = nextPlannedInj->optApply(&oD);
-
-                if (ret)
-                {
-                    registerOptOccurrence(nextPlannedInj->sjOptIndex, oD.actual_opts_len, ret);
-
-                    if (updateCorruptAlign(nextPlannedInj, ret) != SJ_NULL_OPT)
-                        RUNTIME_EXCEPTION("invalid implementation of option #%d", nextPlannedInj->sjOptIndex);
-                }
-                else
-                {
-                    /* TWOSHOT FAIL: and now ?! no problem!
-                     *
-                     *  1) an other injection tries will follow;
-                     *  2) if all the tries will fail probably a scramble downgrade will
-                     *     solve the problem with no inconvenience.
-                     */
-                }
-
-                nextPlannedInj = SJ_NULL_OPT;
+                oD.actual_opts_len += writtedLen;
+                registerOptOccurrence(randOpt, oD.actual_opts_len, writtedLen);
             }
+            else
+            {
+                /* to avoid time consuming check and loops: 
+                 * if there are not enougth space, skip! */
+                break;
+            }
+
+            /* to avoid duplication of the same good option */
+            if(randOpt->info.availableUsage == NOT_CORRUPT)
+                break;
         }
     }
 
-    LOG_PACKET("*2 %s option: total_opt_len(%u) target_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, oD.actual_opts_len, oD.target_opts_len,
-               oD.available_opts_len, isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+    LOG_PACKET("*2 %s option: actual_opt_len(%u) (avail %u) goal %s ",
+               protD.protoName, oD.actual_opts_len, availableOptsLen(),
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
 bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
@@ -493,7 +456,6 @@ bool HDRoptions::removeOption(uint8_t opt)
         vector<unsigned char>::iterator end = start + it->len;
         oD.optshdr.erase(start, end);
 
-        oD.target_opts_len -= it->len;
         oD.actual_opts_len -= it->len;
     }
 
@@ -518,10 +480,10 @@ HDRoptions::~HDRoptions(void)
     if ((HDRoLog = fopen(fname, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
-    fprintf(HDRoLog, "RD %d%d%d %d\t%u SAPFR{%d%d%d%d%d}\t",
-            corruptRequest, corruptDone, corruptNow, pkt.SjPacketId,
-            ntohs(pkt.ip->id),
-            pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst
+    fprintf(HDRoLog, "RD %d%d SAPFR{%d%d%d%d%d}\tp#%u id%u\t",
+            corruptRequest, corruptDone, 
+            pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst,
+            pkt.SjPacketId, ntohs(pkt.ip->id)
             );
 
     if (type == IPOPTS_INJECTOR)
@@ -581,18 +543,21 @@ uint8_t optionImplement::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen
     uint8_t minComputed = fixedLen + (minRblks * blockSize);
     uint8_t maxComputed = fixedLen + (maxRblks * blockSize);
 
-    if (oD->available_opts_len == minComputed || oD->available_opts_len == maxComputed)
-        return oD->available_opts_len;
+    /* availableOptsLen is not accessible here ... */
+    uint8_t checkedAvail = (oD->allocated_size - oD->actual_opts_len);
 
-    if (oD->available_opts_len < minComputed)
+    if (checkedAvail == minComputed || checkedAvail == maxComputed)
+        return checkedAvail;
+
+    if (checkedAvail < minComputed)
         return 0;
-    else if (oD->available_opts_len > maxComputed)
+    else if (checkedAvail > maxComputed)
     {
         return (((random() % (maxRblks - minRblks + 1)) + minRblks) * blockSize) +fixedLen;
     }
     else /* should try the best filling of memory and the NOP fill after */
     {
-        uint8_t blockNumber = (oD->available_opts_len - fixedLen) / blockSize;
+        uint8_t blockNumber = (checkedAvail - fixedLen) / blockSize;
         return (blockNumber * blockSize) +fixedLen;
     }
 }
@@ -676,7 +641,7 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
     return retval;
 }
 
-void optionLoader::optionLoader(const char *fname)
+optionLoader::optionLoader(const char *fname)
 {
     /* SniffJoke Internal Option Indexing value */
     uint8_t sjI;

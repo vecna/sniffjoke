@@ -166,10 +166,10 @@ NetIO::~NetIO(void)
     char cmd[MEDIUMBUF];
 
     if (getuid() || geteuid())
-        LOG_VERBOSE("not root: unable to restore default gw");
+        LOG_VERBOSE("this process (%d) is not root: unable to restore default gw", getpid());
     else
     {
-        LOG_VERBOSE("deleting our default gw [route del default]");
+        LOG_VERBOSE("root process (%d): deleting our default gw [route del default]", getpid());
         pclose(popen("route del default 2>/dev/null", "r"));
 
         snprintf(cmd, sizeof (cmd), "ifconfig tun%d down 2>/dev/null", runcfg.tun_number);

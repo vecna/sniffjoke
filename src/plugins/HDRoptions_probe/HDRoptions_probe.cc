@@ -45,12 +45,12 @@ private:
         if(underTestOpt->info.optProtocol == IPPROTO_IP)
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, target, dummy);
-            IPInjector.injectOpt(corrupt, true, underTestOpt->info.optValue);
+            IPInjector.injectSingleOpt(corrupt, true, underTestOpt->info.optValue);
         }
         else /* IPPROTO_TCP */
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, target, dummy);
-            TCPInjector.injectOpt(corrupt, true, underTestOpt->info.optValue);
+            TCPInjector.injectSingleOpt(corrupt, true, underTestOpt->info.optValue);
         }
     }
 

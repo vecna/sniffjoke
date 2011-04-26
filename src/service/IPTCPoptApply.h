@@ -27,6 +27,10 @@
 #include <netinet/tcp.h>
 #include "HDRoptions.h"
 
+/* must be used only inside optApply, may be safe use a private method inside optionImplement:
+ * TODO */
+#define AVAILABLE_OLEN (oD->allocated_size - oD->actual_opts_len)
+
 class Io_NOOP : public optionImplement
 {
 public:

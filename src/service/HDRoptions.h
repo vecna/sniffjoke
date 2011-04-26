@@ -93,8 +93,7 @@ struct optHdrData
 {
     vector<unsigned char> optshdr;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t available_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t target_opts_len; /* max value 40 on IP and TCP too */
+    uint8_t allocated_size;  /* Usually, 40 for IP and TCP too */
 };
 
 class optionImplement
@@ -161,7 +160,6 @@ private:
     TTLFocus &ttlfocus;
 
     bool corruptRequest;
-    bool corruptNow;
     bool corruptDone;
 
     /* this struct is used to be passed to the optionImplement extensions */
@@ -181,13 +179,18 @@ private:
      * some options are good but if repeated may corrupt the packet.
      */
     bool acquirePresentOptions(void);
-    bool checkCondition(struct optionImplement *);
+
+    /* the core selecting function */
+    bool evaluateInjectCoherence(optionImplement *, struct optHdrData *, uint8_t);
 
     /* after the call to optApply, HDRoptions need to be sync */
-    optionImplement * updateCorruptAlign(optionImplement *, uint8_t);
-    void registerOptOccurrence(uint8_t, uint8_t, uint8_t);
+    void registerOptOccurrence(struct optionImplement *, uint8_t, uint8_t);
 
+    /* alignment of option header to be divisible by 4 */
     uint32_t alignOpthdr();
+
+    /* utilities functions */
+    uint8_t availableOptsLen(void);
     void copyOpthdr(uint8_t *);
     bool isGoalAchieved();
 
