@@ -59,6 +59,22 @@
 
 #define DUMMY_OPCODE        255
 
+/* 
+ * HDRoptions logic:
+ *
+ * The class optionLoaded, read from the file * 'option-support.conf' and setup
+ * the optionImplement 
+ *
+ * the HDRoptions is called for every Packet needing a manipoulation over the
+ * header options, and import the correctly loaded impelementation from optionImplement
+ *
+ * optionImplment has some virtual methods and are implemented in 
+ * IPTCPoptApply.cc
+ *
+ * HDRoptions_probe.cc is plugin for option test and use those classess in a 
+ * lighty different way 
+ */
+
 enum injector_t
 {
     IPOPTS_INJECTOR = 0, TCPOPTS_INJECTOR = 1
@@ -71,17 +87,6 @@ enum injector_t
 enum corruption_t
 {
     CORRUPTUNASSIGNED = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
-};
-
-/*
- * The following class read the file 'option-support.conf' and setup
- * correctly the optMap struct when HDRoptions require it.
- *
- * Is called also from the HDRoptions_probe.cc plugin for option test
- */
-
-struct optionInfo
-{
 };
 
 struct optHdrData

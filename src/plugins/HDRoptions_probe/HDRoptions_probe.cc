@@ -62,6 +62,8 @@ public:
         testCorrupt = false;
     }
 
+    /* init is called with pluginName,SCRAMBLE+option,
+     * the option in this case is  */
     virtual bool init(uint8_t configuredScramble, const char *pluginOption)
     {
         bool retval = false;
@@ -84,16 +86,13 @@ public:
 
         supportedScrambles = configuredScramble;
 
-        if(retval) 
+        if(pluginOption == NULL)
         {
-            pLH->completeLog("initialized successfull HDRoption_probe: {%s} with string [%s][%d]", 
-                            testCorrupt ? "CORRUPT" : "NOT CORRUPT", pluginOption, optIndex); 
+            LOG_ALL("fatal: required $PLUGNAME,$SCRAMBLE+$OPTINDEX to be used: refer in the sniffjoke-iptcpoption script");
+            retval = false;
         }
 
-        if(pluginOption != NULL)
-            optIndex = atoi(pluginOption);
-        else
-            retval = false;
+        optIndex = atoi(pluginOption);
 
         if(retval && optIndex >= 0 && optIndex < SUPPORTED_OPTIONS)
         {
@@ -102,8 +101,12 @@ public:
 
             underTestOpt = dummyConf.getSingleOption(optIndex);
 
-            pLH->completeLog("Option index [%d] point to %s (opcode %d)", 
-                             optIndex, underTestOpt->sjOptName, underTestOpt->optValue);
+            pLH->completeLog("Option index [%d] point to %s (opcode %d) {%s} and opt string [%s]", 
+                             optIndex, underTestOpt->sjOptName, underTestOpt->optValue,
+                             testCorrupt ? "CORRUPT" : "NOT CORRUPT", pluginOption); 
+
+            LOG_ALL("Loading HDRoptions_probe with scrmble %d and option under test %d", 
+                    configuredScramble, optIndex);
         }
         else
         {
@@ -112,6 +115,7 @@ public:
                              SUPPORTED_OPTIONS);
         }
 
+        LOG_DEBUG("initialization of plugins %s:: %s", __FILE__, retval ? "OK" : "failure");
         return retval;
     }
 
@@ -147,6 +151,8 @@ public:
 
             applyTestedOption(*pkt, true);
         }
+
+        LOG_PACKET("this packet with injected opt %s", underTestOpt->sjOptName);
 
         upgradeChainFlag(pkt);
         pktVector.push_back(pkt);

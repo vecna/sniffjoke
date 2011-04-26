@@ -535,11 +535,18 @@ void Packet::selflog(const char *func, const char *format, ...) const
         switch (proto)
         {
         case TCP:
+#if 0
             snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} len|%u(%u) seq|%x ack_seq|%x wndw|%u",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
                      tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
                      ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)
                      );
+#else   /* I'm looking for some efficent way to get debug infos */
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} plen %u payld %u",
+                     ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
+                     tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen)
+                     );
+#endif
             break;
         case UDP:
             snprintf(protoinfo, sizeof (protoinfo), "UDP %u->%u len|%u(%u)",
@@ -561,12 +568,18 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
+#if 0
         LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%u %s",
                    func, SjPacketId,
                    sourcestr, wtfstr, chainstr,
                    saddr, daddr,
                    protoinfo,
                    ip->ttl, loginfo);
+#else   /* I'm looking for a better debug, but I'm keeping the previous logline for an easy fallback */
+        LOG_PACKET("%s: i%u %s %s->%s [%s] ttl:%u %s",
+                   func, SjPacketId, wtfstr,
+                   saddr, daddr, protoinfo, ip->ttl, loginfo);
+#endif
     }
     else
     {

@@ -488,8 +488,6 @@ bool TCPTrack::injectHack(Packet &origpkt)
     char availableScramblesStr[LARGEBUF] = {0};
     snprintfScramblesList(availableScramblesStr, sizeof (availableScramblesStr), availableScrambles);
 
-    origpkt.SELFLOG("system available scrambles [%s])", availableScramblesStr);
-
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
@@ -527,11 +525,15 @@ bool TCPTrack::injectHack(Packet &origpkt)
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
 
+    origpkt.SELFLOG("from available %d plugins %d has been selected", plugin_pool.size(), applicable_hacks.size());
+
     /* -- FINALLY, HACK THE CHOOSEN PACKET(S) */
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)
     {
 
         PluginTrack *pt = *it;
+
+        origpkt.SELFLOG("sys avail scrambles [%s]) apply plugin [%s]", availableScramblesStr, pt->selfObj->pluginName);
 
         pt->selfObj->apply(origpkt, availableScrambles);
 
@@ -565,7 +567,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
             packet_filter.add(injpkt);
 
-            injpkt.SELFLOG("%s: generated pkt, the original will be %s",
+            injpkt.SELFLOG("NEW packet from [%s], the original will be %s",
                            pt->selfObj->pluginName, pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
             switch (injpkt.position)

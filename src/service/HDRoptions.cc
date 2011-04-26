@@ -553,10 +553,22 @@ uint8_t optionImplement::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen
     }
 }
 
+/* optionImplement + optionLoader classess */
+/* --------------- - ------------ -------- */
 
-/* the optionLoader class works as inizializator for the HDRoptions */
+/* loadedOption is the main struct where the implementation are stored: HDRoptions
+ * need to initialize every instance with them, and I've preferred a static reference */
 optionImplement * optionLoader::loadedOptions[SUPPORTED_OPTIONS];
+
+/* 
+ * isFileLoaded is used for check from the three classes if we are running in testing mode
+ * and the file is NOT loaded, or if the file has been loaded and the implementation should 
+ * me initlialized.
+ */
 bool optionLoader::isFileLoaded;
+
+/* the settedProto and counter is used as static variable in the classes because is
+ * used to track the counter in the getNextOpt methods */
 uint8_t optionLoader::settedProto;
 uint8_t optionLoader::counter;
 
