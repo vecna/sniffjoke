@@ -148,7 +148,6 @@ optionLoader::optionLoader(const char *fname)
     loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
     loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
 
-
     /* testing modality - all options are loaded without a corruption definitions */
     if (fname == NULL)
     {

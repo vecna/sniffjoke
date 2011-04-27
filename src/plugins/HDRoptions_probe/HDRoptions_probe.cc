@@ -103,7 +103,7 @@ public:
             pLH->completeLog("invald option index used as argument: required >= 0 && < %d", SUPPORTED_OPTIONS);
         }
 
-        LOG_DEBUG("initialization of plugins %s:: %s", __FILE__, retval ? "OK" : "failure");
+        LOG_DEBUG("initialization of plugins %s: %s", __FILE__, retval ? "OK" : "failure");
         return retval;
     }
 
