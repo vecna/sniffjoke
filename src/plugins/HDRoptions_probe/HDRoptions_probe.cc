@@ -78,9 +78,9 @@ public:
         if(retval && optIndex >= 0 && optIndex < SUPPORTED_OPTIONS)
         {
             /* special usage: only in this testing modality will be used NULL as config file */
-            optionLoader *dummyConf = optionLoader::get_instance(NULL);
+            optionLoader &dummyConf = optionLoader::get_instance(NULL);
 
-            underTestOpt = dummyConf->getSingleOption(optIndex);
+            underTestOpt = dummyConf.getSingleOption(optIndex);
 
             /* we need to test ONESHOT and TWOSHOT, simply */
             underTestOpt->optionConfigure(ONESHOT);

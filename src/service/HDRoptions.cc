@@ -43,7 +43,6 @@
  * on the route, without ever reach the server. we aim to create 
  * ipoptions accepted by the router, and discarded from the remote host.
  */
-
 #include "hardcodedDefines.h"
 /* defined at the bottom of hardcodedDefines.h */
 #ifdef HEAVY_HDROPT_DEBUG
@@ -148,7 +147,6 @@ optionLoader::optionLoader(const char *fname)
     loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
     loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
 
-
     /* testing modality - all options are loaded without a corruption definitions */
     if (fname == NULL)
     {
@@ -177,6 +175,24 @@ optionLoader::optionLoader(const char *fname)
     }
 }
 
+optionLoader& optionLoader::get_instance(const char *fname)
+{
+    if (instance_ptr == NULL)
+    {
+        instance_ptr = new optionLoader(fname);
+    }
+    return *instance_ptr;
+}
+
+void optionLoader::del_instance(void)
+{
+    if (instance_ptr != NULL)
+    {
+        delete instance_ptr;
+        instance_ptr = NULL;
+    }
+}
+
 /* Now start the implementation of HDRoptions member */
 HDRoptions::HDRoptions(injector_t t, Packet &pkt, TTLFocus &ttlfocus) :
 type(t),
@@ -186,7 +202,7 @@ corruptRequest(false),
 corruptDone(false),
 nextPlannedInj(SJ_NULL_OPT)
 {
-    optionLoader *optConfigData = optionLoader::get_instance("");
+    optionLoader &optConfigData = optionLoader::get_instance("");
     optionImplement *usableOption;
 
     /* initialization of header and indexes on specific proto basis */
@@ -207,7 +223,7 @@ nextPlannedInj(SJ_NULL_OPT)
 
         /* initialized the vector using the pointer of the static private data
          * in optionLoaded::loadedOptions */
-        for (optConfigData->select(IPPROTO_IP); (usableOption = optConfigData->get()) != NULL;)
+        for (optConfigData.select(IPPROTO_IP); (usableOption = optConfigData.get()) != NULL;)
         {
             /* specific per-classes initialization need to be called here */
             if (usableOption->sjOptIndex == SJ_IPOPT_TIMESTOVERFLOW)
@@ -233,7 +249,7 @@ nextPlannedInj(SJ_NULL_OPT)
 
         /* initialize the vector using the pointer of the static private data
          * in optionLoaded::loadedOptions */
-        for (optConfigData->select(IPPROTO_TCP); (usableOption = optConfigData->get()) != NULL;)
+        for (optConfigData.select(IPPROTO_TCP); (usableOption = optConfigData.get()) != NULL;)
             availOpts.push_back(usableOption);
 
         break;
@@ -499,16 +515,15 @@ void HDRoptions::randomInjector()
                corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
     random_shuffle(availOpts.begin(), availOpts.end());
-
     for (vector<optionImplement *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
     {
         optionImplement *randOpt = *it;
 
         for (uint8_t counterInj = 0; evaluateInjectCoherence(randOpt, &oD, counterInj); ++counterInj)
         {
-            uint8_t writtedLen;
+            uint8_t writtedLen = randOpt->optApply(&oD);
 
-            if ((writtedLen = randOpt->optApply(&oD)) > 0)
+            if (writtedLen > 0)
             {
                 oD.actual_opts_len += writtedLen;
                 registerOptOccurrence(randOpt, oD.actual_opts_len, writtedLen);
@@ -586,7 +601,7 @@ HDRoptions::~HDRoptions(void)
 {
 #ifdef HEAVY_HDROPT_DEBUG
 #define HDR_PREFIX  "HDRoLog/"
-    optionLoader *optConfigData = optionLoader::get_instance("");
+    optionLoader &optConfigData = optionLoader::get_instance("");
 
     char fname[MEDIUMBUF];
     FILE *HDRoLog;
@@ -611,7 +626,7 @@ HDRoptions::~HDRoptions(void)
         }
         else
         {
-            optionImplement *yep = optConfigData->getSingleOption(i);
+            optionImplement *yep = optConfigData.getSingleOption(i);
             fprintf(HDRoLog, " %s", yep->sjOptName);
 
             for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); ++it)

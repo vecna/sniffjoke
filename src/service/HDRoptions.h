@@ -149,14 +149,8 @@ public:
 
     corruption_t lineParser(FILE *, uint8_t);
 
-    static optionLoader* get_instance(const char *fname)
-    {
-        if (instance_ptr == NULL)
-        {
-            instance_ptr = new optionLoader(fname);
-        }
-        return instance_ptr;
-    }
+    static optionLoader& get_instance(const char *);
+    static void del_instance(void);
 };
 
 /* these struct are used inside HDRoptions for an easy handling */
