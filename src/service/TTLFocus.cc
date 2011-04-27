@@ -57,7 +57,8 @@ ttl_synack(0)
     puppet_port = selectPuppetPort(ntohs(newtcp->source));
     newtcp->source = htons(puppet_port);
 
-    SELFLOG("");
+    SELFLOG("Construct from Packet #%d", pkt.SjPacketId);
+    pkt.SELFLOG("This packet has made a new Session");
 }
 
 TTLFocus::TTLFocus(const struct ttlfocus_cache_record& cpy) :
@@ -75,12 +76,11 @@ ttl_synack(cpy.ttl_synack)
 
     memcpy(probe_dummy, cpy.probe_dummy, 40);
 
-    SELFLOG("");
+    SELFLOG("Construct from cache record");
 }
 
 TTLFocus::~TTLFocus(void)
 {
-
     SELFLOG("");
 }
 
@@ -120,9 +120,11 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
         break;
     case TTL_UNKNOWN: status_name = "UNKNOWN";
         break;
+    default:
+        RUNTIME_EXCEPTION("FATAL CODE [G0ATS3] please send a notification to the developers");
     }
 
-    LOG_SESSION("%s D|%s %s sent|%d recv|%d ttl_estimate|%u ttl_synack|%u %s",
+    LOG_SESSION("%s daddr(%s) %s sent(%d) recv(%d) ttl_estimate(%u) ttl_synack(%u) %s",
                 func, inet_ntoa(*((struct in_addr *) &(daddr))), status_name, sent_probe,
                 received_probe, ttl_estimate, ttl_synack, loginfo
                 );
@@ -131,24 +133,29 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
 TTLFocusMap::TTLFocusMap(void) :
 manage_timeout(sj_clock)
 {
+    struct tm *checkedClock = localtime( (const time_t *)&sj_clock );
 
-    LOG_DEBUG("");
+    LOG_DEBUG("with clock %s", asctime(checkedClock) );
 
     load();
 }
 
 TTLFocusMap::~TTLFocusMap(void)
 {
-    LOG_DEBUG("");
+    uint32_t counter = 0;
 
     dump();
 
     for (TTLFocusMap::iterator it = begin(); it != end();)
     {
+        counter++;
 
         delete &(*it->second);
         erase(it++);
     }
+
+    LOG_DEBUG("dumped elements: %d", counter);
+
 }
 
 /* return a ttlfocus given a packet; return a new ttlfocus if no one exists */

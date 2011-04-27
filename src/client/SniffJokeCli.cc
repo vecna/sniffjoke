@@ -125,7 +125,6 @@ int32_t SniffJokeCli::send_command(const char *cmdstring)
     }
     else
     {
-	perror("antani");
         printf("connection timeout: SniffJoke is not running, or --timeout too low\n");
         return SJ_ERROR;
     }

@@ -35,7 +35,7 @@ private:
     pluginLogHandler *pLH;
     optionImplement *underTestOpt;
 
-    void applyTestedOption(Packet &target, bool corrupt)
+    void applyTestedOption(Packet &target)
     {
         TTLFocus dummy(target);
 
@@ -127,10 +127,13 @@ public:
         pkt->position = ANTICIPATION;
 
         /* the option will belive to corrupt the packet */
-        applyTestedOption(*pkt, true);
+        applyTestedOption(*pkt);
 
         pkt->wtf = INNOCENT;
-        pkt->choosableScramble = INNOCENT;
+        pkt->choosableScramble = SCRAMBLE_INNOCENT;
+
+        removeOrigPkt = true;
+
         LOG_PACKET("this packet with injected opt %s", underTestOpt->sjOptName);
 
         upgradeChainFlag(pkt);

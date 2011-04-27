@@ -88,6 +88,7 @@ start_test() {
         # WARNING: read the other WARNING in this file,,, :(
         cp $WORKPATH/generic/iptcp-options.conf $TESTID/replica-${i}
         echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
+        chmod -R o+rw $WORKDIR.
 
         echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
@@ -122,6 +123,13 @@ start_test() {
         $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
         $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
         $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
+        if [ "$?" -eq 0 ]; then
+            echo "${green}sniffjoke correctly closed${white}"
+        else
+            echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $TEMPDIR/$LOCATION by hand${white}"
+            exit
+        fi
+
         sleep 1
         killall -TERM tcpdump
     done;

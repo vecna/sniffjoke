@@ -517,7 +517,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
             snprintfScramblesList(pluginavaileScrambStr, sizeof (pluginavaileScrambStr), pt->selfObj->supportedScrambles);
 
-            origpkt.SELFLOG("%s: no scramble matching between sys avail [%s] and plugins scramble [%s]",
+            origpkt.SELFLOG("%s: no scramble matching between system avail [%s] and plugins scramble [%s]",
                             pt->selfObj->pluginName, availableScramblesStr, pluginavaileScrambStr);
             continue;
         }
@@ -532,7 +532,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
     }
 
     if (!applicable_hacks.size() && (runcfg.debug_level == PACKET_LEVEL))
-        origpkt.SELFLOG("No one hack has been passed the selection");
+        origpkt.SELFLOG("NONE hack plugin has been passed the selection!");
 
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
@@ -545,7 +545,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         PluginTrack *pt = *it;
 
-        origpkt.SELFLOG("sys avail scrambles [%s] applied to plugin [%s]", availableScramblesStr, pt->selfObj->pluginName);
+        origpkt.SELFLOG("applying plugin [%s]", pt->selfObj->pluginName);
 
         pt->selfObj->apply(origpkt, availableScrambles);
 
@@ -729,7 +729,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             }
             else
             {
-                pkt.SELFLOG("failed to corrupt pkt using MALFORMED: pkt dropped");
+                pkt.SELFLOG("failed to corrupt pkt using MALFORMED!");
                 goto drop_packet;
             }
         }
@@ -793,7 +793,8 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         snprintfScramblesList(enabled, SMALLBUF, plugin_pool.enabledScrambles());
         snprintfScramblesList(choosable, SMALLBUF, pkt.choosableScramble);
 
-        pkt.SELFLOG("pkt COMPLETED! global [%s], choosable [%s]", enabled, choosable);
+        LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]", 
+                   pkt.SjPacketId, enabled, choosable);
     }
 
     return true;

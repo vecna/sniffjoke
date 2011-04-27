@@ -542,9 +542,10 @@ void Packet::selflog(const char *func, const char *format, ...) const
                      ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)
                      );
 #else   /* I'm looking for some efficent way to get debug infos */
-            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} pktLen %u|%u|%u",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u:%u SAFR{%u%u%u%u} L %u = %u+%u(%u+%u)",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, tcp->rst,
-                     (unsigned int) pbuf.size(), ippayloadlen, tcppayloadlen
+                     (unsigned int) pbuf.size(), ippayloadlen, htons(ip->tot_len), tcppayloadlen, 
+                     (unsigned int) pbuf.size() - (ip->ihl * 4) - (tcp->doff * 4)
                      );
 #endif
             break;
@@ -652,7 +653,7 @@ const char * Packet::getWtfStr(judge_t wtf) const
         return "malformed";
     case JUDGEUNASSIGNED:
     default:
-        return "UNASSIGNED-wtf";
+        return "UNDEF-wtf";
     }
 }
 
@@ -665,12 +666,12 @@ const char * Packet::getSourceStr(source_t source) const
     case NETWORK:
         return "network";
     case PLUGIN:
-        return "hackapplication";
+        return "hackinject";
     case TRACEROUTE:
-        return "ttl bruteforce";
+        return "tracert";
     case SOURCEUNASSIGNED:
     default:
-        return "UNASSIGNED-src";
+        return "UNDEF-src";
     }
 }
 
@@ -684,6 +685,6 @@ const char * Packet::getChainStr(chaining_t chainflag) const
         return "reHackable";
     case HACKUNASSIGNED:
     default:
-        return "UNASSIGNED-chain";
+        return "UNDEF-chain";
     }
 }
