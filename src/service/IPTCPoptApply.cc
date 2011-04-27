@@ -398,7 +398,7 @@ optionImplement::optionImplement(enable, SJ_IPOPT_SID, "Session ID", IPPROTO_IP,
 
 uint8_t Io_SID::optApply(struct optHdrData *oD)
 {
-    
+
     /* this option corrupts the packet if repeated. */
     const uint8_t index = oD->actual_opts_len;
 
@@ -477,7 +477,6 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
     return TCPOPT_TIMESTAMP_SIZE;
 }
 
-
 To_TIMESTAMP::To_TIMESTAMP(bool enable) :
 optionImplement::optionImplement(enable, SJ_TCPOPT_TIMESTAMP, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP)
 {
@@ -527,4 +526,3 @@ uint8_t To_WINDOW::optApply(struct optHdrData *oD)
 {
     return 0;
 }
-

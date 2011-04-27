@@ -142,7 +142,6 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-
 class To_SACK : public optionImplement
 {
 public:

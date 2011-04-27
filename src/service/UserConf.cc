@@ -431,19 +431,20 @@ bool UserConf::loadDiskConfiguration(void)
     if (runcfg.use_blacklist)
     {
         runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
-        if((*(runcfg.blacklist)).empty())
+        if ((*(runcfg.blacklist)).empty())
             RUNTIME_EXCEPTION("requested blacklist but blacklist file not found or empty");
     }
 
     if (runcfg.use_whitelist)
     {
         runcfg.whitelist = new IPListMap(FILE_IPWHITELIST);
-        if((*(runcfg.whitelist)).empty())
+        if ((*(runcfg.whitelist)).empty())
             RUNTIME_EXCEPTION("requested whitelist but whitelist file not found or empty");
     }
 
     /* when is loaded the single plugin HDRoptions_probe, the option loader is instanced w/ NULL */
-    if(!(runcfg.onlyplugin[0] != 0x00 && !memcmp(runcfg.onlyplugin, IPTCPOPT_TEST_PLUGIN, strlen(IPTCPOPT_TEST_PLUGIN)))) {
+    if (!(runcfg.onlyplugin[0] != 0x00 && !memcmp(runcfg.onlyplugin, IPTCPOPT_TEST_PLUGIN, strlen(IPTCPOPT_TEST_PLUGIN))))
+    {
         LOG_DEBUG("Loading of %s configuration file for IP/TCP options corruption by location", IPTCPOPT_TEST_PLUGIN);
         initOptionLoader(FILE_IPTCPOPT_CONF);
     }
@@ -460,10 +461,7 @@ bool UserConf::loadDiskConfiguration(void)
 
 void UserConf::initOptionLoader(const char *toLoad)
 {
-    optionLoader initializeOptions(toLoad);
-
-    if(initializeOptions.isOptTableInit == false)
-        RUNTIME_EXCEPTION("unable to load %s for initialize the optionLoader", toLoad);
+    optionLoader::get_instance(toLoad);
 }
 
 /* function for loading of the TCP port files */

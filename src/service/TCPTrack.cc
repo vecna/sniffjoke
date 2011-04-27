@@ -182,7 +182,7 @@ uint8_t TCPTrack::discernAvailScramble(const Packet &pkt)
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
     TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
-    if (ttlfocus.status == TTL_KNOWN )
+    if (ttlfocus.status == TTL_KNOWN)
         retval |= SCRAMBLE_TTL;
 
     return retval;
@@ -412,6 +412,7 @@ bool TCPTrack::extractTTLinfo(const Packet &incompkt)
 #define ENABLE_INCOMING_DEBUG
 /* at the moment, only few plugins mangle the input packet, enable this debug when needed */
 #undef ENABLE_INCOMING_DEBUG
+
 bool TCPTrack::notifyIncoming(Packet &origpkt)
 {
     bool removeOrig = false;
@@ -510,13 +511,13 @@ bool TCPTrack::injectHack(Packet &origpkt)
          * more specific ones related to the origpkt will be checked in
          * the condition function implemented by a specific hack.
          */
-        if ( (!(availableScrambles & pt->selfObj->supportedScrambles)) && (runcfg.debug_level == PACKET_LEVEL) )
+        if ((!(availableScrambles & pt->selfObj->supportedScrambles)) && (runcfg.debug_level == PACKET_LEVEL))
         {
             char pluginavaileScrambStr[LARGEBUF] = {0};
 
-            snprintfScramblesList(pluginavaileScrambStr, sizeof(pluginavaileScrambStr), pt->selfObj->supportedScrambles);
+            snprintfScramblesList(pluginavaileScrambStr, sizeof (pluginavaileScrambStr), pt->selfObj->supportedScrambles);
 
-            origpkt.SELFLOG("%s: no scramble matching between sys avail [%s] and plugins scramble [%s]", 
+            origpkt.SELFLOG("%s: no scramble matching between sys avail [%s] and plugins scramble [%s]",
                             pt->selfObj->pluginName, availableScramblesStr, pluginavaileScrambStr);
             continue;
         }
@@ -530,7 +531,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
             applicable_hacks.push_back(pt);
     }
 
-    if( !applicable_hacks.size() && (runcfg.debug_level == PACKET_LEVEL) )
+    if (!applicable_hacks.size() && (runcfg.debug_level == PACKET_LEVEL))
         origpkt.SELFLOG("No one hack has been passed the selection");
 
     /* -- RANDOMIZE HACKS APPLICATION */
@@ -647,6 +648,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         else
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
+            /* apply mistification if PRESCRIPTION is globally enabled */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
                 pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); /* [+0, +3], 4 values */
         }
@@ -675,7 +677,6 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         if (pkt.wtf != PRESCRIPTION)
         {
             /* MISTIFICATION APPLY ON DOWNGRADE, RANDOMIZING A BIT THE ORIGINAL TTL VALUE */
-
             /* apply mistification if PRESCRIPTION is globally enabled */
             if (ISSET_TTL(plugin_pool.enabledScrambles()))
                 pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
@@ -784,8 +785,8 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     if (pkt.wtf == GUILTY)
         pkt.corruptSum();
 
-    /* intensive debug before the packet release */ 
-    if(runcfg.debug_level >= PACKET_LEVEL) 
+    /* intensive debug before the packet release */
+    if (runcfg.debug_level >= PACKET_LEVEL)
     {
         char enabled[SMALLBUF], choosable[SMALLBUF];
 
