@@ -298,6 +298,9 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 {
     uint16_t freespace = MTU - pkt.pbuf.size();
 
+    LOG_PACKET("*- strip request [%s] freespace %s, actual opts %d", 
+        strip_previous ? "YES strip" : "NO keep", freespace, oD.actual_opts_len);
+
     if (strip_previous)
     {
         freespace += oD.actual_opts_len;
