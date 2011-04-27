@@ -290,7 +290,7 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 
     if (choosableScramble == 0)
     {
-        LOG_ALL("in %s not set \"chosableScramble\" field (what the fuck Sj can to do with this packet?)", pluginName);
+        LOG_ALL("in %s not set \"choosableScramble\" field (what the fuck Sj can to do with this packet?)", pluginName);
         goto errorinfo;
     }
 
@@ -542,9 +542,9 @@ void Packet::selflog(const char *func, const char *format, ...) const
                      ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)
                      );
 #else   /* I'm looking for some efficent way to get debug infos */
-            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} plen %u payld %u",
-                     ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
-                     tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen)
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} pktLen %u|%u|%u",
+                     ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, tcp->rst, 
+                     (unsigned int) pbuf.size(), ippayloadlen, tcppayloadlen
                      );
 #endif
             break;
@@ -576,8 +576,8 @@ void Packet::selflog(const char *func, const char *format, ...) const
                    protoinfo,
                    ip->ttl, loginfo);
 #else   /* I'm looking for a better debug, but I'm keeping the previous logline for an easy fallback */
-        LOG_PACKET("%s: i%u %s %s->%s [%s] ttl:%u %s",
-                   func, SjPacketId, wtfstr,
+        LOG_PACKET("%s: i%u %s|%s %s->%s [%s] ttl:%u %s",
+                   func, SjPacketId, sourcestr, wtfstr,
                    saddr, daddr, protoinfo, ip->ttl, loginfo);
 #endif
     }

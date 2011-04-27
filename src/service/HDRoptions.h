@@ -128,7 +128,7 @@ private:
     static uint8_t counter;
 
 public:
-    static bool isFileLoaded;
+    static bool isOptTableInit;
 
     /* methods for popoulate <vector>availOpts in HDRoptions */
     optionImplement * getSingleOption(uint8_t);

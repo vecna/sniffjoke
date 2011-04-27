@@ -462,7 +462,7 @@ void UserConf::initOptionLoader(const char *toLoad)
 {
     optionLoader initializeOptions(toLoad);
 
-    if(initializeOptions.isFileLoaded == false)
+    if(initializeOptions.isOptTableInit == false)
         RUNTIME_EXCEPTION("unable to load %s for initialize the optionLoader", toLoad);
 }
 

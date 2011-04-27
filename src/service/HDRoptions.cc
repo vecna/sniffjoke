@@ -67,7 +67,7 @@ nextPlannedInj(SJ_NULL_OPT)
     optionLoader optConfigData;
     optionImplement *usableOption;
 
-    if (optConfigData.isFileLoaded == false)
+    if (optConfigData.isOptTableInit == false)
         RUNTIME_EXCEPTION("invalid use of HDRoptions: is not configured optionLoader statis objs");
 
     switch (type)
@@ -218,8 +218,10 @@ bool HDRoptions::evaluateInjectCoherence(optionImplement *requested, struct optH
             return true;
 
         /* also on corruptRequest == true, the first options had not to be bad */
+#if 0
         if ((oD->actual_opts_len < 8) && RANDOM_PERCENT(45))
             return true;
+#endif  /* funny randomization BUT in the single Injection used by HDRoptions_probe is a bug */
 
         break;
     case ONESHOT:
@@ -364,7 +366,7 @@ void HDRoptions::injector(uint8_t optIndex)
         }
     }
 
-    LOG_PACKET("*2 %s single opt [%u] : actual_opt_len(%u) (avail %u) goal %s ",
+    LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
                protD.protoName, optIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
                isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
@@ -561,11 +563,11 @@ uint8_t optionImplement::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen
 optionImplement * optionLoader::loadedOptions[SUPPORTED_OPTIONS];
 
 /* 
- * isFileLoaded is used for check from the three classes if we are running in testing mode
+ * isOptTableInit is used for check from the three classes if we are running in testing mode
  * and the file is NOT loaded, or if the file has been loaded and the implementation should 
  * me initlialized.
  */
-bool optionLoader::isFileLoaded;
+bool optionLoader::isOptTableInit;
 
 /* the settedProto and counter is used as static variable in the classes because is
  * used to track the counter in the getNextOpt methods */
@@ -595,13 +597,6 @@ optionImplement* optionLoader::getNextOpts(void)
 optionImplement* optionLoader::getSingleOption(uint8_t sjOptIndex)
 {
     return (loadedOptions[sjOptIndex]);
-}
-
-/* overloading of the constructor */
-optionLoader::optionLoader(void)
-{
-    if (!isFileLoaded)
-        RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
 }
 
 corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
@@ -645,9 +640,18 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
     return retval;
 }
 
+/* There are two constructor of optionLoader. This is the commonly requested by 
+ * HDRoprions_probe and by the scramble technology, the other constructor, taking
+ * a (const char *) as argument, is below and is called on initalization time */
+optionLoader::optionLoader(void)
+{
+    if (!isOptTableInit)
+        RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
+}
+
 optionLoader::optionLoader(const char *fname)
 {
-    if (isFileLoaded)
+    if (isOptTableInit)
     {
         LOG_DEBUG("request of HDRoptions two times!");
         RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
@@ -697,8 +701,11 @@ optionLoader::optionLoader(const char *fname)
         }
 
         fclose(optInput);
-        isFileLoaded = true;
 
         LOG_DEBUG("option loaded correctly from %s, %d values", SUPPORTED_OPTIONS);
     }
+
+    /* in both case the table has been initalized, 
+     * and thus the constructor will be called w/out args */
+    isOptTableInit = true;
 }

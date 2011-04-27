@@ -26,8 +26,7 @@
 class HDRoptions_probe : public Plugin
 {
 #define PLUGIN_NAME       "HDRoptions_probe"
-#define LOGNAME_INNOCENT  "HDRoptions-MALFORMED.log"
-#define LOGNAME_CORRUPT   "HDRoptions-INNOCENT.log"
+#define LOGNAME           "HDRoptions-testing.log"
 
 #define MIN_TESTED_LEN  756
 
@@ -35,8 +34,6 @@ private:
     int32_t optIndex;
     pluginLogHandler *pLH;
     optionImplement *underTestOpt;
-    bool testCorrupt;
-    uint8_t supportedScramble;
 
     void applyTestedOption(Packet &target, bool corrupt)
     {
@@ -45,12 +42,13 @@ private:
         if(underTestOpt->optProto == IPPROTO_IP)
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, target, dummy);
-            IPInjector.injectSingleOpt(corrupt, true, underTestOpt->optValue);
+            /* true corrupt, true strip previous */
+            IPInjector.injectSingleOpt(true, true, optIndex );
         }
         else /* IPPROTO_TCP */
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, target, dummy);
-            TCPInjector.injectSingleOpt(corrupt, true, underTestOpt->optValue);
+            TCPInjector.injectSingleOpt(true, true, optIndex );
         }
     }
 
@@ -59,32 +57,15 @@ public:
     Plugin(PLUGIN_NAME, AGG_ALWAYS)
     {
         optIndex = -1;
-        testCorrupt = false;
     }
 
     /* init is called with pluginName,SCRAMBLE+option,
      * the option in this case is  */
     virtual bool init(uint8_t configuredScramble, const char *pluginOption)
     {
-        bool retval = false;
+        bool retval = true;
 
-        if(configuredScramble == INNOCENT)
-        {
-            pLH = new pluginLogHandler(PLUGIN_NAME, LOGNAME_INNOCENT);
-
-            retval = true;
-            testCorrupt = false;
-        }
-
-        if(configuredScramble == MALFORMED)
-        {
-            pLH = new pluginLogHandler(PLUGIN_NAME, LOGNAME_CORRUPT);
-
-            retval = true;
-            testCorrupt = true;
-        }
-
-        supportedScrambles = configuredScramble;
+        pLH = new pluginLogHandler(PLUGIN_NAME, LOGNAME);
 
         if(pluginOption == NULL)
         {
@@ -101,18 +82,25 @@ public:
 
             underTestOpt = dummyConf.getSingleOption(optIndex);
 
-            pLH->completeLog("Option index [%d] point to %s (opcode %d) {%s} and opt string [%s]", 
-                             optIndex, underTestOpt->sjOptName, underTestOpt->optValue,
-                             testCorrupt ? "CORRUPT" : "NOT CORRUPT", pluginOption); 
+            /* we need to test ONESHOT and TWOSHOT, simply */
+            underTestOpt->optionConfigure(ONESHOT);
 
-            LOG_ALL("Loading HDRoptions_probe with scrmble %d and option under test %d", 
+            pLH->completeLog("Option index [%d] point to %s (opcode %d) and opt string [%s]", 
+                             optIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption); 
+
+            if(!underTestOpt->enabled)
+            {
+                LOG_ALL("this options is not ENABLED!! error raised");
+                retval = false;
+            }
+
+            LOG_ALL("Loading HDRoptions_probe with hardcoded INNOCENT scramble and option under test %d", 
                     configuredScramble, optIndex);
         }
         else
         {
             retval = false;
-            pLH->completeLog("invald option index used as argument: required >= 0 && < %d", 
-                             SUPPORTED_OPTIONS);
+            pLH->completeLog("invald option index used as argument: required >= 0 && < %d", SUPPORTED_OPTIONS);
         }
 
         LOG_DEBUG("initialization of plugins %s:: %s", __FILE__, retval ? "OK" : "failure");
@@ -138,20 +126,11 @@ public:
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
 
-        if(supportedScramble == INNOCENT)
-        {
-            pkt->wtf = INNOCENT;
+        /* the option will belive to corrupt the packet */
+        applyTestedOption(*pkt, true);
 
-            applyTestedOption(*pkt, false);
-            removeOrigPkt = true;
-        }
-        else
-        {
-            pkt->wtf = MALFORMED;
-
-            applyTestedOption(*pkt, true);
-        }
-
+        pkt->wtf = INNOCENT;
+        pkt->choosableScramble = INNOCENT;
         LOG_PACKET("this packet with injected opt %s", underTestOpt->sjOptName);
 
         upgradeChainFlag(pkt);

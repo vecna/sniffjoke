@@ -409,11 +409,16 @@ bool TCPTrack::extractTTLinfo(const Packet &incompkt)
  *
  * the function returns TRUE if a plugins has requested the removal of the packet.
  */
+#define ENABLE_INCOMING_DEBUG
+/* at the moment, only few plugins mangle the input packet, enable this debug when needed */
+#undef ENABLE_INCOMING_DEBUG
 bool TCPTrack::notifyIncoming(Packet &origpkt)
 {
     bool removeOrig = false;
 
+#ifdef ENABLE_INCOMING_DEBUG
     origpkt.SELFLOG("orig pkt: before incoming mangle");
+#endif
 
     for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
     {
@@ -444,8 +449,10 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
             if (!lastPktFix(injpkt))
                 continue;
 
+#ifdef ENABLE_INCOMING_DEBUG
             injpkt.SELFLOG("%s: generated packet, the original will be %s",
                            pt->selfObj->pluginName, pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+#endif
 
             /* injpkt.position is ignored in this section because mangleIncoming
              * is called on the YOUNG queue.
@@ -460,7 +467,9 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
         pt->selfObj->reset();
     }
 
+#ifdef ENABLE_INCOMING_DEBUG
     origpkt.SELFLOG("orig pkt: after incoming mangle");
+#endif
 
     return removeOrig;
 }
@@ -504,9 +513,11 @@ bool TCPTrack::injectHack(Packet &origpkt)
         if ( (!(availableScrambles & pt->selfObj->supportedScrambles)) && (runcfg.debug_level == PACKET_LEVEL) )
         {
             char pluginavaileScrambStr[LARGEBUF] = {0};
+
             snprintfScramblesList(pluginavaileScrambStr, sizeof(pluginavaileScrambStr), pt->selfObj->supportedScrambles);
 
-            origpkt.SELFLOG("%s: no scramble matching between sys avail [%s] and plugin %s [%s]", pt->selfObj->pluginName);
+            origpkt.SELFLOG("%s: no scramble matching between sys avail [%s] and plugins scramble [%s]", 
+                            pt->selfObj->pluginName, availableScramblesStr, pluginavaileScrambStr);
             continue;
         }
 
@@ -533,7 +544,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
         PluginTrack *pt = *it;
 
-        origpkt.SELFLOG("sys avail scrambles [%s]) apply plugin [%s]", availableScramblesStr, pt->selfObj->pluginName);
+        origpkt.SELFLOG("sys avail scrambles [%s] applied to plugin [%s]", availableScramblesStr, pt->selfObj->pluginName);
 
         pt->selfObj->apply(origpkt, availableScrambles);
 

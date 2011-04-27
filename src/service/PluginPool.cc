@@ -27,7 +27,7 @@
 
 PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, const char *plugOpt)
 {
-    LOG_VERBOSE("%s", plugabspath);
+    LOG_VERBOSE("constructor %s to %s options [%s]", __func__, plugabspath, plugOpt);
 
     char enabledScramblesStr[LARGEBUF] = {0};
 
@@ -62,13 +62,15 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
     selfObj = fp_CreatePluginObj();
     if (selfObj->pluginName == NULL)
     {
-        RUNTIME_EXCEPTION("plugin %s lack of ->PluginName member",
-                          plugabspath);
+        RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugabspath);
     }
 
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
     failInit = !selfObj->init(enabledScrambles, plugOpt);
+
+    if(failInit)
+        RUNTIME_EXCEPTION("Initialization failed!");
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
@@ -136,8 +138,7 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
         PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, pOpt);
         if (plugin->failInit)
         {
-            LOG_DEBUG("failed initialization of %s: require scramble unsupported in the enabler file",
-                      plugin->selfObj->pluginName);
+            LOG_DEBUG("failed initialization of %s: the used scramble are not enougth for the plugin requiremente", plugabspath);
             delete plugin;
         }
         else
