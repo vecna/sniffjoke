@@ -132,6 +132,7 @@ private:
      * default if not present, it use portLine class in portConfParsing.cc */
     void loadAggressivity(void);
     void initOptionLoader(const char *);
+    void delOptionLoader();
 
     bool syncPortsFiles(void);
     bool syncIPListsFiles(void);

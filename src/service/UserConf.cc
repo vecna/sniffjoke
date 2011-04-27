@@ -133,6 +133,8 @@ cmdline_opts(cmdline_opts)
 
 UserConf::~UserConf(void)
 {
+    delOptionLoader();
+
     LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
 }
 
@@ -448,7 +450,10 @@ bool UserConf::loadDiskConfiguration(void)
         LOG_DEBUG("Loading of %s configuration file for IP/TCP options corruption by location", IPTCPOPT_TEST_PLUGIN);
         initOptionLoader(FILE_IPTCPOPT_CONF);
     }
-    /* else, is loaded in HDRoptions_probe */
+    else
+    {
+        initOptionLoader(NULL);
+    }
 
     if (loadstream)
         fclose(loadstream);
@@ -462,6 +467,11 @@ bool UserConf::loadDiskConfiguration(void)
 void UserConf::initOptionLoader(const char *toLoad)
 {
     optionLoader::get_instance(toLoad);
+}
+
+void UserConf::delOptionLoader()
+{
+    optionLoader::del_instance();
 }
 
 /* function for loading of the TCP port files */

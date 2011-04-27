@@ -28,6 +28,7 @@ logstream(stdout),
 session_logstream(stdout),
 packet_logstream(stdout)
 {
+
 }
 
 void Debug::setLogstream(const char *lsf)
