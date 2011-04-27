@@ -55,6 +55,128 @@
 #include "IPTCPoptApply.h"
 #include "Utils.h"
 
+/* this class is a singleton one */
+optionLoader* optionLoader::instance_ptr = NULL;
+
+void optionLoader::select(uint8_t reqProto)
+{
+    settedProto = reqProto;
+    counter = 0;
+}
+
+optionImplement* optionLoader::get(void)
+{
+    ++counter;
+
+    if (counter == SUPPORTED_OPTIONS || loadedOptions[counter] == NULL)
+        return NULL;
+
+    if (loadedOptions[counter]->optProto == settedProto)
+        return loadedOptions[counter];
+    else
+        return get();
+}
+
+optionImplement* optionLoader::getSingleOption(uint8_t opt)
+{
+    if (opt >= SUPPORTED_OPTIONS)
+        RUNTIME_EXCEPTION("invalid use of optcode index");
+
+    return (loadedOptions[opt]);
+}
+
+corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
+{
+    corruption_t retval = CORRUPTUNASSIGNED;
+    char line[MEDIUMBUF];
+    uint32_t linecnt = 0;
+
+    do
+    {
+        uint32_t readedIndex, readedCorruption;
+
+        fgets(line, MEDIUMBUF, flow);
+        ++linecnt;
+
+        if (feof(flow))
+            break;
+
+        if (strlen(line) < 2 || line[0] == '#')
+            continue;
+
+        sscanf(line, "%u,%u", &readedIndex, &readedCorruption);
+
+        if (readedIndex < 1 || readedIndex > (SUPPORTED_OPTIONS - 1))
+            RUNTIME_EXCEPTION("in option file invalid index at line %u", linecnt);
+
+        if (readedIndex == optLooked)
+            retval = (corruption_t) readedCorruption;
+        else
+            RUNTIME_EXCEPTION("found index %u instead of the expected %u (line %u)",
+                              readedIndex, optLooked, linecnt);
+
+    }
+    while (retval == CORRUPTUNASSIGNED);
+
+    if (retval == CORRUPTUNASSIGNED)
+        RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
+
+    LOG_VERBOSE("option index %d found value corruption value of %u", optLooked, (uint8_t) retval);
+
+    return retval;
+}
+
+optionLoader::optionLoader(const char *fname)
+{
+    memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
+
+    loadedOptions[SJ_IPOPT_NOOP] = new Io_NOOP(true);
+    loadedOptions[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
+    loadedOptions[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
+    loadedOptions[SJ_IPOPT_LSRR] = new Io_LSRR(true);
+    loadedOptions[SJ_IPOPT_RR] = new Io_RR(true);
+    loadedOptions[SJ_IPOPT_RA] = new Io_RA(true);
+    loadedOptions[SJ_IPOPT_CIPSO] = new Io_CIPSO(true);
+    loadedOptions[SJ_IPOPT_SEC] = new Io_SEC(true);
+    loadedOptions[SJ_IPOPT_SID] = new Io_SID(true);
+    loadedOptions[SJ_TCPOPT_NOP] = new To_NOP(true);
+    loadedOptions[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
+    loadedOptions[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
+    loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);
+    loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false);
+    loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false);
+    loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
+    loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
+
+
+    /* testing modality - all options are loaded without a corruption definitions */
+    if (fname == NULL)
+    {
+        LOG_ALL("option configuration not supplied! Initializing in testing mode");
+    }
+    else
+    {
+        /* loading the configuration file, containings which option bring corruption for your ISP */
+        /* NOW - sets with the default used by vecna & evilaliv3 */
+        /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
+        corruption_t writUsage;
+        FILE *optInput = fopen(fname, "r");
+
+        if (optInput == NULL)
+            RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", fname, strerror(errno));
+
+        for (uint8_t sjI = 1; sjI < SUPPORTED_OPTIONS; ++sjI)
+        {
+            writUsage = lineParser(optInput, sjI);
+            loadedOptions[sjI]->optionConfigure(writUsage);
+        }
+
+        fclose(optInput);
+
+        LOG_DEBUG("option loaded correctly from %s, %d values", SUPPORTED_OPTIONS);
+    }
+}
+
 /* Now start the implementation of HDRoptions member */
 HDRoptions::HDRoptions(injector_t t, Packet &pkt, TTLFocus &ttlfocus) :
 type(t),
@@ -64,26 +186,28 @@ corruptRequest(false),
 corruptDone(false),
 nextPlannedInj(SJ_NULL_OPT)
 {
-    optionLoader optConfigData;
+    optionLoader *optConfigData = optionLoader::get_instance("");
     optionImplement *usableOption;
 
-    if (optConfigData.isOptTableInit == false)
-        RUNTIME_EXCEPTION("invalid use of HDRoptions: is not configured optionLoader statis objs");
-
+    /* initialization of header and indexes on specific proto basis */
     switch (type)
     {
     case IPOPTS_INJECTOR:
 
-        /* initialization of header and index */
+        protD.protoName = "IP";
+        protD.startOpt = FIRST_IPOPT;
+        protD.endOpt = LAST_IPOPT;
+        protD.NOP_code = IPOPT_NOOP;
+        protD.END_code = IPOPT_END;
+
         oD.actual_opts_len = pkt.iphdrlen - sizeof (struct iphdr);
-        oD.allocated_size = MAXIPOPTIONS;
 
         oD.optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
         memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), oD.actual_opts_len);
 
         /* initialized the vector using the pointer of the static private data
          * in optionLoaded::loadedOptions */
-        for (optConfigData.getInitializedOpts(IPPROTO_IP); (usableOption = optConfigData.getNextOpts()) != NULL;)
+        for (optConfigData->select(IPPROTO_IP); (usableOption = optConfigData->get()) != NULL;)
         {
             /* specific per-classes initialization need to be called here */
             if (usableOption->sjOptIndex == SJ_IPOPT_TIMESTOVERFLOW)
@@ -92,29 +216,25 @@ nextPlannedInj(SJ_NULL_OPT)
             availOpts.push_back(usableOption);
         }
 
-        /* fix the appropriate protocol specification */
-        protD.NOP_code = IPOPT_NOOP;
-        protD.END_code = IPOPT_END;
-        protD.protoName = "IP";
-
         break;
 
     case TCPOPTS_INJECTOR:
+
+        protD.protoName = "TCP";
+        protD.startOpt = FIRST_TCPOPT;
+        protD.endOpt = LAST_TCPOPT;
+        protD.NOP_code = TCPOPT_NOP;
+        protD.END_code = TCPOPT_EOL;
+
         oD.actual_opts_len = pkt.tcphdrlen - sizeof (struct tcphdr);
-        oD.allocated_size = MAXTCPOPTIONS;
 
         oD.optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
         memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), oD.actual_opts_len);
 
-        /* initialized the vector using the pointer of the static private data
+        /* initialize the vector using the pointer of the static private data
          * in optionLoaded::loadedOptions */
-        for (optConfigData.getInitializedOpts(IPPROTO_TCP); (usableOption = optConfigData.getNextOpts()) != NULL;)
+        for (optConfigData->select(IPPROTO_TCP); (usableOption = optConfigData->get()) != NULL;)
             availOpts.push_back(usableOption);
-
-        /* fix the appropriate protocol specification */
-        protD.NOP_code = TCPOPT_NOP;
-        protD.END_code = TCPOPT_EOL;
-        protD.protoName = "TCP";
 
         break;
     }
@@ -137,7 +257,7 @@ bool HDRoptions::acquirePresentOptions(void)
          * is set in the constructor, like every other protocol dependend values */
         if (*option == protD.NOP_code)
         {
-            i++;
+            ++i;
             continue;
         }
 
@@ -284,7 +404,7 @@ uint32_t HDRoptions::alignOpthdr()
     return oD.actual_opts_len;
 }
 
-void HDRoptions::copyOpthdr(uint8_t * dst)
+void HDRoptions::copyOpthdr(uint8_t *dst)
 {
     memcpy(dst, &oD.optshdr[0], oD.actual_opts_len);
 }
@@ -321,23 +441,23 @@ void HDRoptions::completeInjection()
 
     if (type == IPOPTS_INJECTOR)
     {
-        pkt.iphdrResize(sizeof (struct iphdr) +oD.actual_opts_len);
+        pkt.iphdrResize((sizeof (struct iphdr)) + oD.actual_opts_len);
         copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
     }
     else
     {
-        pkt.tcphdrResize(sizeof (struct tcphdr) +oD.actual_opts_len);
+        pkt.tcphdrResize((sizeof (struct tcphdr)) + oD.actual_opts_len);
         copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
     }
 }
 
-void HDRoptions::injector(uint8_t optIndex)
+void HDRoptions::injector(uint8_t opt)
 {
     optionImplement *requested = NULL;
 
     for (vector<optionImplement *>::iterator underVerify = availOpts.begin(); underVerify != availOpts.end(); ++underVerify)
     {
-        if ((*underVerify)->sjOptIndex == optIndex)
+        if ((*underVerify)->sjOptIndex == opt)
         {
             requested = *underVerify;
             break;
@@ -345,19 +465,20 @@ void HDRoptions::injector(uint8_t optIndex)
     }
 
     if (requested == NULL)
-        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", optIndex, protD.protoName);
+        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", opt, protD.protoName);
 
     LOG_PACKET("*1 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, optIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
+               protD.protoName, opt, oD.actual_opts_len, oD.getAvailableOptLen(),
                corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
     /* if needed by corruption method, make two time the injection, otherwise 1, otherwise 0 */
-    for (uint8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); counterInj++)
+    for (uint8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); ++counterInj)
     {
-        uint8_t writtedLen;
+        uint8_t writtedLen = requested->optApply(&oD);
 
-        if ((writtedLen = requested->optApply(&oD)) > 0)
+        if (writtedLen > 0)
         {
+
             LOG_PACKET("** %s at the index of %u options length of %u (avail %u)",
                        requested->sjOptName, requested->sjOptIndex, writtedLen, oD.getAvailableOptLen());
 
@@ -367,7 +488,7 @@ void HDRoptions::injector(uint8_t optIndex)
     }
 
     LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, optIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
+               protD.protoName, opt, oD.actual_opts_len, oD.getAvailableOptLen(),
                isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
@@ -383,7 +504,7 @@ void HDRoptions::randomInjector()
     {
         optionImplement *randOpt = *it;
 
-        for (uint8_t counterInj = 0; evaluateInjectCoherence(randOpt, &oD, counterInj); counterInj++)
+        for (uint8_t counterInj = 0; evaluateInjectCoherence(randOpt, &oD, counterInj); ++counterInj)
         {
             uint8_t writtedLen;
 
@@ -410,13 +531,13 @@ void HDRoptions::randomInjector()
                isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
-bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t optIndex)
+bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t opt)
 {
-    if (optIndex >= SUPPORTED_OPTIONS)
+    if (opt >= SUPPORTED_OPTIONS)
         RUNTIME_EXCEPTION("invalid use of optcode index");
 
     if (prepareInjection(corrupt, strip_previous))
-        injector(optIndex);
+        injector(opt);
 
     if (!isGoalAchieved())
         return false;
@@ -448,6 +569,7 @@ bool HDRoptions::removeOption(uint8_t opt)
 
     for (vector<option_occurrence>::iterator it = optTrack[opt].begin(); it != optTrack[opt].end(); it = optTrack[opt].erase(it))
     {
+
         vector<unsigned char>::iterator start = oD.optshdr.begin() + it->off;
         vector<unsigned char>::iterator end = start + it->len;
         oD.optshdr.erase(start, end);
@@ -464,11 +586,10 @@ HDRoptions::~HDRoptions(void)
 {
 #ifdef HEAVY_HDROPT_DEBUG
 #define HDR_PREFIX  "HDRoLog/"
-    optionLoader optConfigData;
+    optionLoader *optConfigData = optionLoader::get_instance("");
 
     char fname[MEDIUMBUF];
     FILE *HDRoLog;
-    uint32_t start, end;
 
     mkdir(HDR_PREFIX, 0770);
     snprintf(fname, MEDIUMBUF, "%s%s-%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))), protD.protoName);
@@ -482,33 +603,20 @@ HDRoptions::~HDRoptions(void)
             pkt.SjPacketId, ntohs(pkt.ip->id)
             );
 
-    if (type == IPOPTS_INJECTOR)
+    for (uint8_t i = protD.startOpt; i <= protD.endOpt; ++i)
     {
-        start = FIRST_IPOPT;
-        end = LAST_IPOPT;
-    }
-    else
-    {
-        start = FIRST_TCPOPT;
-        end = LAST_TCPOPT;
-    }
-
-    while (start <= end)
-    {
-        if (optTrack[start].size() == false)
+        if (optTrack[i].size() == false)
         {
-            fprintf(HDRoLog, " ~%u", start);
+            fprintf(HDRoLog, " ~%u", i);
         }
         else
         {
-            optionImplement *yep = optConfigData.getSingleOption(start);
+            optionImplement *yep = optConfigData->getSingleOption(i);
             fprintf(HDRoLog, " %s", yep->sjOptName);
 
-            for (vector<option_occurrence>::iterator it = optTrack[start].begin(); it != optTrack[start].end(); it++)
+            for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); ++it)
                 fprintf(HDRoLog, ":%u(%u)", it->off, it->len);
         }
-
-        start++;
     }
     fprintf(HDRoLog, "\n");
 
@@ -529,6 +637,7 @@ availableUsage(CORRUPTUNASSIGNED)
 
 void optionImplement::optionConfigure(corruption_t c)
 {
+
     availableUsage = c;
 }
 
@@ -538,174 +647,19 @@ uint8_t optionImplement::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen
     uint8_t minComputed = fixedLen + (minRblks * blockSize);
     uint8_t maxComputed = fixedLen + (maxRblks * blockSize);
 
-    /* availableOptsLen is not accessible here ... */
-    uint8_t checkedAvail = (oD->allocated_size - oD->actual_opts_len);
+    uint8_t checkedAvail = oD->getAvailableOptLen();
 
     if (checkedAvail == minComputed || checkedAvail == maxComputed)
         return checkedAvail;
 
     if (checkedAvail < minComputed)
         return 0;
-    else if (checkedAvail > maxComputed)
+
+    if (checkedAvail > maxComputed)
         return (((random() % (maxRblks - minRblks + 1)) + minRblks) * blockSize) + fixedLen;
-    else /* should try the best filling of memory and the NOP fill after */
-    {
-        uint8_t blockNumber = (checkedAvail - fixedLen) / blockSize;
-        return (blockNumber * blockSize) +fixedLen;
-    }
-}
 
-/* optionImplement + optionLoader classess */
-/* --------------- - ------------ -------- */
+    /* else should try the best filling of memory and the NOP fill after */
 
-/* loadedOption is the main struct where the implementation are stored: HDRoptions
- * need to initialize every instance with them, and I've preferred a static reference */
-optionImplement * optionLoader::loadedOptions[SUPPORTED_OPTIONS];
-
-/* 
- * isOptTableInit is used for check from the three classes if we are running in testing mode
- * and the file is NOT loaded, or if the file has been loaded and the implementation should 
- * me initlialized.
- */
-bool optionLoader::isOptTableInit;
-
-/* the settedProto and counter is used as static variable in the classes because is
- * used to track the counter in the getNextOpt methods */
-uint8_t optionLoader::settedProto;
-uint8_t optionLoader::counter;
-
-void optionLoader::getInitializedOpts(uint8_t reqProto)
-{
-    /* static variables */
-    settedProto = reqProto;
-    counter = 0;
-}
-
-optionImplement* optionLoader::getNextOpts(void)
-{
-    ++counter;
-
-    if (counter == SUPPORTED_OPTIONS || loadedOptions[counter] == NULL)
-        return NULL;
-
-    if (loadedOptions[counter]->optProto == settedProto)
-        return loadedOptions[counter];
-    else
-        return getNextOpts();
-}
-
-optionImplement* optionLoader::getSingleOption(uint8_t sjOptIndex)
-{
-    return (loadedOptions[sjOptIndex]);
-}
-
-corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
-{
-    corruption_t retval = CORRUPTUNASSIGNED;
-    char line[MEDIUMBUF];
-    uint32_t linecnt = 0;
-
-    do
-    {
-        uint32_t readedIndex, readedCorruption;
-
-        fgets(line, MEDIUMBUF, flow);
-        linecnt++;
-
-        if (feof(flow))
-            break;
-
-        if (strlen(line) < 2 || line[0] == '#')
-            continue;
-
-        sscanf(line, "%u,%u", &readedIndex, &readedCorruption);
-
-        if (readedIndex < 1 || readedIndex > (SUPPORTED_OPTIONS - 1))
-            RUNTIME_EXCEPTION("in option file invalid index at line %u", linecnt);
-
-        if (readedIndex == optLooked)
-            retval = (corruption_t) readedCorruption;
-        else
-            RUNTIME_EXCEPTION("found index %u instead of the expected %u (line %u)",
-                              readedIndex, optLooked, linecnt);
-
-    }
-    while (retval == CORRUPTUNASSIGNED);
-
-    if (retval == CORRUPTUNASSIGNED)
-        RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
-
-    LOG_VERBOSE("option index %d found value corruption value of %u", optLooked, (uint8_t) retval);
-
-    return retval;
-}
-
-/* There are two constructor of optionLoader. This is the commonly requested by 
- * HDRoprions_probe and by the scramble technology, the other constructor, taking
- * a (const char *) as argument, is below and is called on initalization time */
-optionLoader::optionLoader(void)
-{
-    if (!isOptTableInit)
-        RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
-}
-
-optionLoader::optionLoader(const char *fname)
-{
-    if (isOptTableInit)
-    {
-        LOG_DEBUG("request of HDRoptions two times!");
-        RUNTIME_EXCEPTION("request IP/TCP option loaded before file initialization");
-    }
-
-    memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
-
-    loadedOptions[SJ_IPOPT_NOOP] = new Io_NOOP(true);
-    loadedOptions[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
-    loadedOptions[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
-    loadedOptions[SJ_IPOPT_LSRR] = new Io_LSRR(true);
-    loadedOptions[SJ_IPOPT_RR] = new Io_RR(true);
-    loadedOptions[SJ_IPOPT_RA] = new Io_RA(true);
-    loadedOptions[SJ_IPOPT_CIPSO] = new Io_CIPSO(true);
-    loadedOptions[SJ_IPOPT_SEC] = new Io_SEC(true);
-    loadedOptions[SJ_IPOPT_SID] = new Io_SID(true);
-    loadedOptions[SJ_TCPOPT_NOP] = new To_NOP(true);
-    loadedOptions[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
-    loadedOptions[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
-    loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);
-    loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false);
-    loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false);
-    loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
-    loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
-
-
-    /* testing modality - all options are loaded without a corruption definitions */
-    if (fname == NULL)
-    {
-        LOG_ALL("option configuration not supplied! Initializing in testing mode");
-    }
-    else
-    {
-        /* loading the configuration file, containings which option bring corruption for your ISP */
-        /* NOW - sets with the default used by vecna & evilaliv3 */
-        /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
-        corruption_t writUsage;
-        FILE *optInput = fopen(fname, "r");
-
-        if (optInput == NULL)
-            RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", fname, strerror(errno));
-
-        for (uint8_t sjI = 1; sjI < SUPPORTED_OPTIONS; sjI++)
-        {
-            writUsage = lineParser(optInput, sjI);
-            loadedOptions[sjI]->optionConfigure(writUsage);
-        }
-
-        fclose(optInput);
-
-        LOG_DEBUG("option loaded correctly from %s, %d values", SUPPORTED_OPTIONS);
-    }
-
-    /* in both case the table has been initalized, 
-     * and thus the constructor will be called w/out args */
-    isOptTableInit = true;
+    uint8_t blockNumber = (checkedAvail - fixedLen) / blockSize;
+    return ((blockNumber * blockSize) + fixedLen);
 }

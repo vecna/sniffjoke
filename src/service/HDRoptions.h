@@ -93,11 +93,10 @@ struct optHdrData
 {
     vector<unsigned char> optshdr;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-    uint8_t allocated_size; /* Usually, 40 for IP and TCP too */
 
     uint8_t getAvailableOptLen()
     {
-        return allocated_size - actual_opts_len;
+        return optshdr.size() - actual_opts_len;
     };
 };
 
@@ -121,28 +120,43 @@ public:
 class optionLoader
 {
 private:
-    static optionImplement *loadedOptions[SUPPORTED_OPTIONS];
 
-    /* these static vars are used by getInitializedOpts, getNextOpts */
-    static uint8_t settedProto;
-    static uint8_t counter;
+    /* this class is a singleton one */
+    static optionLoader* instance_ptr;
+
+    /* loadedOption is the main struct where the implementation are stored: HDRoptions
+     * need to initialize every instance with them, and I've preferred a static reference */
+    optionImplement *loadedOptions[SUPPORTED_OPTIONS];
+
+    /* the settedProto and counter is used as static variable in the classes because is
+     * used to track the counter in the getNextOpt methods */
+    uint8_t settedProto;
+    uint8_t counter;
+
+    optionLoader(const char *);
 
 public:
-    static bool isOptTableInit;
 
     /* methods for popoulate <vector>availOpts in HDRoptions */
     optionImplement * getSingleOption(uint8_t);
-    void getInitializedOpts(uint8_t);
-    optionImplement * getNextOpts(void);
+    void select(uint8_t);
+    optionImplement * get(void);
 
     /* construction is overloaded because in the UserConf routine the 
      * configuration file is loaded and the static variable is setup.
      *
      * in hijacking time the constructor is called without any args */
-    optionLoader(const char *);
-    optionLoader(void);
 
     corruption_t lineParser(FILE *, uint8_t);
+
+    static optionLoader* get_instance(const char *fname)
+    {
+        if (instance_ptr == NULL)
+        {
+            instance_ptr = new optionLoader(fname);
+        }
+        return instance_ptr;
+    }
 };
 
 /* these struct are used inside HDRoptions for an easy handling */
@@ -154,9 +168,11 @@ struct option_occurrence
 
 struct protocolSpec
 {
+    const char *protoName;
+    uint8_t startOpt;
+    uint8_t endOpt;
     uint8_t NOP_code;
     uint8_t END_code;
-    const char *protoName;
 };
 
 class HDRoptions
