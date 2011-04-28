@@ -133,9 +133,7 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
 TTLFocusMap::TTLFocusMap(void) :
 manage_timeout(sj_clock)
 {
-    struct tm *checkedClock = localtime( (const time_t *)&sj_clock );
-
-    LOG_DEBUG("with clock %s", asctime(checkedClock) );
+    LOG_DEBUG("with reference time (seconds) %u", uint32_t(sj_clock) );
 
     load();
 }

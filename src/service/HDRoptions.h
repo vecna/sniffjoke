@@ -104,7 +104,7 @@ class optionImplement
 {
 public:
     bool enabled;
-    uint8_t sjOptIndex;
+    uint32_t sjOptIndex;
     const char* const sjOptName;
     uint8_t optProto;
     uint8_t optValue;
@@ -138,7 +138,7 @@ private:
 public:
 
     /* methods for popoulate <vector>availOpts in HDRoptions */
-    optionImplement * getSingleOption(uint8_t);
+    optionImplement * getSingleOption(uint32_t);
     void select(uint8_t);
     optionImplement * get(void);
 
@@ -147,7 +147,7 @@ public:
      *
      * in hijacking time the constructor is called without any args */
 
-    corruption_t lineParser(FILE *, uint8_t);
+    corruption_t lineParser(FILE *, uint32_t);
 
     static optionLoader& get_instance(const char *);
     static void del_instance(void);
@@ -200,7 +200,7 @@ private:
     bool acquirePresentOptions(void);
 
     /* the core selecting function */
-    bool evaluateInjectCoherence(optionImplement *, struct optHdrData *, uint8_t);
+    bool evaluateInjectCoherence(optionImplement *, struct optHdrData *, int8_t);
 
     /* after the call to optApply, HDRoptions need to be sync */
     void registerOptOccurrence(struct optionImplement *, uint8_t, uint8_t);
@@ -216,7 +216,7 @@ private:
     bool prepareInjection(bool, bool);
     void completeInjection();
 
-    void injector(uint8_t);
+    void injector(uint32_t);
     void randomInjector();
 
 public:
@@ -224,10 +224,10 @@ public:
     HDRoptions(injector_t, Packet &, TTLFocus &);
     ~HDRoptions();
 
-    bool injectSingleOpt(bool, bool, uint8_t);
+    bool injectSingleOpt(bool, bool, uint32_t);
     bool injectRandomOpts(bool, bool);
 
-    bool removeOption(uint8_t);
+    bool removeOption(uint32_t);
 };
 
 #endif /* HDROPTIONS_H */

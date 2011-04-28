@@ -76,15 +76,15 @@ optionImplement* optionLoader::get(void)
         return get();
 }
 
-optionImplement* optionLoader::getSingleOption(uint8_t opt)
+optionImplement* optionLoader::getSingleOption(uint32_t sjOptIndex)
 {
-    if (opt >= SUPPORTED_OPTIONS)
+    if (sjOptIndex >= SUPPORTED_OPTIONS)
         RUNTIME_EXCEPTION("invalid use of optcode index");
 
-    return (loadedOptions[opt]);
+    return (loadedOptions[sjOptIndex]);
 }
 
-corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
+corruption_t optionLoader::lineParser(FILE *flow, uint32_t optLooked)
 {
     corruption_t retval = CORRUPTUNASSIGNED;
     char line[MEDIUMBUF];
@@ -128,7 +128,7 @@ corruption_t optionLoader::lineParser(FILE *flow, uint8_t optLooked)
 optionLoader::optionLoader(const char *fname)
 {
     memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
-
+printf("XX\n");
     loadedOptions[SJ_IPOPT_NOOP] = new Io_NOOP(true);
     loadedOptions[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
     loadedOptions[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
@@ -165,13 +165,14 @@ optionLoader::optionLoader(const char *fname)
 
         for (uint8_t sjI = 1; sjI < SUPPORTED_OPTIONS; ++sjI)
         {
+printf("XX %d\n", sjI);
             writUsage = lineParser(optInput, sjI);
             loadedOptions[sjI]->optionConfigure(writUsage);
         }
 
         fclose(optInput);
 
-        LOG_DEBUG("option loaded correctly from %s, %d values", SUPPORTED_OPTIONS);
+        LOG_DEBUG("options configuration loaded correctly from %s: %d defs", fname, SUPPORTED_OPTIONS);
     }
 }
 
@@ -231,7 +232,6 @@ nextPlannedInj(SJ_NULL_OPT)
 
             availOpts.push_back(usableOption);
         }
-
         break;
 
     case TCPOPTS_INJECTOR:
@@ -331,7 +331,7 @@ bool HDRoptions::acquirePresentOptions(void)
  * 1) check if a requested (will be random, will be by code) is enabled 
  * 2) check if the goal is corrupt or not, and choose the option by the counter data 
  */
-bool HDRoptions::evaluateInjectCoherence(optionImplement *requested, struct optHdrData *oD, uint8_t counterInj)
+bool HDRoptions::evaluateInjectCoherence(optionImplement *requested, struct optHdrData *oD, int8_t counterInj)
 {
 
     /*
@@ -434,7 +434,7 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 {
     uint16_t freespace = MTU - pkt.pbuf.size();
 
-    LOG_PACKET("*- strip request [%s] freespace %s, actual opts %d", 
+    LOG_PACKET("*? strip request [%s] freespace %d, actual opts %d", 
         strip_previous ? "YES strip" : "NO keep", freespace, oD.actual_opts_len);
 
     if (strip_previous)
@@ -460,23 +460,25 @@ void HDRoptions::completeInjection()
 
     if (type == IPOPTS_INJECTOR)
     {
+        LOG_PACKET("*- resize IPhdr to contain %d options len", oD.actual_opts_len);
         pkt.iphdrResize((sizeof (struct iphdr)) + oD.actual_opts_len);
         copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
     }
     else
     {
+        LOG_PACKET("*- resize TCPhdr to contain %d options len", oD.actual_opts_len);
         pkt.tcphdrResize((sizeof (struct tcphdr)) + oD.actual_opts_len);
         copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
     }
 }
 
-void HDRoptions::injector(uint8_t opt)
+void HDRoptions::injector(uint32_t sjOptIndex)
 {
     optionImplement *requested = NULL;
 
     for (vector<optionImplement *>::iterator underVerify = availOpts.begin(); underVerify != availOpts.end(); ++underVerify)
     {
-        if ((*underVerify)->sjOptIndex == opt)
+        if ((*underVerify)->sjOptIndex == sjOptIndex)
         {
             requested = *underVerify;
             break;
@@ -484,14 +486,14 @@ void HDRoptions::injector(uint8_t opt)
     }
 
     if (requested == NULL)
-        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", opt, protD.protoName);
+        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", sjOptIndex, protD.protoName);
 
     LOG_PACKET("*1 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, opt, oD.actual_opts_len, oD.getAvailableOptLen(),
+               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
                corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
     /* if needed by corruption method, make two time the injection, otherwise 1, otherwise 0 */
-    for (uint8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); ++counterInj)
+    for (int8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); ++counterInj)
     {
         uint8_t writtedLen = requested->optApply(&oD);
 
@@ -507,7 +509,7 @@ void HDRoptions::injector(uint8_t opt)
     }
 
     LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, opt, oD.actual_opts_len, oD.getAvailableOptLen(),
+               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
                isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
@@ -549,13 +551,13 @@ void HDRoptions::randomInjector()
                isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
 }
 
-bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t opt)
+bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint32_t sjOptIndex)
 {
-    if (opt >= SUPPORTED_OPTIONS)
+    if (sjOptIndex >= SUPPORTED_OPTIONS)
         RUNTIME_EXCEPTION("invalid use of optcode index");
 
     if (prepareInjection(corrupt, strip_previous))
-        injector(opt);
+        injector(sjOptIndex);
 
     if (!isGoalAchieved())
         return false;
@@ -576,16 +578,22 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
     return true;
 }
 
-bool HDRoptions::removeOption(uint8_t opt)
+/* off-topic naming base rule: 
+ *
+ * sjOptIndex is the uint32_t name of the index, defined in hardcodedDefines.h
+ *            sometime, will be shortened with "sjI"
+ * optValue is the uint8_t name used for the binary value copyed in the optHdr
+ */
+bool HDRoptions::removeOption(uint32_t sjI)
 {
-    if (opt >= SUPPORTED_OPTIONS)
+    if (sjI >= SUPPORTED_OPTIONS)
         RUNTIME_EXCEPTION("invalid use of optcode index");
 
     /* if an option is request to be deleted, we need to check if it exists! */
-    if (optTrack[opt].size() == 0)
+    if (optTrack[sjI].size() == 0)
         return false;
 
-    for (vector<option_occurrence>::iterator it = optTrack[opt].begin(); it != optTrack[opt].end(); it = optTrack[opt].erase(it))
+    for (vector<option_occurrence>::iterator it = optTrack[sjI].begin(); it != optTrack[sjI].end(); it = optTrack[sjI].erase(it))
     {
 
         vector<unsigned char>::iterator start = oD.optshdr.begin() + it->off;
@@ -655,6 +663,7 @@ availableUsage(CORRUPTUNASSIGNED)
 
 void optionImplement::optionConfigure(corruption_t c)
 {
+printf("KKK\n");
 
     availableUsage = c;
 }

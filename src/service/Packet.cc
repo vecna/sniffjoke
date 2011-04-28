@@ -542,10 +542,10 @@ void Packet::selflog(const char *func, const char *format, ...) const
                      ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)
                      );
 #else   /* I'm looking for some efficent way to get debug infos */
-            snprintf(protoinfo, sizeof (protoinfo), "TCP %u:%u SAFR{%u%u%u%u} L %u = %u+%u(%u+%u)",
+            snprintf(protoinfo, sizeof (protoinfo), "TCP %u:%u SAFR{%u%u%u%u} L %u = %u+%u+%u",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, tcp->rst,
-                     (unsigned int) pbuf.size(), ippayloadlen, htons(ip->tot_len), tcppayloadlen, 
-                     (unsigned int) pbuf.size() - (ip->ihl * 4) - (tcp->doff * 4)
+                     (unsigned int) pbuf.size(), (htons(ip->tot_len) - ippayloadlen),
+                     (tcp->doff * 4), htons(ip->tot_len) - (ip->ihl * 4) - (tcp->doff * 4)
                      );
 #endif
             break;
