@@ -34,7 +34,6 @@
 class Process
 {
 private:
-    const struct sj_config &runcfg;
 
     struct passwd userinfo;
     void* userinfo_buf;
@@ -46,7 +45,7 @@ private:
     struct sigaction action;
 
 public:
-    Process(const struct sj_config &);
+    Process(void);
     ~Process(void);
 
     pid_t readPidfile(void);
@@ -54,7 +53,7 @@ public:
     void unlinkPidfile(bool);
 
     int detach(void);
-    void jail(const char *chroot_dir);
+    void jail(void);
     void privilegesDowngrade(void);
     void sigtrapSetup(sig_t);
     void sigtrapEnable(void);

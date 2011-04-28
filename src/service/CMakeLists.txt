@@ -5,7 +5,9 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 ADD_EXECUTABLE(sniffjoke
                HDRoptions
                IPList
-               IPTCPoptApply
+               IPTCPopt
+               IPTCPoptImpl
+               OptionPool
                main
                NetIO
                Packet

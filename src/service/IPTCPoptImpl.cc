@@ -19,9 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "HDRoptions.h"
-#include "IPTCPoptApply.h"
-#include "Utils.h"
+
+#include "IPTCPoptImpl.h"
 
 /* this file contains the extension of the class optionImplement, every options DETAIL,
  * injection function, is implemented here. 
@@ -31,7 +30,7 @@
  */
 
 Io_NOOP::Io_NOOP(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_NOOP, "IP NOOP", IPPROTO_IP, IPOPT_NOOP)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_NOOP, "IP NOOP", IPPROTO_IP, IPOPT_NOOP)
 {
 }
 
@@ -61,7 +60,7 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
  */
 
 Io_TIMESTAMP::Io_TIMESTAMP(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_TIMESTAMP, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTAMP, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP)
 {
 }
 
@@ -108,7 +107,7 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 }
 
 Io_TIMESTOVERFLOW::Io_TIMESTOVERFLOW(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_TIMESTOVERFLOW, "IP Timestamp overflow", IPPROTO_IP, DUMMY_OPCODE)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTOVERFLOW, "IP Timestamp overflow", IPPROTO_IP, DUMMY_OPCODE)
 {
 }
 
@@ -135,10 +134,10 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     oD->optshdr[index] = IPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = size_timestamp;
 
-    uint8_t last_filled = 0;
     uint8_t overflow = 0;
 
-    last_filled = covered_destinations - ttlfocus->ttl_estimate;
+    uint8_t last_filled = covered_destinations - ttlfocus->ttl_estimate;
+
     if (last_filled > timestamps)
     {
         overflow = (last_filled - timestamps);
@@ -158,7 +157,7 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
 }
 
 Io_LSRR::Io_LSRR(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_LSRR, "Loose source routing", IPPROTO_IP, IPOPT_LSRR)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_LSRR, "Loose source routing", IPPROTO_IP, IPOPT_LSRR)
 {
 }
 
@@ -222,7 +221,7 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
 }
 
 Io_RR::Io_RR(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_RR, "Record route", IPPROTO_IP, IPOPT_RR)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RR, "Record route", IPPROTO_IP, IPOPT_RR)
 {
 }
 
@@ -266,15 +265,13 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
 }
 
 Io_RA::Io_RA(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_RA, "Router advertising", IPPROTO_IP, IPOPT_RA)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RA, "Router advertising", IPPROTO_IP, IPOPT_RA)
 {
 }
 
 uint8_t Io_RA::optApply(struct optHdrData *oD)
 {
 #define IPOPT_RA_SIZE 4
-
-    return 0;
 
     /*
      * by literature it's not clear if this option could
@@ -305,7 +302,7 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
 }
 
 Io_CIPSO::Io_CIPSO(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_CIPSO, "Cipso", IPPROTO_IP, IPOPT_CIPSO)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_CIPSO, "Cipso", IPPROTO_IP, IPOPT_CIPSO)
 {
 }
 
@@ -348,7 +345,7 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
 }
 
 Io_SEC::Io_SEC(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_SEC, "Security", IPPROTO_IP, IPOPT_SEC)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SEC, "Security", IPPROTO_IP, IPOPT_SEC)
 {
 }
 
@@ -392,13 +389,12 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
 }
 
 Io_SID::Io_SID(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_SID, "Session ID", IPPROTO_IP, IPOPT_SID)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SID, "Session ID", IPPROTO_IP, IPOPT_SID)
 {
 }
 
 uint8_t Io_SID::optApply(struct optHdrData *oD)
 {
-
     /* this option corrupts the packet if repeated. */
     const uint8_t index = oD->actual_opts_len;
 
@@ -417,7 +413,7 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
  */
 
 To_NOP::To_NOP(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_NOP, "TCP NOP", IPPROTO_TCP, TCPOPT_NOP)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_NOP, "TCP NOP", IPPROTO_TCP, TCPOPT_NOP)
 {
 }
 
@@ -434,7 +430,7 @@ uint8_t To_NOP::optApply(struct optHdrData *oD)
 }
 
 To_MD5SIG::To_MD5SIG(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_MD5SIG, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
 {
 }
 
@@ -457,7 +453,7 @@ uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
 }
 
 To_PAWSCORRUPT::To_PAWSCORRUPT(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_PAWSCORRUPT, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_PAWSCORRUPT, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE)
 {
 }
 
@@ -478,7 +474,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 }
 
 To_TIMESTAMP::To_TIMESTAMP(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_TIMESTAMP, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_TIMESTAMP, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP)
 {
 }
 
@@ -488,7 +484,7 @@ uint8_t To_TIMESTAMP::optApply(struct optHdrData *oD)
 }
 
 To_MSS::To_MSS(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_MSS, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MSS, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG)
 {
 }
 
@@ -498,7 +494,7 @@ uint8_t To_MSS::optApply(struct optHdrData *oD)
 }
 
 To_SACK::To_SACK(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_SACK, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACK, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK)
 {
 }
 
@@ -508,7 +504,7 @@ uint8_t To_SACK::optApply(struct optHdrData *oD)
 }
 
 To_SACKPERM::To_SACKPERM(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_SACKPERM, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACKPERM, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED)
 {
 }
 
@@ -518,7 +514,7 @@ uint8_t To_SACKPERM::optApply(struct optHdrData *oD)
 }
 
 To_WINDOW::To_WINDOW(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_WINDOW, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_WINDOW, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW)
 {
 }
 

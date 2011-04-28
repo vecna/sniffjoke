@@ -28,6 +28,7 @@
 #include "Utils.h"
 #include "Packet.h"
 #include "TTLFocus.h"
+#include "IPTCPopt.h"
 
 #define MAXIPOPTIONS 40
 #define MAXTCPOPTIONS 40
@@ -80,79 +81,6 @@ enum injector_t
     IPOPTS_INJECTOR = 0, TCPOPTS_INJECTOR = 1
 };
 
-/* NOT corrupt is an option that will never give an error, ONESHOT is an option that 
- * make the packet dischargable, twoshot because some option trigger a fult if present 
- * two time in the same header, and BOTH are option that will be either good or malformed
- * to be dumped by the remote host */
-enum corruption_t
-{
-    CORRUPTUNASSIGNED = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
-};
-
-struct optHdrData
-{
-    vector<unsigned char> optshdr;
-    uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-
-    uint8_t getAvailableOptLen()
-    {
-        return optshdr.size() - actual_opts_len;
-    };
-};
-
-class optionImplement
-{
-public:
-    bool enabled;
-    uint32_t sjOptIndex;
-    const char* const sjOptName;
-    uint8_t optProto;
-    uint8_t optValue;
-    corruption_t availableUsage;
-
-    uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
-
-    optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t);
-    void optionConfigure(corruption_t);
-    virtual uint8_t optApply(struct optHdrData *) = 0;
-};
-
-class optionLoader
-{
-private:
-
-    /* this class is a singleton one */
-    static optionLoader* instance_ptr;
-
-    /* loadedOption is the main struct where the implementation are stored: HDRoptions
-     * need to initialize every instance with them, and I've preferred a static reference */
-    optionImplement *loadedOptions[SUPPORTED_OPTIONS];
-
-    /* the settedProto and counter is used as static variable in the classes because is
-     * used to track the counter in the getNextOpt methods */
-    uint8_t settedProto;
-    uint8_t counter;
-
-    optionLoader(const char *);
-
-public:
-
-    /* methods for popoulate <vector>availOpts in HDRoptions */
-    optionImplement * getSingleOption(uint32_t);
-    void select(uint8_t);
-    optionImplement * get(void);
-
-    /* construction is overloaded because in the UserConf routine the 
-     * configuration file is loaded and the static variable is setup.
-     *
-     * in hijacking time the constructor is called without any args */
-
-    corruption_t lineParser(FILE *, uint32_t);
-
-    static optionLoader& get_instance(const char *);
-    static void del_instance(void);
-};
-
 /* these struct are used inside HDRoptions for an easy handling */
 struct option_occurrence
 {
@@ -188,10 +116,10 @@ private:
      * both for IP and TCP where possible */
     struct protocolSpec protD;
 
-    vector<optionImplement *> availOpts;
+    vector<IPTCPopt *> availOpts;
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
-    optionImplement *nextPlannedInj;
+    IPTCPopt *nextPlannedInj;
 
     /*
      * options we need to check the presence for;
@@ -200,10 +128,10 @@ private:
     bool acquirePresentOptions(void);
 
     /* the core selecting function */
-    bool evaluateInjectCoherence(optionImplement *, struct optHdrData *, int8_t);
+    bool evaluateInjectCoherence(IPTCPopt *, struct optHdrData *, int8_t);
 
     /* after the call to optApply, HDRoptions need to be sync */
-    void registerOptOccurrence(struct optionImplement *, uint8_t, uint8_t);
+    void registerOptOccurrence(struct IPTCPopt *, uint8_t, uint8_t);
 
     /* alignment of option header to be divisible by 4 */
     uint32_t alignOpthdr();

@@ -23,20 +23,26 @@
 
 #include "TCPTrack.h"
 
-TCPTrack::TCPTrack(const sj_config &runcfg, PluginPool &hpp, SessionTrackMap &sessiontrack_map, TTLFocusMap &ttlfocus_map) :
-runcfg(runcfg),
-sessiontrack_map(sessiontrack_map),
-ttlfocus_map(ttlfocus_map),
-plugin_pool(hpp)
+#include "UserConf.h"
+#include "SessionTrack.h"
+#include "TTLFocus.h"
+#include "PluginPool.h"
+
+extern auto_ptr<UserConf> userconf;
+extern auto_ptr<SessionTrackMap> sessiontrack_map;
+extern auto_ptr<TTLFocusMap> ttlfocus_map;
+extern auto_ptr<PluginPool> plugin_pool;
+
+TCPTrack::TCPTrack()
 {
     LOG_DEBUG("");
 
     mangled_proto_mask = ICMP;
 
-    if (!runcfg.no_tcp)
+    if (!userconf->runcfg.no_tcp)
         mangled_proto_mask |= TCP;
 
-    if (!runcfg.no_udp)
+    if (!userconf->runcfg.no_udp)
         mangled_proto_mask |= UDP;
 }
 
@@ -48,7 +54,7 @@ TCPTrack::~TCPTrack(void)
 uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyValue)
 {
 
-    if (runcfg.onlyplugin[0])
+    if (userconf->runcfg.onlyplugin[0])
         frequencyValue = AGG_ALWAYS;
 
     uint32_t freqret = 0;
@@ -157,7 +163,7 @@ uint16_t TCPTrack::getUserFrequency(const Packet &pkt)
     /* MUST be called on TCP/UDP packet only */
 
     if (pkt.proto == TCP)
-        return runcfg.portconf[ntohs(pkt.tcp->dest)];
+        return userconf->runcfg.portconf[ntohs(pkt.tcp->dest)];
 
     /* else, no other proto other than UDP will reach here.
      *
@@ -166,7 +172,7 @@ uint16_t TCPTrack::getUserFrequency(const Packet &pkt)
      * accept this choose in UDP too. otherwise, is better use a costant noise
      * using AGG_COMMON */
 
-    if (runcfg.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
+    if (userconf->runcfg.portconf[ntohs(pkt.udp->dest)] == AGG_ALWAYS)
         return AGG_ALWAYS;
 
     return AGG_COMMON;
@@ -181,7 +187,7 @@ uint8_t TCPTrack::discernAvailScramble(const Packet &pkt)
      */
     uint8_t retval = SCRAMBLE_INNOCENT | SCRAMBLE_CHECKSUM | SCRAMBLE_MALFORMED;
 
-    TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
+    TTLFocus &ttlfocus = ttlfocus_map->get(pkt);
     if (ttlfocus.status == TTL_KNOWN)
         retval |= SCRAMBLE_TTL;
 
@@ -213,7 +219,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
         ttlfocus.status = TTL_BRUTEFORCE;
         /* do not break, continue inside TTL_BRUTEFORCE */
     case TTL_BRUTEFORCE:
-        if (ttlfocus.sent_probe == runcfg.max_ttl_probe)
+        if (ttlfocus.sent_probe == userconf->runcfg.max_ttl_probe)
         {
             if (!ttlfocus.probe_timeout)
             {
@@ -261,7 +267,7 @@ void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
  */
 void TCPTrack::execTTLBruteforces(void)
 {
-    for (TTLFocusMap::iterator it = ttlfocus_map.begin(); it != ttlfocus_map.end(); ++it)
+    for (TTLFocusMap::iterator it = ttlfocus_map->begin(); it != ttlfocus_map->end(); ++it)
     {
         TTLFocus &ttlfocus = *((*it).second);
         if ((ttlfocus.status != TTL_KNOWN) /* 1) the ttl is BRUTEFORCE or UNKNOWN */
@@ -303,7 +309,7 @@ bool TCPTrack::extractTTLinfo(const Packet &incompkt)
             return false;
 
         /* if is not tracked, the user is making a tcptraceroute */
-        if ((it = ttlfocus_map.find(badiph->daddr)) == ttlfocus_map.end())
+        if ((it = ttlfocus_map->find(badiph->daddr)) == ttlfocus_map->end())
             return false;
 
         ttlfocus = it->second;
@@ -347,7 +353,7 @@ bool TCPTrack::extractTTLinfo(const Packet &incompkt)
     }
 
     /* a tracked TCP packet contains important TTL informations */
-    if ((incompkt.proto != TCP || (it = ttlfocus_map.find(incompkt.ip->saddr)) == ttlfocus_map.end()))
+    if ((incompkt.proto != TCP || (it = ttlfocus_map->find(incompkt.ip->saddr)) == ttlfocus_map->end()))
         return false;
 
     ttlfocus = it->second;
@@ -421,7 +427,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
     origpkt.SELFLOG("orig pkt: before incoming mangle");
 #endif
 
-    for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
+    for (vector<PluginTrack*>::iterator it = plugin_pool->begin(); it != plugin_pool->end(); ++it)
     {
         PluginTrack *pt = *it;
 
@@ -438,7 +444,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
                 injpkt.SELFLOG("%s: bad integrity", pt->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
-                if (runcfg.debug_level == PACKET_LEVEL)
+                if (userconf->runcfg.debug_level == PACKET_LEVEL)
                     RUNTIME_EXCEPTION("%s: invalid pkt generated", pt->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
@@ -483,7 +489,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 {
     bool removeOrig = false;
 
-    SessionTrack &sessiontrack = sessiontrack_map.get(origpkt);
+    SessionTrack &sessiontrack = sessiontrack_map->get(origpkt);
 
     vector<PluginTrack *> applicable_hacks;
 
@@ -501,7 +507,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
-    for (vector<PluginTrack*>::iterator it = plugin_pool.begin(); it != plugin_pool.end(); ++it)
+    for (vector<PluginTrack*>::iterator it = plugin_pool->begin(); it != plugin_pool->end(); ++it)
     {
 
         PluginTrack *pt = *it;
@@ -511,7 +517,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
          * more specific ones related to the origpkt will be checked in
          * the condition function implemented by a specific hack.
          */
-        if ((!(availableScrambles & pt->selfObj->supportedScrambles)) && (runcfg.debug_level == PACKET_LEVEL))
+        if ((!(availableScrambles & pt->selfObj->supportedScrambles)) && (userconf->runcfg.debug_level == PACKET_LEVEL))
         {
             char pluginavaileScrambStr[LARGEBUF] = {0};
 
@@ -531,13 +537,13 @@ bool TCPTrack::injectHack(Packet &origpkt)
             applicable_hacks.push_back(pt);
     }
 
-    if (!applicable_hacks.size() && (runcfg.debug_level == PACKET_LEVEL))
+    if (!applicable_hacks.size() && (userconf->runcfg.debug_level == PACKET_LEVEL))
         origpkt.SELFLOG("NONE hack plugin has been passed the selection!");
 
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
 
-    origpkt.SELFLOG("from available %d plugins %d has been selected", plugin_pool.size(), applicable_hacks.size());
+    origpkt.SELFLOG("from available %d plugins %d has been selected", plugin_pool->size(), applicable_hacks.size());
 
     /* -- FINALLY, HACK THE CHOOSEN PACKET(S) */
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)
@@ -561,7 +567,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
                 injpkt.SELFLOG("%s: invalid pkt generated: bad integrity", pt->selfObj->pluginName);
 
                 /* if you are running with --debug 6, I suppose you are the developing the plugins */
-                if (runcfg.debug_level == PACKET_LEVEL)
+                if (userconf->runcfg.debug_level == PACKET_LEVEL)
                     RUNTIME_EXCEPTION("%s invalid pkt generated: bad integrity", pt->selfObj->pluginName);
 
                 /* otherwise, the error was reported and sniffjoke continue to work */
@@ -638,7 +644,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
 bool TCPTrack::lastPktFix(Packet &pkt)
 {
     /* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
-    TTLFocus &ttlfocus = ttlfocus_map.get(pkt);
+    TTLFocus &ttlfocus = ttlfocus_map->get(pkt);
     if (ttlfocus.status == TTL_KNOWN)
     {
         if (pkt.wtf == PRESCRIPTION)
@@ -649,7 +655,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
             /* apply mistification if PRESCRIPTION is globally enabled */
-            if (ISSET_TTL(plugin_pool.enabledScrambles()))
+            if (ISSET_TTL(plugin_pool->enabledScrambles()))
                 pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); /* [+0, +3], 4 values */
         }
     }
@@ -678,7 +684,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         {
             /* MISTIFICATION APPLY ON DOWNGRADE, RANDOMIZING A BIT THE ORIGINAL TTL VALUE */
             /* apply mistification if PRESCRIPTION is globally enabled */
-            if (ISSET_TTL(plugin_pool.enabledScrambles()))
+            if (ISSET_TTL(plugin_pool->enabledScrambles()))
                 pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
         }
     }
@@ -740,7 +746,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         /* MISTIFICATION PACKET NOT CORRUPTED BY IP/TCP OPTIONS */
 
         /* IP/TCP options scambling enabled globally (and/or for destination) */
-        if (ISSET_MALFORMED(plugin_pool.enabledScrambles()))
+        if (ISSET_MALFORMED(plugin_pool->enabledScrambles()))
         {
             if (RANDOM_PERCENT(66))
             {
@@ -786,11 +792,11 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         pkt.corruptSum();
 
     /* intensive debug before the packet release */
-    if (runcfg.debug_level >= PACKET_LEVEL)
+    if (userconf->runcfg.debug_level >= PACKET_LEVEL)
     {
         char enabled[SMALLBUF], choosable[SMALLBUF];
 
-        snprintfScramblesList(enabled, SMALLBUF, plugin_pool.enabledScrambles());
+        snprintfScramblesList(enabled, SMALLBUF, plugin_pool->enabledScrambles());
         snprintfScramblesList(choosable, SMALLBUF, pkt.choosableScramble);
 
         LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]", 
@@ -873,14 +879,14 @@ void TCPTrack::handleYoungPackets(void)
             /* SniffJoke ATM does apply to TCP/UDP traffic only */
             if (pkt->proto & (TCP | UDP))
             {
-                ++(sessiontrack_map.get(*pkt).packet_number);
+                ++(sessiontrack_map->get(*pkt).packet_number);
 
                 /*
                  * ATM we can put TCP only in KEEP status because
                  * due to the actual ttl bruteforce implementation a
                  * pure UDP flaw could go in starvation.
                  */
-                if (pkt->proto == TCP && ttlfocus_map.get(*pkt).status == TTL_BRUTEFORCE)
+                if (pkt->proto == TCP && ttlfocus_map->get(*pkt).status == TTL_BRUTEFORCE)
                 {
                     p_queue.insert(*pkt, KEEP);
                 }
@@ -918,7 +924,7 @@ void TCPTrack::handleKeepPackets(void)
     Packet *pkt = NULL;
     for (p_queue.select(KEEP); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
-        if (ttlfocus_map.get(*pkt).status != TTL_BRUTEFORCE)
+        if (ttlfocus_map->get(*pkt).status != TTL_BRUTEFORCE)
             p_queue.insert(*pkt, HACK);
     }
 }
@@ -952,7 +958,7 @@ void TCPTrack::handleHackPackets(void)
         }
     }
 
-    if (runcfg.chaining == true)
+    if (userconf->runcfg.chaining == true)
     {
         for (p_queue.select(HACK); ((pkt = p_queue.getSource(PLUGIN)) != NULL);)
         {
@@ -985,21 +991,21 @@ void TCPTrack::writepacket(source_t source, const unsigned char *buff, int nbyte
         pkt->choosableScramble = INNOCENT; /* on innocent pkts this variable is meaningless */
 
         /* Sniffjoke does handle only TCP, UDP and ICMP */
-        if (runcfg.active && (pkt->proto & mangled_proto_mask))
+        if (userconf->runcfg.active && (pkt->proto & mangled_proto_mask))
         {
-            if (runcfg.use_blacklist)
+            if (userconf->runcfg.use_blacklist)
             {
-                if (runcfg.blacklist->isPresent(pkt->ip->daddr) ||
-                        runcfg.blacklist->isPresent(pkt->ip->saddr))
+                if (userconf->runcfg.blacklist->isPresent(pkt->ip->daddr) ||
+                        userconf->runcfg.blacklist->isPresent(pkt->ip->saddr))
                 {
                     p_queue.insert(*pkt, SEND);
                     return;
                 }
             }
-            else if (runcfg.use_whitelist)
+            else if (userconf->runcfg.use_whitelist)
             {
-                if (!runcfg.whitelist->isPresent(pkt->ip->daddr) &&
-                        !runcfg.whitelist->isPresent(pkt->ip->saddr))
+                if (!userconf->runcfg.whitelist->isPresent(pkt->ip->daddr) &&
+                        !userconf->runcfg.whitelist->isPresent(pkt->ip->saddr))
                 {
                     p_queue.insert(*pkt, SEND);
                     return;
@@ -1067,8 +1073,8 @@ bypass_queue_analysis:
      * KEEP packets will scatter a new ttlfocus at the next.
      */
 
-    sessiontrack_map.manage();
-    ttlfocus_map.manage();
+    sessiontrack_map->manage();
+    ttlfocus_map->manage();
 
     execTTLBruteforces();
 }

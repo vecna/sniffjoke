@@ -21,7 +21,10 @@
  */
 
 #include "service/Plugin.h"
+#include "service/OptionPool.h"
 #include "service/HDRoptions.h"
+
+extern auto_ptr<OptionPool> opt_pool;
 
 class HDRoptions_probe : public Plugin
 {
@@ -33,7 +36,7 @@ class HDRoptions_probe : public Plugin
 private:
     int32_t optIndex;
     pluginLogHandler *pLH;
-    optionImplement *underTestOpt;
+    IPTCPopt *underTestOpt;
 
     void applyTestedOption(Packet &target)
     {
@@ -77,10 +80,7 @@ public:
 
         if(retval && optIndex >= 0 && optIndex < SUPPORTED_OPTIONS)
         {
-            /* special usage: only in this testing modality will be used NULL as config file */
-            optionLoader &dummyConf = optionLoader::get_instance(NULL);
-
-            underTestOpt = dummyConf.getSingleOption(optIndex);
+            underTestOpt = opt_pool->getSingleOption(optIndex);
 
             /* we need to test ONESHOT and TWOSHOT, simply */
             underTestOpt->optionConfigure(ONESHOT);

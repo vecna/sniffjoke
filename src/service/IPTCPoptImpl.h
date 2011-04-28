@@ -20,14 +20,30 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IPTCPOPTAPPLY_H
-#define IPTCPOPTAPPLY_H
+#ifndef SJ_IPTCPOPTIMPL_H
+#define SJ_IPTCPOPTIMPL_H
+
+#include "Utils.h"
 
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
-#include "HDRoptions.h"
+#include "IPTCPopt.h"
+#include "TTLFocus.h"
 
-class Io_NOOP : public optionImplement
+#define IPOPT_NOOP_SIZE     1
+#define IPOPT_CIPSO         (6 |IPOPT_CONTROL|IPOPT_COPY)
+#define IPOPT_CIPSO_SIZE    10
+#define IPOPT_SID_SIZE      4
+
+#define TCPOPT_NOP_SIZE     1
+#define TCPOPT_MD5SIG       19
+#define TCPOPT_MD5SIG_SIZE  18
+#define TCPOPT_MSS          2
+#define TCPOPT_MSS_SIZE     4
+
+#define DUMMY_OPCODE        255
+
+class Io_NOOP : public IPTCPopt
 {
 public:
     Io_NOOP(bool);
@@ -35,7 +51,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_TIMESTAMP : public optionImplement
+class Io_TIMESTAMP : public IPTCPopt
 {
 public:
     Io_TIMESTAMP(bool);
@@ -43,7 +59,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_TIMESTOVERFLOW : public optionImplement
+class Io_TIMESTOVERFLOW : public IPTCPopt
 {
 private:
     TTLFocus *ttlfocus;
@@ -54,7 +70,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_LSRR : public optionImplement
+class Io_LSRR : public IPTCPopt
 {
 public:
     Io_LSRR(bool);
@@ -62,7 +78,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_RR : public optionImplement
+class Io_RR : public IPTCPopt
 {
 public:
     Io_RR(bool);
@@ -70,7 +86,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_RA : public optionImplement
+class Io_RA : public IPTCPopt
 {
 public:
     Io_RA(bool);
@@ -78,7 +94,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_CIPSO : public optionImplement
+class Io_CIPSO : public IPTCPopt
 {
 public:
     Io_CIPSO(bool);
@@ -86,7 +102,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_SEC : public optionImplement
+class Io_SEC : public IPTCPopt
 {
 public:
     Io_SEC(bool);
@@ -94,7 +110,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class Io_SID : public optionImplement
+class Io_SID : public IPTCPopt
 {
 public:
     Io_SID(bool);
@@ -102,7 +118,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_NOP : public optionImplement
+class To_NOP : public IPTCPopt
 {
 public:
     To_NOP(bool);
@@ -110,7 +126,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_MD5SIG : public optionImplement
+class To_MD5SIG : public IPTCPopt
 {
 public:
     To_MD5SIG(bool);
@@ -118,7 +134,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_PAWSCORRUPT : public optionImplement
+class To_PAWSCORRUPT : public IPTCPopt
 {
 public:
     To_PAWSCORRUPT(bool);
@@ -126,7 +142,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_TIMESTAMP : public optionImplement
+class To_TIMESTAMP : public IPTCPopt
 {
 public:
     To_TIMESTAMP(bool);
@@ -134,7 +150,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_MSS : public optionImplement
+class To_MSS : public IPTCPopt
 {
 public:
     To_MSS(bool);
@@ -142,7 +158,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_SACK : public optionImplement
+class To_SACK : public IPTCPopt
 {
 public:
     To_SACK(bool);
@@ -150,7 +166,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_SACKPERM : public optionImplement
+class To_SACKPERM : public IPTCPopt
 {
 public:
     To_SACKPERM(bool);
@@ -158,7 +174,7 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-class To_WINDOW : public optionImplement
+class To_WINDOW : public IPTCPopt
 {
 public:
     To_WINDOW(bool);
@@ -166,4 +182,4 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
-#endif /* HDROPTIONS_H */
+#endif /* SJ_IPTCPOPTIMPL_H */
