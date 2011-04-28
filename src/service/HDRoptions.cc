@@ -128,7 +128,7 @@ corruption_t optionLoader::lineParser(FILE *flow, uint32_t optLooked)
 optionLoader::optionLoader(const char *fname)
 {
     memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
-printf("XX\n");
+
     loadedOptions[SJ_IPOPT_NOOP] = new Io_NOOP(true);
     loadedOptions[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
     loadedOptions[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
@@ -662,7 +662,6 @@ availableUsage(CORRUPTUNASSIGNED)
 
 void optionImplement::optionConfigure(corruption_t c)
 {
-printf("KKK\n");
 
     availableUsage = c;
 }

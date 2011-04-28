@@ -2,6 +2,10 @@
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
+# Requirement
+
+    cmake, gcc, iptables, tcpdump
+
 # or, if you're makin some code modify
     mkdir your_build
     cd your_build
@@ -15,6 +19,16 @@ and you could check the exaclty installed file by
 
 # Simple immediate verbose execution
     root@linux# sniffjoke --debug 6 --start --foreground
+
+# Correct setup, check your network capabilities
+    sniffjoke-autotest -l name_of_your_location -l /usr/local/var/sniffjoke -n 2
+
+since you have runned the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with
+    sniffjoke --location name_of_your_location
+    sniffjokectl --stat
+    sniffjokectl --start
+    sniffjokectl --help
+    [...]
 
 # config files installed in the 'generic' location
     ipblacklist.conf
@@ -104,6 +118,7 @@ Binary installed:
 
 Script installed:
     sniffjoke-autotest
+    sniffjoke-iptcpopt
 
 (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
