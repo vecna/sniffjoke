@@ -165,7 +165,6 @@ printf("XX\n");
 
         for (uint8_t sjI = 1; sjI < SUPPORTED_OPTIONS; ++sjI)
         {
-printf("XX %d\n", sjI);
             writUsage = lineParser(optInput, sjI);
             loadedOptions[sjI]->optionConfigure(writUsage);
         }

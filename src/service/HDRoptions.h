@@ -68,7 +68,7 @@
  * the HDRoptions is called for every Packet needing a manipoulation over the
  * header options, and import the correctly loaded impelementation from optionImplement
  *
- * optionImplment has some virtual methods and are implemented in 
+ * optionImplement has some virtual methods and are implemented in 
  * IPTCPoptApply.cc
  *
  * HDRoptions_probe.cc is plugin for option test and use those classess in a 
