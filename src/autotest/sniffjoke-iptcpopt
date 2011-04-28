@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash -x
 
 shopt -s expand_aliases
 alias echo="echo -e"
@@ -20,47 +20,27 @@ usage()
 cat << EOF
 usage: $0 options
 
-This script runs plugins test along different destinations OS
-to determinate the selection of plugins that correctly works
-in the current location.
+This script is invoked by sniffjoke-autotest and try the possibile
+combination of IP/TCP header options for the testing 'location'
 
-every plugin it's tested with one of each scrambling tech.
+Is required a detailed test because different ISP will handle 
+differently these options, considering a packet acceptable or not
+by internal policy, router configuration and updating frequency
+
+by hand this script should accept these argument:
 
 OPTIONS:
    -h      show this message
    -l      location name                                       (required)
    -d      path of 'generic/' location, acting as default      (required)
-   -n      number of replicas to be passed for the single hack (default 1)
+   -u      testing URL                                         (required)
+   
 EOF
 }
 
-dump_plugin_file() {
-cat >> $PLUGINLIST <<__EOF__
-fake_close_fin,PRESCRIPTION
-fake_close_fin,MALFORMED,conf
-fake_close_fin,GUILTY
-fake_close_rst,PRESCRIPTION
-fake_close_rst,MALFORMED
-fake_close_rst,GUILTY
-fake_data,PRESCRIPTION
-fake_data,MALFORMED
-fake_data,GUILTY
-fake_seq,PRESCRIPTION
-fake_seq,MALFORMED
-fake_seq,GUILTY
-fake_syn,PRESCRIPTION
-fake_syn,MALFORMED
-fake_syn,GUILTY
-fake_window,PRESCRIPTION
-fake_window,MALFORMED
-fake_window,GUILTY
-fragmentation,INNOCENT
-segmentation,INNOCENT
-shift_ack,PRESCRIPTION
-shift_ack,MALFORMED
-shift_ack,GUILTY
-valid_rst_fake_seq,INNOCENT
-__EOF__
+dump_options_file() {
+SUPPORTED_OPTIONS_N=`seq 1 17`
+for opt in $SUPPORTED_OPTIONS_N; do echo "HDRoptions_probe,INNOCENT+$opt" >> $OPTIONSLIST; done
 }
 
 routing_table_log() {
@@ -74,7 +54,7 @@ start_test() {
         TESTID=$PNAME/$SCRAMBLE
     fi
     mkdir -p $TESTID
-    echo "${green}* COMBINATION OF TESTS (${yellow}$PLUGNDX/$PLUGIN_NUMBER${green})"
+    echo "${green}* COMBINATION OF TESTS (${yellow}$PLUGNDX/$OPTION_SEQUENCE${green})"
     echo "${blue}Plugin Name\t${yellow}\t[$PNAME]"
     echo "${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
     echo "${blue}TestID\t\t${yellow}\t[$TESTID]"
@@ -119,7 +99,7 @@ start_test() {
         tcpdump -i $INTERFACE -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
         sleep 1
         echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
-        curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >/dev/null 2>&1
+        curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >$WORKDIR/output.curl 2>&1
         $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
         $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
         $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
@@ -165,7 +145,7 @@ start_test() {
     fi
 }
 
-while getopts “hl:d:n:” OPTION
+while getopts “hl:d:u:” OPTION
 do
      case $OPTION in
          h)
@@ -178,8 +158,8 @@ do
          d)
              WORKPATH=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
-         n)
-             REPN=$OPTARG
+         U)
+             SERVER=$OPTARG
              ;;
          ?)
              usage
@@ -217,22 +197,11 @@ fi
 
 if [ -z $LOCATION ]; then
     usage
-    echo "\n${red}"
-    echo "it's required a LOCATION name, eg: office, home, nickhome, starbucks..."
-    echo "sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment"
-    echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
-    echo "will be created a new directory describing your location. after you will customize the options"
-    echo "${white}"
     exit;
 fi
 
 if [ -z $WORKPATH ]; then
     usage
-    echo "\n${red}"
-    echo "it's required the PATH of commonly used working dir, where 'generic' is installed"
-    echo "usually it's /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
-    echo "been installed in your distro"
-    echo "${white}"
     exit;
 fi
 
@@ -248,14 +217,13 @@ if [ ! -d $WORKPATH/generic ]; then
     usage
     echo "\n${red}"
     echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
-    echo "sniffjoke-autotest create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
+    echo "sniffjoke-iptcpopt create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
     echo "${white}"
     exit;
 fi
 
 if [ -d $WORKPATH/$LOCATION ]; then
     usage
-    # call me old, but I don't put a blind rm -rf on a script run by root :P (vecna)
     echo "\n${red}"
     echo "- error: $WORKPATH/$LOCATION directory already present, remove by hand"
     echo "${white}"
@@ -265,7 +233,6 @@ else
 fi
 
 if [ -d $TEMPDIR/$LOCATION ]; then
-    # call me old too (evilaliv3)
     usage
     echo "\n${red}"
     echo "- error: $TEMPDIR/$LOCATION directory already present"
@@ -277,27 +244,16 @@ fi
 
 cd $TEMPDIR/$LOCATION
 
-echo "${yellow}+ Starting SniffJoke hacks test"
-echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
+echo "${yellow}+ Starting SniffJoke IP/TCP options selective probe"
+echo "* Stopping possible running instances of sniffjoke service ($SNIFFJOKECLIBIN quit)"
 $SNIFFJOKECLIBIN quit >/dev/null 2>&1
 
-PPATH="/usr/local/lib/sniffjoke"
-echo "* The test will use path $PPATH" to load plugins
+HDRPROBE="/usr/local/lib/sniffjoke/HDRoptions_probe"
+echo "* The test will use path $HDRPROBE to test every IP/TCP option combos in the network of $LOCATION"
 
-FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
-echo "* retrivering multi-OS testing server list ($FILEURL)"
-SERVERFILE="testsuite.info"
-wget -O $SERVERFILE $FILEURL  >/dev/null 2>&1
-if ! [ -e $SERVERFILE ]; then
-    echo "\n${red}"
-    echo "- unable to retriver $SERVERFILE with [$FILEURL]"
-    echo "${white}"
-    exit;
-fi
-
-PLUGINLIST="plugins-testsuite"
-dump_plugin_file
-PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
+OPTIONSLIST="plugins-testsuite"
+dump_options_file
+OPTION_SEQUENCE=`wc -l < $OPTIONSLIST`
 
 # generate the SPAREDATA file to send
 GENERATEDFILE="SPAREDATA"
@@ -305,21 +261,13 @@ GENERATEDFILE="SPAREDATA"
 # in debug mode (--debug 6) instead of filling the random segment of data
 # inject with random data, use the number '6'. Is useful when debugging 
 # an hack.
-seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
+seq 1000 3000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
 GENERATEDDATA=`cat $GENERATEDFILE`
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
-for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
-    PLUGIN=`head -$PLUGNDX $PLUGINLIST | tail -1`
+for PLUGNDX in `seq 1 $OPTION_SEQUENCE`; do
+    PLUGIN=`head -$PLUGNDX $OPTIONSLIST | tail -1`
 
-#    OS="WINDOWS"
-#    SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
-#    echo $SERVER
-#    start_test
-
-    # those test need to be fixed or be used only where my test script will be hosted
-    OS="LINUX"
-    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
     SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
     SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
     echo "${blue}Starting test vs Linux environment: ($SERVER_ADDR, $SERVER_IP)"
@@ -371,14 +319,14 @@ cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
 cp $WORKPATH/generic/iptcp-options.conf $WORKPATH/$LOCATION
 cp plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
 
-echo "\n${yellow}* sniffjoke-autotest has  a conf file $TEMPDIR/$LOCATION/plugins_enabled.conf"
+echo "\n${yellow}* sniffjoke-autotest has  a conf file /$TEMPDIR/$LOCATION/plugins_enabled.conf"
 echo "* that conf has been copyed in $WORKPATH/$LOCATION with the other default configuration file."
 echo "* for custom configuration this config file can be text edited."
 echo "* now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION${white}"
 
 echo "\n${violet}SniffJoke is in BETATESTING: if you want to contribute, please type a simple string,"
-echo "The typed string will be used to generate the name of the compressed data archive, ${green}after,"
-echo "you should choose to send to us, or to sent later whenever you could ask for support"
+echo "The typed string will be used to generate the name of the compressed data archive, ${green}after,\n"
+echo "you should choose to send to us, or to sent later whenever you could ask for support\n"
 echo "${violet}Otherwise, to don't generate the tar.gz, leave the string empty.${white}"
 
 echo "\n"
@@ -389,14 +337,14 @@ if [ -z $testerID ]; then
     echo "empty string: sniffjoke-autotest done."
 else
     dFname="Sj-test-$testerID-$LOCATION.tar.gz"
-    tar -j -c --exclude='*DATA*'-f $dFname *
+    tar -z -c --exclude='*DATA*'-f $dFname *
     echo "\n"
-    echo "${green}Thanks you \"$testerID\"! ${white}$dFname has been generated in $TEMPDIR/$LOCATION/$dFname"
-    echo "in your $TEMPDIR/$LOCATION there are the traffic test done by sniffjoke, recorded by tcpdump and the logfiles"
-    echo "${red}No personal data, nor payload of non-testing packets are recorded, but some destination IP address will be present"
-    echo "if you belive to have privacy issue, delete your entire $TEMPDIR/$LOCATION directory${white} and don't send us the file.\n"
-    echo "If you have some trouble using sniffjoke, making the configuration or you want contribute to the project"
-    echo "send it via mail to ${green}sniffjoke-team@delirandom.net${white} thank you!"
+    echo "${green}Thanks you \"$testerID\"! ${white}$dFname has been generated in $TEMPDIR/$LOCATION/$dFname\n"
+    echo "in your $TEMPDIR/$LOCATION there are the traffic test done by sniffjoke, recorded by tcpdump and the logfiles\n"
+    echo "${red}No personal data, nor payload of non-testing packets are recorded, but some destination IP address will be present\n"
+    echo "if you belive to have privacy issue, delete your entire $TEMPDIR/$LOCATION directory${white} and don't send us the file.\n\n"
+    echo "If you have some trouble using sniffjoke, making the configuration or you want contribute to the project\n"
+    echo "send it via mail to ${green}sniffjoke-team@delirandom.net${white} thank you!\n"
 fi
 
 # clearing gay colors

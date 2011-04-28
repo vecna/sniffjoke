@@ -1,9 +1,25 @@
-TODO list for SniffJoke 0.5 - 1.0
+TODO list for SniffJoke 0.5
+
+SERVICE
 
 . testing IP options in different target OS
 . implement passive OS fingerprint with p0f in SessionTrack
-. expand percentage and fake_data with layer 5 protocol guessing
 . verify gateway usage, implement ip source selection
+. accept whitelist/blacklist as configuration by client
 . implement server side support and port listening protection
 . NetIO.cc and UserConf.cc need to became an extension of a generic superclass
   to supports different OS easily.
+
+CLIENT
+
+. make a C#/Windows porting for sniffjokecli
+. make a firefox button in order to add in the whitelist the sites in use
+
+PLUGINS
+
+. layer 5 malformation, will support:
+    . expansion of fake_data in order to inject layer 5 acceptable data and not 
+      simply random
+    . expand fake data with a template model, in order to exploit fault in 
+      layer 5 sniffer flow reassembler
+

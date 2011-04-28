@@ -15,5 +15,13 @@
         code able to crumble to dust the thousand-dollar IDS apparatus
         your boss has buyed.
 
-        inside the dir there is the file hack_skeleton.skel, a skeleton that
-        shows you how to develop yours. --> REMIND, hack_skeleton.skel need to be updated
+        at the moment not documentation are provided, but if you are capable
+        to develop a plugin, I'll suggest to read in this order:
+
+        fake_close_rst (simple injection of a packet)
+        fake_close_fin (usage of cache and logging)
+        fake_data      (generation of two packets)
+        segmentation   (packet removed and substituted)
+
+        use a lot of tcpdump and let us know, we have some ideas to develop
+        and few time.
