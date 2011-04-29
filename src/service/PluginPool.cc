@@ -70,8 +70,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
     failInit = !selfObj->init(enabledScrambles, plugOpt);
-
-    if(failInit)
+    if (failInit)
         RUNTIME_EXCEPTION("Initialization failed!");
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
@@ -157,6 +156,7 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
 
 bool PluginPool::parseScrambleOpt(const char *list_str, uint8_t *retval, const char **opt)
 {
+
     struct scrambleparm
     {
         const char *keyword;
@@ -251,18 +251,17 @@ void PluginPool::parseEnablerFile(void)
     char enablerabspath[LARGEBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
     char enabledScramblesStr[LARGEBUF] = {0};
-
-    FILE *plugfile;
+    char enablerentry[LARGEBUF] = {0};
 
     snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", userconf->runcfg.working_dir, FILE_PLUGINSENABLER);
 
-    if ((plugfile = fopen(enablerabspath, "r")) == NULL)
+    FILE *plugfile = fopen(enablerabspath, "r");
+    if (plugfile == NULL)
         RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
 
     uint8_t line = 0;
     do
     {
-        char enablerentry[LARGEBUF];
         char *comma;
         const char *pluginOpt = NULL;
         uint8_t enabledScrambles = 0;

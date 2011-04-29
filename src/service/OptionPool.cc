@@ -40,9 +40,10 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
     char line[MEDIUMBUF];
     uint32_t linecnt = 0;
 
+    uint32_t readedIndex, readedCorruption;
+
     do
     {
-        uint32_t readedIndex, readedCorruption;
 
         fgets(line, MEDIUMBUF, flow);
         ++linecnt;
@@ -102,8 +103,8 @@ OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
         /* NOW - sets with the default used by vecna & evilaliv3 */
         /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
         corruption_t writUsage;
-        FILE *optInput = fopen(FILE_IPTCPOPT_CONF, "r");
 
+        FILE *optInput = fopen(FILE_IPTCPOPT_CONF, "r");
         if (optInput == NULL)
             RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", FILE_IPTCPOPT_CONF, strerror(errno));
 

@@ -538,12 +538,12 @@ uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool data, bool di
 bool UserConf::syncDiskConfiguration(void)
 {
     uint32_t written = 0;
-    char tempdumpfname[LARGEBUF];
-    FILE *out;
 
+    char tempdumpfname[LARGEBUF];
     snprintf(tempdumpfname, LARGEBUF, "%s.temp", FILE_CONF);
 
-    if ((out = fopen(tempdumpfname, "w")) == NULL)
+    FILE *out = fopen(tempdumpfname, "w");
+    if (out == NULL)
     {
         LOG_ALL("unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
         return false;

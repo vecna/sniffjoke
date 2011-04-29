@@ -98,18 +98,18 @@ bool IPListMap::isPresent(uint32_t ip) const
 
 void IPListMap::load(void)
 {
-    uint32_t records_num = 0;
     char record[MEDIUMBUF];
     char tmp_ip[17];
     uint32_t tmp_a, tmp_b, tmp_c;
-    FILE *IPfileP;
 
-    if ((IPfileP = fopen(dumpfname, "r")) == NULL)
+    FILE *IPfileP = fopen(dumpfname, "r");
+    if (IPfileP == NULL)
     {
         LOG_ALL("unable to open %s: %s", dumpfname, strerror(errno));
         return;
     }
 
+    uint32_t records_num = 0;
     do
     {
         tmp_a = tmp_b = tmp_c = 0;
@@ -141,17 +141,16 @@ void IPListMap::load(void)
 /* Implemented but not used until the client sniffjokectl supports the updating of whitelist/blacklist */
 void IPListMap::dump(void)
 {
-    uint32_t records_num = 0;
-    char record[MEDIUMBUF];
-    FILE *IPfileP;
-
-    if ((IPfileP = fopen(dumpfname, "w")) == NULL)
+    FILE *IPfileP = fopen(dumpfname, "w");
+    if (IPfileP == NULL)
         LOG_ALL("unable to open %s: %s", dumpfname, strerror(errno));
 
+    uint32_t records_num = 0;
     for (IPListMap::iterator it = begin(); it != end(); ++it)
     {
         IPList *tmp = &(*it->second);
 
+        char record[MEDIUMBUF];
         snprintf(record, sizeof (record), "%s %u,%u,%u\n", inet_ntoa(*((struct in_addr *) &(tmp->ip))), tmp->a, tmp->b, tmp->c);
 
         if (fwrite(&record, strlen(record), 1, IPfileP) != 1)

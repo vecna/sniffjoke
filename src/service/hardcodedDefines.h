@@ -20,8 +20,6 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
-
 /*
  * this is the define value used in sniffjoke. if you are making porting of sniffjoke
  * for a distribution, this is your file
@@ -29,6 +27,8 @@
 
 #ifndef SJ_DEFINES_H
 #define SJ_DEFINES_H
+
+#include "config.h"
 
 #define SW_NAME                 "SniffJoke"
 #define SW_VERSION              "0.4-beta6"

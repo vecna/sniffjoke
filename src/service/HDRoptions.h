@@ -96,7 +96,8 @@ struct protocolSpec
     uint8_t NOP_code;
     uint8_t END_code;
     uint8_t** hdrAddr;
-    uint8_t fixedHdrLen;
+    uint8_t* hdrLen;
+    uint8_t hdrMinLen;
     uint8_t optsMaxLen;
     void (Packet::*hdrResize)(uint8_t);
 };
@@ -135,7 +136,7 @@ private:
     void registerOptOccurrence(struct IPTCPopt *, uint8_t, uint8_t);
 
     /* alignment of option header to be divisible by 4 */
-    uint32_t alignOpthdr(void);
+    void alignOpthdr(void);
 
     /* utilities functions */
     uint8_t availableOptsLen(void);
@@ -143,7 +144,7 @@ private:
     bool isGoalAchieved(void);
 
     bool prepareInjection(bool, bool);
-    void completeInjection(void);
+    void completeHdrEdit(void);
 
     void injector(uint8_t);
     void randomInjector(void);

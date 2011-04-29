@@ -96,7 +96,6 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 
     oD->optshdr[index] = IPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = size_timestamp;
-
     oD->optshdr[index + 2] = 5; /* empty */
     oD->optshdr[index + 3] = IPOPT_TS_TSONLY;
 
@@ -132,9 +131,6 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
 
     const uint8_t index = oD->actual_opts_len;
 
-    oD->optshdr[index] = IPOPT_TIMESTAMP;
-    oD->optshdr[index + 1] = size_timestamp;
-
     uint8_t overflow = 0;
 
     uint8_t last_filled = covered_destinations - ttlfocus->ttl_estimate;
@@ -145,6 +141,8 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
         last_filled = timestamps;
     }
 
+    oD->optshdr[index] = IPOPT_TIMESTAMP;
+    oD->optshdr[index + 1] = size_timestamp;
     oD->optshdr[index + 2] = size_timestamp + 1; /* full */
     oD->optshdr[index + 3] = (IPOPT_TS_TSONLY | (overflow << 4)); /* next will overflow */
 
@@ -211,6 +209,7 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
     oD->optshdr[index] = IPOPT_LSRR;
     oD->optshdr[index + 1] = size_lsrr;
     oD->optshdr[index + 2] = 4;
+
     memset_random(&oD->optshdr[index + 3], (size_lsrr - 3));
 
     return size_lsrr;
@@ -337,6 +336,7 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
 
     oD->optshdr[index] = IPOPT_CIPSO;
     oD->optshdr[index + 1] = IPOPT_CIPSO_SIZE;
+
     memset_random(&oD->optshdr[index + 2], 8);
 
     return IPOPT_CIPSO_SIZE;
@@ -382,6 +382,7 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
     /* http://www.faqs.org/rfcs/rfc791.html "Security" */
     oD->optshdr[index] = IPOPT_SEC;
     oD->optshdr[index + 1] = IPOPT_SEC_SIZE;
+
     memset_random(&oD->optshdr[index + 2], 9);
 
     return IPOPT_SEC_SIZE;
@@ -466,7 +467,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 
     oD->optshdr[index] = TCPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = TCPOPT_TIMESTAMP_SIZE;
-    *(uint32_t *) &oD->optshdr[index + 2] = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
+    *((uint32_t *) &oD->optshdr[index + 2]) = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
     memset_random(&oD->optshdr[index + 6], 4);
 
     return TCPOPT_TIMESTAMP_SIZE;

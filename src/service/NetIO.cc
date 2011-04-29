@@ -289,7 +289,7 @@ void NetIO::networkIO(void)
             if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */
                 RUNTIME_EXCEPTION("error writing in tunnel: %s", strerror(errno));
 
-            /* corretly written in tunfd */
+            /* correctly written in tunfd */
             delete pkt_net;
             pkt_net = conntrack->readpacket(NETWORK);
         }

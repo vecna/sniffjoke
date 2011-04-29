@@ -73,7 +73,6 @@ daddr(cpy.daddr),
 ttl_estimate(cpy.ttl_estimate),
 ttl_synack(cpy.ttl_synack)
 {
-
     memcpy(probe_dummy, cpy.probe_dummy, 40);
 
     SELFLOG("Construct from cache record");
@@ -133,7 +132,7 @@ void TTLFocus::selflog(const char *func, const char *format, ...) const
 TTLFocusMap::TTLFocusMap(void) :
 manage_timeout(sj_clock)
 {
-    LOG_DEBUG("with reference time (seconds) %u", uint32_t(sj_clock) );
+    LOG_DEBUG("with reference time (seconds) %u", uint32_t(sj_clock));
 
     load();
 }
@@ -232,22 +231,20 @@ void TTLFocusMap::manage(void)
 
 void TTLFocusMap::load(void)
 {
-    FILE *loadstream = NULL;
     uint32_t records_num = 0;
     struct ttlfocus_cache_record tmp;
-    int ret;
 
     LOG_ALL("loading ttlfocusmap from %s", FILE_TTLFOCUSMAP);
 
-    if ((loadstream = fopen(FILE_TTLFOCUSMAP, "r")) == NULL)
+    FILE *loadstream = fopen(FILE_TTLFOCUSMAP, "r");
+    if (loadstream == NULL)
     {
         LOG_ALL("unable to access network cache: sniffjoke will start without it");
         return;
     }
 
-    while ((ret = fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream)) == 1)
+    while (fread(&tmp, sizeof (struct ttlfocus_cache_record), 1, loadstream) == 1)
     {
-
         ++records_num;
         TTLFocus *ttlfocus = new TTLFocus(tmp);
         insert(pair<uint32_t, TTLFocus*>(ttlfocus->daddr, ttlfocus));
@@ -260,12 +257,13 @@ void TTLFocusMap::load(void)
 
 void TTLFocusMap::dump(void)
 {
-    FILE *dumpstream = NULL;
-    uint32_t undumped = 0, records_num = 0;
+    uint32_t records_num = 0;
+    uint32_t undumped = 0;
 
     LOG_ALL("dumping ttlfocusmap to %s", FILE_TTLFOCUSMAP);
 
-    if ((dumpstream = fopen(FILE_TTLFOCUSMAP, "w")) == NULL)
+    FILE *dumpstream = fopen(FILE_TTLFOCUSMAP, "w");
+    if (dumpstream == NULL)
     {
         LOG_ALL("unable to write network cache");
         return;

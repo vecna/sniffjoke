@@ -78,11 +78,10 @@ corruptDone(false)
         protD.NOP_code = IPOPT_NOOP;
         protD.END_code = IPOPT_END;
         protD.hdrAddr = (uint8_t**) & pkt.ip;
-        protD.fixedHdrLen = sizeof (struct iphdr);
+        protD.hdrLen = (uint8_t*) & pkt.iphdrlen;
+        protD.hdrMinLen = sizeof (struct iphdr);
         protD.optsMaxLen = MAXIPOPTIONS;
         protD.hdrResize = &Packet::iphdrResize;
-
-        oD.actual_opts_len = pkt.iphdrlen - sizeof (struct iphdr);
 
         for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {
@@ -107,11 +106,10 @@ corruptDone(false)
         protD.NOP_code = TCPOPT_NOP;
         protD.END_code = TCPOPT_EOL;
         protD.hdrAddr = (uint8_t**) & pkt.tcp;
-        protD.fixedHdrLen = sizeof (struct tcphdr);
+        protD.hdrLen = (uint8_t*) & pkt.tcphdrlen;
+        protD.hdrMinLen = sizeof (struct tcphdr);
         protD.optsMaxLen = MAXTCPOPTIONS;
         protD.hdrResize = &Packet::tcphdrResize;
-
-        oD.actual_opts_len = pkt.tcphdrlen - sizeof (struct tcphdr);
 
         for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {
@@ -125,6 +123,7 @@ corruptDone(false)
         break;
     }
 
+    oD.actual_opts_len = *protD.hdrLen - protD.hdrMinLen;
     oD.optshdr.resize(protD.optsMaxLen, protD.END_code);
 
     acquirePresentOptions();
@@ -139,7 +138,7 @@ bool HDRoptions::acquirePresentOptions(void)
     if (oD.actual_opts_len == 0)
         return true;
 
-    memcpy(&oD.optshdr[0], *protD.hdrAddr + protD.fixedHdrLen, oD.actual_opts_len);
+    memcpy(&oD.optshdr[0], *protD.hdrAddr + protD.hdrMinLen, oD.actual_opts_len);
 
     for (uint8_t i = 0; i < oD.actual_opts_len;)
     {
@@ -259,42 +258,38 @@ bool HDRoptions::evaluateInjectCoherence(IPTCPopt *requested, struct optHdrData 
  */
 void HDRoptions::registerOptOccurrence(struct IPTCPopt *oDesc, uint8_t offset, uint8_t len)
 {
-    const uint8_t sjOndx = oDesc->sjOptIndex;
+    const uint8_t sjOptIndex = oDesc->sjOptIndex;
 
     if (oDesc->availableUsage == ONESHOT)
+        corruptDone = true;
+
+    else if (oDesc->availableUsage == TWOSHOT && optTrack[sjOptIndex].size() > 1)
         corruptDone = true;
 
     struct option_occurrence occ;
     occ.off = offset;
     occ.len = len;
 
-    if (oDesc->availableUsage == TWOSHOT && optTrack[sjOndx].size() > 1)
-        corruptDone = true;
-
-    optTrack[sjOndx].push_back(occ);
+    optTrack[sjOptIndex].push_back(occ);
 }
 
-uint32_t HDRoptions::alignOpthdr()
+void HDRoptions::alignOpthdr(void)
 {
     uint8_t alignBytes = (oD.actual_opts_len % 4) ? 4 - (oD.actual_opts_len % 4) : 0;
     if (alignBytes)
     {
-        oD.optshdr[oD.actual_opts_len] = protD.END_code;
-
         oD.actual_opts_len += alignBytes;
 
         LOG_PACKET("*+ aligned to %u for %u bytes (avail %u)", oD.actual_opts_len, alignBytes, oD.getAvailableOptLen());
     }
-
-    return oD.actual_opts_len;
 }
 
-void HDRoptions::copyOpthdr()
+void HDRoptions::copyOpthdr(void)
 {
-    memcpy(*protD.hdrAddr + protD.fixedHdrLen, &oD.optshdr[0], oD.actual_opts_len);
+    memcpy(*protD.hdrAddr + protD.hdrMinLen, &oD.optshdr[0], oD.actual_opts_len);
 }
 
-bool HDRoptions::isGoalAchieved()
+bool HDRoptions::isGoalAchieved(void)
 {
     return corruptRequest == corruptDone;
 }
@@ -322,10 +317,10 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
     return true;
 }
 
-void HDRoptions::completeInjection()
+void HDRoptions::completeHdrEdit(void)
 {
     alignOpthdr();
-    ((pkt).*(protD.hdrResize))(protD.fixedHdrLen + oD.actual_opts_len);
+    ((pkt).*(protD.hdrResize))(protD.hdrMinLen + oD.actual_opts_len);
     copyOpthdr();
 
     LOG_PACKET("*- resize %shdr to contain %d options len", protD.protoName, oD.actual_opts_len);
@@ -358,7 +353,7 @@ void HDRoptions::injector(uint8_t sjOptIndex)
     }
 }
 
-void HDRoptions::randomInjector()
+void HDRoptions::randomInjector(void)
 {
     vector<uint8_t> seq;
 
@@ -387,7 +382,7 @@ bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t sjOp
     if (!isGoalAchieved())
         return false;
 
-    completeInjection();
+    completeHdrEdit();
 
     LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
                protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
@@ -408,7 +403,7 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
     if (!isGoalAchieved())
         return false;
 
-    completeInjection();
+    completeHdrEdit();
 
     LOG_PACKET("*2 %s rand opts: actual_opt_len(%u) (avail %u) goal %s ",
                protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
@@ -417,15 +412,8 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
     return true;
 }
 
-/* off-topic naming base rule: 
- *
- * sjOptIndex is the uint8_t name of the index, defined in hardcodedDefines.h
- *            sometime, will be shortened with "sjI"
- * optValue is the uint8_t name used for the binary value copyed in the optHdr
- */
 bool HDRoptions::removeOption(uint8_t sjOptIndex)
 {
-
     /* this check need to be done only on external public functions */
     if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
         RUNTIME_EXCEPTION("invalid use of optcode index: %u");
@@ -443,7 +431,7 @@ bool HDRoptions::removeOption(uint8_t sjOptIndex)
         oD.actual_opts_len -= it->len;
     }
 
-    completeInjection();
+    completeHdrEdit();
 
     return true;
 }

@@ -32,6 +32,7 @@
 #include "SessionTrack.h"
 #include "OptionPool.h"
 #include "PluginPool.h"
+#include "config.h"
 
 class SniffJoke
 {

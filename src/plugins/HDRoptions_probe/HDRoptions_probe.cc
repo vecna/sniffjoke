@@ -34,7 +34,7 @@ class HDRoptions_probe : public Plugin
 #define MIN_TESTED_LEN  756
 
 private:
-    int32_t sjOptIndex;
+    uint8_t sjOptIndex;
     pluginLogHandler *pLH;
     IPTCPopt *underTestOpt;
 
@@ -59,7 +59,8 @@ public:
     HDRoptions_probe() :
     Plugin(PLUGIN_NAME, AGG_ALWAYS)
     {
-        sjOptIndex = -1;
+        sjOptIndex = SUPPORTED_OPTIONS; /* the index really valid is SUPPORTED_OPTIONS -1
+                                           so this way on error we will trigger an exception  */
     }
 
     /* init is called with pluginName,SCRAMBLE+option,

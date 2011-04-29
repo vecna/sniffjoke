@@ -130,7 +130,7 @@ bool PacketFilter::filterICMPErrors(const Packet &pkt)
 {
     if (pkt.icmppayloadlen > sizeof (struct iphdr))
     {
-        struct iphdr *ip = (struct iphdr*) pkt.icmppayload;
+        const struct iphdr *ip = (struct iphdr*) pkt.icmppayload;
         FilterEntry filter(ip->id, ip->tot_len, ip->saddr, ip->daddr);
         return filter_multiset.check(filter);
     }

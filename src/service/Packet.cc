@@ -201,10 +201,10 @@ uint16_t Packet::computeSum(uint32_t sum)
 
 void Packet::fixIPSum(void)
 {
-    uint32_t sum;
-
     ip->check = 0;
-    sum = computeHalfSum((const unsigned char *) ip, iphdrlen);
+
+    uint32_t sum = computeHalfSum((const unsigned char *) ip, iphdrlen);
+
     ip->check = computeSum(sum);
 }
 
@@ -212,13 +212,12 @@ void Packet::fixIPTCPSum(void)
 {
     fixIPSum();
 
-    uint32_t sum;
-    const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
-
     tcp->check = 0;
-    sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
-    sum += htons(IPPROTO_TCP + l4len);
-    sum += computeHalfSum((const unsigned char *) tcp, l4len);
+
+    uint32_t sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
+    sum += htons(IPPROTO_TCP + ippayloadlen);
+    sum += computeHalfSum((const unsigned char *) tcp, ippayloadlen);
+
     tcp->check = computeSum(sum);
 }
 
@@ -226,13 +225,12 @@ void Packet::fixIPUDPSum(void)
 {
     fixIPSum();
 
-    uint32_t sum;
-    const uint16_t l4len = ntohs(ip->tot_len) - iphdrlen;
-
     udp->check = 0;
-    sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
-    sum += htons(IPPROTO_UDP + l4len);
-    sum += computeHalfSum((const unsigned char *) udp, l4len);
+
+    uint32_t sum = computeHalfSum((const unsigned char *) &ip->saddr, 8);
+    sum += htons(IPPROTO_UDP + ippayloadlen);
+    sum += computeHalfSum((const unsigned char *) udp, ippayloadlen);
+
     udp->check = computeSum(sum);
 }
 
@@ -460,7 +458,6 @@ void Packet::udppayloadResize(uint16_t size)
     /* in udp we have also to correct the len field */
     udp->len = htons(udphdrlen + size);
 
-
     pbuf.resize(new_total_len);
 
     updatePacketMetadata();
@@ -468,20 +465,17 @@ void Packet::udppayloadResize(uint16_t size)
 
 void Packet::ippayloadRandomFill(void)
 {
-    const uint16_t diff = pbuf.size() - iphdrlen;
-    memset_random(ippayload, diff);
+    memset_random(ippayload, pbuf.size() - iphdrlen);
 }
 
 void Packet::tcppayloadRandomFill(void)
 {
-    const uint16_t diff = pbuf.size() - (iphdrlen + tcphdrlen);
-    memset_random(tcppayload, diff);
+    memset_random(tcppayload, pbuf.size() - (iphdrlen + tcphdrlen));
 }
 
 void Packet::udppayloadRandomFill(void)
 {
-    const uint16_t diff = pbuf.size() - (iphdrlen + udphdrlen);
-    memset_random(udppayload, diff);
+    memset_random(udppayload, pbuf.size() - (iphdrlen + udphdrlen));
 }
 
 void Packet::payloadRandomFill(void)
@@ -565,7 +559,7 @@ void Packet::selflog(const char *func, const char *format, ...) const
             snprintf(protoinfo, sizeof (protoinfo), "other proto: %d", ip->protocol);
             break;
         default:
-            RUNTIME_EXCEPTION("fATAL CODE [CYN1C]: please send a notification to the developers (%u)", proto);
+            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", proto);
             break;
         }
 
@@ -598,8 +592,6 @@ Packet::~Packet()
 #ifdef HEAVY_PACKET_DEBUG
 #define PACKETLOG_PREFIX_TCP   "TCPpktLog/"
 #define PACKETLOG_PREFIX_UDP   "UDPpktLog/"
-    char fname[MEDIUMBUF];
-    FILE *packetLog;
 
     const char *protoprefix = NULL;
     uint16_t sport = 0;
@@ -625,9 +617,12 @@ Packet::~Packet()
     }
 
     mkdir(protoprefix, 0770);
+
+    char fname[MEDIUMBUF];
     snprintf(fname, MEDIUMBUF, "%s%s", protoprefix, inet_ntoa(*((struct in_addr *) &ip->daddr)));
 
-    if ((packetLog = fopen(fname, "a+")) == NULL)
+    FILE *packetLog = fopen(fname, "a+");
+    if (packetLog == NULL)
         RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
     fprintf(packetLog, "%d\t%d:%d\t%s\t%d\tchain %s, position %d, judge [%s], queue %d, from [%s]\n",

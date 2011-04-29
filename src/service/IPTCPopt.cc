@@ -35,7 +35,6 @@ availableUsage(CORRUPTUNASSIGNED)
 
 void IPTCPopt::optionConfigure(corruption_t c)
 {
-
     availableUsage = c;
 }
 
@@ -44,7 +43,6 @@ uint8_t IPTCPopt::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen, uint8
 {
     const uint8_t minComputed = fixedLen + (minRblks * blockSize);
     const uint8_t maxComputed = fixedLen + (maxRblks * blockSize);
-
     const uint8_t checkedAvail = oD->getAvailableOptLen();
 
     if (checkedAvail == minComputed || checkedAvail == maxComputed)

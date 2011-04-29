@@ -48,11 +48,11 @@ struct optHdrData
 class IPTCPopt
 {
 public:
-    bool enabled;
-    uint32_t sjOptIndex;
+    bool enabled; /* static enabler */
+    uint32_t sjOptIndex; /* sniffjoke options values */
     const char* const sjOptName;
     uint8_t optProto;
-    uint8_t optValue;
+    uint8_t optValue; /* rfc options values*/
     corruption_t availableUsage;
 
     uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
