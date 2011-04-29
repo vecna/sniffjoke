@@ -39,7 +39,7 @@ EOF
 }
 
 dump_options_file() {
-SUPPORTED_OPTIONS_N=`seq 1 17`
+SUPPORTED_OPTIONS_N=`seq 0 16`
 for opt in $SUPPORTED_OPTIONS_N; do echo "HDRoptions_probe,INNOCENT+$opt" >> $OPTIONSLIST; done
 }
 

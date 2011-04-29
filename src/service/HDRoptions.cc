@@ -64,10 +64,8 @@ type(t),
 pkt(pkt),
 ttlfocus(ttlfocus),
 corruptRequest(false),
-corruptDone(false),
-nextPlannedInj(SJ_NULL_OPT)
+corruptDone(false)
 {
-    IPTCPopt *usableOption;
 
     /* initialization of header and indexes on specific proto basis */
     switch (type)
@@ -75,48 +73,59 @@ nextPlannedInj(SJ_NULL_OPT)
     case IPOPTS_INJECTOR:
 
         protD.protoName = "IP";
-        protD.startOpt = FIRST_IPOPT;
-        protD.endOpt = LAST_IPOPT;
+        protD.firstOptIndex = FIRST_IPOPT;
+        protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
         protD.END_code = IPOPT_END;
+        protD.hdrAddr = (uint8_t**) & pkt.ip;
+        protD.fixedHdrLen = sizeof (struct iphdr);
+        protD.optsMaxLen = MAXIPOPTIONS;
+        protD.hdrResize = &Packet::iphdrResize;
 
         oD.actual_opts_len = pkt.iphdrlen - sizeof (struct iphdr);
 
-        oD.optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
-        memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), oD.actual_opts_len);
-
-        /* initialized the vector using the pointer of the static private data
-         * in optionLoaded::loadedOptions */
-        for (opt_pool->select(IPPROTO_IP); (usableOption = opt_pool->get()) != NULL;)
+        for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {
-            /* specific per-classes initialization need to be called here */
-            if (usableOption->sjOptIndex == SJ_IPOPT_TIMESTOVERFLOW)
-                (reinterpret_cast<Io_TIMESTOVERFLOW *> (usableOption))->setupTTLFocus(&ttlfocus);
+            switch (i) /* Specific options configurations goes here */
+            {
+            case SJ_IPOPT_TIMESTOVERFLOW:
+                (reinterpret_cast<Io_TIMESTOVERFLOW *> ((*opt_pool)[i]))->setupTTLFocus(&ttlfocus);
+                break;
 
-            availOpts.push_back(usableOption);
+            default:
+                break;
+            }
         }
+
         break;
 
     case TCPOPTS_INJECTOR:
 
         protD.protoName = "TCP";
-        protD.startOpt = FIRST_TCPOPT;
-        protD.endOpt = LAST_TCPOPT;
+        protD.firstOptIndex = FIRST_TCPOPT;
+        protD.lastOptIndex = LAST_TCPOPT;
         protD.NOP_code = TCPOPT_NOP;
         protD.END_code = TCPOPT_EOL;
+        protD.hdrAddr = (uint8_t**) & pkt.tcp;
+        protD.fixedHdrLen = sizeof (struct tcphdr);
+        protD.optsMaxLen = MAXTCPOPTIONS;
+        protD.hdrResize = &Packet::tcphdrResize;
 
         oD.actual_opts_len = pkt.tcphdrlen - sizeof (struct tcphdr);
 
-        oD.optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
-        memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), oD.actual_opts_len);
-
-        /* initialize the vector using the pointer of the static private data
-         * in optionLoaded::loadedOptions */
-        for (opt_pool->select(IPPROTO_TCP); (usableOption = opt_pool->get()) != NULL;)
-            availOpts.push_back(usableOption);
+        for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
+        {
+            switch (i) /* Specific options configurations goes here */
+            {
+            default:
+                break;
+            }
+        }
 
         break;
     }
+
+    oD.optshdr.resize(protD.optsMaxLen, protD.END_code);
 
     acquirePresentOptions();
 }
@@ -127,6 +136,11 @@ nextPlannedInj(SJ_NULL_OPT)
  */
 bool HDRoptions::acquirePresentOptions(void)
 {
+    if (oD.actual_opts_len == 0)
+        return true;
+
+    memcpy(&oD.optshdr[0], *protD.hdrAddr + protD.fixedHdrLen, oD.actual_opts_len);
+
     for (uint8_t i = 0; i < oD.actual_opts_len;)
     {
         uint8_t * const option = &oD.optshdr[i];
@@ -158,7 +172,7 @@ bool HDRoptions::acquirePresentOptions(void)
         }
 
         bool identified = false;
-        for (vector<IPTCPopt *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
+        for (vector<IPTCPopt *>::iterator it = opt_pool->begin(); it != opt_pool->end(); ++it)
         {
             IPTCPopt *underVerify = *it;
 
@@ -191,19 +205,17 @@ bool HDRoptions::acquirePresentOptions(void)
 
 /*
  * this is a core method inside HDRoptions, it:
- * 1) check if a requested (will be random, will be by code) is enabled 
- * 2) check if the goal is corrupt or not, and choose the option by the counter data 
+ * 1) check if a requested option(selected by a random or forced by a plugin) is enabled
+ * 2) check if the goal is to corrupt or not, and choose the option by the counter data
  */
-bool HDRoptions::evaluateInjectCoherence(IPTCPopt *requested, struct optHdrData *oD, int8_t counterInj)
+bool HDRoptions::evaluateInjectCoherence(IPTCPopt *requested, struct optHdrData *oD, uint8_t counterInj)
 {
-
     /*
      * 1st global check: can we use this option ?
      * at the time a global enabled variable is used to permit selective testing
      */
     if (requested->enabled == false)
         return false;
-
     /*
      * 2nd global check: at which state of the injection are we?
      * we avoid corrupt options if we have just corrupted the packet
@@ -213,16 +225,16 @@ bool HDRoptions::evaluateInjectCoherence(IPTCPopt *requested, struct optHdrData 
     switch (requested->availableUsage)
     {
     case NOT_CORRUPT:
-        if (corruptRequest == false)
+        if (corruptRequest == false && counterInj == 0)
             return true;
-
         break;
+
     case ONESHOT:
         /* I like to corrupt only once */
         if (corruptRequest == true && corruptDone == false)
             return true;
-
         break;
+
     case TWOSHOT:
         if (corruptRequest == true && corruptDone == false)
         {
@@ -230,6 +242,7 @@ bool HDRoptions::evaluateInjectCoherence(IPTCPopt *requested, struct optHdrData 
                 return true;
         }
         break;
+
     default:
         break;
     }
@@ -263,7 +276,6 @@ void HDRoptions::registerOptOccurrence(struct IPTCPopt *oDesc, uint8_t offset, u
 
 uint32_t HDRoptions::alignOpthdr()
 {
-
     uint8_t alignBytes = (oD.actual_opts_len % 4) ? 4 - (oD.actual_opts_len % 4) : 0;
     if (alignBytes)
     {
@@ -277,9 +289,9 @@ uint32_t HDRoptions::alignOpthdr()
     return oD.actual_opts_len;
 }
 
-void HDRoptions::copyOpthdr(uint8_t *dst)
+void HDRoptions::copyOpthdr()
 {
-    memcpy(dst, &oD.optshdr[0], oD.actual_opts_len);
+    memcpy(*protD.hdrAddr + protD.fixedHdrLen, &oD.optshdr[0], oD.actual_opts_len);
 }
 
 bool HDRoptions::isGoalAchieved()
@@ -312,109 +324,62 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 
 void HDRoptions::completeInjection()
 {
-
     alignOpthdr();
+    ((pkt).*(protD.hdrResize))(protD.fixedHdrLen + oD.actual_opts_len);
+    copyOpthdr();
 
-    if (type == IPOPTS_INJECTOR)
-    {
-        LOG_PACKET("*- resize IPhdr to contain %d options len", oD.actual_opts_len);
-        pkt.iphdrResize((sizeof (struct iphdr)) + oD.actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
-    }
-    else
-    {
-        LOG_PACKET("*- resize TCPhdr to contain %d options len", oD.actual_opts_len);
-        pkt.tcphdrResize((sizeof (struct tcphdr)) + oD.actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
-    }
+    LOG_PACKET("*- resize %shdr to contain %d options len", protD.protoName, oD.actual_opts_len);
 }
 
-void HDRoptions::injector(uint32_t sjOptIndex)
+void HDRoptions::injector(uint8_t sjOptIndex)
 {
-    IPTCPopt *requested = NULL;
-
-    for (vector<IPTCPopt *>::iterator underVerify = availOpts.begin(); underVerify != availOpts.end(); ++underVerify)
-    {
-        if ((*underVerify)->sjOptIndex == sjOptIndex)
-        {
-            requested = *underVerify;
-            break;
-        }
-    }
-
-    if (requested == NULL)
-        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", sjOptIndex, protD.protoName);
-
-    LOG_PACKET("*1 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
-               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
+    IPTCPopt *requested = (*opt_pool)[sjOptIndex];
 
     /* if needed by corruption method, make two time the injection, otherwise 1, otherwise 0 */
-    for (int8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); ++counterInj)
+    for (uint8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); ++counterInj)
     {
-        uint8_t writtedLen = requested->optApply(&oD);
+        const uint8_t writtedLen = requested->optApply(&oD);
 
         if (writtedLen > 0)
         {
-
             LOG_PACKET("** %s at the index of %u options length of %u (avail %u)",
                        requested->sjOptName, requested->sjOptIndex, writtedLen, oD.getAvailableOptLen());
 
             oD.actual_opts_len += writtedLen;
             registerOptOccurrence(requested, oD.actual_opts_len, writtedLen);
         }
-    }
 
-    LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
-               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+        else
+        {
+            /* to avoid time consuming checks and loops:
+             * if there is not enougth space, skip! */
+            break;
+        }
+    }
 }
 
 void HDRoptions::randomInjector()
 {
-    LOG_PACKET("*1 %s option: actual_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
-               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
+    vector<uint8_t> seq;
 
-    random_shuffle(availOpts.begin(), availOpts.end());
-    for (vector<IPTCPopt *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
-    {
-        IPTCPopt *randOpt = *it;
+    for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
+        seq.push_back(i);
 
-        for (uint8_t counterInj = 0; evaluateInjectCoherence(randOpt, &oD, counterInj); ++counterInj)
-        {
-            uint8_t writtedLen = randOpt->optApply(&oD);
+    random_shuffle(seq.begin(), seq.end());
 
-            if (writtedLen > 0)
-            {
-                LOG_PACKET("** %s at the index of %u options length of %u (avail %u)",
-                           randOpt->sjOptName, randOpt->sjOptIndex, writtedLen, oD.getAvailableOptLen());
-
-                oD.actual_opts_len += writtedLen;
-                registerOptOccurrence(randOpt, oD.actual_opts_len, writtedLen);
-            }
-            else
-            {
-                /* to avoid time consuming checks and loops:
-                 * if there is not enougth space, skip! */
-                break;
-            }
-
-            /* to avoid duplication of the same good option */
-            if (randOpt->availableUsage == NOT_CORRUPT)
-                break;
-        }
-    }
-
-    LOG_PACKET("*2 %s option: actual_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
-               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+    for (vector<uint8_t>::iterator it = seq.begin(); it != seq.end(); ++it)
+        injector(*it);
 }
 
-bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint32_t sjOptIndex)
+bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t sjOptIndex)
 {
-    if (sjOptIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("invalid use of optcode index");
+    /* this check need to be done only on external public functions */
+    if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
+        RUNTIME_EXCEPTION("invalid use of optcode index: %u");
+
+    LOG_PACKET("*1 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s",
+               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
     if (prepareInjection(corrupt, strip_previous))
         injector(sjOptIndex);
@@ -423,11 +388,20 @@ bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint32_t sjO
         return false;
 
     completeInjection();
+
+    LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
+               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+
     return true;
 }
 
 bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
+    LOG_PACKET("*1 %s rand opts: actual_opt_len(%u) (avail %u) goal %s",
+               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
+
     if (prepareInjection(corrupt, strip_previous))
         randomInjector();
 
@@ -435,27 +409,33 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
         return false;
 
     completeInjection();
+
+    LOG_PACKET("*2 %s rand opts: actual_opt_len(%u) (avail %u) goal %s ",
+               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+
     return true;
 }
 
 /* off-topic naming base rule: 
  *
- * sjOptIndex is the uint32_t name of the index, defined in hardcodedDefines.h
+ * sjOptIndex is the uint8_t name of the index, defined in hardcodedDefines.h
  *            sometime, will be shortened with "sjI"
  * optValue is the uint8_t name used for the binary value copyed in the optHdr
  */
-bool HDRoptions::removeOption(uint32_t sjI)
+bool HDRoptions::removeOption(uint8_t sjOptIndex)
 {
-    if (sjI >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("invalid use of optcode index");
+
+    /* this check need to be done only on external public functions */
+    if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
+        RUNTIME_EXCEPTION("invalid use of optcode index: %u");
 
     /* if an option is request to be deleted, we need to check if it exists! */
-    if (optTrack[sjI].size() == 0)
+    if (optTrack[sjOptIndex].size() == 0)
         return false;
 
-    for (vector<option_occurrence>::iterator it = optTrack[sjI].begin(); it != optTrack[sjI].end(); it = optTrack[sjI].erase(it))
+    for (vector<option_occurrence>::iterator it = optTrack[sjOptIndex].begin(); it != optTrack[sjOptIndex].end(); it = optTrack[sjOptIndex].erase(it))
     {
-
         vector<unsigned char>::iterator start = oD.optshdr.begin() + it->off;
         vector<unsigned char>::iterator end = start + it->len;
         oD.optshdr.erase(start, end);
@@ -474,12 +454,12 @@ HDRoptions::~HDRoptions(void)
 #define HDR_PREFIX  "HDRoLog/"
 
     char fname[MEDIUMBUF];
-    FILE *HDRoLog;
 
     mkdir(HDR_PREFIX, 0770);
     snprintf(fname, MEDIUMBUF, "%s%s-%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))), protD.protoName);
 
-    if ((HDRoLog = fopen(fname, "a+")) == NULL)
+    FILE *HDRoLog = fopen(fname, "a+");
+    if (HDRoLog == NULL)
         RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
     fprintf(HDRoLog, "RD %u%u SAPFR{%u%u%u%u%u}\tp#%u id%u\t",
@@ -488,7 +468,7 @@ HDRoptions::~HDRoptions(void)
             pkt.SjPacketId, ntohs(pkt.ip->id)
             );
 
-    for (uint8_t i = protD.startOpt; i <= protD.endOpt; ++i)
+    for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
     {
         if (optTrack[i].size() == false)
         {
@@ -496,7 +476,7 @@ HDRoptions::~HDRoptions(void)
         }
         else
         {
-            IPTCPopt *yep = opt_pool->getSingleOption(i);
+            IPTCPopt *yep = (*opt_pool)[i];
             fprintf(HDRoLog, " %s", yep->sjOptName);
 
             for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); ++it)

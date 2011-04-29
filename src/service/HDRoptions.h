@@ -91,10 +91,14 @@ struct option_occurrence
 struct protocolSpec
 {
     const char *protoName;
-    uint8_t startOpt;
-    uint8_t endOpt;
+    uint8_t firstOptIndex;
+    uint8_t lastOptIndex;
     uint8_t NOP_code;
     uint8_t END_code;
+    uint8_t** hdrAddr;
+    uint8_t fixedHdrLen;
+    uint8_t optsMaxLen;
+    void (Packet::*hdrResize)(uint8_t);
 };
 
 class HDRoptions
@@ -116,10 +120,7 @@ private:
      * both for IP and TCP where possible */
     struct protocolSpec protD;
 
-    vector<IPTCPopt *> availOpts;
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
-
-    IPTCPopt *nextPlannedInj;
 
     /*
      * options we need to check the presence for;
@@ -128,34 +129,34 @@ private:
     bool acquirePresentOptions(void);
 
     /* the core selecting function */
-    bool evaluateInjectCoherence(IPTCPopt *, struct optHdrData *, int8_t);
+    bool evaluateInjectCoherence(IPTCPopt *, struct optHdrData *, uint8_t);
 
     /* after the call to optApply, HDRoptions need to be sync */
     void registerOptOccurrence(struct IPTCPopt *, uint8_t, uint8_t);
 
     /* alignment of option header to be divisible by 4 */
-    uint32_t alignOpthdr();
+    uint32_t alignOpthdr(void);
 
     /* utilities functions */
     uint8_t availableOptsLen(void);
-    void copyOpthdr(uint8_t *);
-    bool isGoalAchieved();
+    void copyOpthdr(void);
+    bool isGoalAchieved(void);
 
     bool prepareInjection(bool, bool);
-    void completeInjection();
+    void completeInjection(void);
 
-    void injector(uint32_t);
-    void randomInjector();
+    void injector(uint8_t);
+    void randomInjector(void);
 
 public:
 
     HDRoptions(injector_t, Packet &, TTLFocus &);
     ~HDRoptions();
 
-    bool injectSingleOpt(bool, bool, uint32_t);
+    bool injectSingleOpt(bool, bool, uint8_t);
     bool injectRandomOpts(bool, bool);
 
-    bool removeOption(uint32_t);
+    bool removeOption(uint8_t);
 };
 
 #endif /* HDROPTIONS_H */

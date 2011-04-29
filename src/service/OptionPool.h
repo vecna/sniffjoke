@@ -26,16 +26,9 @@
 #include "IPTCPopt.h"
 #include "IPTCPoptImpl.h"
 
-class OptionPool
+class OptionPool : public vector<IPTCPopt *>
 {
 private:
-
-    /* this class is a singleton one */
-    static OptionPool* instance_ptr;
-
-    /* loadedOption is the main struct where the implementation are stored: HDRoptions
-     * need to initialize every instance with them, and I've preferred a static reference */
-    IPTCPopt *loadedOptions[SUPPORTED_OPTIONS];
 
     /* the settedProto and counter is used as static variable in the classes because is
      * used to track the counter in the getNextOpt methods */
@@ -43,6 +36,10 @@ private:
     uint8_t counter;
 
 public:
+
+    /* loadedOption is the main struct where the implementation are stored: HDRoptions
+     * need to initialize every instance with them, and I've preferred a static reference */
+    IPTCPopt *loadedOptions[SUPPORTED_OPTIONS];
 
     OptionPool();
 

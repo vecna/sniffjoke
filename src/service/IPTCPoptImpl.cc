@@ -122,7 +122,6 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     const uint8_t size_timestamp = getBestRandsize(oD, 4, 9, 9, 4);
     const uint8_t timestamps = (size_timestamp - 4) / 4;
     const uint8_t covered_destinations = timestamps + 15; /* the overflow counter is 4 bits */
-    const uint8_t index = oD->actual_opts_len;
 
     if (ttlfocus->status != TTL_KNOWN || ttlfocus->ttl_estimate > covered_destinations)
         return 0;
@@ -130,6 +129,8 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     /* getBestRandom return 0 if there is not enought space */
     if (!size_timestamp)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = size_timestamp;
@@ -149,9 +150,6 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
 
     memset(&oD->optshdr[index + 4], 0, timestamps * 4);
     memset_random(&oD->optshdr[index + 4], last_filled * 4);
-
-    LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               sjOptName, index, size_timestamp, oD->getAvailableOptLen());
 
     return size_timestamp;
 }
@@ -203,19 +201,17 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
      */
 
     const uint8_t size_lsrr = getBestRandsize(oD, 3, 1, 4, 4);
-    const uint8_t index = oD->actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
     if (!size_lsrr)
         return 0;
 
+    const uint8_t index = oD->actual_opts_len;
+
     oD->optshdr[index] = IPOPT_LSRR;
     oD->optshdr[index + 1] = size_lsrr;
     oD->optshdr[index + 2] = 4;
     memset_random(&oD->optshdr[index + 3], (size_lsrr - 3));
-
-    LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               sjOptName, index, size_lsrr, oD->getAvailableOptLen());
 
     return size_lsrr;
 }
@@ -249,11 +245,12 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
      */
 
     const uint8_t size_rr = getBestRandsize(oD, 3, 1, 4, 4);
-    const uint8_t index = oD->actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
     if (!size_rr)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_RR;
     oD->optshdr[index + 1] = size_rr;
@@ -280,10 +277,11 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
      * probably related to repeatitions of the option.
      * so we avoid it.
      */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < IPOPT_RA_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_RA;
     oD->optshdr[index + 1] = IPOPT_RA_SIZE;
@@ -331,11 +329,11 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
      *       lead the packet to be discarded.
      */
 
-    const uint8_t index = oD->actual_opts_len;
-
     /* this option always corrupts the packet */
     if (oD->getAvailableOptLen() < IPOPT_CIPSO_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_CIPSO;
     oD->optshdr[index + 1] = IPOPT_CIPSO_SIZE;
@@ -372,12 +370,13 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
 #define IPOPT_SEC_SIZE 11
 
     /*
-     * this option always corrupts the packet random data value packet
+     * this option always corrupts the packet due to random data values
      */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < IPOPT_SEC_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     /* TODO - cohorent data for security OPT */
     /* http://www.faqs.org/rfcs/rfc791.html "Security" */
@@ -396,10 +395,11 @@ IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SID, "Session ID", IPPROTO_IP, IPOPT_SID)
 uint8_t Io_SID::optApply(struct optHdrData *oD)
 {
     /* this option corrupts the packet if repeated. */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < IPOPT_SID_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_SID;
     oD->optshdr[index + 1] = IPOPT_SID_SIZE;
@@ -437,17 +437,15 @@ IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_M
 uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
 {
     /* this option corrupts the packet if repeated. */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < TCPOPT_MD5SIG_SIZE)
         return 0;
 
+    const uint8_t index = oD->actual_opts_len;
+
     oD->optshdr[index] = TCPOPT_MD5SIG;
     oD->optshdr[index + 1] = TCPOPT_MD5SIG_SIZE;
     memset_random(&oD->optshdr[index + 2], TCPOPT_MD5SIG_SIZE - 2);
-
-    LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               sjOptName, index, TCPOPT_MD5SIG_SIZE, oD->getAvailableOptLen());
 
     return TCPOPT_MD5SIG_SIZE;
 }
@@ -460,10 +458,11 @@ IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_PAWSCORRUPT, "TCP bad PAWS", IPPROTO_TCP, D
 uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 {
 #define TCPOPT_TIMESTAMP_SIZE 10
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < TCPOPT_TIMESTAMP_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = TCPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = TCPOPT_TIMESTAMP_SIZE;

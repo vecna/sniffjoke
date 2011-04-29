@@ -146,16 +146,15 @@
  * used for fill the description structure
  */
 
-#define SJ_NULL_OPT                 0
-#define SJ_IPOPT_NOOP               1
-#define SJ_IPOPT_TIMESTAMP          2
-#define SJ_IPOPT_TIMESTOVERFLOW     3
-#define SJ_IPOPT_LSRR               4
-#define SJ_IPOPT_RR                 5
-#define SJ_IPOPT_RA                 6
-#define SJ_IPOPT_CIPSO              7
-#define SJ_IPOPT_SEC                8
-#define SJ_IPOPT_SID                9
+#define SJ_IPOPT_NOOP               0
+#define SJ_IPOPT_TIMESTAMP          1
+#define SJ_IPOPT_TIMESTOVERFLOW     2
+#define SJ_IPOPT_LSRR               3
+#define SJ_IPOPT_RR                 4
+#define SJ_IPOPT_RA                 5
+#define SJ_IPOPT_CIPSO              6
+#define SJ_IPOPT_SEC                7
+#define SJ_IPOPT_SID                8
 
 #define FIRST_IPOPT                 SJ_IPOPT_NOOP
 #define LAST_IPOPT                  SJ_IPOPT_SID

@@ -27,33 +27,11 @@
 #include "UserConf.h"
 
 extern auto_ptr<UserConf> userconf;
-extern auto_ptr<OptionPool> opt_pool;
 
 void OptionPool::select(uint8_t reqProto)
 {
     settedProto = reqProto;
     counter = 0;
-}
-
-IPTCPopt* OptionPool::get(void)
-{
-    ++counter;
-
-    if (counter == SUPPORTED_OPTIONS || loadedOptions[counter] == NULL)
-        return NULL;
-
-    if (loadedOptions[counter]->optProto == settedProto)
-        return loadedOptions[counter];
-    else
-        return get();
-}
-
-IPTCPopt* OptionPool::getSingleOption(uint32_t sjOptIndex)
-{
-    if (sjOptIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("invalid use of optcode index");
-
-    return (loadedOptions[sjOptIndex]);
 }
 
 corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
@@ -77,7 +55,7 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 
         sscanf(line, "%u,%u", &readedIndex, &readedCorruption);
 
-        if (readedIndex < 1 || readedIndex > (SUPPORTED_OPTIONS - 1))
+        if (readedIndex >= SUPPORTED_OPTIONS)
             RUNTIME_EXCEPTION("in option file invalid index at line %u", linecnt);
 
         if (readedIndex == optLooked)
@@ -97,28 +75,25 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
     return retval;
 }
 
-OptionPool::OptionPool()
+OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
 {
-
-    memset(loadedOptions, 0, sizeof (IPTCPopt*)*(SUPPORTED_OPTIONS));
-
-    loadedOptions[SJ_IPOPT_NOOP] = new Io_NOOP(true);
-    loadedOptions[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
-    loadedOptions[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
-    loadedOptions[SJ_IPOPT_LSRR] = new Io_LSRR(true);
-    loadedOptions[SJ_IPOPT_RR] = new Io_RR(true);
-    loadedOptions[SJ_IPOPT_RA] = new Io_RA(true);
-    loadedOptions[SJ_IPOPT_CIPSO] = new Io_CIPSO(true);
-    loadedOptions[SJ_IPOPT_SEC] = new Io_SEC(true);
-    loadedOptions[SJ_IPOPT_SID] = new Io_SID(true);
-    loadedOptions[SJ_TCPOPT_NOP] = new To_NOP(true);
-    loadedOptions[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
-    loadedOptions[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
-    loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);
-    loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false);
-    loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false);
-    loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
-    loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
+    (*this)[SJ_IPOPT_NOOP] = new Io_NOOP(true);
+    (*this)[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
+    (*this)[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
+    (*this)[SJ_IPOPT_LSRR] = new Io_LSRR(true);
+    (*this)[SJ_IPOPT_RR] = new Io_RR(true);
+    (*this)[SJ_IPOPT_RA] = new Io_RA(true);
+    (*this)[SJ_IPOPT_CIPSO] = new Io_CIPSO(true);
+    (*this)[SJ_IPOPT_SEC] = new Io_SEC(true);
+    (*this)[SJ_IPOPT_SID] = new Io_SID(true);
+    (*this)[SJ_TCPOPT_NOP] = new To_NOP(true);
+    (*this)[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
+    (*this)[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
+    (*this)[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);
+    (*this)[SJ_TCPOPT_MSS] = new To_MSS(false);
+    (*this)[SJ_TCPOPT_SACK] = new To_SACK(false);
+    (*this)[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
+    (*this)[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
 
     /* when is loaded the single plugin HDRoptions_probe, the option loader is instanced w/ NULL */
     if (!(userconf->runcfg.onlyplugin[0] != 0x00 && !memcmp(userconf->runcfg.onlyplugin, IPTCPOPT_TEST_PLUGIN, strlen(IPTCPOPT_TEST_PLUGIN))))
@@ -132,10 +107,10 @@ OptionPool::OptionPool()
         if (optInput == NULL)
             RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", FILE_IPTCPOPT_CONF, strerror(errno));
 
-        for (uint8_t sjI = 1; sjI < SUPPORTED_OPTIONS; ++sjI)
+        for (uint8_t sjI = 0; sjI < SUPPORTED_OPTIONS; ++sjI)
         {
             writUsage = lineParser(optInput, sjI);
-            loadedOptions[sjI]->optionConfigure(writUsage);
+            (*this)[sjI]->optionConfigure(writUsage);
         }
 
         fclose(optInput);
