@@ -31,7 +31,7 @@
  * to be dumped by the remote host */
 enum corruption_t
 {
-    CORRUPTUNASSIGNED = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
+    CORRUPTUNASSIGNED = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8, TRACK_ONLY = 16
 };
 
 struct optHdrData
@@ -58,6 +58,7 @@ public:
     uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
 
     IPTCPopt(bool, uint8_t, const char *, uint8_t, uint8_t);
+    
     void optionConfigure(corruption_t);
     virtual uint8_t optApply(struct optHdrData *) = 0;
 };

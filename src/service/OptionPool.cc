@@ -44,7 +44,6 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 
     do
     {
-
         fgets(line, MEDIUMBUF, flow);
         ++linecnt;
 
@@ -79,6 +78,7 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
 {
     (*this)[SJ_IPOPT_NOOP] = new Io_NOOP(true);
+    (*this)[SJ_IPOPT_EOL] = new Io_EOL(true);
     (*this)[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
     (*this)[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
     (*this)[SJ_IPOPT_LSRR] = new Io_LSRR(true);
@@ -88,6 +88,7 @@ OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
     (*this)[SJ_IPOPT_SEC] = new Io_SEC(true);
     (*this)[SJ_IPOPT_SID] = new Io_SID(true);
     (*this)[SJ_TCPOPT_NOP] = new To_NOP(true);
+    (*this)[SJ_TCPOPT_EOL] = new To_EOL(true);
     (*this)[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
     (*this)[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
     (*this)[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);

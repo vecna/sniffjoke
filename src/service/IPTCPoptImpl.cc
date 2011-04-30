@@ -46,6 +46,16 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
     return IPOPT_NOOP_SIZE;
 }
 
+Io_EOL::Io_EOL(bool enable) :
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_EOL, "IPOPT_EOL", IPPROTO_IP, IPOPT_EOL)
+{
+}
+
+uint8_t Io_EOL::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
 /*
  * IP TIMESTAMP hacking:
  *
@@ -430,6 +440,16 @@ uint8_t To_NOP::optApply(struct optHdrData *oD)
     return TCPOPT_NOP_SIZE;
 }
 
+To_EOL::To_EOL(bool enable) :
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_EOL, "TCPOPT_EOL", IPPROTO_TCP, TCPOPT_EOL)
+{
+}
+
+uint8_t To_EOL::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
 To_MD5SIG::To_MD5SIG(bool enable) :
 IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCPOPT_MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
 {
@@ -467,7 +487,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 
     oD->optshdr[index] = TCPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = TCPOPT_TIMESTAMP_SIZE;
-    *((uint32_t *) &oD->optshdr[index + 2]) = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
+    *((uint32_t *) & oD->optshdr[index + 2]) = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
     memset_random(&oD->optshdr[index + 6], 4);
 
     return TCPOPT_TIMESTAMP_SIZE;

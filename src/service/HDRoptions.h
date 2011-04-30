@@ -94,7 +94,7 @@ struct protocolSpec
     uint8_t firstOptIndex;
     uint8_t lastOptIndex;
     uint8_t NOP_code;
-    uint8_t END_code;
+    uint8_t EOL_code;
     uint8_t** hdrAddr;
     uint8_t* hdrLen;
     uint8_t hdrMinLen;
@@ -123,15 +123,14 @@ private:
 
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
-
     /* validates present option and makes a working copy */
     void acquirePresentOptions(void);
 
     /* the core selecting function */
-    bool evaluateInjectCoherence(IPTCPopt *, struct optHdrData *, uint8_t);
+    bool evaluateInjectCoherence(uint8_t);
 
-    /* after the call to optApply, HDRoptions need to be sync */
-    void registerOptOccurrence(struct IPTCPopt *, uint8_t, uint8_t);
+    /* registers the presence of an option and returns occurrences count */
+    uint8_t registerOptOccurrence(uint8_t, uint8_t, uint8_t);
 
     /* alignment of option header to be divisible by 4 */
     void alignOpthdr(void);
@@ -155,7 +154,8 @@ public:
     bool injectSingleOpt(bool, bool, uint8_t);
     bool injectRandomOpts(bool, bool);
 
-    bool removeOption(uint8_t);
+    bool stripOption(uint8_t);
+    void stripAllOptions();
 };
 
 #endif /* HDROPTIONS_H */

@@ -51,6 +51,14 @@ protected:
     uint8_t optApply(struct optHdrData *);
 };
 
+class Io_EOL : public IPTCPopt
+{
+public:
+    Io_EOL(bool);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
 class Io_TIMESTAMP : public IPTCPopt
 {
 public:
@@ -122,6 +130,14 @@ class To_NOP : public IPTCPopt
 {
 public:
     To_NOP(bool);
+protected:
+    uint8_t optApply(struct optHdrData *);
+};
+
+class To_EOL : public IPTCPopt
+{
+public:
+    To_EOL(bool);
 protected:
     uint8_t optApply(struct optHdrData *);
 };
