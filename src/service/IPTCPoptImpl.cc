@@ -30,7 +30,7 @@
  */
 
 Io_NOOP::Io_NOOP(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_NOOP, "IP NOOP", IPPROTO_IP, IPOPT_NOOP)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_NOOP, "IPOPT_NOOP", IPPROTO_IP, IPOPT_NOOP)
 {
 }
 
@@ -60,7 +60,7 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
  */
 
 Io_TIMESTAMP::Io_TIMESTAMP(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTAMP, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTAMP, "IPOPT_TIMESTAMP", IPPROTO_IP, IPOPT_TIMESTAMP)
 {
 }
 
@@ -106,7 +106,7 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 }
 
 Io_TIMESTOVERFLOW::Io_TIMESTOVERFLOW(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTOVERFLOW, "IP Timestamp overflow", IPPROTO_IP, DUMMY_OPCODE)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTOVERFLOW, "IPOPT_DUMMY (timestamp overflow)", IPPROTO_IP, DUMMY_OPCODE)
 {
 }
 
@@ -153,7 +153,7 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
 }
 
 Io_LSRR::Io_LSRR(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_LSRR, "Loose source routing", IPPROTO_IP, IPOPT_LSRR)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_LSRR, "IPOPT_LSRR", IPPROTO_IP, IPOPT_LSRR)
 {
 }
 
@@ -216,7 +216,7 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
 }
 
 Io_RR::Io_RR(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RR, "Record route", IPPROTO_IP, IPOPT_RR)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RR, "IPOPT_RR", IPPROTO_IP, IPOPT_RR)
 {
 }
 
@@ -261,7 +261,7 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
 }
 
 Io_RA::Io_RA(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RA, "Router advertising", IPPROTO_IP, IPOPT_RA)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RA, "IPOPT_RA", IPPROTO_IP, IPOPT_RA)
 {
 }
 
@@ -299,7 +299,7 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
 }
 
 Io_CIPSO::Io_CIPSO(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_CIPSO, "Cipso", IPPROTO_IP, IPOPT_CIPSO)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_CIPSO, "IPOPT_CIPSO", IPPROTO_IP, IPOPT_CIPSO)
 {
 }
 
@@ -343,7 +343,7 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
 }
 
 Io_SEC::Io_SEC(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SEC, "Security", IPPROTO_IP, IPOPT_SEC)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SEC, "IPOPT_SEC", IPPROTO_IP, IPOPT_SEC)
 {
 }
 
@@ -389,7 +389,7 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
 }
 
 Io_SID::Io_SID(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SID, "Session ID", IPPROTO_IP, IPOPT_SID)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SID, "IPOPT_SID", IPPROTO_IP, IPOPT_SID)
 {
 }
 
@@ -414,7 +414,7 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
  */
 
 To_NOP::To_NOP(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_NOP, "TCP NOP", IPPROTO_TCP, TCPOPT_NOP)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_NOP, "TCPOPT_NOP", IPPROTO_TCP, TCPOPT_NOP)
 {
 }
 
@@ -431,7 +431,7 @@ uint8_t To_NOP::optApply(struct optHdrData *oD)
 }
 
 To_MD5SIG::To_MD5SIG(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCPOPT_MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
 {
 }
 
@@ -452,7 +452,7 @@ uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
 }
 
 To_PAWSCORRUPT::To_PAWSCORRUPT(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_PAWSCORRUPT, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_PAWSCORRUPT, "TCPOPT_DUMMY (PAWS)", IPPROTO_TCP, DUMMY_OPCODE)
 {
 }
 
@@ -474,7 +474,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 }
 
 To_TIMESTAMP::To_TIMESTAMP(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_TIMESTAMP, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_TIMESTAMP, "TCPOPT_TIMESTAMP", IPPROTO_TCP, TCPOPT_TIMESTAMP)
 {
 }
 
@@ -484,7 +484,7 @@ uint8_t To_TIMESTAMP::optApply(struct optHdrData *oD)
 }
 
 To_MSS::To_MSS(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MSS, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MSS, "TCPOPT_MAXSEG", IPPROTO_TCP, TCPOPT_MAXSEG)
 {
 }
 
@@ -494,7 +494,7 @@ uint8_t To_MSS::optApply(struct optHdrData *oD)
 }
 
 To_SACK::To_SACK(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACK, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACK, "TCPOPT_SACK", IPPROTO_TCP, TCPOPT_SACK)
 {
 }
 
@@ -504,7 +504,7 @@ uint8_t To_SACK::optApply(struct optHdrData *oD)
 }
 
 To_SACKPERM::To_SACKPERM(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACKPERM, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACKPERM, "TCPOPT_SACK_PERMITTED", IPPROTO_TCP, TCPOPT_SACK_PERMITTED)
 {
 }
 
@@ -514,7 +514,7 @@ uint8_t To_SACKPERM::optApply(struct optHdrData *oD)
 }
 
 To_WINDOW::To_WINDOW(bool enable) :
-IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_WINDOW, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_WINDOW, "TCPOPT_WINDOW", IPPROTO_TCP, TCPOPT_WINDOW)
 {
 }
 

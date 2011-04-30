@@ -114,7 +114,7 @@ private:
     bool corruptRequest;
     bool corruptDone;
 
-    /* this struct is used to be passed to the optionImplement extensions */
+    /* this struct is used to be passed to the IPTCPoptImpl extensions */
     struct optHdrData oD;
 
     /* this struct is used to track protocol reference, to use the same methods 
@@ -123,11 +123,9 @@ private:
 
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
-    /*
-     * options we need to check the presence for;
-     * some options are good but if repeated may corrupt the packet.
-     */
-    bool acquirePresentOptions(void);
+
+    /* validates present option and makes a working copy */
+    void acquirePresentOptions(void);
 
     /* the core selecting function */
     bool evaluateInjectCoherence(IPTCPopt *, struct optHdrData *, uint8_t);

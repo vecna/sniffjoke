@@ -36,7 +36,7 @@ enum corruption_t
 
 struct optHdrData
 {
-    vector<unsigned char> optshdr;
+    vector<uint8_t> optshdr;
     uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
 
     uint8_t getAvailableOptLen()
