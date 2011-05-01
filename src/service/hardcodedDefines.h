@@ -20,8 +20,6 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
-
 /*
  * this is the define value used in sniffjoke. if you are making porting of sniffjoke
  * for a distribution, this is your file
@@ -29,6 +27,8 @@
 
 #ifndef SJ_DEFINES_H
 #define SJ_DEFINES_H
+
+#include "config.h"
 
 #define SW_NAME                 "SniffJoke"
 #define SW_VERSION              "0.4-beta6"
@@ -146,8 +146,8 @@
  * used for fill the description structure
  */
 
-#define SJ_NULL_OPT                 0
-#define SJ_IPOPT_NOOP               1
+#define SJ_IPOPT_NOOP               0
+#define SJ_IPOPT_EOL                1
 #define SJ_IPOPT_TIMESTAMP          2
 #define SJ_IPOPT_TIMESTOVERFLOW     3
 #define SJ_IPOPT_LSRR               4
@@ -161,13 +161,14 @@
 #define LAST_IPOPT                  SJ_IPOPT_SID
 
 #define SJ_TCPOPT_NOP               LAST_IPOPT + 1
-#define SJ_TCPOPT_MD5SIG            LAST_IPOPT + 2
-#define SJ_TCPOPT_PAWSCORRUPT       LAST_IPOPT + 3
-#define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT + 4
-#define SJ_TCPOPT_MSS               LAST_IPOPT + 5
-#define SJ_TCPOPT_SACK              LAST_IPOPT + 6
-#define SJ_TCPOPT_SACKPERM          LAST_IPOPT + 7
-#define SJ_TCPOPT_WINDOW            LAST_IPOPT + 8
+#define SJ_TCPOPT_EOL               LAST_IPOPT + 2
+#define SJ_TCPOPT_MD5SIG            LAST_IPOPT + 3
+#define SJ_TCPOPT_PAWSCORRUPT       LAST_IPOPT + 4
+#define SJ_TCPOPT_TIMESTAMP         LAST_IPOPT + 5
+#define SJ_TCPOPT_MSS               LAST_IPOPT + 6
+#define SJ_TCPOPT_SACK              LAST_IPOPT + 7
+#define SJ_TCPOPT_SACKPERM          LAST_IPOPT + 8
+#define SJ_TCPOPT_WINDOW            LAST_IPOPT + 9
 
 #define FIRST_TCPOPT                SJ_TCPOPT_NOP
 #define LAST_TCPOPT                 SJ_TCPOPT_WINDOW

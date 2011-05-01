@@ -156,6 +156,11 @@ public:
     Packet(const Packet &);
     ~Packet();
 
+    uint32_t freespace()
+    {
+        return MTU - pbuf.size();
+    }
+
     void updatePacketMetadata(void);
 
     /* IP/TCP checksum functions */

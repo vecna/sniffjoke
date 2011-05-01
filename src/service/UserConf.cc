@@ -133,8 +133,6 @@ cmdline_opts(cmdline_opts)
 
 UserConf::~UserConf(void)
 {
-    delOptionLoader();
-
     LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
 }
 
@@ -444,17 +442,6 @@ bool UserConf::loadDiskConfiguration(void)
             RUNTIME_EXCEPTION("requested whitelist but whitelist file not found or empty");
     }
 
-    /* when is loaded the single plugin HDRoptions_probe, the option loader is instanced w/ NULL */
-    if (!(runcfg.onlyplugin[0] != 0x00 && !memcmp(runcfg.onlyplugin, IPTCPOPT_TEST_PLUGIN, strlen(IPTCPOPT_TEST_PLUGIN))))
-    {
-        LOG_DEBUG("Loading of %s configuration file for IP/TCP options corruption by location", IPTCPOPT_TEST_PLUGIN);
-        initOptionLoader(FILE_IPTCPOPT_CONF);
-    }
-    else
-    {
-        initOptionLoader(NULL);
-    }
-
     if (loadstream)
         fclose(loadstream);
 
@@ -462,16 +449,6 @@ bool UserConf::loadDiskConfiguration(void)
     loadAggressivity();
 
     return true;
-}
-
-void UserConf::initOptionLoader(const char *toLoad)
-{
-    optionLoader::get_instance(toLoad);
-}
-
-void UserConf::delOptionLoader()
-{
-    optionLoader::del_instance();
 }
 
 /* function for loading of the TCP port files */
@@ -561,12 +538,12 @@ uint32_t UserConf::dumpIfPresent(FILE *out, const char *name, bool data, bool di
 bool UserConf::syncDiskConfiguration(void)
 {
     uint32_t written = 0;
-    char tempdumpfname[LARGEBUF];
-    FILE *out;
 
+    char tempdumpfname[LARGEBUF];
     snprintf(tempdumpfname, LARGEBUF, "%s.temp", FILE_CONF);
 
-    if ((out = fopen(tempdumpfname, "w")) == NULL)
+    FILE *out = fopen(tempdumpfname, "w");
+    if (out == NULL)
     {
         LOG_ALL("unable to open new configuration file %s: %s", tempdumpfname, strerror(errno));
         return false;

@@ -1,11 +1,11 @@
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
-
 ADD_EXECUTABLE(sniffjoke
                HDRoptions
                IPList
-               IPTCPoptApply
+               IPTCPopt
+               IPTCPoptImpl
+               OptionPool
                main
                NetIO
                Packet

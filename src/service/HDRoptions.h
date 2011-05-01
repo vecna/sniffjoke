@@ -28,6 +28,7 @@
 #include "Utils.h"
 #include "Packet.h"
 #include "TTLFocus.h"
+#include "IPTCPopt.h"
 
 #define MAXIPOPTIONS 40
 #define MAXTCPOPTIONS 40
@@ -68,7 +69,7 @@
  * the HDRoptions is called for every Packet needing a manipoulation over the
  * header options, and import the correctly loaded impelementation from optionImplement
  *
- * optionImplment has some virtual methods and are implemented in 
+ * optionImplement has some virtual methods and are implemented in 
  * IPTCPoptApply.cc
  *
  * HDRoptions_probe.cc is plugin for option test and use those classess in a 
@@ -78,79 +79,6 @@
 enum injector_t
 {
     IPOPTS_INJECTOR = 0, TCPOPTS_INJECTOR = 1
-};
-
-/* NOT corrupt is an option that will never give an error, ONESHOT is an option that 
- * make the packet dischargable, twoshot because some option trigger a fult if present 
- * two time in the same header, and BOTH are option that will be either good or malformed
- * to be dumped by the remote host */
-enum corruption_t
-{
-    CORRUPTUNASSIGNED = 0, NOT_CORRUPT = 1, ONESHOT = 2, TWOSHOT = 4, BOTH = 8
-};
-
-struct optHdrData
-{
-    vector<unsigned char> optshdr;
-    uint8_t actual_opts_len; /* max value 40 on IP and TCP too */
-
-    uint8_t getAvailableOptLen()
-    {
-        return optshdr.size() - actual_opts_len;
-    };
-};
-
-class optionImplement
-{
-public:
-    bool enabled;
-    uint32_t sjOptIndex;
-    const char* const sjOptName;
-    uint8_t optProto;
-    uint8_t optValue;
-    corruption_t availableUsage;
-
-    uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
-
-    optionImplement(bool, uint8_t, const char *, uint8_t, uint8_t);
-    void optionConfigure(corruption_t);
-    virtual uint8_t optApply(struct optHdrData *) = 0;
-};
-
-class optionLoader
-{
-private:
-
-    /* this class is a singleton one */
-    static optionLoader* instance_ptr;
-
-    /* loadedOption is the main struct where the implementation are stored: HDRoptions
-     * need to initialize every instance with them, and I've preferred a static reference */
-    optionImplement *loadedOptions[SUPPORTED_OPTIONS];
-
-    /* the settedProto and counter is used as static variable in the classes because is
-     * used to track the counter in the getNextOpt methods */
-    uint8_t settedProto;
-    uint8_t counter;
-
-    optionLoader(const char *);
-
-public:
-
-    /* methods for popoulate <vector>availOpts in HDRoptions */
-    optionImplement * getSingleOption(uint32_t);
-    void select(uint8_t);
-    optionImplement * get(void);
-
-    /* construction is overloaded because in the UserConf routine the 
-     * configuration file is loaded and the static variable is setup.
-     *
-     * in hijacking time the constructor is called without any args */
-
-    corruption_t lineParser(FILE *, uint32_t);
-
-    static optionLoader& get_instance(const char *);
-    static void del_instance(void);
 };
 
 /* these struct are used inside HDRoptions for an easy handling */
@@ -163,10 +91,15 @@ struct option_occurrence
 struct protocolSpec
 {
     const char *protoName;
-    uint8_t startOpt;
-    uint8_t endOpt;
+    uint8_t firstOptIndex;
+    uint8_t lastOptIndex;
     uint8_t NOP_code;
-    uint8_t END_code;
+    uint8_t EOL_code;
+    uint8_t** hdrAddr;
+    uint8_t* hdrLen;
+    uint8_t hdrMinLen;
+    uint8_t optsMaxLen;
+    void (Packet::*hdrResize)(uint8_t);
 };
 
 class HDRoptions
@@ -181,53 +114,48 @@ private:
     bool corruptRequest;
     bool corruptDone;
 
-    /* this struct is used to be passed to the optionImplement extensions */
+    /* this struct is used to be passed to the IPTCPoptImpl extensions */
     struct optHdrData oD;
 
     /* this struct is used to track protocol reference, to use the same methods 
      * both for IP and TCP where possible */
     struct protocolSpec protD;
 
-    vector<optionImplement *> availOpts;
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
-    optionImplement *nextPlannedInj;
-
-    /*
-     * options we need to check the presence for;
-     * some options are good but if repeated may corrupt the packet.
-     */
-    bool acquirePresentOptions(void);
+    /* validates present option and makes a working copy */
+    void acquirePresentOptions(void);
 
     /* the core selecting function */
-    bool evaluateInjectCoherence(optionImplement *, struct optHdrData *, int8_t);
+    bool evaluateInjectCoherence(uint8_t);
 
-    /* after the call to optApply, HDRoptions need to be sync */
-    void registerOptOccurrence(struct optionImplement *, uint8_t, uint8_t);
+    /* registers the presence of an option and returns occurrences count */
+    uint8_t registerOptOccurrence(uint8_t, uint8_t, uint8_t);
 
     /* alignment of option header to be divisible by 4 */
-    uint32_t alignOpthdr();
+    void alignOpthdr(void);
 
     /* utilities functions */
     uint8_t availableOptsLen(void);
-    void copyOpthdr(uint8_t *);
-    bool isGoalAchieved();
+    void copyOpthdr(void);
+    bool isGoalAchieved(void);
 
     bool prepareInjection(bool, bool);
-    void completeInjection();
+    void completeHdrEdit(void);
 
-    void injector(uint32_t);
-    void randomInjector();
+    void injector(uint8_t);
+    void randomInjector(void);
 
 public:
 
     HDRoptions(injector_t, Packet &, TTLFocus &);
     ~HDRoptions();
 
-    bool injectSingleOpt(bool, bool, uint32_t);
+    bool injectSingleOpt(bool, bool, uint8_t);
     bool injectRandomOpts(bool, bool);
 
-    bool removeOption(uint32_t);
+    bool stripOption(uint8_t);
+    void stripAllOptions();
 };
 
 #endif /* HDROPTIONS_H */

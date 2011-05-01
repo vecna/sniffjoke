@@ -37,11 +37,6 @@
 class TCPTrack
 {
 private:
-    const struct sj_config &runcfg;
-
-    SessionTrackMap & sessiontrack_map;
-    TTLFocusMap &ttlfocus_map;
-    PluginPool &plugin_pool;
 
     uint8_t mangled_proto_mask;
 
@@ -67,7 +62,7 @@ private:
 
 public:
 
-    TCPTrack(const sj_config &, PluginPool &, SessionTrackMap &, TTLFocusMap &);
+    TCPTrack(void);
     ~TCPTrack(void);
 
     void writepacket(source_t, const unsigned char *, int);

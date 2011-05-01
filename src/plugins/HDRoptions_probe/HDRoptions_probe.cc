@@ -21,7 +21,10 @@
  */
 
 #include "service/Plugin.h"
+#include "service/OptionPool.h"
 #include "service/HDRoptions.h"
+
+extern auto_ptr<OptionPool> opt_pool;
 
 class HDRoptions_probe : public Plugin
 {
@@ -31,9 +34,9 @@ class HDRoptions_probe : public Plugin
 #define MIN_TESTED_LEN  756
 
 private:
-    int32_t optIndex;
+    uint8_t sjOptIndex;
     pluginLogHandler *pLH;
-    optionImplement *underTestOpt;
+    IPTCPopt *underTestOpt;
 
     void applyTestedOption(Packet &target)
     {
@@ -43,12 +46,12 @@ private:
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, target, dummy);
             /* true corrupt, true strip previous */
-            IPInjector.injectSingleOpt(true, true, optIndex );
+            IPInjector.injectSingleOpt(true, true, sjOptIndex );
         }
         else /* IPPROTO_TCP */
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, target, dummy);
-            TCPInjector.injectSingleOpt(true, true, optIndex );
+            TCPInjector.injectSingleOpt(true, true, sjOptIndex );
         }
     }
 
@@ -56,7 +59,8 @@ public:
     HDRoptions_probe() :
     Plugin(PLUGIN_NAME, AGG_ALWAYS)
     {
-        optIndex = -1;
+        sjOptIndex = SUPPORTED_OPTIONS; /* the index really valid is SUPPORTED_OPTIONS -1
+                                           so this way on error we will trigger an exception  */
     }
 
     /* init is called with pluginName,SCRAMBLE+option,
@@ -73,20 +77,17 @@ public:
             retval = false;
         }
 
-        optIndex = atoi(pluginOption);
+        sjOptIndex = atoi(pluginOption);
 
-        if(retval && optIndex >= 0 && optIndex < SUPPORTED_OPTIONS)
+        if(retval && sjOptIndex >= 0 && sjOptIndex < SUPPORTED_OPTIONS)
         {
-            /* special usage: only in this testing modality will be used NULL as config file */
-            optionLoader &dummyConf = optionLoader::get_instance(NULL);
-
-            underTestOpt = dummyConf.getSingleOption(optIndex);
+            underTestOpt = (*opt_pool)[sjOptIndex];
 
             /* we need to test ONESHOT and TWOSHOT, simply */
             underTestOpt->optionConfigure(ONESHOT);
 
             pLH->completeLog("Option index [%d] point to %s (opcode %d) and opt string [%s]", 
-                             optIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption); 
+                             sjOptIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption);
 
             if(!underTestOpt->enabled)
             {
@@ -95,7 +96,7 @@ public:
             }
 
             LOG_ALL("Loading HDRoptions_probe with hardcoded INNOCENT scramble and option under test %d", 
-                    configuredScramble, optIndex);
+                    configuredScramble, sjOptIndex);
         }
         else
         {

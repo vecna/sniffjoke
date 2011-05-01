@@ -19,9 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "HDRoptions.h"
-#include "IPTCPoptApply.h"
-#include "Utils.h"
+
+#include "IPTCPoptImpl.h"
 
 /* this file contains the extension of the class optionImplement, every options DETAIL,
  * injection function, is implemented here. 
@@ -31,7 +30,7 @@
  */
 
 Io_NOOP::Io_NOOP(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_NOOP, "IP NOOP", IPPROTO_IP, IPOPT_NOOP)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_NOOP, "IPOPT_NOOP", IPPROTO_IP, IPOPT_NOOP)
 {
 }
 
@@ -45,6 +44,16 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
     oD->optshdr[index] = IPOPT_NOOP;
 
     return IPOPT_NOOP_SIZE;
+}
+
+Io_EOL::Io_EOL(bool enable) :
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_EOL, "IPOPT_EOL", IPPROTO_IP, IPOPT_EOL)
+{
+}
+
+uint8_t Io_EOL::optApply(struct optHdrData *oD)
+{
+    return 0;
 }
 
 /*
@@ -61,7 +70,7 @@ uint8_t Io_NOOP::optApply(struct optHdrData *oD)
  */
 
 Io_TIMESTAMP::Io_TIMESTAMP(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_TIMESTAMP, "IP Timestamp", IPPROTO_IP, IPOPT_TIMESTAMP)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTAMP, "IPOPT_TIMESTAMP", IPPROTO_IP, IPOPT_TIMESTAMP)
 {
 }
 
@@ -97,7 +106,6 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 
     oD->optshdr[index] = IPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = size_timestamp;
-
     oD->optshdr[index + 2] = 5; /* empty */
     oD->optshdr[index + 3] = IPOPT_TS_TSONLY;
 
@@ -108,7 +116,7 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
 }
 
 Io_TIMESTOVERFLOW::Io_TIMESTOVERFLOW(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_TIMESTOVERFLOW, "IP Timestamp overflow", IPPROTO_IP, DUMMY_OPCODE)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_TIMESTOVERFLOW, "IPOPT_DUMMY (timestamp overflow)", IPPROTO_IP, DUMMY_OPCODE)
 {
 }
 
@@ -123,7 +131,6 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     const uint8_t size_timestamp = getBestRandsize(oD, 4, 9, 9, 4);
     const uint8_t timestamps = (size_timestamp - 4) / 4;
     const uint8_t covered_destinations = timestamps + 15; /* the overflow counter is 4 bits */
-    const uint8_t index = oD->actual_opts_len;
 
     if (ttlfocus->status != TTL_KNOWN || ttlfocus->ttl_estimate > covered_destinations)
         return 0;
@@ -132,33 +139,31 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     if (!size_timestamp)
         return 0;
 
-    oD->optshdr[index] = IPOPT_TIMESTAMP;
-    oD->optshdr[index + 1] = size_timestamp;
+    const uint8_t index = oD->actual_opts_len;
 
-    uint8_t last_filled = 0;
     uint8_t overflow = 0;
 
-    last_filled = covered_destinations - ttlfocus->ttl_estimate;
+    uint8_t last_filled = covered_destinations - ttlfocus->ttl_estimate;
+
     if (last_filled > timestamps)
     {
         overflow = (last_filled - timestamps);
         last_filled = timestamps;
     }
 
+    oD->optshdr[index] = IPOPT_TIMESTAMP;
+    oD->optshdr[index + 1] = size_timestamp;
     oD->optshdr[index + 2] = size_timestamp + 1; /* full */
     oD->optshdr[index + 3] = (IPOPT_TS_TSONLY | (overflow << 4)); /* next will overflow */
 
     memset(&oD->optshdr[index + 4], 0, timestamps * 4);
     memset_random(&oD->optshdr[index + 4], last_filled * 4);
 
-    LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               sjOptName, index, size_timestamp, oD->getAvailableOptLen());
-
     return size_timestamp;
 }
 
 Io_LSRR::Io_LSRR(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_LSRR, "Loose source routing", IPPROTO_IP, IPOPT_LSRR)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_LSRR, "IPOPT_LSRR", IPPROTO_IP, IPOPT_LSRR)
 {
 }
 
@@ -204,25 +209,24 @@ uint8_t Io_LSRR::optApply(struct optHdrData *oD)
      */
 
     const uint8_t size_lsrr = getBestRandsize(oD, 3, 1, 4, 4);
-    const uint8_t index = oD->actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
     if (!size_lsrr)
         return 0;
 
+    const uint8_t index = oD->actual_opts_len;
+
     oD->optshdr[index] = IPOPT_LSRR;
     oD->optshdr[index + 1] = size_lsrr;
     oD->optshdr[index + 2] = 4;
-    memset_random(&oD->optshdr[index + 3], (size_lsrr - 3));
 
-    LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               sjOptName, index, size_lsrr, oD->getAvailableOptLen());
+    memset_random(&oD->optshdr[index + 3], (size_lsrr - 3));
 
     return size_lsrr;
 }
 
 Io_RR::Io_RR(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_RR, "Record route", IPPROTO_IP, IPOPT_RR)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RR, "IPOPT_RR", IPPROTO_IP, IPOPT_RR)
 {
 }
 
@@ -250,11 +254,12 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
      */
 
     const uint8_t size_rr = getBestRandsize(oD, 3, 1, 4, 4);
-    const uint8_t index = oD->actual_opts_len;
 
     /* getBestRandom return 0 if there is not enought space */
     if (!size_rr)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_RR;
     oD->optshdr[index + 1] = size_rr;
@@ -266,15 +271,13 @@ uint8_t Io_RR::optApply(struct optHdrData *oD)
 }
 
 Io_RA::Io_RA(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_RA, "Router advertising", IPPROTO_IP, IPOPT_RA)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_RA, "IPOPT_RA", IPPROTO_IP, IPOPT_RA)
 {
 }
 
 uint8_t Io_RA::optApply(struct optHdrData *oD)
 {
 #define IPOPT_RA_SIZE 4
-
-    return 0;
 
     /*
      * by literature it's not clear if this option could
@@ -283,10 +286,11 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
      * probably related to repeatitions of the option.
      * so we avoid it.
      */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < IPOPT_RA_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_RA;
     oD->optshdr[index + 1] = IPOPT_RA_SIZE;
@@ -305,7 +309,7 @@ uint8_t Io_RA::optApply(struct optHdrData *oD)
 }
 
 Io_CIPSO::Io_CIPSO(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_CIPSO, "Cipso", IPPROTO_IP, IPOPT_CIPSO)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_CIPSO, "IPOPT_CIPSO", IPPROTO_IP, IPOPT_CIPSO)
 {
 }
 
@@ -334,21 +338,22 @@ uint8_t Io_CIPSO::optApply(struct optHdrData *oD)
      *       lead the packet to be discarded.
      */
 
-    const uint8_t index = oD->actual_opts_len;
-
     /* this option always corrupts the packet */
     if (oD->getAvailableOptLen() < IPOPT_CIPSO_SIZE)
         return 0;
 
+    const uint8_t index = oD->actual_opts_len;
+
     oD->optshdr[index] = IPOPT_CIPSO;
     oD->optshdr[index + 1] = IPOPT_CIPSO_SIZE;
+
     memset_random(&oD->optshdr[index + 2], 8);
 
     return IPOPT_CIPSO_SIZE;
 }
 
 Io_SEC::Io_SEC(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_SEC, "Security", IPPROTO_IP, IPOPT_SEC)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SEC, "IPOPT_SEC", IPPROTO_IP, IPOPT_SEC)
 {
 }
 
@@ -375,35 +380,37 @@ uint8_t Io_SEC::optApply(struct optHdrData *oD)
 #define IPOPT_SEC_SIZE 11
 
     /*
-     * this option always corrupts the packet random data value packet
+     * this option always corrupts the packet due to random data values
      */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < IPOPT_SEC_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     /* TODO - cohorent data for security OPT */
     /* http://www.faqs.org/rfcs/rfc791.html "Security" */
     oD->optshdr[index] = IPOPT_SEC;
     oD->optshdr[index + 1] = IPOPT_SEC_SIZE;
+
     memset_random(&oD->optshdr[index + 2], 9);
 
     return IPOPT_SEC_SIZE;
 }
 
 Io_SID::Io_SID(bool enable) :
-optionImplement::optionImplement(enable, SJ_IPOPT_SID, "Session ID", IPPROTO_IP, IPOPT_SID)
+IPTCPopt::IPTCPopt(enable, SJ_IPOPT_SID, "IPOPT_SID", IPPROTO_IP, IPOPT_SID)
 {
 }
 
 uint8_t Io_SID::optApply(struct optHdrData *oD)
 {
-
     /* this option corrupts the packet if repeated. */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < IPOPT_SID_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = IPOPT_SID;
     oD->optshdr[index + 1] = IPOPT_SID_SIZE;
@@ -417,7 +424,7 @@ uint8_t Io_SID::optApply(struct optHdrData *oD)
  */
 
 To_NOP::To_NOP(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_NOP, "TCP NOP", IPPROTO_TCP, TCPOPT_NOP)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_NOP, "TCPOPT_NOP", IPPROTO_TCP, TCPOPT_NOP)
 {
 }
 
@@ -433,52 +440,61 @@ uint8_t To_NOP::optApply(struct optHdrData *oD)
     return TCPOPT_NOP_SIZE;
 }
 
+To_EOL::To_EOL(bool enable) :
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_EOL, "TCPOPT_EOL", IPPROTO_TCP, TCPOPT_EOL)
+{
+}
+
+uint8_t To_EOL::optApply(struct optHdrData *oD)
+{
+    return 0;
+}
+
 To_MD5SIG::To_MD5SIG(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_MD5SIG, "TCP MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCPOPT_MD5SIG", IPPROTO_TCP, TCPOPT_MD5SIG)
 {
 }
 
 uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
 {
     /* this option corrupts the packet if repeated. */
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < TCPOPT_MD5SIG_SIZE)
         return 0;
+
+    const uint8_t index = oD->actual_opts_len;
 
     oD->optshdr[index] = TCPOPT_MD5SIG;
     oD->optshdr[index + 1] = TCPOPT_MD5SIG_SIZE;
     memset_random(&oD->optshdr[index + 2], TCPOPT_MD5SIG_SIZE - 2);
 
-    LOG_PACKET("** %s at the index of %u options length of %u avail %d",
-               sjOptName, index, TCPOPT_MD5SIG_SIZE, oD->getAvailableOptLen());
-
     return TCPOPT_MD5SIG_SIZE;
 }
 
 To_PAWSCORRUPT::To_PAWSCORRUPT(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_PAWSCORRUPT, "TCP bad PAWS", IPPROTO_TCP, DUMMY_OPCODE)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_PAWSCORRUPT, "TCPOPT_DUMMY (PAWS)", IPPROTO_TCP, DUMMY_OPCODE)
 {
 }
 
 uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 {
 #define TCPOPT_TIMESTAMP_SIZE 10
-    const uint8_t index = oD->actual_opts_len;
 
     if (oD->getAvailableOptLen() < TCPOPT_TIMESTAMP_SIZE)
         return 0;
 
+    const uint8_t index = oD->actual_opts_len;
+
     oD->optshdr[index] = TCPOPT_TIMESTAMP;
     oD->optshdr[index + 1] = TCPOPT_TIMESTAMP_SIZE;
-    *(uint32_t *) &oD->optshdr[index + 2] = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
+    *((uint32_t *) & oD->optshdr[index + 2]) = htonl(sj_clock - 600); /* sj_clock - 10 minutes */
     memset_random(&oD->optshdr[index + 6], 4);
 
     return TCPOPT_TIMESTAMP_SIZE;
 }
 
 To_TIMESTAMP::To_TIMESTAMP(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_TIMESTAMP, "TCP Timestamp", IPPROTO_TCP, TCPOPT_TIMESTAMP)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_TIMESTAMP, "TCPOPT_TIMESTAMP", IPPROTO_TCP, TCPOPT_TIMESTAMP)
 {
 }
 
@@ -488,7 +504,7 @@ uint8_t To_TIMESTAMP::optApply(struct optHdrData *oD)
 }
 
 To_MSS::To_MSS(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_MSS, "TCP MSS", IPPROTO_TCP, TCPOPT_MAXSEG)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MSS, "TCPOPT_MAXSEG", IPPROTO_TCP, TCPOPT_MAXSEG)
 {
 }
 
@@ -498,7 +514,7 @@ uint8_t To_MSS::optApply(struct optHdrData *oD)
 }
 
 To_SACK::To_SACK(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_SACK, "TCP SACK", IPPROTO_TCP, TCPOPT_SACK)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACK, "TCPOPT_SACK", IPPROTO_TCP, TCPOPT_SACK)
 {
 }
 
@@ -508,7 +524,7 @@ uint8_t To_SACK::optApply(struct optHdrData *oD)
 }
 
 To_SACKPERM::To_SACKPERM(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_SACKPERM, "TCP SACK perm", IPPROTO_TCP, TCPOPT_SACK_PERMITTED)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_SACKPERM, "TCPOPT_SACK_PERMITTED", IPPROTO_TCP, TCPOPT_SACK_PERMITTED)
 {
 }
 
@@ -518,7 +534,7 @@ uint8_t To_SACKPERM::optApply(struct optHdrData *oD)
 }
 
 To_WINDOW::To_WINDOW(bool enable) :
-optionImplement::optionImplement(enable, SJ_TCPOPT_WINDOW, "TCP Window", IPPROTO_TCP, TCPOPT_WINDOW)
+IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_WINDOW, "TCPOPT_WINDOW", IPPROTO_TCP, TCPOPT_WINDOW)
 {
 }
 

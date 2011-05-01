@@ -51,147 +51,12 @@
 #endif
 
 #include "HDRoptions.h"
-#include "IPTCPoptApply.h"
-#include "Utils.h"
 
-/* this class is a singleton one */
-optionLoader* optionLoader::instance_ptr = NULL;
+#include "IPTCPopt.h"
+#include "IPTCPoptImpl.h"
+#include "OptionPool.h"
 
-void optionLoader::select(uint8_t reqProto)
-{
-    settedProto = reqProto;
-    counter = 0;
-}
-
-optionImplement* optionLoader::get(void)
-{
-    ++counter;
-
-    if (counter == SUPPORTED_OPTIONS || loadedOptions[counter] == NULL)
-        return NULL;
-
-    if (loadedOptions[counter]->optProto == settedProto)
-        return loadedOptions[counter];
-    else
-        return get();
-}
-
-optionImplement* optionLoader::getSingleOption(uint32_t sjOptIndex)
-{
-    if (sjOptIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("invalid use of optcode index");
-
-    return (loadedOptions[sjOptIndex]);
-}
-
-corruption_t optionLoader::lineParser(FILE *flow, uint32_t optLooked)
-{
-    corruption_t retval = CORRUPTUNASSIGNED;
-    char line[MEDIUMBUF];
-    uint32_t linecnt = 0;
-
-    do
-    {
-        uint32_t readedIndex, readedCorruption;
-
-        fgets(line, MEDIUMBUF, flow);
-        ++linecnt;
-
-        if (feof(flow))
-            break;
-
-        if (strlen(line) < 2 || line[0] == '#')
-            continue;
-
-        sscanf(line, "%u,%u", &readedIndex, &readedCorruption);
-
-        if (readedIndex < 1 || readedIndex > (SUPPORTED_OPTIONS - 1))
-            RUNTIME_EXCEPTION("in option file invalid index at line %u", linecnt);
-
-        if (readedIndex == optLooked)
-            retval = (corruption_t) readedCorruption;
-        else
-            RUNTIME_EXCEPTION("found index %u instead of the expected %u (line %u)",
-                              readedIndex, optLooked, linecnt);
-
-    }
-    while (retval == CORRUPTUNASSIGNED);
-
-    if (retval == CORRUPTUNASSIGNED)
-        RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
-
-    LOG_VERBOSE("option index %d found value corruption value of %u", optLooked, (uint8_t) retval);
-
-    return retval;
-}
-
-optionLoader::optionLoader(const char *fname)
-{
-    memset(loadedOptions, 0, sizeof (optionImplement*)*(SUPPORTED_OPTIONS));
-
-    loadedOptions[SJ_IPOPT_NOOP] = new Io_NOOP(true);
-    loadedOptions[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
-    loadedOptions[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
-    loadedOptions[SJ_IPOPT_LSRR] = new Io_LSRR(true);
-    loadedOptions[SJ_IPOPT_RR] = new Io_RR(true);
-    loadedOptions[SJ_IPOPT_RA] = new Io_RA(true);
-    loadedOptions[SJ_IPOPT_CIPSO] = new Io_CIPSO(true);
-    loadedOptions[SJ_IPOPT_SEC] = new Io_SEC(true);
-    loadedOptions[SJ_IPOPT_SID] = new Io_SID(true);
-    loadedOptions[SJ_TCPOPT_NOP] = new To_NOP(true);
-    loadedOptions[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
-    loadedOptions[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
-    loadedOptions[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);
-    loadedOptions[SJ_TCPOPT_MSS] = new To_MSS(false);
-    loadedOptions[SJ_TCPOPT_SACK] = new To_SACK(false);
-    loadedOptions[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
-    loadedOptions[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
-
-    /* testing modality - all options are loaded without a corruption definitions */
-    if (fname == NULL)
-    {
-        LOG_ALL("option configuration not supplied! Initializing in testing mode");
-    }
-    else
-    {
-        /* loading the configuration file, containings which option bring corruption for your ISP */
-        /* NOW - sets with the default used by vecna & evilaliv3 */
-        /* THESE DATA HAS TO BE LOADED FROM A Location-SPECIFIC CONFIGUATION FILE */
-        corruption_t writUsage;
-        FILE *optInput = fopen(fname, "r");
-
-        if (optInput == NULL)
-            RUNTIME_EXCEPTION("unable to open in reading options configuration %s: %s", fname, strerror(errno));
-
-        for (uint8_t sjI = 1; sjI < SUPPORTED_OPTIONS; ++sjI)
-        {
-            writUsage = lineParser(optInput, sjI);
-            loadedOptions[sjI]->optionConfigure(writUsage);
-        }
-
-        fclose(optInput);
-
-        LOG_DEBUG("options configuration loaded correctly from %s: %d defs", fname, SUPPORTED_OPTIONS);
-    }
-}
-
-optionLoader& optionLoader::get_instance(const char *fname)
-{
-    if (instance_ptr == NULL)
-    {
-        instance_ptr = new optionLoader(fname);
-    }
-    return *instance_ptr;
-}
-
-void optionLoader::del_instance(void)
-{
-    if (instance_ptr != NULL)
-    {
-        delete instance_ptr;
-        instance_ptr = NULL;
-    }
-}
+extern auto_ptr<OptionPool> opt_pool;
 
 /* Now start the implementation of HDRoptions member */
 HDRoptions::HDRoptions(injector_t t, Packet &pkt, TTLFocus &ttlfocus) :
@@ -199,11 +64,8 @@ type(t),
 pkt(pkt),
 ttlfocus(ttlfocus),
 corruptRequest(false),
-corruptDone(false),
-nextPlannedInj(SJ_NULL_OPT)
+corruptDone(false)
 {
-    optionLoader &optConfigData = optionLoader::get_instance("");
-    optionImplement *usableOption;
 
     /* initialization of header and indexes on specific proto basis */
     switch (type)
@@ -211,167 +73,146 @@ nextPlannedInj(SJ_NULL_OPT)
     case IPOPTS_INJECTOR:
 
         protD.protoName = "IP";
-        protD.startOpt = FIRST_IPOPT;
-        protD.endOpt = LAST_IPOPT;
+        protD.firstOptIndex = FIRST_IPOPT;
+        protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
-        protD.END_code = IPOPT_END;
+        protD.EOL_code = IPOPT_END;
+        protD.hdrAddr = (uint8_t**) & pkt.ip;
+        protD.hdrLen = (uint8_t*) & pkt.iphdrlen;
+        protD.hdrMinLen = sizeof (struct iphdr);
+        protD.optsMaxLen = MAXIPOPTIONS;
+        protD.hdrResize = &Packet::iphdrResize;
 
-        oD.actual_opts_len = pkt.iphdrlen - sizeof (struct iphdr);
-
-        oD.optshdr.resize(MAXIPOPTIONS, IPOPT_EOL);
-        memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.ip + sizeof (struct iphdr), oD.actual_opts_len);
-
-        /* initialized the vector using the pointer of the static private data
-         * in optionLoaded::loadedOptions */
-        for (optConfigData.select(IPPROTO_IP); (usableOption = optConfigData.get()) != NULL;)
+        for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {
-            /* specific per-classes initialization need to be called here */
-            if (usableOption->sjOptIndex == SJ_IPOPT_TIMESTOVERFLOW)
-                (reinterpret_cast<Io_TIMESTOVERFLOW *> (usableOption))->setupTTLFocus(&ttlfocus);
+            switch (i) /* Specific IP options configurations goes here */
+            {
+            case SJ_IPOPT_TIMESTOVERFLOW:
+                (reinterpret_cast<Io_TIMESTOVERFLOW *> ((*opt_pool)[i]))->setupTTLFocus(&ttlfocus);
+                break;
 
-            availOpts.push_back(usableOption);
+            default:
+                break;
+            }
         }
+
         break;
 
     case TCPOPTS_INJECTOR:
 
         protD.protoName = "TCP";
-        protD.startOpt = FIRST_TCPOPT;
-        protD.endOpt = LAST_TCPOPT;
+        protD.firstOptIndex = FIRST_TCPOPT;
+        protD.lastOptIndex = LAST_TCPOPT;
         protD.NOP_code = TCPOPT_NOP;
-        protD.END_code = TCPOPT_EOL;
+        protD.EOL_code = TCPOPT_EOL;
+        protD.hdrAddr = (uint8_t**) & pkt.tcp;
+        protD.hdrLen = (uint8_t*) & pkt.tcphdrlen;
+        protD.hdrMinLen = sizeof (struct tcphdr);
+        protD.optsMaxLen = MAXTCPOPTIONS;
+        protD.hdrResize = &Packet::tcphdrResize;
 
-        oD.actual_opts_len = pkt.tcphdrlen - sizeof (struct tcphdr);
-
-        oD.optshdr.resize(MAXTCPOPTIONS, TCPOPT_EOL);
-        memcpy((void *) &oD.optshdr[0], (uint8_t *) pkt.tcp + sizeof (struct tcphdr), oD.actual_opts_len);
-
-        /* initialize the vector using the pointer of the static private data
-         * in optionLoaded::loadedOptions */
-        for (optConfigData.select(IPPROTO_TCP); (usableOption = optConfigData.get()) != NULL;)
-            availOpts.push_back(usableOption);
-
-        break;
-    }
-
-    acquirePresentOptions();
-}
-
-/*
- *    returns true if injection is possible, false instead;
- *    in addition it registers the presence of some options.
- */
-bool HDRoptions::acquirePresentOptions(void)
-{
-    for (uint8_t i = 0; i < oD.actual_opts_len;)
-    {
-        uint8_t * const option = &oD.optshdr[i];
-
-        /* remember :
-         * NOP_code will be IPOPT_NOOP or TCPOPT_NOP either,
-         * is set in the constructor, like every other protocol dependend values */
-        if (*option == protD.NOP_code)
+        for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {
-            ++i;
-            continue;
-        }
-
-        if (*option == protD.END_code)
-            break;
-
-        const uint8_t option_len = (uint8_t) oD.optshdr[i + 1];
-        if (option_len == 0 || option_len > (oD.actual_opts_len - i))
-        {
-            /*
-             * the packet contains invalid options
-             * we avoid injection regardless of the corrupt value.
-             *
-             * REMIND: 
-             * will this became a vulnerability if we check incoming packet 
-             */
-            RUNTIME_EXCEPTION("invalid %s opt: option|%02x option_len|%u residual|%u",
-                              protD.protoName, *option, option_len, (oD.actual_opts_len - i));
-        }
-
-        bool identified = false;
-        for (vector<optionImplement *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
-        {
-            optionImplement *underVerify = *it;
-
-            if (*option == underVerify->optValue)
+            switch (i) /* Specific TCP options configurations goes here */
             {
-                identified = true;
-                registerOptOccurrence(underVerify, i, option_len);
+            default:
                 break;
             }
         }
 
-        if (!identified)
-        {
-            /*
-             * analysis: will we make a malformed and stripping an option we don't know ?
-             * I belive is better to return false if the code is running here, but I prefer
-             * support every IP options available in the optMap[].
-             * for this reason, in the beta and < 1.0 release the previous message
-             * will be used for debug & progress pourposes.
-             */
-            RUNTIME_EXCEPTION("INFO: a non trapped %s-options (pkt %d): hex: %02x dec: %d length %d",
-                              protD.protoName, pkt.SjPacketId, *option, *option, option_len);
-        }
-
-        i += option_len;
+        break;
     }
 
-    return true;
+    oD.actual_opts_len = *protD.hdrLen - protD.hdrMinLen;
+
+    uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
+    oD.optshdr.resize(maxOptSpace, protD.EOL_code);
+
+    acquirePresentOptions();
+}
+
+void HDRoptions::acquirePresentOptions(void)
+{
+    LOG_PACKET("*0 analyzing present %sopts:", protD.protoName);
+
+    if (oD.actual_opts_len == 0)
+        return;
+
+    /* is the options headerhas been recognized entirely we can proceed with the working copy*/
+    memcpy(&oD.optshdr[0], *protD.hdrAddr + protD.hdrMinLen, oD.actual_opts_len);
+
+    uint8_t option_len = 1;
+
+    for (uint8_t i = 0; i < oD.actual_opts_len; i += option_len)
+    {
+        uint8_t * const option = &oD.optshdr[i];
+
+        if (*option == protD.NOP_code)
+        {
+            registerOptOccurrence(*option, i, option_len);
+            continue;
+        }
+
+        if (*option == protD.EOL_code)
+        {
+            registerOptOccurrence(*option, i, option_len);
+            break;
+        }
+
+        option_len = (uint8_t) oD.optshdr[i + 1];
+        if (option_len == 0 || option_len > (oD.actual_opts_len - i))
+        {
+            RUNTIME_EXCEPTION("INFO: an invalid %sopt: option|%02x option_len|%u residual|%u",
+                              protD.protoName, *option, option_len, (oD.actual_opts_len - i));
+        }
+
+        registerOptOccurrence(*option, i, option_len);
+    }
 }
 
 /*
  * this is a core method inside HDRoptions, it:
- * 1) check if a requested (will be random, will be by code) is enabled 
- * 2) check if the goal is corrupt or not, and choose the option by the counter data 
+ * 1) check if a requested option(selected by a random or forced by a plugin) is enabled
+ * 2) check if the goal is to corrupt or not, and choose the option by the counter data
  */
-bool HDRoptions::evaluateInjectCoherence(optionImplement *requested, struct optHdrData *oD, int8_t counterInj)
+bool HDRoptions::evaluateInjectCoherence(uint8_t sjOptIndex)
 {
+    const IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
+    const uint8_t opt_occurrs = optTrack[sjOptIndex].size();
 
     /*
      * 1st global check: can we use this option ?
      * at the time a global enabled variable is used to permit selective testing
      */
-    if (requested->enabled == false)
+    if (oDesc.enabled == false)
         return false;
-
     /*
      * 2nd global check: at which state of the injection are we?
      * we avoid corrupt options if we have just corrupted the packet
      * and we also alter the probability for the first injection
      * in favour of good injection.
      */
-    switch (requested->availableUsage)
+    switch (oDesc.availableUsage)
     {
     case NOT_CORRUPT:
-        if (corruptRequest == false)
+        if (corruptRequest == false && opt_occurrs == 0)
             return true;
-
-        /* also on corruptRequest == true, the first options had not to be bad */
-#if 0
-        if ((oD->actual_opts_len < 8) && RANDOM_PERCENT(45))
-            return true;
-#endif  /* funny randomization BUT in the single Injection used by HDRoptions_probe is a bug */
-
         break;
+
     case ONESHOT:
         /* I like to corrupt only once */
         if (corruptRequest == true && corruptDone == false)
             return true;
-
         break;
+
     case TWOSHOT:
         if (corruptRequest == true && corruptDone == false)
         {
-            if (counterInj == 0 || counterInj == 1)
+            if (opt_occurrs <= 1)
                 return true;
         }
         break;
+
     default:
         break;
     }
@@ -383,252 +224,214 @@ bool HDRoptions::evaluateInjectCoherence(optionImplement *requested, struct optH
 
 /* this is called on acquiring present options and after the injection,
  * it keeps track of every option, absolute offset and length (because will be
- * request a selective deletion), and mark the corruption "done" if a
- * bad option has been used 
+ * request a selective deletion)
  */
-void HDRoptions::registerOptOccurrence(struct optionImplement *oDesc, uint8_t offset, uint8_t len)
+uint8_t HDRoptions::registerOptOccurrence(uint8_t optValue, uint8_t offset, uint8_t len)
 {
-    struct option_occurrence occ;
-    uint8_t sjOndx = oDesc->sjOptIndex;
+    for (uint8_t sjOptIndex = protD.firstOptIndex; sjOptIndex <= protD.lastOptIndex; ++sjOptIndex)
+    {
+        const IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
 
-    if (oDesc->availableUsage == ONESHOT)
-        corruptDone = true;
+        if (optValue == oDesc.optValue)
+        {
+            struct option_occurrence occ;
+            occ.off = offset;
+            occ.len = len;
 
-    occ.off = offset;
-    occ.len = len;
+            optTrack[sjOptIndex].push_back(occ);
 
-    if (oDesc->availableUsage == TWOSHOT && optTrack[sjOndx].size() > 1)
-        corruptDone = true;
+            LOG_PACKET("*+ %s at the index of %u options length of %u (avail %u)",
+                       oDesc.sjOptName, offset, len, oD.getAvailableOptLen() - len);
 
-    optTrack[sjOndx].push_back(occ);
+            return optTrack[sjOptIndex].size();
+        }
+    }
+
+    /*
+     * analysis: will we make a malformed and stripping an option we don't know ?
+     * I belive is better to return false if the code is running here, but I prefer
+     * support every IP options available in the optMap[].
+     * for this reason, in the beta and < 1.0 release the previous message
+     * will be used for debug & progress pourposes.
+     */
+    RUNTIME_EXCEPTION("INFO: a non trapped %sopt: option|%02x option_len|%u residual|%u",
+                      protD.protoName, optValue, len, (oD.actual_opts_len - offset));
 }
 
-uint32_t HDRoptions::alignOpthdr()
+void HDRoptions::alignOpthdr(void)
 {
-
     uint8_t alignBytes = (oD.actual_opts_len % 4) ? 4 - (oD.actual_opts_len % 4) : 0;
     if (alignBytes)
     {
-        oD.optshdr[oD.actual_opts_len] = protD.END_code;
-
         oD.actual_opts_len += alignBytes;
 
         LOG_PACKET("*+ aligned to %u for %u bytes (avail %u)", oD.actual_opts_len, alignBytes, oD.getAvailableOptLen());
     }
-
-    return oD.actual_opts_len;
 }
 
-void HDRoptions::copyOpthdr(uint8_t *dst)
+void HDRoptions::copyOpthdr(void)
 {
-    memcpy(dst, &oD.optshdr[0], oD.actual_opts_len);
+    memcpy(*protD.hdrAddr + protD.hdrMinLen, &oD.optshdr[0], oD.actual_opts_len);
 }
 
-bool HDRoptions::isGoalAchieved()
+bool HDRoptions::isGoalAchieved(void)
 {
     return corruptRequest == corruptDone;
 }
 
 bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 {
-    uint16_t freespace = MTU - pkt.pbuf.size();
-
-    LOG_PACKET("*? strip request [%s] freespace %d, actual opts %d", 
-        strip_previous ? "YES strip" : "NO keep", freespace, oD.actual_opts_len);
-
     if (strip_previous)
-    {
-        freespace += oD.actual_opts_len;
-        oD.actual_opts_len = 0;
-    }
-
-    // ip/tcp hdrlen must be a multiple of 4, we decrement by the modulus keeping count of MTU
-    freespace -= freespace % 4;
-    if (freespace == 0)
-        return false;
+        stripAllOptions();
 
     corruptRequest = corrupt;
 
     return true;
 }
 
-void HDRoptions::completeInjection()
+void HDRoptions::completeHdrEdit(void)
 {
-
     alignOpthdr();
+    ((pkt).*(protD.hdrResize))(protD.hdrMinLen + oD.actual_opts_len);
+    copyOpthdr();
 
-    if (type == IPOPTS_INJECTOR)
-    {
-        LOG_PACKET("*- resize IPhdr to contain %d options len", oD.actual_opts_len);
-        pkt.iphdrResize((sizeof (struct iphdr)) + oD.actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.ip + sizeof (struct iphdr));
-    }
-    else
-    {
-        LOG_PACKET("*- resize TCPhdr to contain %d options len", oD.actual_opts_len);
-        pkt.tcphdrResize((sizeof (struct tcphdr)) + oD.actual_opts_len);
-        copyOpthdr((uint8_t *) pkt.tcp + sizeof (struct tcphdr));
-    }
+    LOG_PACKET("*- resize %shdr to contain %d options len", protD.protoName, oD.actual_opts_len);
 }
 
-void HDRoptions::injector(uint32_t sjOptIndex)
+void HDRoptions::injector(uint8_t sjOptIndex)
 {
-    optionImplement *requested = NULL;
+    IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
 
-    for (vector<optionImplement *>::iterator underVerify = availOpts.begin(); underVerify != availOpts.end(); ++underVerify)
+    while (evaluateInjectCoherence(sjOptIndex))
     {
-        if ((*underVerify)->sjOptIndex == sjOptIndex)
-        {
-            requested = *underVerify;
+        const uint8_t writtedLen = oDesc.optApply(&oD);
+
+        if (writtedLen == 0) /* avoid useless time consuming loop */
             break;
-        }
+
+        const uint8_t opt_occurrs = registerOptOccurrence(oDesc.optValue, oD.actual_opts_len, writtedLen);
+
+        oD.actual_opts_len += writtedLen;
+
+        if (oDesc.availableUsage == ONESHOT && opt_occurrs == 1)
+            corruptDone = true;
+
+        else if (oDesc.availableUsage == TWOSHOT && opt_occurrs == 2)
+            corruptDone = true;
     }
+}
 
-    if (requested == NULL)
-        RUNTIME_EXCEPTION("invalid index %u in registered protocol %s", sjOptIndex, protD.protoName);
+void HDRoptions::randomInjector(void)
+{
+    vector<uint8_t> seq;
 
-    LOG_PACKET("*1 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s",
+    for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
+        seq.push_back(i);
+
+    random_shuffle(seq.begin(), seq.end());
+
+    for (vector<uint8_t>::iterator it = seq.begin(); it != seq.end(); ++it)
+        injector(*it);
+}
+
+bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t sjOptIndex)
+{
+    /* this check need to be done only on external public functions */
+    if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
+        RUNTIME_EXCEPTION("invalid use of optcode index: %u");
+
+    LOG_PACKET("*1 injecting single %sopt [%u]: actual_opt_len(%u) (avail %u) goal %s",
                protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
                corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
-    /* if needed by corruption method, make two time the injection, otherwise 1, otherwise 0 */
-    for (int8_t counterInj = 0; evaluateInjectCoherence(requested, &oD, counterInj); ++counterInj)
-    {
-        uint8_t writtedLen = requested->optApply(&oD);
-
-        if (writtedLen > 0)
-        {
-
-            LOG_PACKET("** %s at the index of %u options length of %u (avail %u)",
-                       requested->sjOptName, requested->sjOptIndex, writtedLen, oD.getAvailableOptLen());
-
-            oD.actual_opts_len += writtedLen;
-            registerOptOccurrence(requested, oD.actual_opts_len, writtedLen);
-        }
-    }
-
-    LOG_PACKET("*2 %s single opt [%u] option: actual_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
-               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
-}
-
-void HDRoptions::randomInjector()
-{
-    LOG_PACKET("*1 %s option: actual_opt_len(%u) (avail %u) goal %s",
-               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
-               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
-
-    random_shuffle(availOpts.begin(), availOpts.end());
-    for (vector<optionImplement *>::iterator it = availOpts.begin(); it != availOpts.end(); ++it)
-    {
-        optionImplement *randOpt = *it;
-
-        for (uint8_t counterInj = 0; evaluateInjectCoherence(randOpt, &oD, counterInj); ++counterInj)
-        {
-            uint8_t writtedLen = randOpt->optApply(&oD);
-
-            if (writtedLen > 0)
-            {
-                oD.actual_opts_len += writtedLen;
-                registerOptOccurrence(randOpt, oD.actual_opts_len, writtedLen);
-            }
-            else
-            {
-                /* to avoid time consuming checks and loops:
-                 * if there is not enougth space, skip! */
-                break;
-            }
-
-            /* to avoid duplication of the same good option */
-            if (randOpt->availableUsage == NOT_CORRUPT)
-                break;
-        }
-    }
-
-    LOG_PACKET("*2 %s option: actual_opt_len(%u) (avail %u) goal %s ",
-               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
-               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
-}
-
-bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint32_t sjOptIndex)
-{
-    if (sjOptIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("invalid use of optcode index");
-
-    if (prepareInjection(corrupt, strip_previous))
-        injector(sjOptIndex);
+    injector(sjOptIndex);
 
     if (!isGoalAchieved())
         return false;
 
-    completeInjection();
+    completeHdrEdit();
+
+    LOG_PACKET("*2 injecting single %sopt [%u]: actual_opt_len(%u) (avail %u) goal %s ",
+               protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+
     return true;
 }
 
 bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 {
+    LOG_PACKET("*1 injecting random %sopts: actual_opt_len(%u) (avail %u) goal %s",
+               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
+               corruptRequest ? "CORRUPT" : "NOT CORRUPT");
+
     if (prepareInjection(corrupt, strip_previous))
         randomInjector();
 
     if (!isGoalAchieved())
         return false;
 
-    completeInjection();
+    completeHdrEdit();
+
+    LOG_PACKET("*2 injecting random %sopts: actual_opt_len(%u) (avail %u) goal %s ",
+               protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen(),
+               isGoalAchieved() ? "ACHIEVED" : "NOT ACHIEVED");
+
     return true;
 }
 
-/* off-topic naming base rule: 
- *
- * sjOptIndex is the uint32_t name of the index, defined in hardcodedDefines.h
- *            sometime, will be shortened with "sjI"
- * optValue is the uint8_t name used for the binary value copyed in the optHdr
- */
-bool HDRoptions::removeOption(uint32_t sjI)
+bool HDRoptions::stripOption(uint8_t sjOptIndex)
 {
-    if (sjI >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("invalid use of optcode index");
+    /* this check need to be done only on external public functions */
+    if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
+        RUNTIME_EXCEPTION("invalid use of optcode index: %u");
 
-    /* if an option is request to be deleted, we need to check if it exists! */
-    if (optTrack[sjI].size() == 0)
-        return false;
+    IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
 
-    for (vector<option_occurrence>::iterator it = optTrack[sjI].begin(); it != optTrack[sjI].end(); it = optTrack[sjI].erase(it))
+    for (vector<option_occurrence>::iterator it = optTrack[sjOptIndex].begin(); it != optTrack[sjOptIndex].end(); it = optTrack[sjOptIndex].erase(it))
     {
-
         vector<unsigned char>::iterator start = oD.optshdr.begin() + it->off;
         vector<unsigned char>::iterator end = start + it->len;
         oD.optshdr.erase(start, end);
 
         oD.actual_opts_len -= it->len;
+
+        uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
+        oD.optshdr.resize(maxOptSpace, protD.EOL_code);
+
+        LOG_PACKET("*- stripped %sopt %s for %u bytes (avail %u)", protD.protoName, oDesc.sjOptName, it->len, oD.getAvailableOptLen());
+
+        completeHdrEdit();
     }
 
-    completeInjection();
-
     return true;
+}
+
+void HDRoptions::stripAllOptions()
+{
+    for (uint8_t sjOptIndex = protD.firstOptIndex; sjOptIndex <= protD.lastOptIndex; ++sjOptIndex)
+        stripOption(sjOptIndex);
 }
 
 HDRoptions::~HDRoptions(void)
 {
 #ifdef HEAVY_HDROPT_DEBUG
 #define HDR_PREFIX  "HDRoLog/"
-    optionLoader &optConfigData = optionLoader::get_instance("");
 
     char fname[MEDIUMBUF];
-    FILE *HDRoLog;
 
     mkdir(HDR_PREFIX, 0770);
     snprintf(fname, MEDIUMBUF, "%s%s-%s", HDR_PREFIX, inet_ntoa(*((struct in_addr *) &(pkt.ip->daddr))), protD.protoName);
 
-    if ((HDRoLog = fopen(fname, "a+")) == NULL)
-        RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
+    FILE *HDRoLog = fopen(fname, "a+");
+    if (HDRoLog == NULL)
+        RUNTIME_EXCEPTION("unable to open %s:%s", fname, strerror(errno));
 
     fprintf(HDRoLog, "RD %u%u SAPFR{%u%u%u%u%u}\tp#%u id%u\t",
             corruptRequest, corruptDone,
             pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst,
-            pkt.SjPacketId, ntohs(pkt.ip->id)
-            );
+            pkt.SjPacketId, ntohs(pkt.ip->id));
 
-    for (uint8_t i = protD.startOpt; i <= protD.endOpt; ++i)
+    for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
     {
         if (optTrack[i].size() == false)
         {
@@ -636,7 +439,7 @@ HDRoptions::~HDRoptions(void)
         }
         else
         {
-            optionImplement *yep = optConfigData.getSingleOption(i);
+            IPTCPopt *yep = (*opt_pool)[i];
             fprintf(HDRoLog, " %s", yep->sjOptName);
 
             for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); ++it)
@@ -647,44 +450,4 @@ HDRoptions::~HDRoptions(void)
 
     fclose(HDRoLog);
 #endif
-}
-
-/* all the derived classes implemented in IPTCPoptApply call this constructor */
-optionImplement::optionImplement(bool enable, uint8_t sjI, const char * const sjN, uint8_t proto, uint8_t opcode) :
-enabled(enable),
-sjOptIndex(sjI),
-sjOptName(sjN),
-optProto(proto),
-optValue(opcode),
-availableUsage(CORRUPTUNASSIGNED)
-{
-}
-
-void optionImplement::optionConfigure(corruption_t c)
-{
-
-    availableUsage = c;
-}
-
-/* this is the utility function used by the single option adder to calculate the best fit size for an option */
-uint8_t optionImplement::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen, uint8_t minRblks, uint8_t maxRblks, uint8_t blockSize)
-{
-    uint8_t minComputed = fixedLen + (minRblks * blockSize);
-    uint8_t maxComputed = fixedLen + (maxRblks * blockSize);
-
-    uint8_t checkedAvail = oD->getAvailableOptLen();
-
-    if (checkedAvail == minComputed || checkedAvail == maxComputed)
-        return checkedAvail;
-
-    if (checkedAvail < minComputed)
-        return 0;
-
-    if (checkedAvail > maxComputed)
-        return (((random() % (maxRblks - minRblks + 1)) + minRblks) * blockSize) + fixedLen;
-
-    /* else should try the best filling of memory and the NOP fill after */
-
-    uint8_t blockNumber = (checkedAvail - fixedLen) / blockSize;
-    return ((blockNumber * blockSize) + fixedLen);
 }

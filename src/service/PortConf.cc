@@ -221,8 +221,8 @@ void portLine::extractValue(void)
         if (!foundK)
             goto keyword_not_found;
     }
-
     while ((p = strchr(p, ',')) != NULL);
+
     return;
 
 keyword_not_found:
@@ -232,7 +232,9 @@ keyword_not_found:
 void portLine::mergeLine(uint16_t *portarray)
 {
     for (uint32_t i = 0; i < PORTSNUMBER; ++i)
+    {
         if (portSelected[i])
             portarray[i] = OrValue;
+    }
 }
 

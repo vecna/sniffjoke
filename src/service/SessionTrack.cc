@@ -57,17 +57,19 @@ SessionTrack::~SessionTrack(void)
 
 #ifdef HEAVY_SESSION_DEBUG
 #define SESSIONLOG_PREFIX   "sessionLog/"
-    char fname[MEDIUMBUF], sj_clock_str[MEDIUMBUF];
-    FILE *sessionLog;
 
     mkdir(SESSIONLOG_PREFIX, 0770);
+
+    char fname[MEDIUMBUF];
     snprintf(fname, MEDIUMBUF, "%s%s", SESSIONLOG_PREFIX, inet_ntoa(*((struct in_addr *) &daddr)));
 
-    if((sessionLog = fopen(fname, "a+")) == NULL)
-        RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
+    FILE *sessionLog = fopen(fname, "a+");
+    if (sessionLog == NULL)
+        RUNTIME_EXCEPTION("unable to open %s:%s", fname, strerror(errno));
 
+    char sj_clock_str[MEDIUMBUF];
     strftime(sj_clock_str, sizeof (sj_clock_str), "%F %T", localtime(&access_timestamp));
-    fprintf(sessionLog, "%s\t%d:%d\t#%d, inj #%d\n", 
+    fprintf(sessionLog, "%s\t%d:%d\t#%d, inj #%d\n",
             sj_clock_str, ntohs(sport), ntohs(dport), packet_number, injected_pktnumber);
 
     fclose(sessionLog);

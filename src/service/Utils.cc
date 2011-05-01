@@ -61,23 +61,25 @@ void* memset_random(void *s, size_t n)
     if (debug.level() == TESTING_LEVEL)
     {
         memset(s, '6', n);
-        return s;
     }
-
-    size_t longint = n / sizeof (long int);
-    size_t finalbytes = n % sizeof (long int);
-    unsigned char *cp = (unsigned char*) s;
-
-    while (longint-- > 0)
+    else
     {
-        *((long int*) cp) = random();
-        cp += sizeof (long int);
-    }
+        size_t longint = n / sizeof (long int);
+        size_t finalbytes = n % sizeof (long int);
+        unsigned char *cp = (unsigned char*) s;
 
-    while (finalbytes-- > 0)
-    {
-        *cp = (unsigned char) random();
-        ++cp;
+        while (longint-- > 0)
+        {
+            *((long int*) cp) = random();
+            cp += sizeof (long int);
+        }
+
+        while (finalbytes-- > 0)
+        {
+            *cp = (unsigned char) random();
+            ++cp;
+        }
+
     }
 
     return s;

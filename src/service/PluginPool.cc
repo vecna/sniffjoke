@@ -21,9 +21,11 @@
  */
 
 #include "PluginPool.h"
-#include "TCPTrack.h"
+#include "UserConf.h"
 
 #include <dlfcn.h>
+
+extern auto_ptr<UserConf> userconf;
 
 PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, const char *plugOpt)
 {
@@ -68,8 +70,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
     /* in future release some other information will be passed here. this function
      * is called only at plugin initialization and will be used for plugins setup */
     failInit = !selfObj->init(enabledScrambles, plugOpt);
-
-    if(failInit)
+    if (failInit)
         RUNTIME_EXCEPTION("Initialization failed!");
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
@@ -86,16 +87,15 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
  * plugin_pool is instanced. what we need here is to read the entire plugin list, open and fix the
  * list, keeping track in listOfPlugin variable
  *
- *    plugin_pool(sjconf->running)
+ *    plugin_pool()
  *
  * (class TCPTrack).plugin_pool is the name of the unique PluginPool element
  */
-PluginPool::PluginPool(const sj_config &runcfg) :
-runcfg(runcfg),
+PluginPool::PluginPool(void) :
 globalEnabledScrambles(0)
 {
     /* globalEnabledScrambles is set from the sum of each plugin configuration */
-    if (runcfg.onlyplugin[0])
+    if (userconf->runcfg.onlyplugin[0])
         parseOnlyPlugin();
     else
         parseEnablerFile();
@@ -218,7 +218,7 @@ invalid_parsing:
 
 void PluginPool::parseOnlyPlugin(void)
 {
-    LOG_VERBOSE("onlyplugin [%s]", runcfg.onlyplugin);
+    LOG_VERBOSE("onlyplugin [%s]", userconf->runcfg.onlyplugin);
     LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
 
     char *comma;
@@ -227,10 +227,10 @@ void PluginPool::parseOnlyPlugin(void)
     char plugabspath[MEDIUMBUF] = {0};
     uint8_t pluginEnabledScrambles;
 
-    snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), runcfg.onlyplugin);
+    snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), userconf->runcfg.onlyplugin);
 
     if ((comma = strchr(onlyplugin_cpy, ',')) == NULL)
-        RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
+        RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", userconf->runcfg.onlyplugin);
 
     *comma = 0x00;
     comma++;
@@ -238,9 +238,9 @@ void PluginPool::parseOnlyPlugin(void)
     snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
 
     if (!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
-        RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", runcfg.onlyplugin);
+        RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", userconf->runcfg.onlyplugin);
 
-    importPlugin(plugabspath, runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
+    importPlugin(plugabspath, userconf->runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
 
     /* we keep track of enabled scramble to apply confusion on real good packets */
     globalEnabledScrambles |= pluginEnabledScrambles;
@@ -251,18 +251,18 @@ void PluginPool::parseEnablerFile(void)
     char enablerabspath[LARGEBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
     char enabledScramblesStr[LARGEBUF] = {0};
+    char enablerentry[LARGEBUF] = {0};
 
-    FILE *plugfile;
+    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", userconf->runcfg.working_dir, FILE_PLUGINSENABLER);
 
-    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", runcfg.working_dir, FILE_PLUGINSENABLER);
-
-    if ((plugfile = fopen(enablerabspath, "r")) == NULL)
+    FILE *plugfile = fopen(enablerabspath, "r");
+    if (plugfile == NULL)
         RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
 
     uint8_t line = 0;
     do
     {
-        char enablerentry[LARGEBUF], *comma;
+        char *comma;
         const char *pluginOpt = NULL;
         uint8_t enabledScrambles = 0;
 
