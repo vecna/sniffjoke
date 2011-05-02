@@ -77,8 +77,8 @@ corruptDone(false)
         protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
         protD.EOL_code = IPOPT_END;
-        protD.hdrAddr = (uint8_t *)(pkt.ip);
-        protD.hdrLen = (uint8_t*) & pkt.iphdrlen;
+        protD.hdrAddr = (void **)&(pkt.ip);
+        protD.hdrLen = (uint8_t *)&pkt.iphdrlen;
         protD.hdrMinLen = sizeof (struct iphdr);
         protD.optsMaxLen = MAXIPOPTIONS;
         protD.hdrResize = &Packet::iphdrResize;
@@ -105,7 +105,7 @@ corruptDone(false)
         protD.lastOptIndex = LAST_TCPOPT;
         protD.NOP_code = TCPOPT_NOP;
         protD.EOL_code = TCPOPT_EOL;
-        protD.hdrAddr = (uint8_t*)(pkt.tcp);
+        protD.hdrAddr = (void **)&(pkt.tcp);
         protD.hdrLen = (uint8_t*) & pkt.tcphdrlen;
         protD.hdrMinLen = sizeof (struct tcphdr);
         protD.optsMaxLen = MAXTCPOPTIONS;
@@ -139,7 +139,7 @@ void HDRoptions::acquirePresentOptions(void)
         return;
 
     /* is the options headerhas been recognized entirely we can proceed with the working copy*/
-    memcpy(&oD.optshdr[0], protD.hdrAddr + protD.hdrMinLen, oD.actual_opts_len);
+    memcpy(&oD.optshdr[0], *((uint8_t **)protD.hdrAddr) + protD.hdrMinLen, oD.actual_opts_len);
 
     uint8_t option_len = 1;
 
@@ -271,7 +271,7 @@ void HDRoptions::alignOpthdr(void)
 
 void HDRoptions::copyOpthdr(void)
 {
-    memcpy(protD.hdrAddr + protD.hdrMinLen, &oD.optshdr[0], oD.actual_opts_len);
+    memcpy(*((uint8_t **)protD.hdrAddr) + protD.hdrMinLen, &oD.optshdr[0], oD.actual_opts_len);
 }
 
 bool HDRoptions::isGoalAchieved(void)

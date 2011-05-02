@@ -97,9 +97,8 @@ struct protocolSpec
     uint8_t lastOptIndex;
     uint8_t NOP_code;
     uint8_t EOL_code;
-    /* TODO will became a Packet::hdrCopy ? */
-    uint8_t* hdrAddr;
-    uint8_t* hdrLen;
+    void ** hdrAddr;
+    uint8_t * hdrLen;
     uint8_t hdrMinLen;
     uint8_t optsMaxLen;
     void (Packet::*hdrResize)(uint8_t);

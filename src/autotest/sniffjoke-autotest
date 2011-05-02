@@ -346,7 +346,7 @@ for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scramble
     success_count=$(($success_count+1));
 done
 
-echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment $LOCATION\n" >> $PeL
+echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment \"$LOCATION\"\n" >> $PeL
 failure_count=0
 for PLUGIN in `ls */failed_scrambles 2>/dev/null | sed -e 's/\/failed_scrambles//'` ; do
     SCRAMBLES=`cat $PLUGIN/failed_scrambles | tr " " "," | tr [:cntrl:] ","`
