@@ -28,12 +28,6 @@
 
 extern auto_ptr<UserConf> userconf;
 
-void OptionPool::select(uint8_t reqProto)
-{
-    settedProto = reqProto;
-    counter = 0;
-}
-
 corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 {
     corruption_t retval = CORRUPTUNASSIGNED;
@@ -75,27 +69,34 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
     return retval;
 }
 
-OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
+OptionPool::OptionPool()
 {
-    (*this)[SJ_IPOPT_NOOP] = new Io_NOOP(true);
-    (*this)[SJ_IPOPT_EOL] = new Io_EOL(true);
-    (*this)[SJ_IPOPT_TIMESTAMP] = new Io_TIMESTAMP(true);
-    (*this)[SJ_IPOPT_TIMESTOVERFLOW] = new Io_TIMESTOVERFLOW(false);
-    (*this)[SJ_IPOPT_LSRR] = new Io_LSRR(true);
-    (*this)[SJ_IPOPT_RR] = new Io_RR(true);
-    (*this)[SJ_IPOPT_RA] = new Io_RA(true);
-    (*this)[SJ_IPOPT_CIPSO] = new Io_CIPSO(true);
-    (*this)[SJ_IPOPT_SEC] = new Io_SEC(true);
-    (*this)[SJ_IPOPT_SID] = new Io_SID(true);
-    (*this)[SJ_TCPOPT_NOP] = new To_NOP(true);
-    (*this)[SJ_TCPOPT_EOL] = new To_EOL(true);
-    (*this)[SJ_TCPOPT_MD5SIG] = new To_MD5SIG(false);
-    (*this)[SJ_TCPOPT_PAWSCORRUPT] = new To_PAWSCORRUPT(false);
-    (*this)[SJ_TCPOPT_TIMESTAMP] = new To_TIMESTAMP(false);
-    (*this)[SJ_TCPOPT_MSS] = new To_MSS(false);
-    (*this)[SJ_TCPOPT_SACK] = new To_SACK(false);
-    (*this)[SJ_TCPOPT_SACKPERM] = new To_SACKPERM(false);
-    (*this)[SJ_TCPOPT_WINDOW] = new To_WINDOW(false);
+    /* WARNING: don't touch this piece of code if you are HIGH! */
+    pool.push_back(new Io_NOOP(true));
+    pool.push_back(new Io_EOL(true));
+    pool.push_back(new Io_TIMESTAMP(true));
+    pool.push_back(new Io_TIMESTOVERFLOW(false));
+    /* WARNING: don't touch this piece of code if you are SMOKED! */
+    pool.push_back(new Io_LSRR(true));
+    pool.push_back(new Io_RR(true));
+    pool.push_back(new Io_RA(true));
+    pool.push_back(new Io_CIPSO(true));
+    /* WARNING: don't touch this piece of code if you are DRUNKED! */
+    pool.push_back(new Io_SEC(true));
+    pool.push_back(new Io_SID(true));
+    pool.push_back(new To_NOP(true));
+    pool.push_back(new To_EOL(true));
+    /* WARNING: don't touch this piece of code if you are LAZY! */
+    pool.push_back(new To_MD5SIG(false));
+    pool.push_back(new To_PAWSCORRUPT(false));
+    pool.push_back(new To_TIMESTAMP(false));
+    pool.push_back(new To_MSS(false));
+    /* WARNING: don't touch this piece of code if you are BOXXY! */
+    pool.push_back(new To_SACK(false));
+    pool.push_back(new To_SACKPERM(false));
+    pool.push_back(new To_WINDOW(false));
+    /* WARNING, because the order MATTERS! this constructor column 
+     * is derived from the incremental order of the value in hardcodedDefines.h */
 
     /* when is loaded the single plugin HDRoptions_probe, the option loader is instanced w/ NULL */
     if (!(userconf->runcfg.onlyplugin[0] != 0x00 && !memcmp(userconf->runcfg.onlyplugin, IPTCPOPT_TEST_PLUGIN, strlen(IPTCPOPT_TEST_PLUGIN))))
@@ -112,7 +113,7 @@ OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
         for (uint8_t sjI = 0; sjI < SUPPORTED_OPTIONS; ++sjI)
         {
             writUsage = lineParser(optInput, sjI);
-            (*this)[sjI]->optionConfigure(writUsage);
+            pool[sjI]->optionConfigure(writUsage);
         }
 
         fclose(optInput);
@@ -124,4 +125,12 @@ OptionPool::OptionPool() : vector(SUPPORTED_OPTIONS)
         /* testing modality - all options are loaded without a corruption definitions */
         LOG_ALL("option configuration not supplied! Initializing in testing mode");
     }
+}
+
+IPTCPopt *OptionPool::get(uint32_t sjOptIndex)
+{
+    if(sjOptIndex >= SUPPORTED_OPTIONS)
+        RUNTIME_EXCEPTION("Invalid index request: %d on %d available", sjOptIndex, SUPPORTED_OPTIONS);
+
+    return pool[sjOptIndex];
 }

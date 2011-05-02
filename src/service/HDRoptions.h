@@ -88,6 +88,8 @@ struct option_occurrence
     uint8_t len;
 };
 
+/* protocol specification contains the difference between TCP and IP header 
+ * manipoulation. is useful for make a simple code usable in both cases */
 struct protocolSpec
 {
     const char *protoName;
@@ -95,7 +97,8 @@ struct protocolSpec
     uint8_t lastOptIndex;
     uint8_t NOP_code;
     uint8_t EOL_code;
-    uint8_t** hdrAddr;
+    /* TODO will became a Packet::hdrCopy ? */
+    uint8_t* hdrAddr;
     uint8_t* hdrLen;
     uint8_t hdrMinLen;
     uint8_t optsMaxLen;

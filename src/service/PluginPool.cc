@@ -100,10 +100,10 @@ globalEnabledScrambles(0)
     else
         parseEnablerFile();
 
-    if (!size())
+    if (!pool.size())
         RUNTIME_EXCEPTION("fatal error: loaded correctly 0 plugins");
     else
-        LOG_ALL("loaded correctly %d plugins", size());
+        LOG_ALL("loaded correctly %d plugins", pool.size());
 
     char enabledScramblesStr[LARGEBUF];
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), globalEnabledScrambles);
@@ -116,7 +116,7 @@ PluginPool::~PluginPool(void)
     LOG_DEBUG("");
 
     /* call the distructor loaded from the plugins */
-    for (vector<PluginTrack *>::iterator it = begin(); it != end(); ++it)
+    for (vector<PluginTrack *>::iterator it = pool.begin(); it != pool.end(); ++it)
     {
         const PluginTrack *plugin = *it;
 
@@ -143,7 +143,7 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
         }
         else
         {
-            push_back(plugin);
+            pool.push_back(plugin);
             LOG_DEBUG("plugin %s implementation accepted", plugin->selfObj->pluginName);
         }
     }
@@ -279,7 +279,7 @@ void PluginPool::parseEnablerFile(void)
         if (strlen(enablerentry) < 11 || feof(plugfile))
         {
             RUNTIME_EXCEPTION("reading %s: imported %d plugins, matched interruption at line %d",
-                              FILE_PLUGINSENABLER, size(), line);
+                              FILE_PLUGINSENABLER, pool.size(), line);
         }
 
         /* parsing of the file line, finding the first comma and make it a 0x00 */

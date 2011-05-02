@@ -79,9 +79,9 @@ public:
 
         sjOptIndex = atoi(pluginOption);
 
-        if(retval && sjOptIndex >= 0 && sjOptIndex < SUPPORTED_OPTIONS)
+        if(retval && sjOptIndex < SUPPORTED_OPTIONS)
         {
-            underTestOpt = (*opt_pool)[sjOptIndex];
+            underTestOpt = opt_pool->get(sjOptIndex);
 
             /* we need to test ONESHOT and TWOSHOT, simply */
             underTestOpt->optionConfigure(ONESHOT);

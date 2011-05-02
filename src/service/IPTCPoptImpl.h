@@ -199,3 +199,4 @@ protected:
 };
 
 #endif /* SJ_IPTCPOPTIMPL_H */
+

@@ -77,7 +77,7 @@ corruptDone(false)
         protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
         protD.EOL_code = IPOPT_END;
-        protD.hdrAddr = (uint8_t**) & pkt.ip;
+        protD.hdrAddr = (uint8_t *)(pkt.ip);
         protD.hdrLen = (uint8_t*) & pkt.iphdrlen;
         protD.hdrMinLen = sizeof (struct iphdr);
         protD.optsMaxLen = MAXIPOPTIONS;
@@ -88,7 +88,7 @@ corruptDone(false)
             switch (i) /* Specific IP options configurations goes here */
             {
             case SJ_IPOPT_TIMESTOVERFLOW:
-                (reinterpret_cast<Io_TIMESTOVERFLOW *> ((*opt_pool)[i]))->setupTTLFocus(&ttlfocus);
+                (reinterpret_cast<Io_TIMESTOVERFLOW *> (opt_pool->get(i)))->setupTTLFocus(&ttlfocus);
                 break;
 
             default:
@@ -105,7 +105,7 @@ corruptDone(false)
         protD.lastOptIndex = LAST_TCPOPT;
         protD.NOP_code = TCPOPT_NOP;
         protD.EOL_code = TCPOPT_EOL;
-        protD.hdrAddr = (uint8_t**) & pkt.tcp;
+        protD.hdrAddr = (uint8_t*)(pkt.tcp);
         protD.hdrLen = (uint8_t*) & pkt.tcphdrlen;
         protD.hdrMinLen = sizeof (struct tcphdr);
         protD.optsMaxLen = MAXTCPOPTIONS;
@@ -139,7 +139,7 @@ void HDRoptions::acquirePresentOptions(void)
         return;
 
     /* is the options headerhas been recognized entirely we can proceed with the working copy*/
-    memcpy(&oD.optshdr[0], *protD.hdrAddr + protD.hdrMinLen, oD.actual_opts_len);
+    memcpy(&oD.optshdr[0], protD.hdrAddr + protD.hdrMinLen, oD.actual_opts_len);
 
     uint8_t option_len = 1;
 
@@ -177,7 +177,7 @@ void HDRoptions::acquirePresentOptions(void)
  */
 bool HDRoptions::evaluateInjectCoherence(uint8_t sjOptIndex)
 {
-    const IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
+    const IPTCPopt &oDesc = *(opt_pool->get(sjOptIndex));
     const uint8_t opt_occurrs = optTrack[sjOptIndex].size();
 
     /*
@@ -230,7 +230,7 @@ uint8_t HDRoptions::registerOptOccurrence(uint8_t optValue, uint8_t offset, uint
 {
     for (uint8_t sjOptIndex = protD.firstOptIndex; sjOptIndex <= protD.lastOptIndex; ++sjOptIndex)
     {
-        const IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
+        const IPTCPopt &oDesc = *(opt_pool->get(sjOptIndex));
 
         if (optValue == oDesc.optValue)
         {
@@ -271,7 +271,7 @@ void HDRoptions::alignOpthdr(void)
 
 void HDRoptions::copyOpthdr(void)
 {
-    memcpy(*protD.hdrAddr + protD.hdrMinLen, &oD.optshdr[0], oD.actual_opts_len);
+    memcpy(protD.hdrAddr + protD.hdrMinLen, &oD.optshdr[0], oD.actual_opts_len);
 }
 
 bool HDRoptions::isGoalAchieved(void)
@@ -300,7 +300,7 @@ void HDRoptions::completeHdrEdit(void)
 
 void HDRoptions::injector(uint8_t sjOptIndex)
 {
-    IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
+    IPTCPopt &oDesc = *(opt_pool->get(sjOptIndex));
 
     while (evaluateInjectCoherence(sjOptIndex))
     {
@@ -385,7 +385,7 @@ bool HDRoptions::stripOption(uint8_t sjOptIndex)
     if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
         RUNTIME_EXCEPTION("invalid use of optcode index: %u");
 
-    IPTCPopt &oDesc = *(*opt_pool)[sjOptIndex];
+    IPTCPopt &oDesc = *(opt_pool->get(sjOptIndex));
 
     for (vector<option_occurrence>::iterator it = optTrack[sjOptIndex].begin(); it != optTrack[sjOptIndex].end(); it = optTrack[sjOptIndex].erase(it))
     {
@@ -439,7 +439,7 @@ HDRoptions::~HDRoptions(void)
         }
         else
         {
-            IPTCPopt *yep = (*opt_pool)[i];
+            IPTCPopt *yep = opt_pool->get(i);
             fprintf(HDRoLog, " %s", yep->sjOptName);
 
             for (vector<option_occurrence>::iterator it = optTrack[i].begin(); it != optTrack[i].end(); ++it)

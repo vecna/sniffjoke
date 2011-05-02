@@ -427,7 +427,7 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
     origpkt.SELFLOG("orig pkt: before incoming mangle");
 #endif
 
-    for (vector<PluginTrack*>::iterator it = plugin_pool->begin(); it != plugin_pool->end(); ++it)
+    for (vector<PluginTrack*>::iterator it = plugin_pool->pool.begin(); it != plugin_pool->pool.end(); ++it)
     {
         PluginTrack *pt = *it;
 
@@ -507,7 +507,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
     /* SELECT APPLICABLE HACKS, the selection are base on:
      * 1) the plugin/hacks detect if the condition exists (eg: the hack wants a SYN and the packet is a RST+ACK)
      * 2) compute the percentage: mixing the hack-choosed and the user-choose  */
-    for (vector<PluginTrack*>::iterator it = plugin_pool->begin(); it != plugin_pool->end(); ++it)
+    for (vector<PluginTrack*>::iterator it = plugin_pool->pool.begin(); it != plugin_pool->pool.end(); ++it)
     {
 
         PluginTrack *pt = *it;
@@ -543,7 +543,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
 
-    origpkt.SELFLOG("from available %d plugins %d has been selected", plugin_pool->size(), applicable_hacks.size());
+    origpkt.SELFLOG("from available %d plugins %d has been selected", plugin_pool->pool.size(), applicable_hacks.size());
 
     /* -- FINALLY, HACK THE CHOOSEN PACKET(S) */
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)

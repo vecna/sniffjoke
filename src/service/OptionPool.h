@@ -26,7 +26,7 @@
 #include "IPTCPopt.h"
 #include "IPTCPoptImpl.h"
 
-class OptionPool : public vector<IPTCPopt *>
+class OptionPool
 {
 private:
 
@@ -35,18 +35,16 @@ private:
     uint8_t settedProto;
     uint8_t counter;
 
+    vector<IPTCPopt *> pool;
 public:
 
     /* loadedOption is the main struct where the implementation are stored: HDRoptions
      * need to initialize every instance with them, and I've preferred a static reference */
-    IPTCPopt *loadedOptions[SUPPORTED_OPTIONS];
 
     OptionPool();
 
     /* methods for popoulate <vector>availOpts in HDRoptions */
-    IPTCPopt * getSingleOption(uint32_t);
-    void select(uint8_t);
-    IPTCPopt * get(void);
+    IPTCPopt * get(uint32_t);
 
     /* construction is overloaded because in the UserConf routine the
      * configuration file is loaded and the static variable is setup.
@@ -57,3 +55,4 @@ public:
 };
 
 #endif /* SJ_OPTIONPOOL_H */
+

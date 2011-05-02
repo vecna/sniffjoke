@@ -46,7 +46,7 @@ public:
     PluginTrack(const char *, uint8_t, const char *);
 };
 
-class PluginPool : public vector<PluginTrack *>
+class PluginPool
 {
 private:
     uint8_t globalEnabledScrambles;
@@ -59,6 +59,8 @@ public:
     PluginPool();
     ~PluginPool(void);
     uint8_t enabledScrambles();
+
+    vector<PluginTrack *> pool;
 };
 
 #endif /* SJ_PLUGINPOOL_H */
