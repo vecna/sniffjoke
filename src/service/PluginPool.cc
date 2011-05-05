@@ -27,9 +27,9 @@
 
 extern auto_ptr<UserConf> userconf;
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, const char *plugOpt)
+PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char *plugOpt)
 {
-    LOG_VERBOSE("constructor %s to %s options [%s]", __func__, plugabspath, plugOpt);
+    LOG_VERBOSE("constructor %s to %s option [%s]", __func__, plugabspath, plugOpt);
 
     char enabledScramblesStr[LARGEBUF] = {0};
 
@@ -52,7 +52,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
 
     if (fp_CreatePluginObj == NULL || fp_DeletePluginObj == NULL || fp_versionValue == NULL)
     {
-        RUNTIME_EXCEPTION("plugin %s lack of packet mangling object", plugabspath);
+        RUNTIME_EXCEPTION("plugin %s lack of packet mangling symbols", plugabspath);
     }
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
@@ -62,24 +62,52 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, cons
     }
 
     selfObj = fp_CreatePluginObj();
+
     if (selfObj->pluginName == NULL)
     {
         RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugabspath);
     }
 
-    /* in future release some other information will be passed here. this function
-     * is called only at plugin initialization and will be used for plugins setup */
-    failInit = !selfObj->init(enabledScrambles, plugOpt);
-    if (failInit)
-        RUNTIME_EXCEPTION("Initialization failed!");
+    declaredScramble = enabledScrambles;
+
+    if(plugOpt != NULL)
+        declaredOpt = strdup(plugOpt);
+    else
+        declaredOpt = NULL;
 
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
-    LOG_ALL("import of %s: %s + globally enabled Scramble %s: %s",
+    LOG_ALL("Loading of %s: %s, scramble sets %s(%d), acquired option [%s]",
             plugabspath, selfObj->pluginName,
-            enabledScramblesStr,
-            failInit ? "fail" : "success"
+            enabledScramblesStr, enabledScrambles,
+            plugOpt != NULL ? plugOpt : "NONE"
             );
+}
+
+void PluginPool::initializeAll(struct sjEnviron *autoptrList)
+{
+    uint32_t counter = 1;
+    for (vector<PluginTrack *>::iterator it = pool.begin(); it != pool.end(); ++it)
+    {
+        const PluginTrack *plugin = *it;
+        bool initval;
+
+        LOG_DEBUG("%d) Initializing %s with complete configuration context (%d %s)", 
+                 counter, plugin->selfObj->pluginName, plugin->declaredScramble, plugin->declaredOpt);
+
+        initval = plugin->selfObj->init(plugin->declaredScramble, plugin->declaredOpt, autoptrList);
+
+        if(initval == false)
+        {
+            RUNTIME_EXCEPTION("Unable to init %s whitin the current configuration context (%d %s)", 
+                             plugin->selfObj->pluginName, plugin->declaredScramble, plugin->declaredOpt);
+        }
+
+        LOG_DEBUG("%d) Initialized %s successfull with complete configuration context (%d %s)", 
+                 counter, plugin->selfObj->pluginName, plugin->declaredScramble, plugin->declaredOpt);
+
+        counter++;
+    }
 }
 
 /*
@@ -126,35 +154,28 @@ PluginPool::~PluginPool(void)
 
         dlclose(plugin->pluginHandler);
 
+        if(plugin->declaredOpt != NULL)
+            free(plugin->declaredOpt);
+
         delete plugin;
     }
 }
 
-void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, const char *pOpt)
+void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, char *pOpt)
 {
     try
     {
         /* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the plugin */
         PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, pOpt);
-        if (plugin->failInit)
-        {
-            LOG_DEBUG("failed initialization of %s: the used scramble are not enougth for the plugin requiremente", plugabspath);
-            delete plugin;
-        }
-        else
-        {
-            pool.push_back(plugin);
-            LOG_DEBUG("plugin %s implementation accepted", plugin->selfObj->pluginName);
-        }
+        pool.push_back(plugin);
     }
     catch (runtime_error &e)
     {
         RUNTIME_EXCEPTION("unable to load plugin %s", enablerEntry);
     }
-
 }
 
-bool PluginPool::parseScrambleOpt(const char *list_str, uint8_t *retval, const char **opt)
+bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
 {
 
     struct scrambleparm
@@ -222,7 +243,7 @@ void PluginPool::parseOnlyPlugin(void)
     LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
 
     char *comma;
-    const char *pluginOpt = NULL;
+    char *pluginOpt = NULL;
     char onlyplugin_cpy[MEDIUMBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
     uint8_t pluginEnabledScrambles;
@@ -263,7 +284,7 @@ void PluginPool::parseEnablerFile(void)
     do
     {
         char *comma;
-        const char *pluginOpt = NULL;
+        char *pluginOpt = NULL;
         uint8_t enabledScrambles = 0;
 
         fgets(enablerentry, LARGEBUF, plugfile);
@@ -295,7 +316,7 @@ void PluginPool::parseEnablerFile(void)
 
         snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
 
-        if (!parseScrambleOpt(const_cast<const char *> (comma), &enabledScrambles, &pluginOpt))
+        if (!parseScrambleOpt(comma, &enabledScrambles, &pluginOpt))
         {
             RUNTIME_EXCEPTION("in line %d (%s), no valid scramble are present in %s",
                               line, enablerentry, FILE_PLUGINSENABLER);

@@ -74,7 +74,7 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, const char *pluginOption)
+    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {

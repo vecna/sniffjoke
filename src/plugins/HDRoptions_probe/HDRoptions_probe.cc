@@ -24,8 +24,6 @@
 #include "service/OptionPool.h"
 #include "service/HDRoptions.h"
 
-extern auto_ptr<OptionPool> opt_pool;
-
 class HDRoptions_probe : public Plugin
 {
 #define PLUGIN_NAME       "HDRoptions_probe"
@@ -35,8 +33,9 @@ class HDRoptions_probe : public Plugin
 
 private:
     uint8_t sjOptIndex;
-    pluginLogHandler *pLH;
+//    pluginLogHandler *pLH;
     IPTCPopt *underTestOpt;
+    corruption_t CorruptionSet;
 
     void applyTestedOption(Packet &target)
     {
@@ -65,47 +64,65 @@ public:
 
     /* init is called with pluginName,SCRAMBLE+option,
      * the option in this case is  */
-    virtual bool init(uint8_t configuredScramble, const char *pluginOption)
+    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
-        bool retval = true;
+        OptionPool *optPool = reinterpret_cast<OptionPool *>(sjE->instanced_itopts);
 
-        pLH = new pluginLogHandler(PLUGIN_NAME, LOGNAME);
+//        pLH = new pluginLogHandler(PLUGIN_NAME, LOGNAME);
 
-        if(pluginOption == NULL)
+        if(pluginOption == NULL || strlen(pluginOption) == 1)
         {
             LOG_ALL("fatal: required $PLUGNAME,$SCRAMBLE+$OPTINDEX to be used: refer in the sniffjoke-iptcpoption script");
-            retval = false;
+            return false;
         }
 
-        sjOptIndex = atoi(pluginOption);
+        CorruptionSet = CORRUPTUNASSIGNED;
 
-        if(retval && sjOptIndex < SUPPORTED_OPTIONS)
+        if(pluginOption[strlen(pluginOption) -1] == 'A')
+            CorruptionSet = NOT_CORRUPT;
+        if(pluginOption[strlen(pluginOption) -1] == 'B')
+            CorruptionSet = ONESHOT;
+        if(pluginOption[strlen(pluginOption) -1] == 'C')
+            CorruptionSet = TWOSHOT;
+
+        if(CorruptionSet == CORRUPTUNASSIGNED)
         {
-            underTestOpt = opt_pool->get(sjOptIndex);
+            LOG_ALL("fatal: invalid usage of corruption selector - by hand usage is not suggested nor welcomed!");
+            return false;
+        }
+
+        char *getIndex = strdup(pluginOption);
+        getIndex[strlen(getIndex) -1] = 0x00;
+        sjOptIndex = atoi(getIndex);
+        free(getIndex);
+
+        if(sjOptIndex < SUPPORTED_OPTIONS)
+        {
+            underTestOpt = optPool->get(sjOptIndex);
 
             /* we need to test ONESHOT and TWOSHOT, simply */
-            underTestOpt->optionConfigure(ONESHOT);
+            underTestOpt->optionConfigure(CorruptionSet);
 
-            pLH->completeLog("Option index [%d] point to %s (opcode %d) and opt string [%s]", 
-                             sjOptIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption);
+//            pLH->completeLog("Option index [%d] point to %s (opcode %d) and opt string [%s]", 
+//                             sjOptIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption);
 
             if(!underTestOpt->enabled)
             {
                 LOG_ALL("this options is not ENABLED!! error raised");
-                retval = false;
+                return false;
             }
 
-            LOG_ALL("Loading HDRoptions_probe with hardcoded INNOCENT scramble and option under test %d", 
-                    configuredScramble, sjOptIndex);
+            LOG_ALL("Loading HDRoptions_probe (forced INNOCENT) with option [%s] index [%d] corruption %d",
+                    pluginOption, sjOptIndex, CorruptionSet);
         }
         else
         {
-            retval = false;
-            pLH->completeLog("invald option index used as argument: required >= 0 && < %d", SUPPORTED_OPTIONS);
+            LOG_ALL("invald 'option index' passed as arg: required >= 0 && < %d", SUPPORTED_OPTIONS);
+//            pLH->completeLog("invald 'option index' passed as arg: required >= 0 && < %d", SUPPORTED_OPTIONS);
+            return false;
         }
 
-        LOG_DEBUG("initialization of plugins %s: %s", __FILE__, retval ? "OK" : "failure");
-        return retval;
+        return true;
     }
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)

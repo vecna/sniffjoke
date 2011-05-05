@@ -40,25 +40,28 @@ public:
     destructor_f *fp_DeletePluginObj;
     version_f *fp_versionValue;
 
-    Plugin* selfObj;
-    bool failInit;
+    Plugin *selfObj;
 
-    PluginTrack(const char *, uint8_t, const char *);
+    uint8_t declaredScramble;
+    char *declaredOpt;
+
+    PluginTrack(const char *, uint8_t, char *);
 };
 
 class PluginPool
 {
 private:
     uint8_t globalEnabledScrambles;
-    void importPlugin(const char *, const char *, uint8_t, const char *);
+    void importPlugin(const char *, const char *, uint8_t, char *);
     void parseOnlyPlugin(void);
     void parseEnablerFile(void);
-    bool parseScrambleOpt(const char *, uint8_t *, const char **);
+    bool parseScrambleOpt(char *, uint8_t *, char **);
 
 public:
     PluginPool();
     ~PluginPool(void);
     uint8_t enabledScrambles();
+    void initializeAll(struct sjEnviron *);
 
     vector<PluginTrack *> pool;
 };

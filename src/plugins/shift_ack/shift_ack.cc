@@ -50,7 +50,7 @@ public:
     {
     }
 
-    virtual bool init(uint8_t configuredScramble, const char *pluginOption)
+    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         supportedScrambles = configuredScramble;
         return true;

@@ -62,6 +62,9 @@ private:
     /* used to copy structs for command I/O */
     uint8_t io_buf[HUGEBUF * 4];
 
+    /* used to make public the singleton to the plugins */
+    struct sjEnviron autoptrList;
+
     void updateClock(void);
     void setupDebug(void);
     void cleanDebug(void);
@@ -69,6 +72,7 @@ private:
     void cleanServerUser(void);
     void setupAdminSocket(void);
     void handleAdminSocket(void);
+    void createSjEnvironment(void);
 
     /* internalProtocol handling */
     uint8_t* handleCmd(const char *);

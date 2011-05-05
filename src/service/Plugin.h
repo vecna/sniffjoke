@@ -96,13 +96,16 @@ public:
     vector<Packet *> pktVector; /* std vector of Packet* used for created packets */
 
     Plugin(const char *, uint16_t);
+
     judge_t pktRandomDamage(uint8_t);
-    virtual bool init(uint8_t, const char *) = 0; /* Plugin is an abstract class */
+    void upgradeChainFlag(Packet *);
+
+    /* Plugin is an abstract class */
+    virtual bool init(uint8_t, char *, struct sjEnviron *) = 0; 
     virtual bool condition(const Packet &, uint8_t);
     virtual void apply(const Packet &, uint8_t);
     virtual void mangleIncoming(Packet &);
     virtual void reset(void);
-    void upgradeChainFlag(Packet *);
 };
 
 #endif /* SJ_PLUGIN_H */
