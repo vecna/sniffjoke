@@ -176,7 +176,6 @@
 /* the last code + 1 */
 #define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)
 
-#define TCPTRACK_QUEUE_MAX_LEN                  1024
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
 #define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
 #define SESSIONTRACK_EXPIRYTIME                 200     /* access expire time in seconds (5 MINUTES) */

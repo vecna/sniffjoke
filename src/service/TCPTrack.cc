@@ -1078,8 +1078,3 @@ bypass_queue_analysis:
 
     execTTLBruteforces();
 }
-
-bool TCPTrack::isQueueFull(void)
-{
-    return p_queue.size() > TCPTRACK_QUEUE_MAX_LEN;
-}

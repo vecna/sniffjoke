@@ -67,13 +67,15 @@ extern char sj_clock_str[MEDIUMBUF];
 #define RANDOM_IPOPT            ((random() % (LAST_IPOPT - FIRST_IPOPT )) + FIRST_IPOPT + 1)
 #define RANDOM_TCPOPT           ((random() % (LAST_TCPOPT - FIRST_TCPOPT )) + FIRST_TCPOPT + 1)
 
+
+std::runtime_error runtime_exception(const char *, const char *, uint32_t, const char *, ...);
+string execOSCmd(string cmd);
 void init_random(void);
 void* memset_random(void *, size_t);
-
 int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
+
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 #define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
-std::runtime_error runtime_exception(const char *, const char *, uint32_t, const char *, ...);
 
 
 #endif /* SJ_UTILS_H */

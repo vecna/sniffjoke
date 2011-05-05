@@ -33,19 +33,19 @@ runcfg(runcfg)
 {
     LOG_DEBUG("");
 
-    struct ifreq ifr;
+    struct ifreq tunifr;
     struct ifreq netifr;
     struct ifreq orig_gw;
     int ret;
-    int tmp_flags;
     int tmpfd;
+    int tmpflags;
     char cmd[MEDIUMBUF];
 
     if (getuid() || geteuid())
         RUNTIME_EXCEPTION("required root privileges");
 
     memset(&send_ll, 0x00, sizeof (send_ll));
-    memset(&ifr, 0x00, sizeof (ifr));
+    memset(&tunifr, 0x00, sizeof (tunifr));
     memset(&netifr, 0x00, sizeof (netifr));
     memset(&orig_gw, 0x00, sizeof (orig_gw));
 
@@ -70,54 +70,43 @@ runcfg(runcfg)
                           strerror(errno));
     }
 
+    if (((tmpflags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, tmpflags | FD_CLOEXEC) != -1))
+        LOG_DEBUG("flag FD_CLOEXEC set successfully in tunnel socket");
+    else
+    {
+        RUNTIME_EXCEPTION("unable to set flag FD_CLOEXEC on tunnel socket: %s",
+                          strerror(errno));
+    }
+
     /* IFF_TUN is for IP. */
     /* IFF_NO_PI is for not receiving extra meta packet information. */
-    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-
-    if ((ret = ioctl(tunfd, TUNSETIFF, (void *) &ifr)) != -1)
-        LOG_DEBUG("flags set successfully in tun socket");
+    tunifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+    if ((ret = ioctl(tunfd, TUNSETIFF, (void *) &tunifr)) != -1)
+        LOG_DEBUG("flags set successfully on tunnnel socket");
     else
     {
-        RUNTIME_EXCEPTION("unable to set flags in tunnel socket: %s",
+        RUNTIME_EXCEPTION("unable to set flags on tunnel socket: %s",
                           strerror(errno));
     }
+    strncpy(tunname, tunifr.ifr_name, sizeof(tunname));
 
-    tmpfd = socket(AF_INET, SOCK_DGRAM, 0);
-    memcpy(netifr.ifr_name, ifr.ifr_name, IFNAMSIZ);
-    netifr.ifr_qlen = 4096;
-    if ((ret = ioctl(tmpfd, SIOCSIFTXQLEN, (void *) &netifr)) != -1)
-        LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", ifr.ifr_name);
-    else
-    {
-        RUNTIME_EXCEPTION("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s",
-                          ifr.ifr_name, strerror(errno));
-    }
-
-    close(tmpfd);
-
-    if (((tmp_flags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, tmp_flags | FD_CLOEXEC) != -1))
-        LOG_DEBUG("flag FD_CLOEXEC set successfully in tun socket");
-    else
-    {
-        RUNTIME_EXCEPTION("unable to set flag FD_CLOEXEC in tun socket: %s",
-                          strerror(errno));
-    }
-
+    snprintf(cmd, sizeof (cmd), "route del default");
     LOG_VERBOSE("deleting default gateway in routing table");
-    pclose(popen("route del default 2>/dev/null", "r"));
+    execOSCmd(cmd);
 
-    snprintf(cmd, sizeof (cmd), "ifconfig tun%d %s pointopoint %s mtu %d 2>/dev/null",
-             runcfg.tun_number, runcfg.local_ip_addr, DEFAULT_FAKE_IPADDR, MTU_FAKE);
-    LOG_VERBOSE("setting up tun % d with the % s's IP (%s) command [%s]",
-                runcfg.tun_number, runcfg.interface, runcfg.local_ip_addr, cmd);
-    pclose(popen(cmd, "r"));
+    snprintf(cmd, sizeof (cmd), "ifconfig %s %s pointopoint %s mtu %d",
+             tunname, runcfg.local_ip_addr, DEFAULT_FAKE_IPADDR, MTU_FAKE);
+    LOG_VERBOSE("setting up %s interface with ip address (%s) command [%s]",
+                tunname, runcfg.local_ip_addr, cmd);
+    execOSCmd(cmd);
 
+    snprintf(cmd, sizeof (cmd), "route add default gw "DEFAULT_FAKE_IPADDR"");
     LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: "DEFAULT_FAKE_IPADDR);
-    pclose(popen("route add default gw "DEFAULT_FAKE_IPADDR" 2>/dev/null", "r"));
+    execOSCmd(cmd);
+
 
     strncpy(orig_gw.ifr_name, (const char *) runcfg.interface, sizeof (orig_gw.ifr_name));
     tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-
     if ((ret = ioctl(tmpfd, SIOCGIFINDEX, &orig_gw)) != -1)
         LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", runcfg.interface);
     else
@@ -136,14 +125,21 @@ runcfg(runcfg)
                           strerror(errno));
     }
 
+    if (((tmpflags = fcntl(netfd, F_GETFD)) != -1) && (fcntl(netfd, F_SETFD, tmpflags | FD_CLOEXEC) != -1))
+        LOG_DEBUG("flag FD_CLOEXEC set successfully in network socket");
+    else
+    {
+        RUNTIME_EXCEPTION("unable to set flag FD_CLOEXEC on network socket: %s",
+                          strerror(errno));
+    }
+
+    memset(&send_ll, 0x00, sizeof (send_ll));
     send_ll.sll_family = PF_PACKET;
     send_ll.sll_protocol = htons(ETH_P_IP);
     send_ll.sll_ifindex = orig_gw.ifr_ifindex;
     send_ll.sll_hatype = 0;
     send_ll.sll_pkttype = PACKET_HOST;
     send_ll.sll_halen = ETH_ALEN;
-
-    memset(&send_ll.sll_addr, 0xFF, sizeof (send_ll.sll_addr));
     memcpy(send_ll.sll_addr, runcfg.gw_mac_addr, ETH_ALEN);
 
     if ((ret = bind(netfd, (struct sockaddr *) &send_ll, sizeof (send_ll))) != -1)
@@ -151,9 +147,9 @@ runcfg(runcfg)
     else
         RUNTIME_EXCEPTION("unable to bind datalink layer interface: %s", strerror(errno));
 
-    snprintf(cmd, sizeof (cmd), "iptables -A INPUT -m mac --mac-source %s -j DROP 2>/dev/null", runcfg.gw_mac_str);
+    snprintf(cmd, sizeof (cmd), "iptables -A INPUT -m mac --mac-source %s -j DROP", runcfg.gw_mac_str);
     LOG_ALL("dropping all traffic from the gateway [%s]", cmd);
-    pclose(popen(cmd, "r"));
+    execOSCmd(cmd);
 
     fds[0].fd = tunfd;
     fds[1].fd = netfd;
@@ -169,20 +165,21 @@ NetIO::~NetIO(void)
         LOG_VERBOSE("this process (%d) is not root: unable to restore default gw", getpid());
     else
     {
+        snprintf(cmd, sizeof (cmd), "route del default");
         LOG_VERBOSE("root process (%d): deleting our default gw [route del default]", getpid());
-        pclose(popen("route del default 2>/dev/null", "r"));
+        execOSCmd(cmd);
 
-        snprintf(cmd, sizeof (cmd), "ifconfig tun%d down 2>/dev/null", runcfg.tun_number);
-        LOG_VERBOSE("shutting down tun%d interface [%s]", runcfg.tun_number, cmd);
-        pclose(popen(cmd, "r"));
+        snprintf(cmd, sizeof (cmd), "ifconfig %s down", tunname);
+        LOG_VERBOSE("shutting down  interface [%s]", tunname, cmd);
+        execOSCmd(cmd);
 
-        snprintf(cmd, sizeof (cmd), "route add default gw %s 2>/dev/null", runcfg.gw_ip_addr);
+        snprintf(cmd, sizeof (cmd), "route add default gw %s", runcfg.gw_ip_addr);
         LOG_VERBOSE("restoring previous default gateway [%s]", cmd);
-        pclose(popen(cmd, "r"));
+        execOSCmd(cmd);
 
-        snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP 2>/dev/null", runcfg.gw_mac_str);
+        snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP", runcfg.gw_mac_str);
         LOG_VERBOSE("deleting the filtering rule: [%s]", cmd);
-        pclose(popen(cmd, "r"));
+        execOSCmd(cmd);
     }
 
     close(tunfd);
@@ -227,16 +224,8 @@ void NetIO::networkIO(void)
     {
         if (max_cycle != 0) max_cycle--;
 
-        if (conntrack->isQueueFull())
-        {
-            fds[0].events = 0;
-            fds[1].events = 0;
-        }
-        else
-        {
-            fds[0].events = POLLIN;
-            fds[1].events = POLLIN;
-        }
+        fds[0].events = POLLIN;
+        fds[1].events = POLLIN;
 
         if (pkt_tun != NULL || pkt_net != NULL)
         {
@@ -270,9 +259,8 @@ void NetIO::networkIO(void)
         if (nfds == -1)
             RUNTIME_EXCEPTION("strange and dangerous error in ppoll: %s", strerror(errno));
 
-        if (fds[0].revents & POLLIN)
+        if (fds[0].revents & POLLIN) /* it's possibile to read from tunfd */
         {
-            /* it's possibile to read from tunfd */
             ret = read(tunfd, pktbuf, MTU_FAKE);
 
             if (ret == -1)
@@ -281,9 +269,8 @@ void NetIO::networkIO(void)
             conntrack->writepacket(TUNNEL, pktbuf, ret);
         }
 
-        if (fds[0].revents & POLLOUT)
+        if (fds[0].revents & POLLOUT) /* it's possibile to write in tunfd */
         {
-            /* it's possibile to write in tunfd */
             ret = write(tunfd, (void*) &(pkt_net->pbuf[0]), pkt_net->pbuf.size());
 
             if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */
@@ -294,19 +281,8 @@ void NetIO::networkIO(void)
             pkt_net = conntrack->readpacket(NETWORK);
         }
 
-        /* This section of code is not used actively because manage the
-         * traffic sent FROM THE GATEWAY TO THE TUNNEL.
-         * the kernel is received the data without sniffjoke mangling, because
-         * the default gateway is sending the packete to the eth/wifi mac address
-         *
-         * but this code is require to make the ICMP & SYNACK analyzed 
-         * and the TTL to be discerned. a wise usage of local firewall will
-         * drop all the incoming packet or a different usage of che packet queue
-         * inside conntrack. we are dealing with this.
-         */
-        if (fds[1].revents & POLLIN)
+        if (fds[1].revents & POLLIN) /* it's possible to read from netfd */
         {
-            /* it's possible to read from netfd */
             ret = recv(netfd, pktbuf, MTU, 0);
 
             if (ret == -1)
@@ -315,9 +291,8 @@ void NetIO::networkIO(void)
             conntrack->writepacket(NETWORK, pktbuf, ret);
         }
 
-        if (fds[1].revents & POLLOUT)
+        if (fds[1].revents & POLLOUT) /* it's possibile to write in netfd */
         {
-            /* it's possibile to write in netfd */
             ret = sendto(netfd, (void*) &(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll));
 
             if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */

@@ -68,7 +68,6 @@ public:
     void writepacket(source_t, const unsigned char *, int);
     Packet* readpacket(source_t);
     void analyzePacketQueue(void);
-    bool isQueueFull(void);
 };
 
 #endif /* SJ_TCPTRACK_H */

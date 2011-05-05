@@ -48,6 +48,8 @@ private:
     int tunfd;
     int netfd;
 
+    char tunname[MEDIUMBUF];
+
     /* poll variables, two file descriptors */
     struct pollfd fds[2];
     int nfds;
