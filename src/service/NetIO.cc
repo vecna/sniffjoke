@@ -72,7 +72,7 @@ void NetIO::setupTUN()
     if (ioctl(tmpfd, SIOCSIFMTU, &tmpifr) != -1)
         LOG_DEBUG("tunfd mtu correctly set to %u (SIOCSIFMTU)", MTU_FAKE);
     else
-        RUNTIME_EXCEPTION("unable to set tunfd mtu to %u (SIOCGIFFLAGS): %s", MTU_FAKE, strerror(errno));
+        RUNTIME_EXCEPTION("unable to set tunfd mtu to %u (SIOCSIFMTU): %s", MTU_FAKE, strerror(errno));
 
     ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_family = AF_INET;
     ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_addr.s_addr = inet_addr(runcfg.local_ip_addr);
