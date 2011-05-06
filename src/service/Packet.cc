@@ -661,8 +661,9 @@ const char * Packet::getWtfStr(judge_t wtf) const
     case MALFORMED:
         return "malformed";
     case JUDGEUNASSIGNED:
-    default:
         return "UNDEF-wtf";
+    default:
+        RUNTIME_EXCEPTION("FATAL CODE [3V0LUT10N4RYSL33PER]: please send a notification to the developers");
     }
 }
 
@@ -679,8 +680,9 @@ const char * Packet::getSourceStr(source_t source) const
     case TRACEROUTE:
         return "tracert";
     case SOURCEUNASSIGNED:
-    default:
         return "UNDEF-src";
+    default:
+        RUNTIME_EXCEPTION("FATAL CODE [S1KT4MBUR0]: please send a notification to the developers");
     }
 }
 
@@ -693,7 +695,8 @@ const char * Packet::getChainStr(chaining_t chainflag) const
     case REHACKABLE:
         return "reHackable";
     case HACKUNASSIGNED:
-    default:
         return "UNDEF-chain";
+    default:
+        RUNTIME_EXCEPTION("FATAL CODE [P4ND3LD14V0L0]: please send a notification to the developers");
     }
 }

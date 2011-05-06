@@ -28,26 +28,25 @@
 
 extern auto_ptr<UserConf> userconf;
 
-const char *OptionPool::corruptionPrinter(corruption_t whatthafuck)
+const char *OptionPool::getCorruptionStr(corruption_t whatthafuck)
 {
-    switch(whatthafuck)
+    switch (whatthafuck)
     {
-        case CORRUPTUNASSIGNED:
-            return "Unassigned!";
-        case NOT_CORRUPT:
-            return "NOT corrupt";
-        case ONESHOT:
-            return "OneShot corrupt";
-        case TWOSHOT:
-            return "duplication corrupt";
-        case BOTH:
-            return "not and duplication";
-        case TRACK_ONLY:
-            return "not implemented";
-        default:
-            RUNTIME_EXCEPTION("FATAL CODE [K1LL B1LL]: please send a notification to the developers");
+    case NOT_CORRUPT:
+        return "notcorrupt";
+    case ONESHOT:
+        return "oneshot";
+    case TWOSHOT:
+        return "twoshot";
+    case BOTH:
+        return "oneshot+twoshot";
+    case TRACK_ONLY:
+        return "track only";
+    case CORRUPTUNASSIGNED:
+        return "UNDEF-corruption";
+    default:
+        RUNTIME_EXCEPTION("FATAL CODE [K1LL B1LL]: please send a notification to the developers");
     }
-    return NULL;
 }
 
 corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
@@ -84,9 +83,6 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 
     if (retval == CORRUPTUNASSIGNED)
         RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
-
-    LOG_VERBOSE("option-configuration: option index %u corruption value of %s (%u)", optLooked, 
-                corruptionPrinter(retval), (uint8_t) retval);
 
     return retval;
 }
@@ -136,6 +132,9 @@ OptionPool::OptionPool()
         {
             writUsage = lineParser(optInput, sjI);
             pool[sjI]->optionConfigure(writUsage);
+
+            LOG_VERBOSE("configured option %s as: %s (%u)",
+                        pool[sjI]->sjOptName, getCorruptionStr(writUsage), (uint8_t) writUsage);
         }
 
         fclose(optInput);
