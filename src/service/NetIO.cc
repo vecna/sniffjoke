@@ -68,6 +68,12 @@ void NetIO::setupTUN()
     else
         RUNTIME_EXCEPTION("unable to get tunfd flags (SIOCSIFFLAGS): %s", strerror(errno));
 
+    tmpifr.ifr_mtu = MTU_FAKE;
+    if (ioctl(tmpfd, SIOCSIFMTU, &tmpifr) != -1)
+        LOG_DEBUG("tunfd mtu correctly set to %u (SIOCSIFMTU)", MTU_FAKE);
+    else
+        RUNTIME_EXCEPTION("unable to set tunfd mtu to %u (SIOCGIFFLAGS): %s", MTU_FAKE, strerror(errno));
+
     ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_family = AF_INET;
     ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_addr.s_addr = inet_addr(runcfg.local_ip_addr);
     if (ioctl(tmpfd, SIOCSIFADDR, &tmpifr) != -1)
@@ -83,7 +89,6 @@ void NetIO::setupTUN()
         RUNTIME_EXCEPTION("unable to set tunfd point-to-point dest addr  to %s: %s", DEFAULT_FAKE_IPADDR, strerror(errno));
 
     close(tmpfd);
-
 }
 
 void NetIO::setupNET()
@@ -229,7 +234,6 @@ void NetIO::networkIO(void)
     while (pkt_tun != NULL || pkt_net != NULL || max_cycle)
     {
         if (max_cycle != 0) max_cycle--;
-
 
         if (pkt_tun != NULL || pkt_net != NULL)
         {
