@@ -29,8 +29,6 @@
 #include <poll.h>
 #include <netpacket/packet.h>
 
-#define BURSTSIZE       10
-
 class NetIO
 {
 private:

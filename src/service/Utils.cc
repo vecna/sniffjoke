@@ -56,7 +56,6 @@ string execOSCmd(string cmd)
     return data;
 }
 
-
 void init_random()
 {
     /* random pool initialization */

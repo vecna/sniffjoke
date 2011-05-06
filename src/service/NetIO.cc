@@ -237,7 +237,7 @@ void NetIO::networkIO(void)
      * before thinking to change this :P
      *
      */
-    uint32_t max_cycle = 10;
+    uint32_t max_cycle = NETIOBURSTSIZE;
 
     vector<unsigned char> pktbuf(userconf->runcfg.net_iface_mtu);
 

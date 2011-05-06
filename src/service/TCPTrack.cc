@@ -799,7 +799,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         snprintfScramblesList(enabled, SMALLBUF, plugin_pool->enabledScrambles());
         snprintfScramblesList(choosable, SMALLBUF, pkt.choosableScramble);
 
-        LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]", 
+        LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]",
                    pkt.SjPacketId, enabled, choosable);
     }
 

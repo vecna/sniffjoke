@@ -128,7 +128,8 @@ OptionPool::OptionPool()
 }
 
 OptionPool::~OptionPool()
-{;
+{
+    ;
     for (vector<IPTCPopt *>::iterator it = pool.begin(); it != pool.end(); it = pool.erase(it))
         delete *it;
 }

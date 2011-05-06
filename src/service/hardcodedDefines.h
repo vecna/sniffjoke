@@ -179,6 +179,7 @@
 /* the last code + 1 */
 #define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)
 
+#define NETIOBURSTSIZE                          10      /* 10 CYCLES OF I/O (10 in + 10 out pkts max) */
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
 #define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
 #define SESSIONTRACK_EXPIRYTIME                 200     /* access expire time in seconds (5 MINUTES) */

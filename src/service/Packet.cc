@@ -415,7 +415,7 @@ void Packet::ippayloadResize(uint16_t size)
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - ippayloadlen + size > (int16_t)maxMTU())
+    if (pktlen - ippayloadlen + size > (int16_t) maxMTU())
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
@@ -437,7 +437,7 @@ void Packet::tcppayloadResize(uint16_t size)
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - tcppayloadlen + size > (int16_t)maxMTU())
+    if (pktlen - tcppayloadlen + size > (int16_t) maxMTU())
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
@@ -459,7 +459,7 @@ void Packet::udppayloadResize(uint16_t size)
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - udppayloadlen + size > (int16_t)maxMTU())
+    if (pktlen - udppayloadlen + size > (int16_t) maxMTU())
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
