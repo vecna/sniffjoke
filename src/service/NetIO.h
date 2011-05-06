@@ -38,17 +38,18 @@ private:
     const struct sj_config &runcfg;
     TCPTrack *conntrack;
 
-    /*
-     * these data are required for handle
-     * tunnel/ethernet man in the middle
-     */
-    struct sockaddr_ll send_ll;
-
     /* tunfd/netfd: file descriptor for I/O purpose */
     int tunfd;
     int netfd;
 
     char tunname[MEDIUMBUF];
+    char netname[MEDIUMBUF];
+
+    /*
+     * these data are required for handle
+     * tunnel/ethernet man in the middle
+     */
+    struct sockaddr_ll send_ll;
 
     /* poll variables, two file descriptors */
     struct pollfd fds[2];
@@ -56,6 +57,9 @@ private:
 
     unsigned char pktbuf[MTU];
     int size;
+
+    void setupTUN();
+    void setupNET();
 
 public:
 

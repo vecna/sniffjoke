@@ -23,7 +23,7 @@
 #include "Debug.h"
 
 Debug::Debug(void) :
-debuglevel(ALL_LEVEL),
+debuglevel(DEBUG_LEVEL),
 logstream(stdout),
 session_logstream(stdout),
 packet_logstream(stdout)

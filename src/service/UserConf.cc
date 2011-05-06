@@ -218,7 +218,7 @@ void UserConf::autodetectGWMACAddress(void)
         RUNTIME_EXCEPTION("unable to autodetect gateway mac address");
     else
     {
-        LOG_ALL("acquired mac address from the arp table: %s", runcfg.gw_mac_str);
+        LOG_ALL("acquired gateway mac address from the arp table: %s", runcfg.gw_mac_str);
         uint32_t mac[6];
         sscanf(runcfg.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         for (i = 0; i < 6; ++i)
@@ -240,8 +240,6 @@ void UserConf::networkSetup(void)
     LOG_VERBOSE("* system local interface: %s, %s address", runcfg.interface, runcfg.local_ip_addr);
     LOG_VERBOSE("* default gateway mac address: %s", runcfg.gw_mac_str);
     LOG_VERBOSE("* default gateway ip address: %s", runcfg.gw_ip_addr);
-    LOG_VERBOSE("* the traffic from the gateway mac address has been blocked by iptables");
-    sleep(1);
 }
 
 /*
