@@ -291,7 +291,7 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     /* command line priority always */
     if (cmdopt != NULL && strncmp(cmdopt, difolt, strlen(cmdopt)))
     {
-        debugfmt = "%s/string: option %s read from command line: [%s]";
+        debugfmt = "string: option %s read from command line: [%s]";        
         strncpy(dst, cmdopt, MEDIUMBUF);
     }
     else if (cf != NULL && parseKeyword(cf, useropt, name))
