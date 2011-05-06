@@ -603,7 +603,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
                     p_queue.insertAfter(injpkt, origpkt);
                 break;
             case POSITIONUNASSIGNED:
-                RUNTIME_EXCEPTION("fATAL CODE [D4L1]: please send a notification to the developers");
+                RUNTIME_EXCEPTION("FATAL CODE [D4L1]: please send a notification to the developers");
             }
         }
 
@@ -637,7 +637,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
  *   INNOCENT:    will BE ACCEPTED, so, INNOCENT but EVIL cause the same treatment of a
  *                GOOD packet.
  *
- * hacks application it's applied in this order: PRESCRIPTION, MALFORMED, GUILTY.
+ * hacks application follows this order: PRESCRIPTION, MALFORMED, GUILTY.
  * a non applicable hack it's degraded to the next;
  * at worst GUILTY it's always applied.
  */
@@ -903,7 +903,7 @@ void TCPTrack::handleYoungPackets(void)
 
         default:
 
-            RUNTIME_EXCEPTION("fATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
+            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
         }
     }
 }
@@ -949,7 +949,7 @@ void TCPTrack::handleHackPackets(void)
     for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (!lastPktFix(*pkt))
-            RUNTIME_EXCEPTION("fATAL CODE [M4CH3T3]: please send a notification to the developers");
+            RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
 
         if (injectHack(*pkt))
         {

@@ -24,7 +24,6 @@
 #define SJ_NETIO_H
 
 #include "Utils.h"
-#include "UserConf.h"
 #include "TCPTrack.h"
 
 #include <poll.h>
@@ -35,15 +34,12 @@
 class NetIO
 {
 private:
-    const struct sj_config &runcfg;
+
     TCPTrack *conntrack;
 
     /* tunfd/netfd: file descriptor for I/O purpose */
     int tunfd;
     int netfd;
-
-    char tunname[MEDIUMBUF];
-    char netname[MEDIUMBUF];
 
     /*
      * these data are required for handle
@@ -55,7 +51,6 @@ private:
     struct pollfd fds[2];
     int nfds;
 
-    unsigned char pktbuf[MTU];
     int size;
 
     void setupTUN();
@@ -68,7 +63,7 @@ public:
      *       --- but not killed!
      */
 
-    NetIO(const sj_config &);
+    NetIO(void);
     ~NetIO(void);
     void prepareConntrack(TCPTrack *);
     void networkIO(void);

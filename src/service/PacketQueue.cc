@@ -42,9 +42,7 @@ PacketQueue::~PacketQueue(void)
     {
         select((queue_t) i);
         while (get() && cur_pkt != NULL)
-        {
             delete cur_pkt;
-        }
     }
 }
 

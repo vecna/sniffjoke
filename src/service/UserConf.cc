@@ -150,14 +150,14 @@ void UserConf::autodetectLocalInterface(void)
     imp_str = execOSCmd(cmd);
 
     for (i = 0; i < strlen(imp_str.c_str()) && isalnum((imp_str.c_str())[i]); ++i)
-        runcfg.interface[i] = (imp_str.c_str())[i];
+        runcfg.net_iface_name[i] = (imp_str.c_str())[i];
 
     if (i < 3)
         RUNTIME_EXCEPTION("default gateway not present: sniffjoke cannot be started");
     else
     {
         LOG_ALL("detected external interface with default gateway: %s",
-                runcfg.interface);
+                runcfg.net_iface_name);
     }
 }
 
@@ -167,15 +167,15 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
     string imp_str;
 
     snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- | awk '{print $1}'",
-             runcfg.interface);
+             runcfg.net_iface_name);
 
-    LOG_ALL("detecting interface %s ip address with [%s]", runcfg.interface, cmd);
+    LOG_ALL("detecting interface %s ip address with [%s]", runcfg.net_iface_name, cmd);
 
     imp_str = execOSCmd(cmd);
 
-    strncpy(runcfg.local_ip_addr, imp_str.c_str(), sizeof (runcfg.local_ip_addr));
+    strncpy(runcfg.net_iface_ip, imp_str.c_str(), sizeof (runcfg.net_iface_ip));
 
-    LOG_ALL("acquired local ip address: %s", runcfg.local_ip_addr);
+    LOG_ALL("acquired local ip address: %s", runcfg.net_iface_ip);
 }
 
 void UserConf::autodetectGWIPAddress(void)
@@ -205,7 +205,7 @@ void UserConf::autodetectGWMACAddress(void)
     uint32_t i;
 
     snprintf(cmd, MEDIUMBUF, "arp -i %s %s | grep %s | awk '{print $3}'",
-             runcfg.interface, runcfg.gw_ip_addr, runcfg.gw_ip_addr);
+             runcfg.net_iface_name, runcfg.gw_ip_addr, runcfg.gw_ip_addr);
 
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
 
@@ -237,7 +237,7 @@ void UserConf::networkSetup(void)
     autodetectGWIPAddress();
     autodetectGWMACAddress();
 
-    LOG_VERBOSE("* system local interface: %s, %s address", runcfg.interface, runcfg.local_ip_addr);
+    LOG_VERBOSE("* system local interface: %s, %s address", runcfg.net_iface_name, runcfg.net_iface_ip);
     LOG_VERBOSE("* default gateway mac address: %s", runcfg.gw_mac_str);
     LOG_VERBOSE("* default gateway ip address: %s", runcfg.gw_ip_addr);
 }

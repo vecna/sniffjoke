@@ -101,8 +101,10 @@
   and a max value of 15(60bytes)  and so tcp data offset.
   So the difference between   min and max is 8(40bytes).
  */
-#define MTU                     1500
-#define MTU_FAKE                1420
+
+#define TUN_IF_NAME            "sniffjoke"
+#define NET_IF_MTU              1500
+#define TUN_IF_MTU_DIFF         80
 
 #define PORTSNUMBER             65536
 

@@ -64,7 +64,7 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
     if (retval == CORRUPTUNASSIGNED)
         RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
 
-    LOG_VERBOSE("option index %d found value corruption value of %u", optLooked, (uint8_t) retval);
+    LOG_VERBOSE("option index %u found value corruption value of %u", optLooked, (uint8_t) retval);
 
     return retval;
 }
@@ -118,7 +118,7 @@ OptionPool::OptionPool()
 
         fclose(optInput);
 
-        LOG_DEBUG("options configuration loaded correctly from %s: %d defs", FILE_IPTCPOPT_CONF, SUPPORTED_OPTIONS);
+        LOG_DEBUG("options configuration loaded correctly from %s: %u defs", FILE_IPTCPOPT_CONF, SUPPORTED_OPTIONS);
     }
     else
     {
@@ -127,10 +127,15 @@ OptionPool::OptionPool()
     }
 }
 
+OptionPool::~OptionPool()
+{
+    /* TO BE COMPLETED */
+}
+
 IPTCPopt *OptionPool::get(uint32_t sjOptIndex)
 {
-    if(sjOptIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("Invalid index request: %d on %d available", sjOptIndex, SUPPORTED_OPTIONS);
+    if (sjOptIndex >= SUPPORTED_OPTIONS)
+        RUNTIME_EXCEPTION("Invalid index request: %u on %u available", sjOptIndex, SUPPORTED_OPTIONS);
 
     return pool[sjOptIndex];
 }

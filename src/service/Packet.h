@@ -156,10 +156,8 @@ public:
     Packet(const Packet &);
     ~Packet();
 
-    uint32_t freespace()
-    {
-        return MTU - pbuf.size();
-    }
+    uint32_t maxMTU(void);
+    uint32_t freespace(void);
 
     void updatePacketMetadata(void);
 

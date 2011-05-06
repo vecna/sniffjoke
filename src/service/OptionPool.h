@@ -42,6 +42,7 @@ public:
      * need to initialize every instance with them, and I've preferred a static reference */
 
     OptionPool();
+    ~OptionPool();
 
     /* methods for popoulate <vector>availOpts in HDRoptions */
     IPTCPopt * get(uint32_t);
