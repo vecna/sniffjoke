@@ -295,7 +295,7 @@ if [ -z $testerID ]; then
     echo "empty string: sniffjoke-autotest done."
 else
     dFname="Sj-test-$testerID-$LOCATION.tar.gz"
-    tar -z -c --exclude='*DATA*'-f $dFname *
+    tar -c -j -f $dFname --exclude='*DATA*' *
     echo "\n"
     echo "${green}Thanks you \"$testerID\"! ${white}$dFname has been generated in $TEMPDIR/$LOCATION/$dFname\n"
     echo "in your $TEMPDIR/$LOCATION there are the traffic test done by sniffjoke, recorded by tcpdump and the logfiles\n"

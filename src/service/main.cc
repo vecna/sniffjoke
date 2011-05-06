@@ -41,7 +41,7 @@ static void sj_version(const char *pname)
 }
 
 #define SNIFFJOKE_HELP_FORMAT \
-    "%s [command] or %s --options:\n"\
+    "Usage: %s [OPTION]... :\n"\
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
     " --dir <name>\t\tspecify the base directory where the location reside [default: %s]\n"\
     "\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
@@ -65,7 +65,7 @@ static void sj_version(const char *pname)
 static void sj_help(const char *pname)
 {
     printf(SNIFFJOKE_HELP_FORMAT,
-           pname, pname,
+           pname,
            DEFAULT_LOCATION,
            WORK_DIR,
            DEFAULT_USER, DEFAULT_GROUP,
