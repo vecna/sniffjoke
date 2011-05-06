@@ -107,11 +107,11 @@ start_test() {
             exit
         fi
 
-        INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface" | cut -b 21-`
+        INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface name" | awk '{print $4}'`
         if [ -n "$INTERFACE" ]; then
             echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
         else
-            echo "${red}Unable to detect hijacked interface by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
+            echo "${red}Unable to detect hijacked interface name by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
             exit
         fi
 

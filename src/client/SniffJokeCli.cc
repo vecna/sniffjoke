@@ -296,7 +296,7 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
             break;
         case STAT_NETIFACENAME:
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("hijacked interface:\t%s\n", charvar);
+            printf("hijacked interface name:\t%s\n", charvar);
             break;
         case STAT_NETIFACEIP:
             memcpy(&charvar, pointed_data, singleData->len);
@@ -308,7 +308,7 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
             break;
         case STAT_TUNIFACENAME:
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("tunnel interface:\t%s\n", charvar);
+            printf("tunnel interface name:\t%s\n", charvar);
             break;
         case STAT_TUNIFACEIP:
             memcpy(&charvar, pointed_data, singleData->len);
