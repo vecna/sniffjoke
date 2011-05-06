@@ -4,7 +4,9 @@
 Sniffjoke 0.4 usage
 .PP
 .SH SYNOPSIS
-sniffjoke --option
+sniffjoke [OPTION]...
+.PP
+sniffjokectl [OPTION]... [COMMAND]
 .PP
 .SH DESCRIPTION
 This software is a single peer sniffer obfuscator. when you start SniffJoke
@@ -12,21 +14,15 @@ from your network privileges, the outgoing internet connections became
 scattered with fake data - without interfere with your sessions - and confusing
 the sniffers in the network when their algorithms try to follow your stream.
 .PP
-.B sniffjoke --help
-this command returns three piece of information,
+The options usefull when sniffjoke is started (by hand or by init script)
 .PP
-The option usefull when sniffjoke is started (by hand or by init script)
-.PP
-.PP
-.B sniffjoke 
-[command] or 
-.B sniffjoke --options:
+.SH SNIFFJOKE OPTIONS 
 .PP
 .B --location <name> 
 specify the network environment (suggested) [default: generic]
 .PP
 .B --dir <name> 
-specify the base directory where the location reside [default: /usr/local/var/sniffjoke/] [using both location and dir defaults, the configuration status will not be saved]
+specify the base directory where the location resides [default: /usr/local/var/sniffjoke/] [using both location and dir defaults, the configuration status will not be saved]
 .PP
 .B --user <username> 
 downgrade priviledge to the specified user [default: nobody]
@@ -41,10 +37,10 @@ inject evasion packets only in the specified ip addresses
 inject evasion packet in all session excluding the blacklisted ip address
 .PP
 .B --start 
-if present, evasion i'ts activated immediatly [default: not present]
+if present, evasion is activated immediatly [default: not present]
 .PP
 .B --debug <level 1-6> 
-set up verbosoty level [default: 2] 1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets
+set up verbosity level [default: 2] 1: suppress log, 2: common, 3: verbose, 4: debug, 5: session 6: packets
 .PP
 .B --foreground 
 running in foreground [default:background]
@@ -59,23 +55,27 @@ force restart (usable when another sniffjoke service is running)
 show sniffjoke version
 .PP
 .B --help 
-show this help
+show a command line options resume
 .PP
 .PP
-When sniffjoke is running keep on memory the configuration settings and dump them in a binary file, sniffjoke run under chroot directory and inside them there are files usefull for sniffjoke and for the user.
+When sniffjoke is running, it keeps on memory the configuration settings and dump them in a binary file, sniffjoke run under chroot directory and inside that there are files usefull for sniffjoke and for the user.
 .PP
 .PP
-And this is the sniffjoke manage, controller, client, whaterver:
+.SH SNIFFJOKECTL
+sniffjokectl is the sniffjoke manager, controller, client, whaterver.
+.PP
+When sniffjoke is running, you should send commands with a command line argument like:
+.PP
+.B sniffjokectl [OPTIONS]... [COMMAND]
 .PP
 .PP
-.B sniffjokectl --options 
-[command]:
+.SH SNIFFJOKECTL OPTIONS
 .PP
 .B --address <ip>[:port] 
 specify administration IP address [default: 127.0.0.1:8844]
 .PP
-.B --version show 
-sniffjoke version
+.B --version 
+show sniffjoke version
 .PP
 .B --timeout 
 set milliseconds timeout when contacting SniffJoke service [default: 500]
@@ -83,14 +83,13 @@ set milliseconds timeout when contacting SniffJoke service [default: 500]
 .B --help 
 show this help
 .PP
-When sniffjoke is running, you should send commands with a command line argument:
-.PP
+.SH SNIFFJOKECTL COMMANDS
 .PP
 .B start 
 start sniffjoke hijacking/injection
 .PP
 .B stop 
-stop sniffjoke (but remain tunnel interface active)
+stop sniffjoke (sniffjoke will work in passive mode, like in pause)
 .PP
 .B quit 
 stop sniffjoke, save config, abort the service
@@ -113,7 +112,9 @@ change the log debug level
 .PP
 Those command are used and accepted only when sniffjoke is running and the "client instance" is listening and reachable in the UDP port.
 .PP
-When you set your port rules, save the configuration with saveconf and continue to use sniffjoke. when you restart sniffjoke, using the same --chroot-dir, the previous configurations are reloaded.
+When you start sniffjoke you could set your port rules and save the configuration with saveconf.
+.PP
+When you than restart sniffjoke, using the same --chroot-dir, the previous configurations are reloaded.
 .PP
 
 .SS SEMI-SECRET OPTION 
@@ -128,5 +129,5 @@ plugin_name.so,SINGLESCRAMBLEUSED
 The default values are hardcoded in the software, passed at compile time from the building script, maybe a distribution-specific package will contain different paths.
 .PP
 .SH AUTHOR
-Claudio Agosti <vecna@delirandom.net> Giovanni Pellerano <evilaliv3@evilaliv3.org>
+Claudio Agosti <vecna@delirandom.net> Giovanni Pellerano <giovanni.pellerano@evilaliv3.org>
 

@@ -36,7 +36,7 @@ static void sjcli_version(const char *pname)
 }
 
 #define SNIFFJOKECLI_HELP_FORMAT \
-	"%s --options [command]:\n"\
+	"Usage: %s [OPTIONS]... [COMMANDS]...\n"\
 	" --address <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
 	" --version\t\tshow sniffjoke version\n"\
 	" --timeout\t\tset milliseconds timeout when contacting SniffJoke service [default: %d]\n"\
