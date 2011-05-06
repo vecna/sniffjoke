@@ -204,7 +204,7 @@ void UserConf::autodetectGWMACAddress(void)
     string imp_str;
     uint32_t i;
 
-    snprintf(cmd, MEDIUMBUF, "arp -i %s %s | grep %s | awk '{print $3}'",
+    snprintf(cmd, MEDIUMBUF, "arp -ni %s %s | grep %s | awk '{print $3}'",
              runcfg.net_iface_name, runcfg.gw_ip_addr, runcfg.gw_ip_addr);
 
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
