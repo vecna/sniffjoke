@@ -58,7 +58,7 @@ public:
     uint8_t getBestRandsize(struct optHdrData *, uint8_t, uint8_t, uint8_t, uint8_t);
 
     IPTCPopt(bool, uint8_t, const char *, uint8_t, uint8_t);
-    
+
     void optionConfigure(corruption_t);
     virtual uint8_t optApply(struct optHdrData *) = 0;
 };

@@ -141,64 +141,54 @@ void UserConf::autodetectLocalInterface(void)
     /* check this command: the flag value, matched in 0003, is derived from:
      *     /usr/src/linux/include/linux/route.h
      */
-    const char *cmd = "grep 0003 /proc/net/route | grep 00000000 | cut -b -7 2>/dev/null";
-    FILE *foca;
-    char imp_str[SMALLBUF];
+    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $8}'";
+    string imp_str;
     uint8_t i;
 
     LOG_ALL("detecting external gateway interface with [%s]", cmd);
 
-    foca = popen(cmd, "r");
-    fgets(imp_str, SMALLBUF, foca);
-    pclose(foca);
+    imp_str = execOSCmd(cmd);
 
-    for (i = 0; i < strlen(imp_str) && isalnum(imp_str[i]); ++i)
-        runcfg.interface[i] = imp_str[i];
+    for (i = 0; i < strlen(imp_str.c_str()) && isalnum((imp_str.c_str())[i]); ++i)
+        runcfg.net_iface_name[i] = (imp_str.c_str())[i];
 
     if (i < 3)
         RUNTIME_EXCEPTION("default gateway not present: sniffjoke cannot be started");
     else
     {
         LOG_ALL("detected external interface with default gateway: %s",
-                runcfg.interface);
+                runcfg.net_iface_name);
     }
 }
 
 void UserConf::autodetectLocalInterfaceIPAddress(void)
 {
     char cmd[MEDIUMBUF];
-    FILE *foca;
-    char imp_str[SMALLBUF];
+    string imp_str;
 
-    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- 2>/dev/null",
-             runcfg.interface);
+    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- | awk '{print $1}'",
+             runcfg.net_iface_name);
 
-    LOG_ALL("detecting interface %s ip address with [%s]", runcfg.interface, cmd);
+    LOG_ALL("detecting interface %s ip address with [%s]", runcfg.net_iface_name, cmd);
 
-    foca = popen(cmd, "r");
-    fgets(imp_str, SMALLBUF, foca);
-    pclose(foca);
+    imp_str = execOSCmd(cmd);
 
-    for (uint8_t i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
-        runcfg.local_ip_addr[i] = imp_str[i];
+    strncpy(runcfg.net_iface_ip, imp_str.c_str(), sizeof (runcfg.net_iface_ip));
 
-    LOG_ALL("acquired local ip address: %s", runcfg.local_ip_addr);
+    LOG_ALL("acquired local ip address: %s", runcfg.net_iface_ip);
 }
 
 void UserConf::autodetectGWIPAddress(void)
 {
-    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | cut -b 17-32 2>/dev/null";
-    FILE *foca;
-    char imp_str[SMALLBUF];
+    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $2}'";
+    string imp_str;
 
     LOG_ALL("detecting gateway ip address with [%s]", cmd);
 
-    foca = popen(cmd, "r");
-    fgets(imp_str, SMALLBUF, foca);
-    pclose(foca);
+    imp_str = execOSCmd(cmd);
 
-    for (uint8_t i = 0; i < strlen(imp_str) && (isdigit(imp_str[i]) || imp_str[i] == '.'); ++i)
-        runcfg.gw_ip_addr[i] = imp_str[i];
+    for (uint8_t i = 0; i < strlen(imp_str.c_str()) && (isdigit((imp_str.c_str())[i]) || (imp_str.c_str())[i] == '.'); ++i)
+        runcfg.gw_ip_addr[i] = (imp_str.c_str())[i];
 
     if (strlen(runcfg.gw_ip_addr) < 7)
         RUNTIME_EXCEPTION("unable to autodetect gateway ip address, sniffjoke cannot be started");
@@ -211,55 +201,29 @@ void UserConf::autodetectGWIPAddress(void)
 void UserConf::autodetectGWMACAddress(void)
 {
     char cmd[MEDIUMBUF];
-    FILE *foca;
-    char imp_str[SMALLBUF] = {0};
-    uint8_t i;
+    string imp_str;
+    uint32_t i;
 
-    snprintf(cmd, MEDIUMBUF, "ping -W 1 -c 1 %s 2>/dev/null", runcfg.gw_ip_addr);
-    LOG_ALL("pinging %s trying to populate ARP table [%s]", runcfg.gw_ip_addr, cmd);
-    /* we do not need the output of ping, we need to wait the ping to finish
-     * and pclose does this =) */
-    pclose(popen(cmd, "r"));
+    snprintf(cmd, MEDIUMBUF, "arp -i %s %s | grep %s | awk '{print $3}'",
+             runcfg.net_iface_name, runcfg.gw_ip_addr, runcfg.gw_ip_addr);
 
-    snprintf(cmd, MEDIUMBUF, "arp -n | grep \"%s \" | cut -b 34-50 2>/dev/null", runcfg.gw_ip_addr);
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
-    foca = popen(cmd, "r");
-    fgets(imp_str, SMALLBUF, foca);
-    pclose(foca);
 
-    for (i = 0; i < strlen(imp_str) && (isxdigit(imp_str[i]) || imp_str[i] == ':'); ++i)
-        runcfg.gw_mac_str[i] = imp_str[i];
+    imp_str = execOSCmd(cmd);
+
+    for (i = 0; i < strlen(imp_str.c_str()) && (isxdigit((imp_str.c_str())[i]) || (imp_str.c_str())[i] == ':'); ++i)
+        runcfg.gw_mac_str[i] = (imp_str.c_str())[i];
 
     if (i != 17)
         RUNTIME_EXCEPTION("unable to autodetect gateway mac address");
     else
     {
-        LOG_ALL("acquired mac address from the arp table: %s", runcfg.gw_mac_str);
+        LOG_ALL("acquired gateway mac address from the arp table: %s", runcfg.gw_mac_str);
         uint32_t mac[6];
         sscanf(runcfg.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
         for (i = 0; i < 6; ++i)
             runcfg.gw_mac_addr[i] = mac[i];
     }
-}
-
-void UserConf::autodetectFirstAvailableTunnelInterface(void)
-{
-    const char *cmd = "ifconfig -a | grep tun | cut -b -7 2>/dev/null";
-    FILE *foca;
-    char imp_str[SMALLBUF];
-
-    LOG_ALL("detecting first unused tunnel device with [%s]", cmd);
-    foca = popen(cmd, "r");
-    for (runcfg.tun_number = 0;; ++runcfg.tun_number)
-    {
-        memset(imp_str, 0x00, sizeof (imp_str));
-        fgets(imp_str, SMALLBUF, foca);
-        if (imp_str[0] == 0x00)
-            break;
-    }
-    pclose(foca);
-
-    LOG_ALL("detected %d as first unused tunnel device", runcfg.tun_number);
 }
 
 /* this method is called by SniffJoke.cc */
@@ -272,14 +236,10 @@ void UserConf::networkSetup(void)
     autodetectLocalInterfaceIPAddress();
     autodetectGWIPAddress();
     autodetectGWMACAddress();
-    autodetectFirstAvailableTunnelInterface();
 
-    LOG_VERBOSE("* system local interface: %s, %s address", runcfg.interface, runcfg.local_ip_addr);
+    LOG_VERBOSE("* system local interface: %s, %s address", runcfg.net_iface_name, runcfg.net_iface_ip);
     LOG_VERBOSE("* default gateway mac address: %s", runcfg.gw_mac_str);
     LOG_VERBOSE("* default gateway ip address: %s", runcfg.gw_ip_addr);
-    LOG_VERBOSE("* first available tunnel interface: tun%d", runcfg.tun_number);
-    LOG_VERBOSE("* the traffic from the gateway mac address has been blocked by iptables");
-    sleep(1);
 }
 
 /*
@@ -329,7 +289,7 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     const char *debugfmt = NULL;
 
     /* command line priority always */
-    if (cmdopt != NULL && (difolt == NULL ? true : strncmp(cmdopt, difolt, strlen(cmdopt))))
+    if (cmdopt != NULL && strncmp(cmdopt, difolt, strlen(cmdopt)))
     {
         debugfmt = "%s/string: option %s read from command line: [%s]";
         strncpy(dst, cmdopt, MEDIUMBUF);
@@ -341,8 +301,8 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     }
     else
     {
-        strncpy(dst, difolt, strlen(difolt));
         debugfmt = "string: not found %s option in conf file, using default: [%s]";
+        strncpy(dst, difolt, strlen(difolt));
     }
 
     LOG_DEBUG(debugfmt, name, dst);
@@ -424,7 +384,7 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runcfg.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
     parseMatch(runcfg.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, DEFAULT_GO_FOREGROUND);
     parseMatch(runcfg.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
-    parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
+    parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, "");
     parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     /* loading of IP lists, in future also the source IP address should be useful */

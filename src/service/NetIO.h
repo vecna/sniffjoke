@@ -24,19 +24,20 @@
 #define SJ_NETIO_H
 
 #include "Utils.h"
-#include "UserConf.h"
 #include "TCPTrack.h"
 
 #include <poll.h>
 #include <netpacket/packet.h>
 
-#define BURSTSIZE       10
-
 class NetIO
 {
 private:
-    const struct sj_config &runcfg;
+
     TCPTrack *conntrack;
+
+    /* tunfd/netfd: file descriptor for I/O purpose */
+    int tunfd;
+    int netfd;
 
     /*
      * these data are required for handle
@@ -44,16 +45,14 @@ private:
      */
     struct sockaddr_ll send_ll;
 
-    /* tunfd/netfd: file descriptor for I/O purpose */
-    int tunfd;
-    int netfd;
-
     /* poll variables, two file descriptors */
     struct pollfd fds[2];
     int nfds;
 
-    unsigned char pktbuf[MTU];
     int size;
+
+    void setupTUN();
+    void setupNET();
 
 public:
 
@@ -62,7 +61,7 @@ public:
      *       --- but not killed!
      */
 
-    NetIO(const sj_config &);
+    NetIO(void);
     ~NetIO(void);
     void prepareConntrack(TCPTrack *);
     void networkIO(void);

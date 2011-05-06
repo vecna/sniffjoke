@@ -75,7 +75,7 @@ public:
 
         pkt->randomizeID();
 
-        pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - MTU + random() % 2 * MTU);
+        pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->ack_seq) - pkt->maxMTU() + random() % 2 * pkt->maxMTU());
 
         pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;

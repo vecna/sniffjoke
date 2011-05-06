@@ -29,6 +29,9 @@
 
 #include "Packet.h"
 #include "HDRoptions.h"
+#include "UserConf.h"
+
+extern auto_ptr<UserConf> userconf;
 
 uint32_t Packet::SjPacketIdCounter;
 
@@ -65,6 +68,16 @@ fragment(false),
 pbuf(pkt.pbuf)
 {
     updatePacketMetadata();
+}
+
+uint32_t Packet::maxMTU(void)
+{
+    return userconf->runcfg.net_iface_mtu;
+}
+
+uint32_t Packet::freespace(void)
+{
+    return maxMTU() - pbuf.size();
 }
 
 void Packet::updatePacketMetadata(void)
@@ -333,7 +346,7 @@ void Packet::iphdrResize(uint8_t size)
      *   size : must be multiple of 4;
      *   size : must be >= sizeof(struct iphdr));
      *   size : must be <= MAXIPHEADER;
-     *   pktlen - iphdrlen + size : must be <= MTU.
+     *   pktlen - iphdrlen + size : must be <= maxMTU().
      */
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
@@ -371,7 +384,7 @@ void Packet::tcphdrResize(uint8_t size)
      *   - size : must be multiple of 4;
      *   - size : must be >= sizeof(struct tcphdr));
      *   - size : must be <= MAXTCPHEADER;
-     *   - pktlen - tcphdrlen + size : must be <= MTU.
+     *   - pktlen - tcphdrlen + size : must be <= maxMTU().
      */
 
     /* its important to update values into hdr before vector insert call because it can cause relocation */
@@ -402,7 +415,7 @@ void Packet::ippayloadResize(uint16_t size)
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - ippayloadlen + size > MTU)
+    if (pktlen - ippayloadlen + size > (int16_t) maxMTU())
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
@@ -424,7 +437,7 @@ void Packet::tcppayloadResize(uint16_t size)
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - tcppayloadlen + size > MTU)
+    if (pktlen - tcppayloadlen + size > (int16_t) maxMTU())
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
@@ -446,7 +459,7 @@ void Packet::udppayloadResize(uint16_t size)
     const uint16_t pktlen = pbuf.size();
 
     /* begin safety checks */
-    if (pktlen - udppayloadlen + size > MTU)
+    if (pktlen - udppayloadlen + size > (int16_t) maxMTU())
         RUNTIME_EXCEPTION("");
     /* end safety checks */
 
@@ -492,6 +505,7 @@ void Packet::payloadRandomFill(void)
             break;
         default:
             ippayloadRandomFill();
+            break;
         }
     }
     else

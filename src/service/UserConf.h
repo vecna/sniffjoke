@@ -97,12 +97,15 @@ struct sj_config
     IPListMap *blacklist;
 
     /* system informations, autodetected */
-    char local_ip_addr[SMALLBUF];
     char gw_ip_addr[SMALLBUF];
     char gw_mac_str[SMALLBUF];
     char gw_mac_addr[ETH_ALEN];
-    char interface[SMALLBUF];
-    uint8_t tun_number;
+    char net_iface_name[SMALLBUF];
+    /* char tun_iface_name[SMALLBUF] statically know as TUN_IF_NAME */
+    char net_iface_ip[SMALLBUF];
+    char tun_iface_ip[SMALLBUF];
+    uint16_t net_iface_mtu;
+    uint16_t tun_iface_mtu;
 
 };
 

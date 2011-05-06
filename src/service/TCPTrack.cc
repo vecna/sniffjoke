@@ -605,7 +605,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
                     p_queue.insertAfter(injpkt, origpkt);
                 break;
             case POSITIONUNASSIGNED:
-                RUNTIME_EXCEPTION("fATAL CODE [D4L1]: please send a notification to the developers");
+                RUNTIME_EXCEPTION("FATAL CODE [D4L1]: please send a notification to the developers");
             }
         }
 
@@ -639,7 +639,7 @@ bool TCPTrack::injectHack(Packet &origpkt)
  *   INNOCENT:    will BE ACCEPTED, so, INNOCENT but EVIL cause the same treatment of a
  *                GOOD packet.
  *
- * hacks application it's applied in this order: PRESCRIPTION, MALFORMED, GUILTY.
+ * hacks application follows this order: PRESCRIPTION, MALFORMED, GUILTY.
  * a non applicable hack it's degraded to the next;
  * at worst GUILTY it's always applied.
  */
@@ -801,7 +801,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         snprintfScramblesList(enabled, SMALLBUF, plugin_pool->enabledScrambles());
         snprintfScramblesList(choosable, SMALLBUF, pkt.choosableScramble);
 
-        LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]", 
+        LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]",
                    pkt.SjPacketId, enabled, choosable);
     }
 
@@ -905,7 +905,7 @@ void TCPTrack::handleYoungPackets(void)
 
         default:
 
-            RUNTIME_EXCEPTION("fATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
+            RUNTIME_EXCEPTION("FATAL CODE [CYN1C]: please send a notification to the developers (%u)", pkt->source);
         }
     }
 }
@@ -951,7 +951,7 @@ void TCPTrack::handleHackPackets(void)
     for (p_queue.select(HACK); ((pkt = p_queue.getSource(TUNNEL)) != NULL);)
     {
         if (!lastPktFix(*pkt))
-            RUNTIME_EXCEPTION("fATAL CODE [M4CH3T3]: please send a notification to the developers");
+            RUNTIME_EXCEPTION("FATAL CODE [M4CH3T3]: please send a notification to the developers");
 
         if (injectHack(*pkt))
         {
@@ -1081,7 +1081,3 @@ bypass_queue_analysis:
     execTTLBruteforces();
 }
 
-bool TCPTrack::isQueueFull(void)
-{
-    return p_queue.size() > TCPTRACK_QUEUE_MAX_LEN;
-}

@@ -49,6 +49,7 @@
                                          (http://freeworld.thc.org/root/phun/unmaintain.html)*/
 #define DEFAULT_GO_FOREGROUND   false
 #define DEFAULT_FORCE_RESTART   false
+#define DEFAULT_ONLYPLUGIN      ""
 #define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_MAX_TTLPROBE    35
 
@@ -101,8 +102,10 @@
   and a max value of 15(60bytes)  and so tcp data offset.
   So the difference between   min and max is 8(40bytes).
  */
-#define MTU                     1500
-#define MTU_FAKE                1420
+
+#define TUN_IF_NAME            "sniffjoke"
+#define NET_IF_MTU              1500
+#define TUN_IF_MTU_DIFF         80
 
 #define PORTSNUMBER             65536
 
@@ -176,7 +179,7 @@
 /* the last code + 1 */
 #define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)
 
-#define TCPTRACK_QUEUE_MAX_LEN                  1024
+#define NETIOBURSTSIZE                          10      /* 10 CYCLES OF I/O (10 in + 10 out pkts max) */
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
 #define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
 #define SESSIONTRACK_EXPIRYTIME                 200     /* access expire time in seconds (5 MINUTES) */

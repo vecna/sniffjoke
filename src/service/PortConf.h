@@ -26,7 +26,8 @@
 
 #include "Utils.h"
 
-struct mapTheKeys {
+struct mapTheKeys
+{
     uint16_t value;
     const char *keyword;
 };

@@ -37,6 +37,25 @@ runtime_error runtime_exception(const char* func, const char* file, uint32_t lin
     return std::runtime_error(stream.str());
 }
 
+string execOSCmd(string cmd)
+{
+
+    string data;
+    char buffer[4096];
+
+    cmd.append("| tr -d '\n'");
+
+    FILE *stream = popen(cmd.c_str(), "r");
+    while (fgets(buffer, sizeof (buffer), stream) != NULL)
+    {
+        data.append(buffer);
+    }
+
+    pclose(stream);
+
+    return data;
+}
+
 void init_random()
 {
     /* random pool initialization */

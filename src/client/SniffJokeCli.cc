@@ -294,17 +294,29 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
             memcpy(&charvar, pointed_data, singleData->len);
             printf("gateway IP address:\t%s\n", charvar);
             break;
-        case STAT_IFACE:
+        case STAT_NETIFACENAME:
             memcpy(&charvar, pointed_data, singleData->len);
             printf("hijacked interface:\t%s\n", charvar);
             break;
-        case STAT_LOIP:
+        case STAT_NETIFACEIP:
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("Sj's tunnel IP address:\t%s\n", charvar);
+            printf("hijacked interface ip:\t%s\n", charvar);
             break;
-        case STAT_TUNN:
+        case STAT_NETIFACEMTU:
             memcpy(&intvar, pointed_data, singleData->len);
-            printf("tunnel iface number:\t%d\n", intvar);
+            printf("hijacket interface mtu:\t%d\n", intvar);
+            break;
+        case STAT_TUNIFACENAME:
+            memcpy(&charvar, pointed_data, singleData->len);
+            printf("tunnel interface:\t%s\n", charvar);
+            break;
+        case STAT_TUNIFACEIP:
+            memcpy(&charvar, pointed_data, singleData->len);
+            printf("tunnel interface ip:\t%s\n", charvar);
+            break;
+        case STAT_TUNIFACEMTU:
+            memcpy(&intvar, pointed_data, singleData->len);
+            printf("tunnel interface mtu:\t%d\n", intvar);
             break;
         case STAT_DEBUGL:
             memcpy(&intvar, pointed_data, singleData->len);
@@ -394,7 +406,7 @@ bool SniffJokeCli::printSJTTL(const uint8_t *received, uint32_t rcvdlen)
 
     while (i < rcvdlen)
     {
-       tr = (struct ttl_record *) &received[i];
+        tr = (struct ttl_record *) &received[i];
 
         tm = localtime(&tr->access);
         strftime(access, SMALLBUF, "%d %H:%M:%S", tm);

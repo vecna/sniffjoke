@@ -140,7 +140,7 @@ OptionPool::OptionPool()
 
         fclose(optInput);
 
-        LOG_DEBUG("options configuration loaded correctly from %s: %d defs", FILE_IPTCPOPT_CONF, SUPPORTED_OPTIONS);
+        LOG_DEBUG("options configuration loaded correctly from %s: %u defs", FILE_IPTCPOPT_CONF, SUPPORTED_OPTIONS);
     }
     else
     {
@@ -163,10 +163,16 @@ void OptionPool::disableAllOptions(void)
     LOG_VERBOSE("%d options implementation was 'enabled', now all %d has been disabled", enabledcnt, pool.size());
 }
 
+OptionPool::~OptionPool()
+{
+    for (vector<IPTCPopt *>::iterator it = pool.begin(); it != pool.end(); it = pool.erase(it))
+        delete *it;
+}
+
 IPTCPopt *OptionPool::get(uint32_t sjOptIndex)
 {
-    if(sjOptIndex >= SUPPORTED_OPTIONS)
-        RUNTIME_EXCEPTION("Invalid index request: %d on %d available", sjOptIndex, SUPPORTED_OPTIONS);
+    if (sjOptIndex >= SUPPORTED_OPTIONS)
+        RUNTIME_EXCEPTION("Invalid index request: %u on %u available", sjOptIndex, SUPPORTED_OPTIONS);
 
     return pool[sjOptIndex];
 }

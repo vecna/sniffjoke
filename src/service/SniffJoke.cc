@@ -113,7 +113,7 @@ void SniffJoke::run(void)
     userconf->networkSetup();
 
     /* the code flow reach here, SniffJoke is ready to instance network environment */
-    mitm = auto_ptr<NetIO > (new NetIO(userconf->runcfg));
+    mitm = auto_ptr<NetIO > (new NetIO);
 
     /* sigtrap handler mapped the same in both Sj processes */
     proc->sigtrapSetup(sigtrap);
@@ -270,7 +270,7 @@ void SniffJoke::setupAdminSocket(void)
     if (bind(tmp, (struct sockaddr *) &in_service, sizeof (in_service)) == -1)
     {
         close(tmp);
-        RUNTIME_EXCEPTION("unable to bind UDP socket %s:%d: %s",
+        RUNTIME_EXCEPTION("unable to bind UDP socket %s:%u: %s",
                           userconf->runcfg.admin_address, ntohs(in_service.sin_port), strerror(errno));
     }
 
@@ -345,7 +345,7 @@ void SniffJoke::handleAdminSocket(void)
     /* delayed execution of requested commands (only debug level change ATM) */
     if (debug.debuglevel != userconf->runcfg.debug_level)
     {
-        LOG_ALL("changing log level since %d to %d\n", debug.debuglevel, userconf->runcfg.debug_level);
+        LOG_ALL("changing log level since %u to %u\n", debug.debuglevel, userconf->runcfg.debug_level);
         debug.debuglevel = userconf->runcfg.debug_level;
 
         if (!debug.resetLevel())
@@ -421,7 +421,7 @@ uint8_t * SniffJoke::handleCmd(const char *cmd)
         LOG_ALL("invalid command received");
     }
 
-    LOG_ALL("handled command (%s): answer %d bytes length", cmd, *psize);
+    LOG_ALL("handled command (%s): answer %u bytes length", cmd, *psize);
     return io_buf;
 
 handle_error:
@@ -535,7 +535,7 @@ void SniffJoke::handleCmdDebuglevel(uint8_t newdebuglevel)
 {
     if (newdebuglevel > TESTING_LEVEL)
     {
-        LOG_ALL("requested debuglevel %d invalid (>= %d <= %d permitted)",
+        LOG_ALL("requested debuglevel %u invalid (>= %u <= %u permitted)",
                 newdebuglevel, SUPPRESS_LEVEL, TESTING_LEVEL);
     }
     else
@@ -594,9 +594,11 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf->runcfg.debug_level), userconf->runcfg.debug_level);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf->runcfg.gw_mac_str), userconf->runcfg.gw_mac_str);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf->runcfg.gw_ip_addr), userconf->runcfg.gw_ip_addr);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_IFACE, strlen(userconf->runcfg.interface), userconf->runcfg.interface);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOIP, strlen(userconf->runcfg.local_ip_addr), userconf->runcfg.local_ip_addr);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNN, sizeof (uint16_t), (uint16_t) userconf->runcfg.tun_number);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACENAME, strlen(userconf->runcfg.net_iface_name), userconf->runcfg.net_iface_name);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACEIP, strlen(userconf->runcfg.net_iface_ip), userconf->runcfg.net_iface_ip);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACEMTU, sizeof (userconf->runcfg.net_iface_mtu), userconf->runcfg.net_iface_mtu);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACENAME, strlen(TUN_IF_NAME), TUN_IF_NAME);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACEMTU, sizeof (userconf->runcfg.tun_iface_mtu), userconf->runcfg.tun_iface_mtu);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf->runcfg.onlyplugin), userconf->runcfg.onlyplugin);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf->runcfg.admin_address), userconf->runcfg.admin_address);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf->runcfg.admin_port), userconf->runcfg.admin_port);
@@ -629,7 +631,7 @@ void SniffJoke::writeSJTTLmap(uint8_t type)
     {
         if (accumulen > sizeof (io_buf) - sizeof (struct ttl_record))
         {
-            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof (io_buf));
+            LOG_ALL("overflow trapped! io_buf %u bytes are not enought!", sizeof (io_buf));
             break;
         }
 
@@ -654,7 +656,7 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
     {
         if (accumulen > sizeof (io_buf) - sizeof (struct sex_record))
         {
-            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof (io_buf));
+            LOG_ALL("overflow trapped! io_buf %u bytes are not enought!", sizeof (io_buf));
             break;
         }
 
