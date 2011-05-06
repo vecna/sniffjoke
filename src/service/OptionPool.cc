@@ -128,8 +128,9 @@ OptionPool::OptionPool()
 }
 
 OptionPool::~OptionPool()
-{
-    /* TO BE COMPLETED */
+{;
+    for (vector<IPTCPopt *>::iterator it = pool.begin(); it != pool.end(); it = pool.erase(it))
+        delete *it;
 }
 
 IPTCPopt *OptionPool::get(uint32_t sjOptIndex)

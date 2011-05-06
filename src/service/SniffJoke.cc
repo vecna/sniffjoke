@@ -612,7 +612,7 @@ void SniffJoke::writeSJTTLmap(uint8_t type)
     {
         if (accumulen > sizeof (io_buf) - sizeof (struct ttl_record))
         {
-            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof (io_buf));
+            LOG_ALL("overflow trapped! io_buf %u bytes are not enought!", sizeof (io_buf));
             break;
         }
 
@@ -637,7 +637,7 @@ void SniffJoke::writeSJInfoDump(uint8_t type)
     {
         if (accumulen > sizeof (io_buf) - sizeof (struct sex_record))
         {
-            LOG_ALL("overflow trapped! io_buf %d bytes are not enought!", sizeof (io_buf));
+            LOG_ALL("overflow trapped! io_buf %u bytes are not enought!", sizeof (io_buf));
             break;
         }
 

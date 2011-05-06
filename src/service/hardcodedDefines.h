@@ -49,6 +49,7 @@
                                          (http://freeworld.thc.org/root/phun/unmaintain.html)*/
 #define DEFAULT_GO_FOREGROUND   false
 #define DEFAULT_FORCE_RESTART   false
+#define DEFAULT_ONLYPLUGIN      ""
 #define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_MAX_TTLPROBE    35
 

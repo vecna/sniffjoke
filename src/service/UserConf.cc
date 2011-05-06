@@ -289,7 +289,7 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     const char *debugfmt = NULL;
 
     /* command line priority always */
-    if (cmdopt != NULL && (difolt == NULL ? true : strncmp(cmdopt, difolt, strlen(cmdopt))))
+    if (cmdopt != NULL && strncmp(cmdopt, difolt, strlen(cmdopt)))
     {
         debugfmt = "%s/string: option %s read from command line: [%s]";
         strncpy(dst, cmdopt, MEDIUMBUF);
@@ -301,8 +301,8 @@ void UserConf::parseMatch(char *dst, const char *name, FILE *cf, const char *cmd
     }
     else
     {
-        strncpy(dst, difolt, strlen(difolt));
         debugfmt = "string: not found %s option in conf file, using default: [%s]";
+        strncpy(dst, difolt, strlen(difolt));
     }
 
     LOG_DEBUG(debugfmt, name, dst);
@@ -384,7 +384,7 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runcfg.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
     parseMatch(runcfg.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, DEFAULT_GO_FOREGROUND);
     parseMatch(runcfg.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
-    parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, NULL);
+    parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, "");
     parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 
     /* loading of IP lists, in future also the source IP address should be useful */

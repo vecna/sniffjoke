@@ -116,7 +116,7 @@ PluginPool::~PluginPool(void)
     LOG_DEBUG("");
 
     /* call the distructor loaded from the plugins */
-    for (vector<PluginTrack *>::iterator it = pool.begin(); it != pool.end(); ++it)
+    for (vector<PluginTrack *>::iterator it = pool.begin(); it != pool.end(); it = pool.erase(it))
     {
         const PluginTrack *plugin = *it;
 
