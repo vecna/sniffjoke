@@ -109,7 +109,7 @@ void SniffJoke::run(void)
         proc->background();
     }
 
-    /* we run the network setup before the background, to keep the software output visible on the console */
+    /* networkSetup read the config, the system and setup the local mitm */
     userconf->networkSetup();
 
     /* the code flow reach here, SniffJoke is ready to instance network environment */
@@ -198,7 +198,7 @@ void SniffJoke::setupDebug(void)
     debug.debuglevel = userconf->runcfg.debug_level;
     if (!opts.go_foreground)
     {
-        LOG_VERBOSE("the starting process is going to close the foreground logging. from now on logfiles will be used instead.");
+        LOG_VERBOSE("the starting process is going to CLOSE the FOREGROUND LOGGING. from now the logfiles will be used instead.");
 
         debug.setLogstream(FILE_LOG);
         debug.setSessionLogstream(FILE_LOG_SESSION);
