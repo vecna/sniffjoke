@@ -77,5 +77,26 @@ int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 #define RUNTIME_EXCEPTION(...) throw runtime_exception(__func__, __FILE__, __LINE__, __VA_ARGS__)
 
+/* 
+ * this struct is the SniffJoke executing environment, it contains pointer to 
+ * the main singleton instanced classess, and an sjEnviron is used for share
+ * these pointer with the external loaded plugin.
+ *
+ * Is declared here, as void *, to (a)void: ‘BlahBlah’ was not declared in this scope
+ */
+struct sjEnviron
+{
+    /* therse three is declared as private in SniffJoke class */
+    void * instanced_proc;
+    void * instanced_mitm;
+    void * instanced_ct;
+
+    /* those five are global in the software */
+    void * instanced_ucfg;
+    void * instanced_ttl;
+    void * instanced_sex;
+    void * instanced_itopts;
+    void * instanced_plugins;
+};
 
 #endif /* SJ_UTILS_H */

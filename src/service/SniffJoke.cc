@@ -163,6 +163,12 @@ void SniffJoke::run(void)
 
         mitm->prepareConntrack(conntrack.get());
 
+        /* merge all auto_ptr instanced in a struct */
+        createSjEnvironment();
+
+        /* use this struct, and the data collected in PluginPool, to initialize all the plugins */
+        plugin_pool->initializeAll(&autoptrList);
+
         setupAdminSocket();
 
         /* main block */
@@ -282,6 +288,19 @@ void SniffJoke::setupAdminSocket(void)
     }
 
     admin_socket = tmp;
+}
+
+void SniffJoke::createSjEnvironment(void)
+{
+    autoptrList.instanced_proc = reinterpret_cast<void *>(proc.get());
+    autoptrList.instanced_mitm = reinterpret_cast<void *>(mitm.get());
+    autoptrList.instanced_ct = reinterpret_cast<void *>(conntrack.get());
+
+    autoptrList.instanced_ucfg = reinterpret_cast<void *>(userconf.get());
+    autoptrList.instanced_ttl = reinterpret_cast<void *>(ttlfocus_map.get());
+    autoptrList.instanced_sex = reinterpret_cast<void *>(sessiontrack_map.get());
+    autoptrList.instanced_itopts = reinterpret_cast<void *>(opt_pool.get());
+    autoptrList.instanced_plugins = reinterpret_cast<void *>(plugin_pool.get());
 }
 
 void SniffJoke::handleAdminSocket(void)

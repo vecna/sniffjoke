@@ -585,14 +585,14 @@ void Packet::selflog(const char *func, const char *format, ...) const
                    protoinfo,
                    ip->ttl, loginfo);
 #else   /* I'm looking for a better debug, but I'm keeping the previous logline for an easy fallback */
-        LOG_PACKET("%s: i%u %s|%s %s->%s [%s] ttl:%u %s",
+        LOG_PACKET("%s: i%u %s/%s %s->%s [%s] ttl:%u %s",
                    func, SjPacketId, sourcestr, wtfstr,
                    saddr, daddr, protoinfo, ip->ttl, loginfo);
 #endif
     }
     else
     {
-        LOG_PACKET("%s: i%u %s|%s|%s %s->%s FRAGMENT:%u ttl:%u %s",
+        LOG_PACKET("%s: i%u %s/%s/%s %s->%s FRAGMENT:%u ttl:%u %s",
                    func, SjPacketId,
                    sourcestr, wtfstr, chainstr,
                    saddr, daddr,

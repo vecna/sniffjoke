@@ -457,8 +457,9 @@ bool TCPTrack::notifyIncoming(Packet &origpkt)
                 continue;
 
 #ifdef ENABLE_INCOMING_DEBUG
-            injpkt.SELFLOG("%s: generated packet, the original will be %s",
-                           pt->selfObj->pluginName, pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+            injpkt.SELFLOG("%s: generated packet, the original (i%u) will be %s",
+                           pt->selfObj->pluginName, origpkt.SjPacketId,
+                           pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 #endif
 
             /* injpkt.position is ignored in this section because mangleIncoming
@@ -585,8 +586,9 @@ bool TCPTrack::injectHack(Packet &origpkt)
 
             packet_filter.add(injpkt);
 
-            injpkt.SELFLOG("NEW packet from [%s], the original will be %s",
-                           pt->selfObj->pluginName, pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
+            injpkt.SELFLOG("NEW packet from [%s], the original (i%u) will be %s",
+                           pt->selfObj->pluginName, origpkt.SjPacketId,
+                           pt->selfObj->removeOrigPkt ? "REMOVED" : "KEPT");
 
             switch (injpkt.position)
             {

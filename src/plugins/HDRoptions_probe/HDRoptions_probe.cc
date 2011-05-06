@@ -24,8 +24,6 @@
 #include "service/OptionPool.h"
 #include "service/HDRoptions.h"
 
-extern auto_ptr<OptionPool> opt_pool;
-
 class HDRoptions_probe : public Plugin
 {
 #define PLUGIN_NAME       "HDRoptions_probe"
@@ -37,8 +35,9 @@ private:
     uint8_t sjOptIndex;
     pluginLogHandler *pLH;
     IPTCPopt *underTestOpt;
+    corruption_t CorruptionSet;
 
-    void applyTestedOption(Packet &target)
+    void applyTestedOption(Packet &target, bool corrupt)
     {
         TTLFocus dummy(target);
 
@@ -46,12 +45,12 @@ private:
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, target, dummy);
             /* true corrupt, true strip previous */
-            IPInjector.injectSingleOpt(true, true, sjOptIndex );
+            IPInjector.injectSingleOpt(corrupt, true, sjOptIndex );
         }
         else /* IPPROTO_TCP */
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, target, dummy);
-            TCPInjector.injectSingleOpt(true, true, sjOptIndex );
+            TCPInjector.injectSingleOpt(corrupt, true, sjOptIndex );
         }
     }
 
@@ -65,47 +64,70 @@ public:
 
     /* init is called with pluginName,SCRAMBLE+option,
      * the option in this case is  */
-    virtual bool init(uint8_t configuredScramble, const char *pluginOption)
+    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
-        bool retval = true;
+        OptionPool *optPool = reinterpret_cast<OptionPool *>(sjE->instanced_itopts);
 
         pLH = new pluginLogHandler(PLUGIN_NAME, LOGNAME);
 
-        if(pluginOption == NULL)
+        if(pluginOption == NULL || strlen(pluginOption) == 1)
         {
             LOG_ALL("fatal: required $PLUGNAME,$SCRAMBLE+$OPTINDEX to be used: refer in the sniffjoke-iptcpoption script");
-            retval = false;
+            return false;
         }
 
-        sjOptIndex = atoi(pluginOption);
+        CorruptionSet = CORRUPTUNASSIGNED;
 
-        if(retval && sjOptIndex < SUPPORTED_OPTIONS)
+        if(pluginOption[strlen(pluginOption) -1] == 'A')
+            CorruptionSet = NOT_CORRUPT;
+        if(pluginOption[strlen(pluginOption) -1] == 'B')
+            CorruptionSet = ONESHOT;
+        if(pluginOption[strlen(pluginOption) -1] == 'C')
+            CorruptionSet = TWOSHOT;
+
+        if(CorruptionSet == CORRUPTUNASSIGNED)
         {
-            underTestOpt = opt_pool->get(sjOptIndex);
-
-            /* we need to test ONESHOT and TWOSHOT, simply */
-            underTestOpt->optionConfigure(ONESHOT);
-
-            pLH->completeLog("Option index [%d] point to %s (opcode %d) and opt string [%s]", 
-                             sjOptIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption);
-
-            if(!underTestOpt->enabled)
-            {
-                LOG_ALL("this options is not ENABLED!! error raised");
-                retval = false;
-            }
-
-            LOG_ALL("Loading HDRoptions_probe with hardcoded INNOCENT scramble and option under test %d", 
-                    configuredScramble, sjOptIndex);
+            LOG_ALL("fatal: invalid usage of corruption selector - by hand usage is not suggested nor welcomed!");
+            return false;
         }
-        else
+
+        char *getIndex = strdup(pluginOption);
+        getIndex[strlen(getIndex) -1] = 0x00;
+        sjOptIndex = atoi(getIndex);
+        free(getIndex);
+
+        if(sjOptIndex >= SUPPORTED_OPTIONS)
         {
-            retval = false;
-            pLH->completeLog("invald option index used as argument: required >= 0 && < %d", SUPPORTED_OPTIONS);
+            LOG_ALL("fatal: invalid 'option index' passed as arg: required >= 0 && < %d", SUPPORTED_OPTIONS);
+            pLH->completeLog("fatal: invald 'option index' passed as arg: required >= 0 && < %d", SUPPORTED_OPTIONS);
+            return false;
         }
 
-        LOG_DEBUG("initialization of plugins %s: %s", __FILE__, retval ? "OK" : "failure");
-        return retval;
+        underTestOpt = optPool->get(sjOptIndex);
+
+        if(underTestOpt->enabled == false)
+        {
+            LOG_ALL("fatal: option index %d accepted [%s] implementation disabled", sjOptIndex, underTestOpt->sjOptName);
+            pLH->completeLog("fatal: 'option index' %d accepted [%s]: implementation disabled", 
+                             sjOptIndex, underTestOpt->sjOptName);
+            return false;
+        }
+
+        /* as first, the field "enable" is set to false */
+        optPool->disableAllOptions();
+        underTestOpt->enabled = true;
+
+        /* we need to test NOT_CORRUPT, ONESHOT and TWOSHOT, this function
+         * enable the single function, if disabled */
+        underTestOpt->optionConfigure(CorruptionSet);
+
+        pLH->completeLog("Option index [%d] point to %s (opcode %d) and opt string [%s]", 
+                         sjOptIndex, underTestOpt->sjOptName, underTestOpt->optValue, pluginOption);
+
+        LOG_ALL("Loading HDRoptions_probe enabling only option [%s] index [%d] corruption %d",
+                pluginOption, sjOptIndex, CorruptionSet);
+
+        return true;
     }
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
@@ -116,6 +138,15 @@ public:
         return (origpkt.fragment == false && origpkt.proto == TCP && 
                 /* our the is apply only in the sniffjoke-autotest packet containing the numbers */
                     origpkt.tcppayloadlen > MIN_TESTED_LEN);
+
+        /** * 
+         * remind: by hand testing:
+       
+        for x in `seq 1 2000`; do echo -n "$x" >> /tmp/sparedata; done 
+        cat /tmp/sparedata | sed -es/6/111/g > /tmp/send
+        curl -s --retry 0 --max-time 10 -d "sparedata=`cat /tmp/send`" -o /tmp/recv http://www.delirandom.net/sniffjoke_autotest/post_echo.php
+
+         ** */
     }
 
     virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
@@ -126,16 +157,17 @@ public:
 
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
-
-        /* the option will belive to corrupt the packet */
-        applyTestedOption(*pkt);
-
-        pkt->wtf = INNOCENT;
         pkt->choosableScramble = SCRAMBLE_INNOCENT;
+        pkt->wtf = INNOCENT;
+
+        applyTestedOption(*pkt, CorruptionSet == NOT_CORRUPT ? false : true);
 
         removeOrigPkt = true;
 
-        LOG_PACKET("this packet with injected opt %s", underTestOpt->sjOptName);
+        LOG_PACKET("new Packet injected with opt %s beliving to %s, source pktId i%u", 
+                   underTestOpt->sjOptName, 
+                   CorruptionSet == NOT_CORRUPT ? "NOT CORRUPT": "CORRUPT",
+                   origpkt.SjPacketId);
 
         upgradeChainFlag(pkt);
         pktVector.push_back(pkt);
