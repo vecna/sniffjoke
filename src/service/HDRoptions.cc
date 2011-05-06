@@ -77,7 +77,7 @@ corruptDone(false)
         protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
         protD.EOL_code = IPOPT_END;
-        protD.hdrAddr = (uint8_t *)(pkt.ip);
+        protD.hdrAddr = (uint8_t *) (pkt.ip);
         protD.hdrLen = (uint8_t*) & pkt.iphdrlen;
         protD.hdrMinLen = sizeof (struct iphdr);
         protD.optsMaxLen = MAXIPOPTIONS;
@@ -105,7 +105,7 @@ corruptDone(false)
         protD.lastOptIndex = LAST_TCPOPT;
         protD.NOP_code = TCPOPT_NOP;
         protD.EOL_code = TCPOPT_EOL;
-        protD.hdrAddr = (uint8_t*)(pkt.tcp);
+        protD.hdrAddr = (uint8_t*) (pkt.tcp);
         protD.hdrLen = (uint8_t*) & pkt.tcphdrlen;
         protD.hdrMinLen = sizeof (struct tcphdr);
         protD.optsMaxLen = MAXTCPOPTIONS;
@@ -295,7 +295,7 @@ void HDRoptions::completeHdrEdit(void)
     ((pkt).*(protD.hdrResize))(protD.hdrMinLen + oD.actual_opts_len);
     copyOpthdr();
 
-    LOG_PACKET("*- resize %shdr to contain %d options len", protD.protoName, oD.actual_opts_len);
+    LOG_PACKET("*- resize %shdr to contain %u options len", protD.protoName, oD.actual_opts_len);
 }
 
 void HDRoptions::injector(uint8_t sjOptIndex)
@@ -344,7 +344,8 @@ bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t sjOp
                protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
                corruptRequest ? "CORRUPT" : "NOT CORRUPT");
 
-    injector(sjOptIndex);
+    if (prepareInjection(corrupt, strip_previous))
+        injector(sjOptIndex);
 
     if (!isGoalAchieved())
         return false;
