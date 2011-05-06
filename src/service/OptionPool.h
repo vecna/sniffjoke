@@ -52,6 +52,9 @@ public:
      * in hijacking time the constructor is called without any args */
 
     corruption_t lineParser(FILE *, uint32_t);
+    const char *corruptionPrinter(corruption_t);
+
+    void disableAllOptions(void);
 };
 
 #endif /* SJ_OPTIONPOOL_H */

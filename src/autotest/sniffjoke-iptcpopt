@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 shopt -s expand_aliases
 alias echo="echo -e"
@@ -12,7 +12,7 @@ white="\e[1;39m"
 
 #default values
 LOCATION=
-WORKPATH=
+GENERIC=
 REPN=1
 
 usage()
@@ -32,120 +32,114 @@ by hand this script should accept these argument:
 OPTIONS:
    -h      show this message
    -l      location name                                       (required)
-   -d      path of 'generic/' location, acting as default      (required)
    -u      testing URL                                         (required)
+   -g      'generic/' path                                     (required)
    
 EOF
 }
 
-dump_options_file() {
-SUPPORTED_OPTIONS_N=`seq 0 18`
-for opt in $SUPPORTED_OPTIONS_N; do echo "HDRoptions_probe,INNOCENT+$opt" >> $OPTIONSLIST; done
-}
+dump_options_file() 
+{
+# the options between the 12 and the 18 are not implemented at the moment
+# the option 3 is not implemented too
+# check the static implementation linked in OptionPool::OptionPool()
+SUPPORTED_OPTIONS_N=`seq 0 11`
+for opt in $SUPPORTED_OPTIONS_N; do 
+    if [ $opt == "3" ]; then
+        continue;
+    fi
 
-routing_table_log() {
-    route -n > $WORKDIR/route-n-$1.log
+    echo "HDRoptions_probe,INNOCENT+"$opt"A" >> $OPTIONSLIST; 
+    echo "HDRoptions_probe,INNOCENT+"$opt"B" >> $OPTIONSLIST; 
+    echo "HDRoptions_probe,INNOCENT+"$opt"C" >> $OPTIONSLIST; 
+done
 }
 
 start_test() {
-    if [[ $PLUGIN =~ ([a-z_]+),([A-Z0-9\+]+) ]]; then
+    if [[ $PLUGIN =~ ([a-Z_]+),([a-Z]+)\+([A-Z0-9]+) ]]; then
         PNAME=${BASH_REMATCH[1]}
-        SCRAMBLE=${BASH_REMATCH[2]}
-        TESTID=$PNAME/$SCRAMBLE
+        TESTEDOPT=${BASH_REMATCH[3]}
+        WORKDIR=$PNAME/$TESTEDOPT
     fi
-    mkdir -p $TESTID
+    mkdir -p $WORKDIR
+    cp -r $GENERIC "$TEMPDIR/$LOCATION/$WORKDIR"
     echo "${green}* COMBINATION OF TESTS (${yellow}$PLUGNDX/$OPTION_SEQUENCE${green})"
     echo "${blue}Plugin Name\t${yellow}\t[$PNAME]"
-    echo "${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
-    echo "${blue}TestID\t\t${yellow}\t[$TESTID]"
-    echo "${blue}Test directory\t${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
+    echo "${blue}Tested Option\t${yellow}\t[$TESTEDOPT]"
+    echo "${blue}Test directory\t${yellow}\t[$TEMPDIR/$LOCATION/$WORKDIR]${white}"
     # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
-    for i in `seq 1 $REPN`;
-    do
-        WORKDIR=$TESTID/replica-${i}
-        mkdir -p $TESTID/replica-${i}
 
-        # WARNING: read the other WARNING in this file,,, :(
-        cp $WORKPATH/generic/iptcp-options.conf $TESTID/replica-${i}
-        echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
-        chmod -R o+rw $WORKDIR
+    echo $SERVER_IP > "$TEMPDIR/$LOCATION/$WORKDIR/ipwhitelist.conf"
+    chmod -R o+rw $WORKDIR
 
-        echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
-        echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
-        echo "sniffjoke --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
+    echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
+    echo "sniffjoke --debug 6 --start --dir $TEMPDIR/$LOCATION/$WORKDIR --only-plugin $PLUGIN --no-udp --whitelist"
 
-        routing_table_log "before"
-        $SNIFFJOKEBIN --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
-        sleep 2
-        routing_table_log "after"
+    $SNIFFJOKEBIN --debug 6 --start --dir $TEMPDIR/$LOCATION/$WORKDIR --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
+    sleep 2
 
-        $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
-        if [ "$?" -eq 0 ]; then
-            echo "${green}sniffjoke is correctly running${white}"
-        else
-            echo "${red}sniffjoke is not running - fatal error - remove $TEMPDIR/$LOCATION by hand${white}"
-            exit
-        fi
+    $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
+    if [ "$?" -eq 0 ]; then
+        echo "${green}sniffjoke is correctly running${white}"
+    else
+        echo "${red}sniffjoke is not running - fatal error - remove $TEMPDIR/$LOCATION by hand${white}"
+        exit
+    fi
 
-        INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface" | cut -b 21-`
-        if [ -n "$INTERFACE" ]; then
-            echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
-        else
-            echo "${red}Unable to detect hijacked interface by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
-            exit
-        fi
+    INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface" | cut -b 21-`
+    if [ -n "$INTERFACE" ]; then
+        echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+    else
+        echo "${red}Unable to detect hijacked interface by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
+        exit
+    fi
 
-        echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
-        tcpdump -i $INTERFACE -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
-        sleep 1
-        echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
-        curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >$WORKDIR/output.curl 2>&1
-        $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
-        $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
-        $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
-        if [ "$?" -eq 0 ]; then
-            echo "${green}sniffjoke correctly closed${white}"
-        else
-            echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $TEMPDIR/$LOCATION by hand${white}"
-            exit
-        fi
+    echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
+    tcpdump -i $INTERFACE -w $WORKDIR/$TESTEDOPTi.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
+    sleep 1
+    echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
+    curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >$WORKDIR/output.curl 2>&1
+    $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
+    $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
+    $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
+    if [ "$?" -eq 0 ]; then
+        echo "${green}sniffjoke correctly closed${white}"
+    else
+        echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $TEMPDIR/$LOCATION by hand${white}"
+        exit
+    fi
 
-        sleep 1
-        killall -TERM tcpdump
-    done;
+    sleep 1
+    killall -TERM tcpdump
 
-    echo 0 > $TESTID/passed_count
-    for i in `seq 1 $REPN`;
-    do
-        WORKDIR=$TESTID/replica-${i}
-        if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; then
-            CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED" | cut -b -32`
-        else
-            CHECKSUM="{unexistent-output-file}"
-        fi
+    echo 0 > $TESTEDOPT/passed_count
+    if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; then
+        CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED" | cut -b -32`
+    else
+        CHECKSUM="{unexistent-output-file}"
+    fi
 
-        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> plugins-collected-feedback
-        if [ $VERIFYSUM != $CHECKSUM ];
-        then
-            # the failed_hacks and the working_hacks are generated and treated in the same style
-            # the follow are useful infos for debug
-            echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE replica $i" >> $TESTID/failed_info
-        else
-            echo $i > $TESTID/passed_count
-        fi
-    done
+    echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTEDOPT" >> options-collected-feedback
+    if [ $VERIFYSUM != $CHECKSUM ];
+    then
+        # the failed_hacks and the working_hacks are generated and treated in the same style
+        # the follow are useful infos for debug
+        echo "$VERIFYSUM vs $CHECKSUM from $ " >> $TESTEDOPT/failed_info
+    else
+        echo "OK" > $TESTEDOPT/passed_count
+    fi
 
-    if [ `cat $TESTID/passed_count` -eq $REPN ];
+    if [ `cat $TESTEDOPT/passed_count` -eq $REPN ];
     then
         echo $SCRAMBLE >> $PNAME/working_scrambles
-        echo "${yellow}* FINISHED TEST $TESTID: ${green}TEST PASSED${white}\n"
+        echo "${yellow}* FINISHED TEST $TESTEDOPT: ${green}TEST PASSED${white}\n"
     else
         echo $SCRAMBLE >> $PNAME/failed_scrambles
-        echo "${yellow}* FINISHED TEST $TESTID: ${red}TEST FAILED${white}\n"
+        echo "${yellow}* FINISHED TEST $TESTEDOPT: ${red}TEST FAILED${white}\n"
     fi
 }
 
-while getopts “hl:d:u:” OPTION
+while getopts “hl:g:u:” OPTION
 do
      case $OPTION in
          h)
@@ -155,11 +149,11 @@ do
          l)
              LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
-         d)
-             WORKPATH=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
-             ;;
-         U)
+         u)
              SERVER=$OPTARG
+             ;;
+         g)
+             GENERIC=$OPTARG
              ;;
          ?)
              usage
@@ -198,38 +192,6 @@ fi
 if [ -z $LOCATION ]; then
     usage
     exit;
-fi
-
-if [ -z $WORKPATH ]; then
-    usage
-    exit;
-fi
-
-if [ ! -d $WORKPATH ]; then
-    usage
-    echo "\n${red}"
-    echo "option \"-d\" wrong argument: no such directory exist"
-    echo "${white}"
-    exit;
-fi
-
-if [ ! -d $WORKPATH/generic ]; then
-    usage
-    echo "\n${red}"
-    echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
-    echo "sniffjoke-iptcpopt create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
-    echo "${white}"
-    exit;
-fi
-
-if [ -d $WORKPATH/$LOCATION ]; then
-    usage
-    echo "\n${red}"
-    echo "- error: $WORKPATH/$LOCATION directory already present, remove by hand"
-    echo "${white}"
-    exit;
-else
-    mkdir $WORKPATH/$LOCATION
 fi
 
 if [ -d $TEMPDIR/$LOCATION ]; then
@@ -309,18 +271,14 @@ echo "${yellow}FINISHED!\n"
 echo " ${red} $failure_count combinations of hack+scramble have not worked"
 echo " ${green} $success_count combinations of hack+scramble have worked correctly${white}"
 
-chmod 444 plugins-enabled.conf
-mkdir -p $WORKPATH/$LOCATION
-cp $WORKPATH/generic/port-aggressivity.conf $WORKPATH/$LOCATION
-cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
-# WARNING: when HDRoptions_probe is finished, will be started before this script and 
-#          generate a location specific iptcp-options.conf file, NOW are used this 
-#          generic file but will cause a bad analyis about the "malformed" scramble
-cp $WORKPATH/generic/iptcp-options.conf $WORKPATH/$LOCATION
-cp plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
+echo "create iptcpopt-config.conf"
+###################
+exit
+###################
 
-echo "\n${yellow}* sniffjoke-autotest has  a conf file /$TEMPDIR/$LOCATION/plugins_enabled.conf"
-echo "* that conf has been copyed in $WORKPATH/$LOCATION with the other default configuration file."
+
+
+echo "\n${yellow}* sniffjoke-autotest has generated conf file iptcpopt-config.conf"
 echo "* for custom configuration this config file can be text edited."
 echo "* now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION${white}"
 

@@ -77,7 +77,7 @@ corruptDone(false)
         protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
         protD.EOL_code = IPOPT_END;
-        protD.hdrAddr = (void **)&(pkt.ip);
+        protD.hdrAddr = (void **)(&pkt.ip);
         protD.hdrLen = (uint8_t *)&pkt.iphdrlen;
         protD.hdrMinLen = sizeof (struct iphdr);
         protD.optsMaxLen = MAXIPOPTIONS;
@@ -182,7 +182,8 @@ bool HDRoptions::evaluateInjectCoherence(uint8_t sjOptIndex)
 
     /*
      * 1st global check: can we use this option ?
-     * at the time a global enabled variable is used to permit selective testing
+     * an option could be implemented in IPTCPoptImpl.cc but could be put
+     * simply for recognize the option, without injecting them.
      */
     if (oDesc.enabled == false)
         return false;
@@ -240,8 +241,8 @@ uint8_t HDRoptions::registerOptOccurrence(uint8_t optValue, uint8_t offset, uint
 
             optTrack[sjOptIndex].push_back(occ);
 
-            LOG_PACKET("*+ %s at the index of %u options length of %u (avail %u)",
-                       oDesc.sjOptName, offset, len, oD.getAvailableOptLen() - len);
+            LOG_PACKET("*+ registering %s at the index of %u options length %u updated avail %u",
+                       oDesc.sjOptName, offset, len, oD.getAvailableOptLen() );
 
             return optTrack[sjOptIndex].size();
         }

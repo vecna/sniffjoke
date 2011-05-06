@@ -97,8 +97,8 @@ struct protocolSpec
     uint8_t lastOptIndex;
     uint8_t NOP_code;
     uint8_t EOL_code;
-    void ** hdrAddr;
-    uint8_t * hdrLen;
+    void **hdrAddr;
+    uint8_t *hdrLen;
     uint8_t hdrMinLen;
     uint8_t optsMaxLen;
     void (Packet::*hdrResize)(uint8_t);
@@ -138,7 +138,6 @@ private:
     void alignOpthdr(void);
 
     /* utilities functions */
-    uint8_t availableOptsLen(void);
     void copyOpthdr(void);
     bool isGoalAchieved(void);
 

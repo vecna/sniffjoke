@@ -92,19 +92,18 @@ void PluginPool::initializeAll(struct sjEnviron *autoptrList)
         const PluginTrack *plugin = *it;
         bool initval;
 
-        LOG_DEBUG("%d) Initializing %s with complete configuration context (%d %s)", 
-                 counter, plugin->selfObj->pluginName, plugin->declaredScramble, plugin->declaredOpt);
-
         initval = plugin->selfObj->init(plugin->declaredScramble, plugin->declaredOpt, autoptrList);
 
         if(initval == false)
         {
-            RUNTIME_EXCEPTION("Unable to init %s whitin the current configuration context (%d %s)", 
-                             plugin->selfObj->pluginName, plugin->declaredScramble, plugin->declaredOpt);
+            RUNTIME_EXCEPTION("Unable to init %s whitin the current configuration context: scramble %d opt [%s]", 
+                             plugin->selfObj->pluginName, plugin->declaredScramble, 
+                             plugin->declaredOpt != NULL ? plugin->declaredOpt : "/" );
         }
 
-        LOG_DEBUG("%d) Initialized %s successfull with complete configuration context (%d %s)", 
-                 counter, plugin->selfObj->pluginName, plugin->declaredScramble, plugin->declaredOpt);
+        LOG_DEBUG("%d) Initialized %s successfull with complete configuration context: scramble %d opt [%s]", 
+                 counter, plugin->selfObj->pluginName, plugin->declaredScramble, 
+                 plugin->declaredOpt != NULL ? plugin->declaredOpt : "/" );
 
         counter++;
     }

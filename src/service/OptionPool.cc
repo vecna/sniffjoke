@@ -28,6 +28,28 @@
 
 extern auto_ptr<UserConf> userconf;
 
+const char *OptionPool::corruptionPrinter(corruption_t whatthafuck)
+{
+    switch(whatthafuck)
+    {
+        case CORRUPTUNASSIGNED:
+            return "Unassigned!";
+        case NOT_CORRUPT:
+            return "NOT corrupt";
+        case ONESHOT:
+            return "OneShot corrupt";
+        case TWOSHOT:
+            return "duplication corrupt";
+        case BOTH:
+            return "not and duplication";
+        case TRACK_ONLY:
+            return "not implemented";
+        default:
+            RUNTIME_EXCEPTION("fATAL CODE [K1LL B1LL]: please send a notification to the developers");
+    }
+    return NULL;
+}
+
 corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 {
     corruption_t retval = CORRUPTUNASSIGNED;
@@ -57,14 +79,14 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
         else
             RUNTIME_EXCEPTION("found index %u instead of the expected %u (line %u)",
                               readedIndex, optLooked, linecnt);
-
     }
     while (retval == CORRUPTUNASSIGNED);
 
     if (retval == CORRUPTUNASSIGNED)
         RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
 
-    LOG_VERBOSE("option index %d found value corruption value of %u", optLooked, (uint8_t) retval);
+    LOG_VERBOSE("option-configuration: option index %d corruption value of %s (%u)", optLooked, 
+                corruptionPrinter(retval), (uint8_t) retval);
 
     return retval;
 }
@@ -125,6 +147,20 @@ OptionPool::OptionPool()
         /* testing modality - all options are loaded without a corruption definitions */
         LOG_ALL("option configuration not supplied! Initializing in testing mode");
     }
+}
+
+void OptionPool::disableAllOptions(void)
+{
+    uint32_t enabledcnt = 0;
+    for (vector<IPTCPopt *>::iterator it = pool.begin(); it != pool.end(); ++it)
+    {
+        if ((*it)->enabled == true)
+            enabledcnt++;
+
+        (*it)->enabled = false;
+    }
+
+    LOG_VERBOSE("%d options implementation was 'enabled', now all %d has been disabled", enabledcnt, pool.size());
 }
 
 IPTCPopt *OptionPool::get(uint32_t sjOptIndex)
