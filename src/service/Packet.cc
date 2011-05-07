@@ -325,7 +325,7 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 
     return true;
 errorinfo:
-    LOG_DEBUG("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
+    RUNTIME_EXCEPTION("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
     return false;
 }
 
