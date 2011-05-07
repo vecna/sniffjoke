@@ -133,10 +133,6 @@ cmdline_opts(cmdline_opts)
 UserConf::~UserConf(void)
 {
     LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
-
-    /* is not too clean, but this is the last line printed before sniffjoke goes in background */
-    if(runcfg.go_foreground == false)
-        LOG_ALL("Now SniffJoke is going in background: you will manage it with \"sniffjokectl\"");
 }
 
 void UserConf::autodetectLocalInterface(void)

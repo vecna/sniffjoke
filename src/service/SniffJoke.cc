@@ -102,7 +102,7 @@ void SniffJoke::run(void)
     if (!userconf->runcfg.active)
         LOG_ALL("SniffJoke is INACTIVE: use \"sniffjokectl start\" to activate");
     else
-        LOG_VERBOSE("SniffJoke started and ACTIVE");
+        LOG_ALL("SniffJoke started already ACTIVE, manage it with \"sniffjokectl\" if needed");
 
     if (!opts.go_foreground)
     {
@@ -598,6 +598,7 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACEIP, strlen(userconf->runcfg.net_iface_ip), userconf->runcfg.net_iface_ip);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACEMTU, sizeof (userconf->runcfg.net_iface_mtu), userconf->runcfg.net_iface_mtu);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACENAME, strlen(TUN_IF_NAME), TUN_IF_NAME);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACEIP, strlen(userconf->runcfg.tun_iface_ip), userconf->runcfg.tun_iface_ip);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACEMTU, sizeof (userconf->runcfg.tun_iface_mtu), userconf->runcfg.tun_iface_mtu);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf->runcfg.onlyplugin), userconf->runcfg.onlyplugin);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf->runcfg.admin_address), userconf->runcfg.admin_address);

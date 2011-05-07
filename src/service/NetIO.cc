@@ -136,10 +136,12 @@ void NetIO::setupTUN()
 
     ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_family = AF_INET;
     ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_addr.s_addr = inet_addr(DEFAULT_FAKE_IPADDR);
+    memcpy(userconf->runcfg.tun_iface_ip, DEFAULT_FAKE_IPADDR, strlen(DEFAULT_FAKE_IPADDR));
     if (ioctl(tmpfd, SIOCSIFDSTADDR, &tmpifr) != -1)
         LOG_DEBUG("tunfd point-to-point dest addr correctly set to %s", DEFAULT_FAKE_IPADDR);
     else
         RUNTIME_EXCEPTION("unable to set tunfd point-to-point dest addr  to %s: %s", DEFAULT_FAKE_IPADDR, strerror(errno));
+
 
     close(tmpfd);
 }

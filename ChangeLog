@@ -1,3 +1,8 @@
+07 May 2011:	Stabilized -rc1
+		- UserConf and NetIO command changed
+		- sniffjoke-iptcpopt postponed to -rc2
+		- added manpage and docs update
+
 28 Apr 2011:	Implementation of sniffjoke-iptcpopt, beta6
 		- HDRoptions.cc singleton, good working
 

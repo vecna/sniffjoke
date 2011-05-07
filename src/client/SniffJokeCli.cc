@@ -311,15 +311,15 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
             break;
         case STAT_TUNIFACENAME:
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("tunnel interface name:\t%s\n", charvar);
+            printf("tunnel interface:\t%s\n", charvar);
             break;
         case STAT_TUNIFACEIP:
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("tunnel interface ip:\t%s\n", charvar);
+            printf("tunnel local IPaddr:\t%s\n", charvar);
             break;
         case STAT_TUNIFACEMTU:
             memcpy(&intvar, pointed_data, singleData->len);
-            printf("tunnel interface mtu:\t%d\n", intvar);
+            printf("tunnel MTU interface:\t%d\n", intvar);
             break;
         case STAT_DEBUGL:
             memcpy(&intvar, pointed_data, singleData->len);
