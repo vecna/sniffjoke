@@ -325,7 +325,10 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 
     return true;
 errorinfo:
+#if 0
     RUNTIME_EXCEPTION("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
+#endif
+    LOG_VERBOSE("Invalid packet generation from a plugin: not a strong problem, but must be handled. remind");
     return false;
 }
 
