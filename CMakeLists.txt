@@ -15,9 +15,9 @@ INCLUDE_DIRECTORIES( src src/service )
 ADD_SUBDIRECTORY( src )
 ADD_SUBDIRECTORY( conf )
 
-INSTALL(FILES doc/sniffjoke.1 DESTINATION man/man1)
-INSTALL(FILES doc/sniffjokectl.1 DESTINATION man/man1)
-INSTALL(FILES doc/sniffjoke-autotest.1 DESTINATION man/man1)
+INSTALL(FILES doc/sniffjoke.1 doc/sniffjokectl.1 doc/sniffjoke-autotest.1
+        DESTINATION man/man1
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # uninstall target as officially explained on:
 #   - http://www.youtube.com/watch?v=fw-nJRD78tA
