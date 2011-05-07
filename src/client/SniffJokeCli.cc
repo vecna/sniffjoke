@@ -307,7 +307,7 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
         case STAT_NETIFACEMTU:
             /* YEP, here too */
             memcpy(&intvar, pointed_data, singleData->len);
-            printf("hijacket MTU interface:\t%d\n", intvar);
+            printf("hijacked MTU interface:\t%d\n", intvar);
             break;
         case STAT_TUNIFACENAME:
             memcpy(&charvar, pointed_data, singleData->len);

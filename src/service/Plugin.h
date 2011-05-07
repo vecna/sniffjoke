@@ -101,7 +101,7 @@ public:
     void upgradeChainFlag(Packet *);
 
     /* Plugin is an abstract class */
-    virtual bool init(uint8_t, char *, struct sjEnviron *) = 0; 
+    virtual bool init(uint8_t, char *, struct sjEnviron *) = 0;
     virtual bool condition(const Packet &, uint8_t);
     virtual void apply(const Packet &, uint8_t);
     virtual void mangleIncoming(Packet &);

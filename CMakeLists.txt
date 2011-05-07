@@ -15,6 +15,10 @@ INCLUDE_DIRECTORIES( src src/service )
 ADD_SUBDIRECTORY( src )
 ADD_SUBDIRECTORY( conf )
 
+INSTALL(FILES doc/sniffjoke.1 DESTINATION man/man1)
+INSTALL(FILES doc/sniffjokectl.1 DESTINATION man/man1)
+INSTALL(FILES doc/sniffjoke-autotest.1 DESTINATION man/man1)
+
 # uninstall target as officially explained on:
 #   - http://www.youtube.com/watch?v=fw-nJRD78tA
 #   - http://www.cmake.org/Wiki/CMake_FAQ#Can_I_do_.22make_uninstall.22_with_CMake.3F
