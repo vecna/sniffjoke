@@ -295,16 +295,19 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
             printf("gateway IP address:\t%s\n", charvar);
             break;
         case STAT_NETIFACENAME:
+            /* WARNING - REMIND: this name "hijacked interface" is grepped in sniffjoke-autotest */
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("hijacked interface name:\t%s\n", charvar);
+            printf("hijacked interface:\t%s\n", charvar);
             break;
         case STAT_NETIFACEIP:
+            /* WARNING: the following name, "hijacked interface etc..." MUST NOT COLLIDE with the grep */
             memcpy(&charvar, pointed_data, singleData->len);
-            printf("hijacked interface ip:\t%s\n", charvar);
+            printf("hijacked local IPaddr:\t%s\n", charvar);
             break;
         case STAT_NETIFACEMTU:
+            /* YEP, here too */
             memcpy(&intvar, pointed_data, singleData->len);
-            printf("hijacket interface mtu:\t%d\n", intvar);
+            printf("hijacket MTU interface:\t%d\n", intvar);
             break;
         case STAT_TUNIFACENAME:
             memcpy(&charvar, pointed_data, singleData->len);

@@ -86,7 +86,7 @@ start_test() {
         exit
     fi
 
-    INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface name" | awk '{print $4}'`
+    INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface " | awk '{print $3}'`
     if [ -n "$INTERFACE" ]; then
         echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
     else

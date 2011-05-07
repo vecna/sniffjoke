@@ -90,8 +90,7 @@ cmdline_opts(cmdline_opts)
     }
     else
     {
-        LOG_DEBUG("checked working directory %s accessible",
-                  runcfg.working_dir);
+        LOG_DEBUG("checked working directory %s accessible", runcfg.working_dir);
     }
 
     snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
@@ -123,8 +122,8 @@ cmdline_opts(cmdline_opts)
         }
         else
         {
-            LOG_VERBOSE("accepted location %s with accessible enabler fileconf",
-                        runcfg.location);
+            LOG_VERBOSE("accepted location [%s] and related [%s]", 
+                       runcfg.location, FILE_PLUGINSENABLER);
         }
     }
 
@@ -134,6 +133,10 @@ cmdline_opts(cmdline_opts)
 UserConf::~UserConf(void)
 {
     LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
+
+    /* is not too clean, but this is the last line printed before sniffjoke goes in background */
+    if(runcfg.go_foreground == false)
+        LOG_ALL("Now SniffJoke is going in background: you will manage it with \"sniffjokectl\"");
 }
 
 void UserConf::autodetectLocalInterface(void)
