@@ -81,6 +81,13 @@ static void sj_help(const char *pname)
 
 int main(int argc, char **argv)
 {
+
+    if (getuid() || geteuid())
+    {
+        printf("SniffJoke is too dangerous to be run by an humble user; go to fetch daddy root, now!\n");
+        exit(1);
+    }
+
     /*
      * set the default values in the configuration struct
      */
