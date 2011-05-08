@@ -140,7 +140,7 @@ void UserConf::autodetectLocalInterface(void)
     /* check this command: the flag value, matched in 0003, is derived from:
      *     /usr/src/linux/include/linux/route.h
      */
-    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $8}'";
+    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $8}' | line";
     string imp_str;
     uint8_t i;
 
@@ -165,7 +165,7 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
     char cmd[MEDIUMBUF];
     string imp_str;
 
-    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- | awk '{print $1}'",
+    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- | awk '{print $1}' | line",
              runcfg.net_iface_name);
 
     LOG_ALL("detecting interface %s ip address with [%s]", runcfg.net_iface_name, cmd);
@@ -179,7 +179,7 @@ void UserConf::autodetectLocalInterfaceIPAddress(void)
 
 void UserConf::autodetectGWIPAddress(void)
 {
-    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $2}'";
+    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $2}' | line";
     string imp_str;
 
     LOG_ALL("detecting gateway ip address with [%s]", cmd);
