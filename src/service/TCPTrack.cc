@@ -656,7 +656,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         else
         {
             /* MISTIFICATION FOR WTF != PRESCRIPTION */
-            /* apply mistification if PRESCRIPTION is globally enabled */
+            /* apply mystification if PRESCRIPTION is globally enabled */
             if (ISSET_TTL(plugin_pool->enabledScrambles()))
                 pkt.ip->ttl = ttlfocus.ttl_estimate + (random() % 4); /* [+0, +3], 4 values */
         }
@@ -685,9 +685,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
         if (pkt.wtf != PRESCRIPTION)
         {
             /* MISTIFICATION APPLY ON DOWNGRADE, RANDOMIZING A BIT THE ORIGINAL TTL VALUE */
-            /* apply mistification if PRESCRIPTION is globally enabled */
+            /* apply mystification if PRESCRIPTION is globally enabled */
             if (ISSET_TTL(plugin_pool->enabledScrambles()))
-                pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mistification values */
+                pkt.ip->ttl += (random() % 20) - 10; /* [-10, +10 ], 20 mystification values */
         }
     }
 
@@ -759,7 +759,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
                 catch (exception &e)
                 {
-                    LOG_DEBUG("apply mistification with IP hdr options not possible: %s", e.what());
+                    LOG_DEBUG("apply mystification with IP hdr options not possible: %s", e.what());
                 }
             }
 
@@ -772,7 +772,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
                 catch (exception &e)
                 {
-                    LOG_DEBUG("apply mistification with TCP hdr options not possible: %s", e.what());
+                    LOG_DEBUG("apply mystification with TCP hdr options not possible: %s", e.what());
                 }
             }
         }
