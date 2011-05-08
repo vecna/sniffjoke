@@ -759,7 +759,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
                 catch (exception &e)
                 {
-                    LOG_ALL("inject mistify IP opts not possible: %s", e.what());
+                    LOG_DEBUG("apply mistification with IP hdr options not possible: %s", e.what());
                 }
             }
 
@@ -772,7 +772,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
                 catch (exception &e)
                 {
-                    LOG_ALL("inject mistify TCP opts not possible: %s", e.what());
+                    LOG_DEBUG("apply mistification with TCP hdr options not possible: %s", e.what());
                 }
             }
         }

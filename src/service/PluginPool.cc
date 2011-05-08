@@ -194,6 +194,8 @@ bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
     bool foundScramble = false;
     char copyStr[MEDIUMBUF] = {0}, *optParse = NULL;
 
+    *retval = 0;
+
     memcpy(copyStr, list_str, strlen(list_str));
 
     /* check if the option is used, the char used for separation is '+' 
@@ -245,7 +247,7 @@ void PluginPool::parseOnlyPlugin(void)
     char *pluginOpt = NULL;
     char onlyplugin_cpy[MEDIUMBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
-    uint8_t pluginEnabledScrambles;
+    uint8_t pluginEnabledScrambles = 0;
 
     snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), userconf->runcfg.onlyplugin);
 

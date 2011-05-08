@@ -200,6 +200,24 @@ if [ -z $SNIFFJOKEBIN ]; then
     exit;
 fi
 
+CURLBIN=`which curl`
+if [ -z $CURLBIN ]; then
+    echo "\n${red}"
+    echo "\"which curl\" has found nothing"
+    echo "curl is required by this testing script, because are performed some HTML POSTs"
+    echo "${white}"
+    exit;
+fi
+
+WGETBIN=`which wget`
+if [ -z $WGETBIN ]; then
+    echo "\n${red}"
+    echo "\"which wget\" has found nothing"
+    echo "wget is required by this testing script, because is retrivered the index file where get the testing servers"
+    echo "${white}"
+    exit;
+fi
+
 SNIFFJOKECLIBIN=`which sniffjokectl`
 if [ -z $SNIFFJOKECLIBIN ]; then
     echo "\n${red}"
