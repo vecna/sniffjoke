@@ -104,7 +104,7 @@ start_test() {
             echo "${green}sniffjoke is correctly running${white}"
         else
             echo "${red}sniffjoke is not running - fatal error - remove $TEMPDIR/$LOCATION by hand${white}"
-            exit
+            tput sgr0; exit
         fi
 
         INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface:" | awk '{print $3}'`
@@ -112,7 +112,7 @@ start_test() {
             echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
         else
             echo "${red}Unable to detect hijacked interface name by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
-            exit
+            tput sgr0; exit
         fi
 
         echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
@@ -127,7 +127,7 @@ start_test() {
             echo "${green}sniffjoke correctly closed${white}"
         else
             echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $TEMPDIR/$LOCATION by hand${white}"
-            exit
+            tput sgr0; exit
         fi
 
         sleep 1
@@ -170,7 +170,7 @@ do
      case $OPTION in
          h)
              usage
-             exit 1
+             tput sgr0; exit 1
              ;;
          l)
              LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
@@ -183,7 +183,7 @@ do
              ;;
          ?)
              usage
-             exit 1
+             tput sgr0; exit 1
              ;;
      esac
 done
@@ -197,7 +197,7 @@ if [ -z $SNIFFJOKEBIN ]; then
     echo "\"which sniffjoke\" has found nothing"
     echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 CURLBIN=`which curl`
@@ -206,7 +206,7 @@ if [ -z $CURLBIN ]; then
     echo "\"which curl\" has found nothing"
     echo "curl is required by this testing script, because are performed some HTML POSTs"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 WGETBIN=`which wget`
@@ -215,7 +215,7 @@ if [ -z $WGETBIN ]; then
     echo "\"which wget\" has found nothing"
     echo "wget is required by this testing script, because is retrivered the index file where get the testing servers"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 SNIFFJOKECLIBIN=`which sniffjokectl`
@@ -224,13 +224,13 @@ if [ -z $SNIFFJOKECLIBIN ]; then
     echo "\"which sniffjokectl\" has found nothing"
     echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 USERID=`id -u`
 if [ $USERID != "0" ]; then
     echo "- Error, only root should run $0"
-    exit;
+    tput sgr0; exit;
 fi
 
 if [ -z $LOCATION ]; then
@@ -241,7 +241,7 @@ if [ -z $LOCATION ]; then
     echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
     echo "will be created a new directory describing your location. after you will customize the options"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 if [ -z $WORKPATH ]; then
@@ -251,7 +251,7 @@ if [ -z $WORKPATH ]; then
     echo "usually it's /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
     echo "been installed in your distro"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 if [ ! -d $WORKPATH ]; then
@@ -259,7 +259,7 @@ if [ ! -d $WORKPATH ]; then
     echo "\n${red}"
     echo "option \"-d\" wrong argument: no such directory exist"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 if [ ! -d $WORKPATH/generic ]; then
@@ -268,7 +268,7 @@ if [ ! -d $WORKPATH/generic ]; then
     echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
     echo "sniffjoke-autotest create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 if [ -d $WORKPATH/$LOCATION ]; then
@@ -277,7 +277,7 @@ if [ -d $WORKPATH/$LOCATION ]; then
     echo "\n${red}"
     echo "- error: $WORKPATH/$LOCATION directory already present, remove by hand"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 else
     mkdir $WORKPATH/$LOCATION
 fi
@@ -288,12 +288,19 @@ if [ -d $TEMPDIR/$LOCATION ]; then
     echo "\n${red}"
     echo "- error: $TEMPDIR/$LOCATION directory already present"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 else
     mkdir $TEMPDIR/$LOCATION
 fi
 
 cd $TEMPDIR/$LOCATION
+
+# dumping of useful information when sniffjoke doesn't run and you ask to the dev
+ifconfig >> LAN.info
+route -n >> LAN.info
+iptables -nL >> LAN.info
+uname -a >> LAN.info
+cp -r /proc/sys/net/ipv4/ kernel_ipv4.info/
 
 echo "${yellow}+ Starting SniffJoke hacks test"
 echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
@@ -310,7 +317,7 @@ if ! [ -e $SERVERFILE ]; then
     echo "\n${red}"
     echo "- unable to retriver $SERVERFILE with [$FILEURL]"
     echo "${white}"
-    exit;
+    tput sgr0; exit;
 fi
 
 PLUGINLIST="plugins-testsuite"
