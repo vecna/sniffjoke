@@ -386,6 +386,12 @@ echo "${yellow}FINISHED!\n"
 echo " ${red} $failure_count combinations of hack+scramble have not worked"
 echo " ${green} $success_count combinations of hack+scramble have worked correctly${white}"
 
+if [ $failure_count -ge 6 ]; then
+    echo "\n"
+    echo " ${red} Several combinations of hack+scramble have not worked: you can try to run the tests using a different MTU on your current interface: eg, ifconfig <interface> mtu 1200"
+    echo "\n"
+fi
+
 chmod 444 plugins-enabled.conf
 mkdir -p $WORKPATH/$LOCATION
 cp $WORKPATH/generic/port-aggressivity.conf $WORKPATH/$LOCATION
