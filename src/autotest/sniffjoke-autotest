@@ -300,7 +300,7 @@ ifconfig >> LAN.info
 route -n >> LAN.info
 iptables -nL >> LAN.info
 uname -a >> LAN.info
-cp -r /proc/sys/net/ipv4/ kernel_ipv4.info/
+cp -r /proc/sys/net/ipv4/ kernel_ipv4.info/ >/dev/null 2>&1
 
 echo "${yellow}+ Starting SniffJoke hacks test"
 echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
