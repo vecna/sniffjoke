@@ -14,6 +14,8 @@ white="\e[1;39m"
 LOCATION=
 GENERIC=
 OPTIONSAMOUNT=18
+USERNAME="nobody"
+GROUPNAME="nogroup"
 DONE=0
 
 SNIFFJOKEBIN=`which sniffjoke`
@@ -39,7 +41,8 @@ OPTIONS:
    -w      working directory                                   (required)
             (eg: /tmp/home/, containing the generic/ directory)
    -u      testing URL                                         (required)
-   -p      section of command line to downgrade privileges
+   -n      username to downgrade privileges
+   -g      group to downgrade privileges
    
 EOF
 }
@@ -115,15 +118,18 @@ start_option_test() {
     popd >/dev/null 2>&1
 }
 
-while getopts “hw:p:u:” OPTION
+while getopts “hw:n:g:u:” OPTION
 do
      case $OPTION in
          h)
              usage
              exit 1
              ;;
-         p)
-             UGPD=$OPTARG
+         n)
+             USERNAME=$OPTARG
+             ;;
+         g)
+             GROUPNAME=$OPTARG
              ;;
          u)
              SERVER=$OPTARG
@@ -153,6 +159,7 @@ if [ -d "$WORKDIR/0" ]; then
     tput sgr0; exit
 fi
 
+UGPD="--user $USERNAME --group $GROUPNAME"
 cd $WORKDIR
 
 SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`

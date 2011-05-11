@@ -368,7 +368,7 @@ SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
 SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
 
 IPTCPPROBE=`which sj-iptcpopt-probe`
-$IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER" $UGPD
+$IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER" -n $USERNAME -g $GROUPNAME 
 
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     PLUGIN=`head -$PLUGNDX $PLUGINLIST | tail -1`
