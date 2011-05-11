@@ -59,3 +59,4 @@ uint8_t IPTCPopt::getBestRandsize(struct optHdrData *oD, uint8_t fixedLen, uint8
     const uint8_t blockNumber = (checkedAvail - fixedLen) / blockSize;
     return ((blockNumber * blockSize) + fixedLen);
 }
+

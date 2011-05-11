@@ -37,20 +37,21 @@ private:
     IPTCPopt *underTestOpt;
     corruption_t CorruptionSet;
 
-    void applyTestedOption(Packet &target, bool corrupt)
+    void applyTestedOption(Packet &target)
     {
         TTLFocus dummy(target);
 
         if(underTestOpt->optProto == IPPROTO_IP)
         {
             HDRoptions IPInjector(IPOPTS_INJECTOR, target, dummy);
-            /* true corrupt, true strip previous */
-            IPInjector.injectSingleOpt(corrupt, true, sjOptIndex );
+            /* true corrupt: because only one option is set to corrupt, and the boolean marked acts as goal.
+             * true strip previous */
+            IPInjector.injectSingleOpt(true, true, sjOptIndex );
         }
         else /* IPPROTO_TCP */
         {
             HDRoptions TCPInjector(TCPOPTS_INJECTOR, target, dummy);
-            TCPInjector.injectSingleOpt(corrupt, true, sjOptIndex );
+            TCPInjector.injectSingleOpt(true, true, sjOptIndex );
         }
     }
 
@@ -78,16 +79,15 @@ public:
 
         CorruptionSet = CORRUPTUNASSIGNED;
 
-        if(pluginOption[strlen(pluginOption) -1] == 'A')
-            CorruptionSet = NOT_CORRUPT;
-        if(pluginOption[strlen(pluginOption) -1] == 'B')
+        if(pluginOption[strlen(pluginOption) -1] == 'S')
             CorruptionSet = ONESHOT;
-        if(pluginOption[strlen(pluginOption) -1] == 'C')
+
+        if(pluginOption[strlen(pluginOption) -1] == 'D')
             CorruptionSet = TWOSHOT;
 
         if(CorruptionSet == CORRUPTUNASSIGNED)
         {
-            LOG_ALL("fatal: invalid usage of corruption selector - by hand usage is not suggested nor welcomed!");
+            LOG_ALL("fatal: invalid usage of corruption selector - 'by hand' usage is neither suggested nor welcomed!");
             return false;
         }
 
@@ -160,7 +160,7 @@ public:
         pkt->choosableScramble = SCRAMBLE_INNOCENT;
         pkt->wtf = INNOCENT;
 
-        applyTestedOption(*pkt, CorruptionSet == NOT_CORRUPT ? false : true);
+        applyTestedOption(*pkt);
 
         removeOrigPkt = true;
 

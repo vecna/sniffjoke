@@ -1,0 +1,269 @@
+#!/bin/bash
+
+shopt -s expand_aliases
+alias echo="echo -e"
+
+red="\e[1;31m"
+green="\e[1;32m"
+yellow="\e[1;33m"
+blue="\e[1;34m"
+violet="\e[1;35m"
+white="\e[1;39m"
+
+#default values
+LOCATION=
+GENERIC=
+OPTIONSAMOUNT=18
+DONE=0
+
+SNIFFJOKEBIN=`which sniffjoke`
+CURLBIN=`which curl`
+SNIFFJOKECLIBIN=`which sniffjokectl`
+
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script is invoked by sniffjoke-autotest and try the possibile
+combination of IP/TCP header options for the testing 'location'
+
+Is required a detailed test because different ISP will handle 
+differently these options, considering a packet acceptable or not
+by internal policy, router configuration and updating frequency
+
+by hand this script should accept these argument:
+
+OPTIONS:
+   -h      show this message
+   -w      working directory                                   (required)
+            (eg: /tmp/home/, containing the generic/ directory)
+   -u      testing URL                                         (required)
+   -p      section of command line to downgrade privileges
+   
+EOF
+}
+
+start_option_test() {
+    pushd `dirname $TOTEST` >/dev/null 2>&1
+    CMDPART=`basename $TOTEST`
+
+    echo "${green}* COMBINATION OF TESTS (${yellow}$TOTEST${green}) ${white}[${red}$DONE${white}/${red}$(($OPTIONSAMOUNT * 2))${white}]"
+    echo "${blue}working dir\t${yellow}\t[$PWD]"
+    if [ ! -z "$PDUG" ]; then
+        echo "${blue}User Group\t${yellow}\t[$UGPD]"
+    fi
+    echo "${blue}Tested Option\t${yellow}\t[$CMDPART]${white}"
+    # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
+
+    ln -s $WORKDIR/generic ./generic
+
+    echo "${yellow}** Executing sniffjoke with $PLUGIN and option under test $TESTEDOPT ${white}"
+    echo "$SNIFFJOKEBIN --debug 6 $UGPD --start --dir $PWD --only-plugin `cat $CMDPART` --no-udp --whitelist"
+
+    $SNIFFJOKEBIN --debug 6 $UGPD --start --dir $PWD --only-plugin `cat $CMDPART` --no-udp --whitelist >/dev/null 2>&1
+    sleep 2
+
+    $SNIFFJOKECLIBIN stat > dumpService_stat.log
+    if [ "$?" -eq 0 ]; then
+        echo "${green}sniffjoke is correctly running${white}"
+    else
+        echo "${red}sniffjoke is not running - fatal error - remove $WORKDIR by hand${white}"
+        exit
+    fi
+
+    INTERFACE=`cat dumpService_stat.log | grep "hijacked interface:" | awk '{print $3}'`
+    if [ -n "$INTERFACE" ]; then
+        echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+    else
+        echo "${red}Unable to detect hijacked interface by dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
+        exit
+    fi
+
+    echo "tcpdump -i $INTERFACE -w trafficDump.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
+    tcpdump -i $INTERFACE -w trafficDump.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >output.tcpdump 2>&1 &
+    sleep 1
+    echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
+    curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o SPAREDATARECEIVED $SERVER >output.curl 2>&1
+    $SNIFFJOKECLIBIN info > dumpService_info.log
+    $SNIFFJOKECLIBIN ttlmap > dumpService_ttlmap.log
+    $SNIFFJOKECLIBIN quit > dumpService_quit.log
+    if [ "$?" -eq 0 ]; then
+        echo "${green}sniffjoke correctly closed${white}"
+    else
+        echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $LOCATION by hand${white}"
+        exit
+    fi
+
+    sleep 1
+    killall -TERM tcpdump
+
+    if [ -e "SPAREDATARECEIVED" ]; then
+        CHECKSUM=`md5sum "SPAREDATARECEIVED" | cut -b -32`
+    else
+        CHECKSUM="{unexistent-output-file}"
+    fi
+
+    echo "orig:$VERIFYSUM recv:$CHECKSUM $TOTEST" >> $WORKDIR/options-collected-feedback
+    if [ $VERIFYSUM != $CHECKSUM ];
+    then
+        touch CHECKSUM_DIFFER
+    else
+        touch CHECKSUM_MATCH
+    fi
+
+    popd >/dev/null 2>&1
+}
+
+while getopts “hw:p:u:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         p)
+             UGPD=$OPTARG
+             ;;
+         u)
+             SERVER=$OPTARG
+             ;;
+         w)
+             WORKDIR=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
+             ;;
+         ?)
+             usage
+             exit 1
+             ;;
+     esac
+done
+
+if [ -z "$SERVER" ] || [ -z "$WORKDIR" ]; then
+    echo "\n${red}"
+    echo "no parameters supply: there is a reason if the user must invoke sniffjoke-autotest only! <g>${white}\n"
+    usage
+    tput sgr0; exit
+fi
+
+if [ -d "$WORKDIR/0" ]; then
+    echo "\n${yellow}"
+    echo "This location has been defiled by the option probe. now goes with capitan sheppard to probe uranus"
+    echo "${red}"
+    echo "there is a reason if the user must invoke sniffjoke-autotest only! <g> dunno play with tha options!${white}\n"
+    tput sgr0; exit
+fi
+
+cd $WORKDIR
+
+SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
+SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
+
+# check in the generic/iptcp-options.conf
+#
+# the options between the 12 and the $OPTIONSAMOUNT (18) are not implemented at the moment
+# the option 3 is not implemented too
+# check the static implementation linked in OptionPool::OptionPool()
+SUPPORTED_OPTIONS_N=`seq 0 $OPTIONSAMOUNT`
+for opt in $SUPPORTED_OPTIONS_N; 
+do 
+    DIRNAME="$opt"
+    mkdir $DIRNAME
+
+    if [ $DIRNAME == "3" ]; then
+        touch "$DIRNAME/option_disable"
+        continue;
+    fi
+
+    if [ $DIRNAME -ge "12" ]; then
+        touch "$DIRNAME/option_disable"
+        continue;
+    fi
+
+    mkdir "$DIRNAME/SINGLE"
+    echo "HDRoptions_probe,INNOCENT+"$DIRNAME"S" >> "$DIRNAME/SINGLE/tested_cmdpart"; 
+
+    mkdir "$DIRNAME/DOUBLE"
+    echo "HDRoptions_probe,INNOCENT+"$DIRNAME"D" >> "$DIRNAME/DOUBLE/tested_cmdpart"; 
+done
+
+# generate the SPAREDATA file to send
+GENERATEDFILE="SPAREDATA"
+# the number '6' is not used in the test because sniffjoke, when runned
+# in debug mode (--debug 6) instead of filling the random segment of data
+# inject with random data, use the number '6'. Is useful when debugging 
+# an hack.
+seq 1000 3000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
+GENERATEDDATA=`cat $GENERATEDFILE`
+VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
+
+echo "${yellow}+ Starting SniffJoke IP/TCP options selective probe"
+echo "* Stopping possible running instances of sniffjoke service ($SNIFFJOKECLIBIN quit)"
+$SNIFFJOKECLIBIN quit >/dev/null 2>&1
+
+OPTION_TO_TEST=`find . -name 'tested_cmdpart'`
+
+for TOTEST in $OPTION_TO_TEST; 
+do
+    echo "${blue}Starting test vs Linux environment: $TOTEST ($SERVER_ADDR, $SERVER_IP)"
+    start_option_test
+    DONE=$((DONE+1))
+done
+
+OPTOUTPUT="iptcp-options.conf"
+echo "# this is an autogenerated file by sniffjoke-autotest (sj-iptcpopt-test)" > $OPTOUTPUT
+echo "# wheneven your network router, provider or some malfunction is detected" >> $OPTOUTPUT
+echo "# you are invited to regenerate this file" >> $OPTOUTPUT
+echo "# this file describe which combos of IP/TCP options will be used in your location" >> $OPTOUTPUT
+echo "# this iptcp-options.conf are dumped for location: `dirname $WORKDIR`\n" >> $OPTOUTPUT
+
+write_comment() { 
+    echo "# option $checkcnt: $1" >> $OPTOUTPUT
+}
+
+# the sequence used in this parsing is relevant
+for checkcnt in `seq 0 $OPTIONSAMOUNT`; do
+
+    if [ -e "$checkcnt/SINGLE/CHECKSUM_DIFFER" ]; then
+        write_comment "Single option corrupt a packet"
+        echo "$checkcnt,2" >> $OPTOUTPUT
+        continue;
+    fi
+
+    if [ -e "$checkcnt/DOUBLE/CHECKSUM_DIFFER" ]; then
+        write_comment "Option duplication corrupt a packet"
+        echo "$checkcnt,4" >> $OPTOUTPUT
+        continue;
+    fi
+
+    if [ -e "$checkcnt/DOUBLE/CHECKSUM_MATCH" ]; then
+        write_comment "This option don't corrupt a packet"
+        echo "$checkcnt,1" >> $OPTOUTPUT
+        continue;
+    fi
+
+    write_comment "Option disabled - used for tracking only"
+    echo "$checkcnt,16" >> $OPTOUTPUT
+done
+
+echo "\n# follow the index of the options analyzed:" >> $OPTOUTPUT
+echo "# 0= IP NOOP" >> $OPTOUTPUT
+echo "# 1= IP EOL" >> $OPTOUTPUT
+echo "# 2= IP TIMESTAMP" >> $OPTOUTPUT
+echo "# 3= reserved for study: IP TIMESTAMP Overflow" >> $OPTOUTPUT
+echo "# 4= IP LSRR" >> $OPTOUTPUT
+echo "# 5= IP RR" >> $OPTOUTPUT
+echo "# 6= IP RA" >> $OPTOUTPUT
+echo "# 7= IP CIPSO" >> $OPTOUTPUT
+echo "# 8= IP SEC" >> $OPTOUTPUT
+echo "# 9= IP SID" >> $OPTOUTPUT
+echo "# 10= TCP NOOP" >> $OPTOUTPUT
+echo "# 11= TCP EOL" >> $OPTOUTPUT
+echo "# 12..18= TCP MD5, PASW, MSS, SACK, Window, are in study but not implemented" >> $OPTOUTPUT
+now=`date`
+echo "\n# Generated in date: $now\n" >> $OPTOUTPUT
+
+echo "${yellow}FINISHED!\n"
+echo "${green}created $OPTOUTPUT"
+
+# clearing gay colors
+tput sgr0

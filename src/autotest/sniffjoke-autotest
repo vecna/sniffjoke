@@ -11,8 +11,11 @@ violet="\e[1;35m"
 white="\e[1;39m"
 
 #default values
+VERSION="04"
 LOCATION=
 WORKPATH=
+USERNAME=
+GROUPNAME=
 REPN=1
 
 usage()
@@ -31,40 +34,55 @@ OPTIONS:
    -l      location name                                       (required)
    -d      path of 'generic/' location, acting as default      (required)
    -n      number of replicas to be passed for the single hack (default 1)
+   -g      specify the group to privilege downgrade            (default: nogroup)
+   -u      specify the user to privilege downgrade             (default: nobody)
 EOF
 }
+
+# excluded from the test (because, in fact, work always):
+# fake_close_fin,GUILTY
+# fake_close_rst,GUILTY
+# fake_data,GUILTY
+# fake_seq,GUILTY
+# fake_syn,GUILTY
+# fake_window,GUILTY
+# shift_ack,GUILTY
 
 dump_plugin_file() {
 cat >> $PLUGINLIST <<__EOF__
 fake_close_fin,PRESCRIPTION
-fake_close_fin,MALFORMED,conf
-fake_close_fin,GUILTY
+fake_close_fin,MALFORMED
 fake_close_rst,PRESCRIPTION
 fake_close_rst,MALFORMED
-fake_close_rst,GUILTY
 fake_data,PRESCRIPTION
 fake_data,MALFORMED
-fake_data,GUILTY
 fake_seq,PRESCRIPTION
 fake_seq,MALFORMED
-fake_seq,GUILTY
 fake_syn,PRESCRIPTION
 fake_syn,MALFORMED
-fake_syn,GUILTY
 fake_window,PRESCRIPTION
 fake_window,MALFORMED
-fake_window,GUILTY
 fragmentation,INNOCENT
 segmentation,INNOCENT
 shift_ack,PRESCRIPTION
 shift_ack,MALFORMED
-shift_ack,GUILTY
 valid_rst_fake_seq,INNOCENT
 __EOF__
 }
 
 routing_table_log() {
-    route -n > $WORKDIR/route-n-$1.log
+    route -n > $WORKDIR/route-$1.log
+}
+
+group_check() {
+    GROUPNAME=`groups $USERNAME | cut -d " " -f 3` 
+    if [ -z "$GROUPNAME" ]; then
+        echo "${red}Unable to found, in your system, the group of $USERNAME. ${white}please specify with the option -g and -u username/group"
+        echo "(hey, you package mantainer! is better you create a dedicated sniffjoke user/group)"
+        echo "A group is required because sniffjoke drop privileges. You will need to customize the ${green}sniffjoke-server.conf ${white}"
+        echo "because by default is used nobody/nogroup"
+        tput sgr0; exit
+    fi
 }
 
 start_test() {
@@ -86,17 +104,17 @@ start_test() {
         mkdir -p $TESTID/replica-${i}
 
         # WARNING: read the other WARNING in this file,,, :(
+        # WARNING: read the other WARNING in this file,,, :(
         cp $WORKPATH/generic/iptcp-options.conf $TESTID/replica-${i}
         echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
         chmod -R o+rw $WORKDIR
 
         echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
-        echo "sniffjoke --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
+        echo "sniffjoke --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
 
-        routing_table_log "before"
-        $SNIFFJOKEBIN --debug 6 --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
-        sleep 2
+        $SNIFFJOKEBIN --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
+        sleep 1
         routing_table_log "after"
 
         $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
@@ -165,7 +183,7 @@ start_test() {
     fi
 }
 
-while getopts “hl:d:n:” OPTION
+while getopts “hl:d:n:u:g:” OPTION
 do
      case $OPTION in
          h)
@@ -180,6 +198,12 @@ do
              ;;
          n)
              REPN=$OPTARG
+             ;;
+         u)
+             USERNAME=$OPTARG
+             ;;
+         g)
+             GROUPNAME=$OPTARG
              ;;
          ?)
              usage
@@ -237,7 +261,7 @@ if [ -z $LOCATION ]; then
     usage
     echo "\n${red}"
     echo "it's required a LOCATION name, eg: office, home, nickhome, starbucks..."
-    echo "sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment"
+    echo "sniffjoke-autotest will generate the best plugins-enabled.conf usable in this environment"
     echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
     echo "will be created a new directory describing your location. after you will customize the options"
     echo "${white}"
@@ -262,6 +286,16 @@ if [ ! -d $WORKPATH ]; then
     tput sgr0; exit;
 fi
 
+if [ -z $USERNAME ]; then
+    USERNAME="nobody"
+fi
+
+if [ -z $GROUPNAME ]; then
+    group_check
+fi
+# user group privilege downgrade, this variable will be passed to ipopt testing
+UGPD="--user $USERNAME --group $GROUPNAME"
+
 if [ ! -d $WORKPATH/generic ]; then
     usage
     echo "\n${red}"
@@ -272,18 +306,12 @@ if [ ! -d $WORKPATH/generic ]; then
 fi
 
 if [ -d $WORKPATH/$LOCATION ]; then
-    usage
-    # call me old, but I don't put a blind rm -rf on a script run by root :P (vecna)
     echo "\n${red}"
-    echo "- error: $WORKPATH/$LOCATION directory already present, remove by hand"
-    echo "${white}"
+    echo "error: $WORKPATH/$LOCATION directory already present, remove by hand: don't keep old location, nor two location with the same name :P"
     tput sgr0; exit;
-else
-    mkdir $WORKPATH/$LOCATION
 fi
 
 if [ -d $TEMPDIR/$LOCATION ]; then
-    # call me old too (evilaliv3)
     usage
     echo "\n${red}"
     echo "- error: $TEMPDIR/$LOCATION directory already present"
@@ -294,6 +322,7 @@ else
 fi
 
 cd $TEMPDIR/$LOCATION
+ln -s $WORKPATH/generic .
 
 # dumping of useful information when sniffjoke doesn't run and you ask to the dev
 ifconfig >> LAN.info
@@ -309,7 +338,7 @@ $SNIFFJOKECLIBIN quit >/dev/null 2>&1
 PPATH="/usr/local/lib/sniffjoke"
 echo "* The test will use path $PPATH" to load plugins
 
-FILEURL="http://www.delirandom.net/sniffjoke/testsuite.info"
+FILEURL="http://www.delirandom.net/sniffjoke/testsuite.php?v=$VERSION"
 echo "* retrivering multi-OS testing server list ($FILEURL)"
 SERVERFILE="testsuite.info"
 wget -O $SERVERFILE $FILEURL  >/dev/null 2>&1
@@ -334,35 +363,38 @@ seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
 GENERATEDDATA=`cat $GENERATEDFILE`
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
+# at the moment linux is the only tested OS
+SERVER=`grep "LINUX=" $SERVERFILE | cut -b 7-`
+SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
+SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
+
+IPTCPPROBE=`which sj-iptcpopt-probe`
+$IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER"
+
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     PLUGIN=`head -$PLUGNDX $PLUGINLIST | tail -1`
 
-#    OS="WINDOWS"
-#    SERVER=`cat "$SERVERFILE" | grep "$OS" | cut -b 9-`
-#    echo $SERVER
-#    start_test
-
     # those test need to be fixed or be used only where my test script will be hosted
-    OS="LINUX"
-    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
-    SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
-    SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
     echo "${blue}Starting test vs Linux environment: ($SERVER_ADDR, $SERVER_IP)"
     start_test
 
+# remind for the future ?
+#
+#    OS="LINUX"
+#    OS="WINDOWS"
 #    OS="OTHER"
 #    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
 #    echo $SERVER
 #    start_test
 done
 
-# parse analysis output to build a plugins_enabler.conf
+# parse analysis output to build a plugins-enabler.conf
 
 PeL="plugins-enabled.conf"
 echo "# this is an autogenerated file by sniffjoke-autotest " > $PeL
-echo "# wheneven your network router, provider or some malfunction is detected" >> $PeL
+echo "# wheneven you change the network router, provider or some malfunction is detected" >> $PeL
 echo "# you are invited to regenerate this file" >> $PeL
-echo "# this plugins_enabled.conf are dumped for location: $LOCATION" >> $PeL
+echo "# this plugins-enabled.conf are dumped for location: $LOCATION" >> $PeL
 
 success_count=0
 for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
@@ -393,17 +425,17 @@ if [ $failure_count -ge 6 ]; then
 fi
 
 chmod 444 plugins-enabled.conf
-mkdir -p $WORKPATH/$LOCATION
-cp $WORKPATH/generic/port-aggressivity.conf $WORKPATH/$LOCATION
-cp $WORKPATH/generic/sniffjoke-service.conf $WORKPATH/$LOCATION
-# WARNING: when HDRoptions_probe is finished, will be started before this script and 
-#          generate a location specific iptcp-options.conf file, NOW are used this 
-#          generic file but will cause a bad analyis about the "malformed" scramble
-cp $WORKPATH/generic/iptcp-options.conf $WORKPATH/$LOCATION
-cp plugins-enabled.conf $WORKPATH/$LOCATION/plugins-enabled.conf
 
-echo "\n${yellow}* sniffjoke-autotest has  a conf file $TEMPDIR/$LOCATION/plugins_enabled.conf"
-echo "* that conf has been copyed in $WORKPATH/$LOCATION with the other default configuration file."
+DESTINATION=$WORKPATH/$LOCATION
+mkdir $DESTINATION
+
+cp $WORKPATH/generic/port-aggressivity.conf $DESTINATION 
+cp $WORKPATH/generic/sniffjoke-service.conf $DESTINATION
+cp $TEMPDIR/$LOCATION/iptcp-options.conf $DESTINATION
+cp plugins-enabled.conf $DESTINATION/plugins-enabled.conf
+
+echo "\n${yellow}* sniffjoke-autotest has  a conf file $TEMPDIR/$LOCATION/plugins-enabled.conf"
+echo "* that conf has been copyed in $DESTINATION with the other default configuration file."
 echo "* for custom configuration this config file can be text edited."
 echo "* now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION${white}"
 
