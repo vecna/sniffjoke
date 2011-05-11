@@ -44,7 +44,7 @@ static void sj_version(const char *pname)
     "Usage: %s [OPTION]... :\n"\
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
     " --dir <name>\t\tspecify the base directory where the location reside [default: %s]\n"\
-    "\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
+    "\t\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
     " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
     " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
     " --no-tcp\t\tdisable tcp mangling [default: %s]\n"\

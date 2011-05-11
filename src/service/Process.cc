@@ -139,27 +139,27 @@ void Process::privilegesDowngrade(void)
 
 void Process::sigtrapSetup(sig_t sigtrap_function)
 {
-    struct sigaction ignore;
-    memset(&ignore, 0, sizeof (struct sigaction));
-
     sigemptyset(&sig_nset);
+    sigemptyset(&sig_oset);
+
     sigaddset(&sig_nset, SIGINT);
     sigaddset(&sig_nset, SIGABRT);
+    sigaddset(&sig_nset, SIGPIPE);
     sigaddset(&sig_nset, SIGTERM);
     sigaddset(&sig_nset, SIGQUIT);
-    sigaddset(&sig_nset, SIGCHLD);
 
+    struct sigaction action;
     memset(&action, 0, sizeof (struct sigaction));
     action.sa_handler = sigtrap_function;
     action.sa_mask = sig_nset;
 
-    ignore.sa_handler = SIG_IGN;
-
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGABRT, &action, NULL);
+    sigaction(SIGPIPE, &action, NULL);
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGQUIT, &action, NULL);
-    sigaction(SIGUSR1, &ignore, NULL);
+    sigaction(SIGUSR1, &action, NULL);
+    sigaction(SIGUSR2, &action, NULL);
 }
 
 void Process::sigtrapEnable(void)
@@ -169,11 +169,6 @@ void Process::sigtrapEnable(void)
 
 void Process::sigtrapDisable(void)
 {
-    sigemptyset(&sig_nset);
-    sigaddset(&sig_nset, SIGINT);
-    sigaddset(&sig_nset, SIGABRT);
-    sigaddset(&sig_nset, SIGTERM);
-    sigaddset(&sig_nset, SIGQUIT);
     sigprocmask(SIG_BLOCK, &sig_nset, &sig_oset);
 }
 
@@ -273,5 +268,3 @@ void Process::isolation(void)
     setsid();
     umask(027);
 }
-
-

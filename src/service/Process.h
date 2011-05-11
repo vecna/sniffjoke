@@ -42,7 +42,6 @@ private:
 
     sigset_t sig_nset;
     sigset_t sig_oset;
-    struct sigaction action;
 
 public:
     Process(void);
