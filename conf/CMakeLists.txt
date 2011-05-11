@@ -1,1 +1,1 @@
-INSTALL(DIRECTORY generic DESTINATION etc/sniffjoke)
+INSTALL(DIRECTORY generic DESTINATION var/sniffjoke)

@@ -43,13 +43,17 @@ string execOSCmd(string cmd)
     string data;
     char buffer[4096];
 
-    cmd.append("| tr -d '\n'");
+    /* cmd.append("| tr -d '\n'"); */
 
     FILE *stream = popen(cmd.c_str(), "r");
-    while (fgets(buffer, sizeof (buffer), stream) != NULL)
-    {
-        data.append(buffer);
-    }
+
+    /* get only the first line, to avoid the use of "| line" at the end of every command line,
+     * before the data.append was derived collecting  */
+    fgets(buffer, sizeof (buffer), stream);
+
+    /* cut the '\n' instead append "| tr -d '\n'", because this will join togheder more lines */
+    buffer[strlen(buffer) -1] = 0x00;
+    data.append(buffer);
 
     pclose(stream);
 
