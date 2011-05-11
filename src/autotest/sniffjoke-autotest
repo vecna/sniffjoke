@@ -134,7 +134,6 @@ start_test() {
 
         echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
         tcpdump -i $INTERFACE -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
-        sleep 1
         echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
         curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >/dev/null 2>&1
         $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
@@ -147,7 +146,6 @@ start_test() {
             tput sgr0; exit
         fi
 
-        sleep 1
         killall -TERM tcpdump
     done;
 
