@@ -7,8 +7,8 @@ SniffJoke is an application for Linux that handle transparently your TCP connect
     cmake, gcc, iptables, tcpdump
 
 # or, if you're makin some code modify
-    mkdir your_build
-    cd your_build
+    mkdir build
+    cd build
     cmake ..
     make 
     sudo -s
@@ -21,7 +21,7 @@ and you could check the exaclty installed file by
     root@linux# sniffjoke --debug 6 --start --foreground
 
 # Correct setup, check your network capabilities
-    sniffjoke-autotest -l name_of_your_location -l /usr/local/var/sniffjoke -n 2
+    sniffjoke-autotest -l name_of_your_location -d /usr/local/var/sniffjoke -n 2
 
 since you have runned the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with
     sniffjoke --location name_of_your_location
@@ -30,7 +30,7 @@ since you have runned the "autotest" in this network location (office, home, lab
     sniffjokectl --help
     [...]
 
-# config files installed in the 'generic' location
+# CONFIG FILES installed in the 'generic' location
     ipblacklist.conf
     iptcp-options.conf
     ipwhitelist.conf
@@ -38,13 +38,15 @@ since you have runned the "autotest" in this network location (office, home, lab
     port-aggressivity.conf
     sniffjoke-service.conf
 
-# cache and logfile that should be generated in a location
+# CACHE and LOGs that should be generated in a location
     plugin.fake_close_fin.log
     plugin.fragmentation.log
     plugin.segmentation.log
     ttlfocusmap.bin
 
-the plugin.*.log, depends by the plugins loaded and internal version
+# CONFIG FILES generated as location specific by sniffjoke-autotest
+    iptcp-options.conf
+    plugins-enabled.conf
 
 # Requirements
 
@@ -68,8 +70,6 @@ SniffJoke plugins
 
 Betatesting 
 -----------
-
-The file **BETATESTING** is provided in the root directory of the package: every betatester has a good point to start
 
 # How does it work + Documentation
 
@@ -118,7 +118,7 @@ Binary installed:
 
 Script installed:
     sniffjoke-autotest
-    sniffjoke-iptcpopt
+    sj-iptcp-probe (not intended to be called directly by an user, useful for developer)
 
 (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf

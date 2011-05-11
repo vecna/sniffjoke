@@ -39,36 +39,35 @@ OPTIONS:
 EOF
 }
 
-# excluded from the test (because, in fact, work always):
-# fake_close_fin,GUILTY
-# fake_close_rst,GUILTY
-# fake_data,GUILTY
-# fake_seq,GUILTY
-# fake_syn,GUILTY
-# fake_window,GUILTY
-# shift_ack,GUILTY
-
 dump_plugin_file() {
 cat >> $PLUGINLIST <<__EOF__
 fake_close_fin,PRESCRIPTION
 fake_close_fin,MALFORMED
+fake_close_fin,GUILTY
 fake_close_rst,PRESCRIPTION
 fake_close_rst,MALFORMED
+fake_close_rst,GUILTY
 fake_data,PRESCRIPTION
 fake_data,MALFORMED
+fake_data,GUILTY
 fake_seq,PRESCRIPTION
 fake_seq,MALFORMED
+fake_seq,GUILTY
 fake_syn,PRESCRIPTION
 fake_syn,MALFORMED
+fake_syn,GUILTY
 fake_window,PRESCRIPTION
 fake_window,MALFORMED
+fake_window,GUILTY
 fragmentation,INNOCENT
 segmentation,INNOCENT
 shift_ack,PRESCRIPTION
 shift_ack,MALFORMED
+shift_ack,GUILTY
 valid_rst_fake_seq,INNOCENT
 __EOF__
 }
+
 
 routing_table_log() {
     route -n > $WORKDIR/route-$1.log
