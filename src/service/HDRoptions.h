@@ -126,7 +126,7 @@ private:
     vector<option_occurrence> optTrack[SUPPORTED_OPTIONS];
 
     /* validates present option and makes a working copy */
-    void acquirePresentOptions(void);
+    void acquirePresentOptions(uint32_t);
 
     /* the core selecting function */
     bool evaluateInjectCoherence(uint8_t);

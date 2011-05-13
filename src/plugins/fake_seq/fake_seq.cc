@@ -90,7 +90,7 @@ public:
 
         pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
-        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+        pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
         pkt->choosableScramble = availableScrambles & supportedScrambles;
         pkt->tcppayloadRandomFill();
 

@@ -91,7 +91,7 @@ OptionPool::OptionPool()
 {
     /* WARNING: don't touch this piece of code if you are HIGH! */
     pool.push_back(new Io_NOOP(true));
-    pool.push_back(new Io_EOL(true));
+    pool.push_back(new Io_EOL(false));
     pool.push_back(new Io_TIMESTAMP(true));
     pool.push_back(new Io_TIMESTOVERFLOW(false));
     /* WARNING: don't touch this piece of code if you are SMOKED! */
@@ -103,9 +103,9 @@ OptionPool::OptionPool()
     pool.push_back(new Io_SEC(true));
     pool.push_back(new Io_SID(true));
     pool.push_back(new To_NOP(true));
-    pool.push_back(new To_EOL(true));
+    pool.push_back(new To_EOL(false));
     /* WARNING: don't touch this piece of code if you are LAZY! */
-    pool.push_back(new To_MD5SIG(false));
+    pool.push_back(new To_MD5SIG(true));
     pool.push_back(new To_PAWSCORRUPT(false));
     pool.push_back(new To_TIMESTAMP(false));
     pool.push_back(new To_MSS(false));
@@ -114,7 +114,7 @@ OptionPool::OptionPool()
     pool.push_back(new To_SACKPERM(false));
     pool.push_back(new To_WINDOW(false));
     /* WARNING, because the order MATTERS! this constructor column 
-     * is derived from the incremental order of the value in hardcodedDefines.h */
+     * IS DERIVED from the INCREMENTAL ORDER of the value in hardcodedDefines.h, and sj-iptcp-probe depends too! */
 
     /* when is loaded the single plugin HDRoptions_probe, the option loader is instanced w/ NULL */
     if (!(userconf->runcfg.onlyplugin[0] != 0x00 && !memcmp(userconf->runcfg.onlyplugin, IPTCPOPT_TEST_PLUGIN, strlen(IPTCPOPT_TEST_PLUGIN))))
@@ -133,8 +133,15 @@ OptionPool::OptionPool()
             writUsage = lineParser(optInput, sjI);
             pool[sjI]->optionConfigure(writUsage);
 
-            LOG_VERBOSE("configured option %s as: %s (%u)",
-                        pool[sjI]->sjOptName, getCorruptionStr(writUsage), (uint8_t) writUsage);
+            /* the enabling of an option has not sense anymore - TODO fix the constructor column before */
+            if(writUsage == TRACK_ONLY)
+                pool[sjI]->enabled = false;
+            else
+                pool[sjI]->enabled = true;
+
+            LOG_VERBOSE("configured option #%d %s as: [%s] %s", sjI,
+                        pool[sjI]->sjOptName, getCorruptionStr(writUsage), 
+                        pool[sjI]->enabled ? "ENABLED" : "DISABLE" );
         }
 
         fclose(optInput);

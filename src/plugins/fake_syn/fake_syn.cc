@@ -102,7 +102,7 @@ public:
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+            pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
             pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             upgradeChainFlag(pkt);

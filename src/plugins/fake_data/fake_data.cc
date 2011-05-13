@@ -124,17 +124,7 @@ public:
 
     virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
     {
-        /*
-         * in fake segment I don't use pktRandomDamage because I want the
-         * same hack for both packets.
-         */
-        judge_t selectedScramble;
-        if (ISSET_TTL(availableScrambles & supportedScrambles) && RANDOM_PERCENT(90))
-            selectedScramble = PRESCRIPTION;
-        else if (ISSET_MALFORMED(availableScrambles & supportedScrambles) && RANDOM_PERCENT(90))
-            selectedScramble = MALFORMED;
-        else /* the 99% of the times */
-            selectedScramble = GUILTY;
+        judge_t selectedScramble = pktRandomDamage(availableScrambles, supportedScrambles);
 
         Packet * (fake_data::*perProtoFunction)(const Packet &) = NULL;
 

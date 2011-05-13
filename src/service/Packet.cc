@@ -67,6 +67,7 @@ chainflag(pkt.chainflag),
 fragment(false),
 pbuf(pkt.pbuf)
 {
+    pkt.SELFLOG("generating a duplicated packet: %d", SjPacketId);
     updatePacketMetadata();
 }
 

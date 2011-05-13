@@ -14,9 +14,11 @@ white="\e[1;39m"
 LOCATION=
 GENERIC=
 OPTIONSAMOUNT=18
+REALIMPLEMENTED=10
 USERNAME="nobody"
 GROUPNAME="nogroup"
 DONE=0
+PCAPS="../../trafdmp-"
 
 SNIFFJOKEBIN=`which sniffjoke`
 CURLBIN=`which curl`
@@ -50,9 +52,12 @@ EOF
 start_option_test() {
     pushd `dirname $TOTEST` >/dev/null 2>&1
     CMDPART=`basename $TOTEST`
+    OPCODE=`cat $CMDPART | cut -d '+' -f 2`
 
-    echo "${green}* COMBINATION OF TESTS (${yellow}$TOTEST${green}) ${white}[${red}$DONE${white}/${red}$(($OPTIONSAMOUNT * 2))${white}]"
+    echo "${green}* COMBINATION OF TESTS (${yellow}$TOTEST${green}) ${white}[${red}$(($DONE + 1))${white}/${red}$(($REALIMPLEMENTED * 2))${white}]"
     echo "${blue}working dir\t${yellow}\t[$PWD]"
+    echo "${blue}Option\t\t${yellow}\t[$OPCODE]"
+
     if [ ! -z "$PDUG" ]; then
         echo "${blue}User Group\t${yellow}\t[$UGPD]"
     fi
@@ -65,7 +70,7 @@ start_option_test() {
     echo "$SNIFFJOKEBIN --debug 6 $UGPD --start --dir $PWD --only-plugin `cat $CMDPART` --no-udp --whitelist"
 
     $SNIFFJOKEBIN --debug 6 $UGPD --start --dir $PWD --only-plugin `cat $CMDPART` --no-udp --whitelist >/dev/null 2>&1
-    sleep 1
+    sleep 0.8
 
     $SNIFFJOKECLIBIN stat > dumpService_stat.log
     if [ "$?" -eq 0 ]; then
@@ -76,15 +81,17 @@ start_option_test() {
     fi
 
     INTERFACE=`cat dumpService_stat.log | grep "hijacked interface:" | awk '{print $3}'`
+    LOCALIP=`cat dumpService_stat.log | grep "hijacked local" | awk '{print $4}'`
     if [ -n "$INTERFACE" ]; then
-        echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+        echo "${yellow}** Starting tcpdump on $INTERFACE${white} ($LOCALIP)"
     else
         echo "${red}Unable to detect hijacked interface by dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
         exit
     fi
 
-    echo "tcpdump -i $INTERFACE -w trafficDump.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
-    tcpdump -i $INTERFACE -w trafficDump.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >output.tcpdump 2>&1 &
+    echo "tcpdump -i $INTERFACE -U -w $PCAPS$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
+    tcpdump -i $INTERFACE -U -w $PCAPS$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >output.tcpdump 2>&1 &
+    sleep 0.2
     echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
     curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o SPAREDATARECEIVED $SERVER >output.curl 2>&1
     $SNIFFJOKECLIBIN info > dumpService_info.log
@@ -97,23 +104,34 @@ start_option_test() {
         exit
     fi
 
-    killall -TERM tcpdump
-    TCPNUMBER=`tcpdump -n -s 0 -r trafficDump.pcap tcp | wc -l`
-    ICMPNUMBER=`tcpdump -n -s 0 -r trafficDump.pcap icmp | wc -l`
+    sleep 0.5
+    killall -HUP tcpdump
+    TCPNUMBER=`tcpdump -n -r $PCAPS$OPCODE.pcap tcp and greater 1000 and dst port 80 | wc -l`
+    recv_TCPNUMBER=`tcpdump -n -r $PCAPS$OPCODE.pcap tcp and greater 1000 and src port 80 | wc -l`
+    
+    # happen too often, ping and udp port unreach
+    icmpexpr="icmp[icmptype] != icmp-echo and icmp[icmptype] != icmp-echoreply and icmp[icmptype] != icmp-unreach"
+    ICMPNUMBER=`tcpdump -n -r $PCAPS$OPCODE.pcap $icmpexpr | wc -l`
 
     if [ -e "SPAREDATARECEIVED" ]; then
         CHECKSUM=`md5sum "SPAREDATARECEIVED" | cut -b -32`
     else
+        touch ZERO_BYTE_FILE
         CHECKSUM="{unexistent-output-file}"
     fi
 
-    echo "orig:$VERIFYSUM recv:$CHECKSUM tcp:$TCPNUMBER icmp:$ICMPNUMBER $TOTEST" >> $WORKDIR/options-collected-feedback
+    echo "$OPCODE orig:$VERIFYSUM recv:$CHECKSUM tcp:$TCPNUMBER icmp:$ICMPNUMBER" >> $WORKDIR/options-collected-feedback
+
     if [ $VERIFYSUM != $CHECKSUM ];
     then
         touch CHECKSUM_DIFFER
     else
         touch CHECKSUM_MATCH
     fi
+
+    echo $TCPNUMBER > TCP
+    echo $recv_TCPNUMBER > TCP.echoed
+    echo $ICMPNUMBER > ICMP
 
     popd >/dev/null 2>&1
 }
@@ -167,30 +185,41 @@ SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
 
 # check in the generic/iptcp-options.conf
 #
-# the options between the 12 and the $OPTIONSAMOUNT (18) are not implemented at the moment
-# the option 3 is not implemented too
+# the options between the 11 and the $OPTIONSAMOUNT (18) are not implemented at the moment
+# the option 3 is not implemented too, and the 1 is tracking only
 # check the static implementation linked in OptionPool::OptionPool()
 SUPPORTED_OPTIONS_N=`seq 0 $OPTIONSAMOUNT`
 for opt in $SUPPORTED_OPTIONS_N; 
 do 
-    DIRNAME="$opt"
-    mkdir $DIRNAME
+    DIRNAME="optprobe/$opt"
+    mkdir -p $DIRNAME
 
-    if [ $DIRNAME == "3" ]; then
+    # YES YES YES I know! is dirty this piece of code. gimme few time.
+    if [ $opt == "3" ]; then
         touch "$DIRNAME/option_disable"
         continue;
     fi
 
-    if [ $DIRNAME -ge "12" ]; then
+    if [ $opt == "1" ]; then
+        touch "$DIRNAME/option_disable"
+        continue;
+    fi
+
+    if [ $opt == "11" ]; then
+        touch "$DIRNAME/option_disable"
+        continue;
+    fi
+
+    if [ $opt -ge "13" ]; then
         touch "$DIRNAME/option_disable"
         continue;
     fi
 
     mkdir "$DIRNAME/SINGLE"
-    echo "HDRoptions_probe,INNOCENT+"$DIRNAME"S" >> "$DIRNAME/SINGLE/tested_cmdpart"; 
+    echo "HDRoptions_probe,INNOCENT+"$opt"S" >> "$DIRNAME/SINGLE/tested_cmdpart"; 
 
     mkdir "$DIRNAME/DOUBLE"
-    echo "HDRoptions_probe,INNOCENT+"$DIRNAME"D" >> "$DIRNAME/DOUBLE/tested_cmdpart"; 
+    echo "HDRoptions_probe,INNOCENT+"$opt"D" >> "$DIRNAME/DOUBLE/tested_cmdpart"; 
 done
 
 # generate the SPAREDATA file to send
@@ -227,29 +256,56 @@ write_comment() {
     echo "# option $checkcnt: $1" >> $OPTOUTPUT
 }
 
-# the sequence used in this parsing is relevant
+# the sequence used in this parsing is relevant, 
+# and this is one of the most skinny algorithm in Sj
 for checkcnt in `seq 0 $OPTIONSAMOUNT`; do
 
-    if [ -e "$checkcnt/SINGLE/CHECKSUM_DIFFER" ]; then
-        write_comment "Single option corrupt a packet"
-        echo "$checkcnt,2" >> $OPTOUTPUT
+    SINGLEDIR="optprobe/$checkcnt/SINGLE"
+    DOUBLEDIR="optprobe/$checkcnt/DOUBLE"
+
+    if [ -e "optprobe/$checkcnt/option_disable" ]; then
+        write_comment "Option disabled - used for tracking only "
+        echo "$checkcnt,16" >> $OPTOUTPUT
         continue;
     fi
 
-    if [ -e "$checkcnt/DOUBLE/CHECKSUM_DIFFER" ]; then
-        write_comment "Option duplication corrupt a packet"
-        echo "$checkcnt,4" >> $OPTOUTPUT
+    SINGLE_tcp=`cat $SINGLEDIR/TCP`
+    SINGLE_icmp=`cat $SINGLEDIR/ICMP`
+    DOUBLE_tcp=`cat $DOUBLEDIR/TCP`
+    DOUBLE_icmp=`cat $DOUBLEDIR/ICMP`
+    SINGLE_echoed=`cat $SINGLEDIR/TCP.echoed`
+    DOUBLE_echoed=`cat $DOUBLEDIR/TCP.echoed`
+
+    write_comment "(SINGLE: TCPo:$SINGLE_tcp ICMP:$SINGLE_icmp TCPi:$SINGLE_echoed DOUBLE: TCPo:$DOUBLE_tcp ICMP:$DOUBLE_icmp TCPi:$DOUBLE_echoed)"
+
+    if [ -e "$SINGLEDIR/CHECKSUM_DIFFER" ]; then
+        if [ $SINGLE_icmp -ge 5 ]; then
+            write_comment "a single element of this options cause icmp error: must not be used"
+            echo "$checkcnt,16" >> $OPTOUTPUT
+        else
+            write_comment "Single option corrupt a packet"
+            echo "$checkcnt,2" >> $OPTOUTPUT
+        fi
         continue;
     fi
 
-    if [ -e "$checkcnt/DOUBLE/CHECKSUM_MATCH" ]; then
+    if [ -e "$DOUBLEDIR/CHECKSUM_DIFFER" ]; then
+        if [ $DOUBLE_icmp -ge 5 ]; then
+            write_comment "duplication causes icmp error: selected as not corrupt for single usage"
+            echo "$checkcnt,1" >> $OPTOUTPUT
+        else
+            write_comment "Option duplication corrupt a packet"
+            echo "$checkcnt,4" >> $OPTOUTPUT
+        fi
+        continue;
+    fi
+
+    if [ -e "$DOUBLEDIR/CHECKSUM_MATCH" ]; then
         write_comment "This option don't corrupt a packet"
         echo "$checkcnt,1" >> $OPTOUTPUT
         continue;
     fi
 
-    write_comment "Option disabled - used for tracking only"
-    echo "$checkcnt,16" >> $OPTOUTPUT
 done
 
 echo "\n# follow the index of the options analyzed:" >> $OPTOUTPUT
@@ -265,12 +321,9 @@ echo "# 8= IP SEC" >> $OPTOUTPUT
 echo "# 9= IP SID" >> $OPTOUTPUT
 echo "# 10= TCP NOOP" >> $OPTOUTPUT
 echo "# 11= TCP EOL" >> $OPTOUTPUT
-echo "# 12..18= TCP MD5, PASW, MSS, SACK, Window, are in study but not implemented" >> $OPTOUTPUT
+echo "# 12= TCP MD5, has to be used as the first TCP options dinamically selected: not now! sorry" >> $OPTOUTPUT
+echo "# 13..18= TCP MD5, PASW, MSS, SACK, Window, are in study but not implemented" >> $OPTOUTPUT
 now=`date`
 echo "\n# Generated in date: $now\n" >> $OPTOUTPUT
 
-echo "${yellow}FINISHED!\n"
-echo "${green}created $OPTOUTPUT"
-
-# clearing gay colors
-tput sgr0
+echo "\n${blue}FINISHED! ${yellow}created $OPTOUTPUT\n"

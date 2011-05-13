@@ -102,9 +102,7 @@ start_test() {
         WORKDIR=$TESTID/replica-${i}
         mkdir -p $TESTID/replica-${i}
 
-        # WARNING: read the other WARNING in this file,,, :(
-        # WARNING: read the other WARNING in this file,,, :(
-        cp $WORKPATH/generic/iptcp-options.conf $TESTID/replica-${i}
+        cp $TEMPDIR/$LOCATION/iptcp-options.conf $TESTID/replica-${i}
         echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
         chmod -R o+rw $WORKDIR
 
@@ -113,7 +111,7 @@ start_test() {
         echo "sniffjoke --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
 
         $SNIFFJOKEBIN --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
-        sleep 1
+        sleep 0.8
         routing_table_log "after"
 
         $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
@@ -132,8 +130,9 @@ start_test() {
             tput sgr0; exit
         fi
 
-        echo "tcpdump -i $INTERFACE -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
-        tcpdump -i $INTERFACE -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
+        echo "tcpdump -i $INTERFACE -U -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
+        tcpdump -i $INTERFACE -U -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
+        sleep 0.2
         echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
         curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >/dev/null 2>&1
         $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
@@ -146,7 +145,8 @@ start_test() {
             tput sgr0; exit
         fi
 
-        killall -TERM tcpdump
+        sleep 0.5
+        killall -HUP tcpdump
     done;
 
     echo 0 > $TESTID/passed_count
@@ -448,7 +448,7 @@ read testerID
 if [ -z $testerID ]; then
     echo "empty string: sniffjoke-autotest done."
 else
-    dFname="Sj-test-$testerID-$LOCATION.tar.gz"
+    dFname="autout-$testerID-$LOCATION.tar.bz2"
     tar -c -j -f $dFname --exclude='*DATA*' *
     echo "\n"
     echo "${green}Thanks you \"$testerID\"! ${white}$dFname has been generated in $TEMPDIR/$LOCATION/$dFname"

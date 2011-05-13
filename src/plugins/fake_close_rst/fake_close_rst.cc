@@ -149,7 +149,7 @@ public:
 
         pkt->position = ANTICIPATION;
 
-        pkt->wtf = pktRandomDamage(availableScrambles & supportedScrambles);
+        pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
         pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         pkt->chainflag = FINALHACK;

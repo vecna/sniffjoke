@@ -109,7 +109,7 @@ uint8_t Io_TIMESTAMP::optApply(struct optHdrData *oD)
     oD->optshdr[index + 2] = 5; /* empty */
     oD->optshdr[index + 3] = IPOPT_TS_TSONLY;
 
-    /* by rfc preallocated options memory must be 0 */
+    /* by rfc preallocated options memory must be 0, because is filled by the other */
     memset(&oD->optshdr[index + 4], 0, timestamps * 4);
 
     return size_timestamp;
@@ -127,7 +127,8 @@ void Io_TIMESTOVERFLOW::setupTTLFocus(TTLFocus *refttlp)
 
 uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
 {
-
+    return 0;
+#if 0
     const uint8_t size_timestamp = getBestRandsize(oD, 4, 9, 9, 4);
     const uint8_t timestamps = (size_timestamp - 4) / 4;
     const uint8_t covered_destinations = timestamps + 15; /* the overflow counter is 4 bits */
@@ -160,6 +161,7 @@ uint8_t Io_TIMESTOVERFLOW::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 4], last_filled * 4);
 
     return size_timestamp;
+#endif
 }
 
 Io_LSRR::Io_LSRR(bool enable) :
@@ -455,10 +457,20 @@ IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_MD5SIG, "TCPOPT_MD5SIG", IPPROTO_TCP, TCPOP
 {
 }
 
+/* 
+ * http://tools.ietf.org/html/rfc2385 
+ * http://frankstocktonart.blogspot.com/2011/04/eisner-nomination.html
+ *
+ * fyo: MD5 in BGP is not used, and this technology show more reialiability in the
+ * https://secure.wikimedia.org/wikipedia/en/wiki/Generalized_TTL_security_mechanism
+ * eyes of the tiger.
+ *
+ * MD5 need to be enabled remotely by a setsockopt. in a more easy way for enabling this
+ * signature, TCPOPT_MD5SIG will became the first dianically checked TCP options in Sj
+ *
+ */
 uint8_t To_MD5SIG::optApply(struct optHdrData *oD)
 {
-    /* this option corrupts the packet if repeated. */
-
     if (oD->getAvailableOptLen() < TCPOPT_MD5SIG_SIZE)
         return 0;
 
@@ -478,8 +490,10 @@ IPTCPopt::IPTCPopt(enable, SJ_TCPOPT_PAWSCORRUPT, "TCPOPT_DUMMY (PAWS)", IPPROTO
 
 uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
 {
-#define TCPOPT_TIMESTAMP_SIZE 10
+    return 0;
 
+#define TCPOPT_TIMESTAMP_SIZE 10
+#if 0
     if (oD->getAvailableOptLen() < TCPOPT_TIMESTAMP_SIZE)
         return 0;
 
@@ -491,6 +505,7 @@ uint8_t To_PAWSCORRUPT::optApply(struct optHdrData *oD)
     memset_random(&oD->optshdr[index + 6], 4);
 
     return TCPOPT_TIMESTAMP_SIZE;
+#endif
 }
 
 To_TIMESTAMP::To_TIMESTAMP(bool enable) :

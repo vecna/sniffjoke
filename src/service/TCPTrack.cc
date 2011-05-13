@@ -544,15 +544,14 @@ bool TCPTrack::injectHack(Packet &origpkt)
     /* -- RANDOMIZE HACKS APPLICATION */
     random_shuffle(applicable_hacks.begin(), applicable_hacks.end());
 
-    origpkt.SELFLOG("from available %d plugins %d has been selected", plugin_pool->pool.size(), applicable_hacks.size());
-
     /* -- FINALLY, HACK THE CHOOSEN PACKET(S) */
     for (vector<PluginTrack *>::iterator it = applicable_hacks.begin(); it != applicable_hacks.end(); ++it)
     {
 
         PluginTrack *pt = *it;
 
-        origpkt.SELFLOG("applying plugin [%s]", pt->selfObj->pluginName);
+        origpkt.SELFLOG("from %d avail plugins, %d has been selected: applying plugin [%s]", 
+                        plugin_pool->pool.size(), applicable_hacks.size(), pt->selfObj->pluginName);
 
         pt->selfObj->apply(origpkt, availableScrambles);
 
@@ -792,18 +791,6 @@ bool TCPTrack::lastPktFix(Packet &pkt)
      */
     if (pkt.wtf == GUILTY)
         pkt.corruptSum();
-
-    /* intensive debug before the packet release */
-    if (userconf->runcfg.debug_level >= PACKET_LEVEL)
-    {
-        char enabled[SMALLBUF], choosable[SMALLBUF];
-
-        snprintfScramblesList(enabled, SMALLBUF, plugin_pool->enabledScrambles());
-        snprintfScramblesList(choosable, SMALLBUF, pkt.choosableScramble);
-
-        LOG_PACKET("Packet #%u COMPLETED! global [%s], choosable [%s]",
-                   pkt.SjPacketId, enabled, choosable);
-    }
 
     return true;
 

@@ -97,7 +97,7 @@ public:
 
     Plugin(const char *, uint16_t);
 
-    judge_t pktRandomDamage(uint8_t);
+    judge_t pktRandomDamage(uint8_t, uint8_t);
     void upgradeChainFlag(Packet *);
 
     /* Plugin is an abstract class */

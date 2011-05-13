@@ -123,23 +123,33 @@ corruptDone(false)
         break;
     }
 
+    pkt.SELFLOG("IP/TCP HDRoptions: free %d actual protohdrlen %d mi/MA %d/%d", 
+                pkt.freespace(), *protD.hdrLen, protD.hdrMinLen, protD.optsMaxLen);
+
+    /* initialization of "option Descriptor" */
+    memset( &oD, 0x00, sizeof(oD) );
     oD.actual_opts_len = *protD.hdrLen - protD.hdrMinLen;
 
-    uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
-    oD.optshdr.resize(maxOptSpace, protD.EOL_code);
+    if(oD.actual_opts_len > 0)
+    {
+        for(uint32_t i = 0; i < *protD.hdrLen; i++)
+            oD.optshdr.push_back( *(*((uint8_t **)protD.hdrAddr) + protD.hdrMinLen + i) );
 
-    acquirePresentOptions();
+        acquirePresentOptions(pkt.SjPacketId);
+    }
+
+    if(oD.actual_opts_len < protD.optsMaxLen)
+    {
+        uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
+
+        oD.optshdr.resize(maxOptSpace, protD.EOL_code);
+    }
+
 }
 
-void HDRoptions::acquirePresentOptions(void)
+void HDRoptions::acquirePresentOptions(uint32_t PktID)
 {
-    LOG_PACKET("*0 analyzing present %sopts:", protD.protoName);
-
-    if (oD.actual_opts_len == 0)
-        return;
-
-    /* is the options headerhas been recognized entirely we can proceed with the working copy*/
-    memcpy(&oD.optshdr[0], *((uint8_t **)protD.hdrAddr) + protD.hdrMinLen, oD.actual_opts_len);
+    LOG_PACKET("*0 analyzing present %sopts for packet #%u, with %d options bytes:", protD.protoName, PktID, oD.actual_opts_len);
 
     uint8_t option_len = 1;
 
@@ -149,13 +159,14 @@ void HDRoptions::acquirePresentOptions(void)
 
         if (*option == protD.NOP_code)
         {
+            option_len = 1;
             registerOptOccurrence(*option, i, option_len);
             continue;
         }
 
         if (*option == protD.EOL_code)
         {
-            registerOptOccurrence(*option, i, option_len);
+            registerOptOccurrence(*option, i, 1);
             break;
         }
 
@@ -241,8 +252,8 @@ uint8_t HDRoptions::registerOptOccurrence(uint8_t optValue, uint8_t offset, uint
 
             optTrack[sjOptIndex].push_back(occ);
 
-            LOG_PACKET("*+ registering %s at the index of %u options length %u updated avail %u",
-                       oDesc.sjOptName, offset, len, oD.getAvailableOptLen() );
+            LOG_PACKET("*+ registering %s at the index of %u options length %u (actual %d avail %u)",
+                       oDesc.sjOptName, offset, len, oD.actual_opts_len, oD.getAvailableOptLen() );
 
             return optTrack[sjOptIndex].size();
         }
@@ -292,11 +303,11 @@ bool HDRoptions::prepareInjection(bool corrupt, bool strip_previous)
 
 void HDRoptions::completeHdrEdit(void)
 {
+    LOG_PACKET("*- complete %shdr actual %u options len", protD.protoName, oD.actual_opts_len);
+
     alignOpthdr();
     ((pkt).*(protD.hdrResize))(protD.hdrMinLen + oD.actual_opts_len);
     copyOpthdr();
-
-    LOG_PACKET("*- resize %shdr to contain %u options len", protD.protoName, oD.actual_opts_len);
 }
 
 void HDRoptions::injector(uint8_t sjOptIndex)
@@ -307,7 +318,9 @@ void HDRoptions::injector(uint8_t sjOptIndex)
     {
         const uint8_t writtedLen = oDesc.optApply(&oD);
 
-        if (writtedLen == 0) /* avoid useless time consuming loop */
+        /* when this happen, is because no space is available, so 
+         * break; to avoid useless time consuming loop */
+        if (writtedLen == 0) 
             break;
 
         const uint8_t opt_occurrs = registerOptOccurrence(oDesc.optValue, oD.actual_opts_len, writtedLen);
@@ -349,7 +362,12 @@ bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t sjOp
         injector(sjOptIndex);
 
     if (!isGoalAchieved())
+    {
+        LOG_PACKET("*! injecting single %sopt [%u]: actual_opt_len(%u) (avail %u) goal NOT ACHIEVED = discarged options ",
+                   protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen());
+
         return false;
+    }
 
     completeHdrEdit();
 
@@ -369,8 +387,13 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
     if (prepareInjection(corrupt, strip_previous))
         randomInjector();
 
-    if (!isGoalAchieved())
+    if (!isGoalAchieved()) 
+    {
+        LOG_PACKET("*! injecting random %sopts: actual_opt_len(%u) (avail %u) goal NOT ACHIEVED = discarged options",
+                   protD.protoName, oD.actual_opts_len, oD.getAvailableOptLen());
+
         return false;
+    }
 
     completeHdrEdit();
 
@@ -383,13 +406,15 @@ bool HDRoptions::injectRandomOpts(bool corrupt, bool strip_previous)
 
 bool HDRoptions::stripOption(uint8_t sjOptIndex)
 {
+    bool found = false;
+
     /* this check need to be done only on external public functions */
     if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
-        RUNTIME_EXCEPTION("invalid use of optcode index: %u");
+        RUNTIME_EXCEPTION("invalid use of optcode index: %u", sjOptIndex);
 
     IPTCPopt &oDesc = *(opt_pool->get(sjOptIndex));
 
-    for (vector<option_occurrence>::iterator it = optTrack[sjOptIndex].begin(); it != optTrack[sjOptIndex].end(); it = optTrack[sjOptIndex].erase(it))
+    for (vector<option_occurrence>::iterator it = optTrack[sjOptIndex].begin(); it != optTrack[sjOptIndex].end(); it++)
     {
         vector<unsigned char>::iterator start = oD.optshdr.begin() + it->off;
         vector<unsigned char>::iterator end = start + it->len;
@@ -400,18 +425,33 @@ bool HDRoptions::stripOption(uint8_t sjOptIndex)
         uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
         oD.optshdr.resize(maxOptSpace, protD.EOL_code);
 
-        LOG_PACKET("*- stripped %sopt %s for %u bytes (avail %u)", protD.protoName, oDesc.sjOptName, it->len, oD.getAvailableOptLen());
+        LOG_PACKET("*- stripping single %sopt %s for %u bytes (avail %u)", 
+                  protD.protoName, oDesc.sjOptName, it->len, oD.getAvailableOptLen());
 
+        optTrack[sjOptIndex].erase(it);
         completeHdrEdit();
+
+        found = true;
     }
 
-    return true;
+    return found;
 }
 
 void HDRoptions::stripAllOptions()
 {
-    for (uint8_t sjOptIndex = protD.firstOptIndex; sjOptIndex <= protD.lastOptIndex; ++sjOptIndex)
-        stripOption(sjOptIndex);
+    LOG_PACKET("*- stripping all %s options (total of used %u)", protD.protoName, oD.actual_opts_len);
+
+    for (uint32_t sjI = protD.firstOptIndex; sjI <= protD.lastOptIndex; sjI++)
+    {
+        while(optTrack[sjI].size())
+        {
+            optTrack[sjI].pop_back();
+        }
+    }
+
+    uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
+    oD.optshdr.resize(maxOptSpace, protD.EOL_code);
+    oD.actual_opts_len = 0;
 }
 
 HDRoptions::~HDRoptions(void)
@@ -428,10 +468,10 @@ HDRoptions::~HDRoptions(void)
     if (HDRoLog == NULL)
         RUNTIME_EXCEPTION("unable to open %s:%s", fname, strerror(errno));
 
-    fprintf(HDRoLog, "RD %u%u SAPFR{%u%u%u%u%u}\tp#%u id%u\t",
+    fprintf(HDRoLog, "RD %u%u SAPFR{%u%u%u%u%u}\tpktID %u\tip.id %u\t optL %d",
             corruptRequest, corruptDone,
             pkt.tcp->syn, pkt.tcp->ack, pkt.tcp->psh, pkt.tcp->fin, pkt.tcp->rst,
-            pkt.SjPacketId, ntohs(pkt.ip->id));
+            pkt.SjPacketId, ntohs(pkt.ip->id), oD.actual_opts_len );
 
     for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
     {

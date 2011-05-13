@@ -41,7 +41,7 @@ struct optHdrData
 
     uint8_t getAvailableOptLen()
     {
-        return optshdr.size() - actual_opts_len;
+        return (uint8_t)optshdr.size() - actual_opts_len;
     };
 };
 
