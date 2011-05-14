@@ -137,6 +137,8 @@ corruptDone(false)
                           oD.actual_opts_len, protD.optsMaxLen);
     }
 
+    /* remind: MTU is 80 byte less than the maximum available for don't check freespace */
+    oD.optshdr.resize(protD.optsMaxLen, protD.EOL_code);
     if(oD.actual_opts_len > 0)
     {
         for(uint32_t i = 0; i < *protD.hdrLen; i++)
@@ -145,15 +147,8 @@ corruptDone(false)
         acquirePresentOptions(pkt.SjPacketId);
     }
 
-    if(oD.actual_opts_len < protD.optsMaxLen)
-    {
-        uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
-
-        LOG_PACKET("! Resizing space of opts header: %d < %d, resizing from %d to %d", 
-                   oD.actual_opts_len, protD.optsMaxLen, oD.optshdr.size(), protD.optsMaxLen);
-        oD.optshdr.resize(maxOptSpace, protD.EOL_code);
-        LOG_PACKET("? checking: this is the size now: %d", oD.optshdr.size());
-    }
+    LOG_PACKET("? checking space of opts header: %d < %d, resizing from %d to %d", 
+               oD.actual_opts_len, protD.optsMaxLen, oD.optshdr.size(), protD.optsMaxLen);
 }
 
 void HDRoptions::acquirePresentOptions(uint32_t PktID)

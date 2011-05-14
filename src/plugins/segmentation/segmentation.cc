@@ -41,7 +41,7 @@ class segmentation : public Plugin
 #define PLUGIN_NAME "TCP Segmentation"
 #define PKT_LOG "plugin.segmentation.log"
 
-#define MIN_SPLIT_PAYLOAD 2 /* bytes */
+#define MIN_SPLIT_PAYLOAD 500 /* bytes */
 #define MIN_SPLIT_PKTS    2
 #define MAX_SPLIT_PKTS    5
 #define MIN_TCP_PAYLOAD   (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
@@ -84,6 +84,8 @@ public:
 
         /* the original is removed, and segments are inserted */
         supportedScrambles = SCRAMBLE_INNOCENT;
+
+        pLH.completeLog("Initialized plugin!");
 
         return true;
     }
@@ -188,8 +190,8 @@ public:
 
             pktVector.push_back(pkt);
 
-            pLH.completeLog(" chunk %d of %d - seq|%x",
-                            (pkts + 1), pkts_n, ntohl(pkt->tcp->seq));
+            pLH.completeLog("%d/%d chunk seq|%x sjPacketId %d size %d", 
+                            (pkts + 1), pkts_n, ntohl(pkt->tcp->seq), pkt->SjPacketId, resizeAndCopy);
         }
 
         cache.add(origpkt);
