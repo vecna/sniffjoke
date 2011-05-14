@@ -16,7 +16,9 @@ LOCATION=
 WORKPATH=
 USERNAME=
 GROUPNAME=
+SERVERURL=
 REPN=1
+firstsimple=
 
 usage()
 {
@@ -41,32 +43,43 @@ EOF
 
 dump_plugin_file() {
 cat >> $PLUGINLIST <<__EOF__
-fake_close_fin,PRESCRIPTION
 fake_close_fin,MALFORMED
-fake_close_fin,GUILTY
-fake_close_rst,PRESCRIPTION
 fake_close_rst,MALFORMED
-fake_close_rst,GUILTY
-fake_data,PRESCRIPTION
 fake_data,MALFORMED
-fake_data,GUILTY
-fake_seq,PRESCRIPTION
 fake_seq,MALFORMED
-fake_seq,GUILTY
-fake_syn,PRESCRIPTION
 fake_syn,MALFORMED
-fake_syn,GUILTY
-fake_window,PRESCRIPTION
 fake_window,MALFORMED
-fake_window,GUILTY
-fragmentation,INNOCENT
-segmentation,INNOCENT
-shift_ack,PRESCRIPTION
 shift_ack,MALFORMED
-shift_ack,GUILTY
-valid_rst_fake_seq,INNOCENT
 __EOF__
 }
+
+#dump_plugin_file() {
+#cat >> $PLUGINLIST <<__EOF__
+#fake_close_fin,PRESCRIPTION
+#fake_close_fin,MALFORMED
+#fake_close_fin,GUILTY
+#fake_close_rst,PRESCRIPTION
+#fake_close_rst,MALFORMED
+#fake_close_rst,GUILTY
+#fake_data,PRESCRIPTION
+#fake_data,MALFORMED
+#fake_data,GUILTY
+#fake_seq,PRESCRIPTION
+#fake_seq,MALFORMED
+#fake_seq,GUILTY
+#fake_syn,PRESCRIPTION
+#fake_syn,MALFORMED
+#fake_syn,GUILTY
+#fake_window,PRESCRIPTION
+#fake_window,MALFORMED
+#fake_window,GUILTY
+#fragmentation,INNOCENT
+#shift_ack,PRESCRIPTION
+#shift_ack,MALFORMED
+#shift_ack,GUILTY
+#valid_rst_fake_seq,INNOCENT
+#__EOF__
+#}
 
 
 routing_table_log() {
@@ -85,28 +98,36 @@ group_check() {
 }
 
 start_test() {
+    REPLICAn=$1
     if [[ $PLUGIN =~ ([a-z_]+),([A-Z0-9\+]+) ]]; then
         PNAME=${BASH_REMATCH[1]}
         SCRAMBLE=${BASH_REMATCH[2]}
         TESTID=$PNAME/$SCRAMBLE
     fi
     mkdir -p $TESTID
-    echo "${green}* COMBINATION OF TESTS (${yellow}$PLUGNDX/$PLUGIN_NUMBER${green})"
-    echo "${blue}Plugin Name\t${yellow}\t[$PNAME]"
-    echo "${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
-    echo "${blue}TestID\t\t${yellow}\t[$TESTID]"
-    echo "${blue}Test directory\t${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
+    echo "${green}.----"
+    echo "${green}| ${blue}Plugin Name\t${yellow}\t[$PNAME]"
+    echo "${green}| ${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
+    echo "${green}| ${blue}TestID\t${yellow}\t[$TESTID]"
+    echo "${green}| ${blue}Test directory${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
     # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
-    for i in `seq 1 $REPN`;
+    for i in `seq 1 $REPLICAn`;
     do
         WORKDIR=$TESTID/replica-${i}
         mkdir -p $TESTID/replica-${i}
 
-        cp $TEMPDIR/$LOCATION/iptcp-options.conf $TESTID/replica-${i}
+        cp $WORKPATH/generic/sniffjoke-service.conf $TESTID/replica-${i}/
         echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
-        chmod -R o+rw $WORKDIR
 
-        echo "${green}* REPLICA (${yellow}$i/$REPN${green})"
+        if [ -e $firstsimple/ttlfocusmap.bin ]; then
+            cp $firstsimple/ttlfocusmap.bin $TESTID/replica-${i}/
+            cp $TEMPDIR/$LOCATION/iptcp-options.conf $TESTID/replica-${i}
+            echo "${green}| * COMBINATION OF TESTS (${yellow}$PLUGNDX/$PLUGIN_NUMBER${green}) REPLICA (${yellow}$i/$REPLICAn${green})"
+        else
+            echo "${green}| * ${blue}Goal:\t${green}\t[generate ttlfocusmap.bin, and test sniffjoke without any esoteric network trick]${white}"
+            cp $WORKPATH/generic/iptcp-options.conf $TESTID/replica-${i}
+        fi
+
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
         echo "sniffjoke --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
 
@@ -150,13 +171,24 @@ start_test() {
     done;
 
     echo 0 > $TESTID/passed_count
-    for i in `seq 1 $REPN`;
+    for i in `seq 1 $REPLICAn`;
     do
         WORKDIR=$TESTID/replica-${i}
-        if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; then
-            CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED" | cut -b -32`
+        if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; 
+        then
+            tr -d "\n" < $WORKDIR/SPAREDATARECEIVED > $WORKDIR/SPAREDATARECEIVED.clean
+            CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED.clean" | cut -b -32`
         else
             CHECKSUM="{unexistent-output-file}"
+
+            # maybe the network has get an error
+            isWorked=`grep "^0 packets captured" $WORKDIR/output.tcpdump`
+
+            if [ -n "$isWorked" ]; then
+                echo "${red}Something in the network is not going well, and will not be a SniffJoke fault"
+                echo "${red}please, restart the test and remove the $TEMPDIR/$LOCATION"
+                tput sgr0; exit;
+            fi
         fi
 
         echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> plugins-collected-feedback
@@ -170,17 +202,19 @@ start_test() {
         fi
     done
 
-    if [ `cat $TESTID/passed_count` -eq $REPN ];
+    if [ `cat $TESTID/passed_count` -eq $REPLICAn ];
     then
         echo $SCRAMBLE >> $PNAME/working_scrambles
         echo "${yellow}* FINISHED TEST $TESTID: ${green}TEST PASSED${white}\n"
+        return 1
     else
         echo $SCRAMBLE >> $PNAME/failed_scrambles
         echo "${yellow}* FINISHED TEST $TESTID: ${red}TEST FAILED${white}\n"
+        return 0
     fi
 }
 
-while getopts “hl:d:n:u:g:” OPTION
+while getopts “hl:d:n:u:g:s:” OPTION
 do
      case $OPTION in
          h)
@@ -201,6 +235,11 @@ do
              ;;
          g)
              GROUPNAME=$OPTARG
+             ;;
+# -s option is semi-secret, because I use them while testing a server side method 
+# more complex than the post_echo.php
+         s)
+             SERVERURL=$OPTARG
              ;;
          ?)
              usage
@@ -335,63 +374,101 @@ $SNIFFJOKECLIBIN quit >/dev/null 2>&1
 PPATH="/usr/local/lib/sniffjoke"
 echo "* The test will use path $PPATH" to load plugins
 
-FILEURL="http://www.delirandom.net/sniffjoke/testsuite.php?v=$VERSION"
-echo "* retrivering multi-OS testing server list ($FILEURL)"
-SERVERFILE="testsuite.info"
-wget -O $SERVERFILE $FILEURL  >/dev/null 2>&1
-if ! [ -e $SERVERFILE ]; then
-    echo "\n${red}"
-    echo "- unable to retriver $SERVERFILE with [$FILEURL]"
-    echo "${white}"
-    tput sgr0; exit;
+if [ -z $SERVERURL ]; 
+then
+    FILEURL="http://www.delirandom.net/sniffjoke/testsuite.php?v=$VERSION"
+    echo "* retrivering multi-OS testing server list ($FILEURL)"
+    SERVERFILE="testsuite.info"
+    wget -O $SERVERFILE $FILEURL  >/dev/null 2>&1
+    if ! [ -e $SERVERFILE ]; 
+    then
+        echo "\n${red}"
+        echo "- unable to retriver $SERVERFILE with [$FILEURL]"
+        echo "${white}"
+        tput sgr0; exit;
+    fi
+
+    # at the moment linux is the only tested OS
+    SERVER=`grep "LINUX=" $SERVERFILE | cut -b 7-`
+else
+    echo "${blue} hello ${yellow}yellow ${blue}daddy! http://shinysushi.deviantart.com/art/Asari-Logic-194960943"
+    SERVER=$SERVERURL
 fi
+
+# uh remember coder: the http port www.umpalumpa.net:803213 is NOT SUPPORTED
+SERVER_ADDR=`echo $SERVER | sed -e's/.*\/\///' | sed -e's/\/.*//'`
+SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
+
+# mayhe host has result not able to resolve $SERVER_ADDR  -- *r stay for "Resolved"
+THREEDOTr=`echo $SERVER_IP | tr -d [:digit:]`
+
+# for whom use an IP addr                                 -- *i stay for "Inserted"
+THREEDOTi=`echo $SERVER_ADDR | tr -d [:digit:]`
+
+if [ "$THREEDOTi" == "..." ]; then
+    SERVER_IP=$SERVER_ADDR
+else
+    if [ "$THREEDOTr" != "..." ]; then
+        echo "${red} from $SERVER unable to resolve hostname '$SERVER_ADDR', check dns and etc..."
+        tput sgr0; exit;
+    fi
+fi
+
+# oh yeah pippa middleton, this line is for you!!1:
+echo "${green} resolved remote server IP '$SERVER_IP' address '$SERVER_ADDR'"
+
 
 PLUGINLIST="plugins-testsuite"
 dump_plugin_file
 PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 
 # generate the SPAREDATA file to send
-GENERATEDFILE="SPAREDATA"
+GENERATEDFILE="SPAREDATA_plugin"
 # the number '6' is not used in the test because sniffjoke, when runned
 # in debug mode (--debug 6) instead of filling the random segment of data
 # inject with random data, use the number '6'. Is useful when debugging 
 # an hack.
-seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings > $GENERATEDFILE
+seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings | tr -d "\n" > $GENERATEDFILE
 GENERATEDDATA=`cat $GENERATEDFILE`
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
-# at the moment linux is the only tested OS
-SERVER=`grep "LINUX=" $SERVERFILE | cut -b 7-`
-SERVER_ADDR=`echo $SERVER | cut -b 8- | sed -e's/\/.*//'`
-SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
+# OK GUYS, SINCE HERE WE'D SETUP THE ENVIRONMENT, NOW START THE THREE SECTION Of TESTS:
+# TEST 1) a simple plain connection, useful for the first traceroute and general checkup
+# TEST 2) testing of every IP/TCP header options and conseguencial generation of "iptcp-options.conf"
+# TEST 3) testing of every scramble+plugin combination, generation of "plugins-enabled.conf"
+# at the end, you have all the location specific files required for a safe usage of sniffjoke
 
+# TEST 1
+PLUGIN="segmentation,INNOCENT"
+start_test 1
+if [ ! $? ]; then
+    echo "${red} the simplest test has failed, something dirty don't work in your network"
+    tput sgr0; exit;
+fi
+firstsimple=$TEMPDIR/$LOCATION/firstsimple
+mv $TEMPDIR/$LOCATION/segmentation/INNOCENT/replica-1 $firstsimple
+
+# TEST 2
+# (now in $firstsimple/ttlfocusmap.bin is cached the traceroute)
 IPTCPPROBE=`which sj-iptcpopt-probe`
-$IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER" -n $USERNAME -g $GROUPNAME 
+$IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER" -n $USERNAME -g $GROUPNAME -i $SERVER_IP
 
+# TEST 3
+# (now in $TEMPDIR/$LOCATION/iptcp-options.conf there are the correct usage for this location)
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     PLUGIN=`head -$PLUGNDX $PLUGINLIST | tail -1`
 
     # those test need to be fixed or be used only where my test script will be hosted
     echo "${blue}Starting test vs Linux environment: ($SERVER_ADDR, $SERVER_IP)"
-    start_test
-
-# remind for the future ?
-#
-#    OS="LINUX"
-#    OS="WINDOWS"
-#    OS="OTHER"
-#    SERVER=`grep "$OS=" $SERVERFILE | cut -b 7-`
-#    echo $SERVER
-#    start_test
+    start_test $REPN
 done
 
-# parse analysis output to build a plugins-enabler.conf
-
+# Parsing & formatting the results of TEST 3
 PeL="plugins-enabled.conf"
 echo "# this is an autogenerated file by sniffjoke-autotest " > $PeL
 echo "# wheneven you change the network router, provider or some malfunction is detected" >> $PeL
 echo "# you are invited to regenerate this file" >> $PeL
-echo "# this plugins-enabled.conf are dumped for location: $LOCATION" >> $PeL
+echo "# this plugins-enabled.conf are dumped for location: $LOCATION using $SERVER_IP" >> $PeL
 
 success_count=0
 for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do

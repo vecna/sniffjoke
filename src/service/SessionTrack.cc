@@ -35,8 +35,6 @@ daddr(pkt.ip->daddr),
 packet_number(0),
 injected_pktnumber(0)
 {
-    SELFLOG("");
-
     if (pkt.proto == TCP)
     {
         proto = IPPROTO_TCP;
@@ -49,6 +47,8 @@ injected_pktnumber(0)
         sport = pkt.udp->source;
         dport = pkt.udp->source;
     }
+
+    SELFLOG("New session created from Packet ID #%d", pkt.SjPacketId);
 }
 
 SessionTrack::~SessionTrack(void)

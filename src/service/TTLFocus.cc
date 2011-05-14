@@ -265,7 +265,7 @@ void TTLFocusMap::dump(void)
     FILE *dumpstream = fopen(FILE_TTLFOCUSMAP, "w");
     if (dumpstream == NULL)
     {
-        LOG_ALL("unable to write network cache");
+        LOG_ALL("unable to write network cache: %s: %s", FILE_TTLFOCUSMAP, strerror(errno) );
         return;
     }
 

@@ -32,8 +32,7 @@
 
 #define MAXIPOPTIONS 40
 #define MAXTCPOPTIONS 40
-#define MINIPOPTION 4 /* excluded NOP/EOL */
-#define MINTCPOPTION 4 /* excluded NOP/EOL */
+
 #define MAXIPINJITERATIONS 5 /* max number of injected ip options / retries */
 #define MAXTCPINJITERATIONS 5 /* max number of injected tcp options / retries */
 

@@ -143,6 +143,12 @@ void Packet::updatePacketMetadata(void)
         if (pktlen < iphdrlen + tcphdrlen)
             RUNTIME_EXCEPTION("pktlen < iphdrlen + tcphdrlen");
 
+        if (!(tcphdrlen >= sizeof(struct tcphdr) && tcphdrlen <= sizeof(struct tcphdr) + MAXTCPOPTIONS))
+        {
+            RUNTIME_EXCEPTION("invalid tcphdrlen %d (min %d max %d)",
+                    tcphdrlen, sizeof(struct tcphdr), sizeof(struct tcphdr) + MAXTCPOPTIONS);
+        }
+
         tcppayloadlen = pktlen - iphdrlen - tcphdrlen;
         if (tcppayloadlen)
             tcppayload = (unsigned char *) tcp + tcphdrlen;
@@ -326,9 +332,6 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
 
     return true;
 errorinfo:
-#if 0
-    RUNTIME_EXCEPTION("documentation about plugins development: http://www.delirandom.net/sniffjoke/plugins");
-#endif
     LOG_VERBOSE("Invalid packet generation from a plugin: not a strong problem, but must be handled. remind");
     return false;
 }
@@ -547,19 +550,11 @@ void Packet::selflog(const char *func, const char *format, ...) const
         switch (proto)
         {
         case TCP:
-#if 0
-            snprintf(protoinfo, sizeof (protoinfo), "TCP %u->%u SAFR{%u%u%u%u} len|%u(%u) seq|%x ack_seq|%x wndw|%u",
-                     ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin,
-                     tcp->rst, (unsigned int) pbuf.size(), (unsigned int) (pbuf.size() - iphdrlen - tcphdrlen),
-                     ntohl(tcp->seq), ntohl(tcp->ack_seq), ntohl(tcp->window)
-                     );
-#else   /* I'm looking for some efficent way to get debug infos */
             snprintf(protoinfo, sizeof (protoinfo), "TCP %u:%u SAFR{%u%u%u%u} L %u = %u+%u+%u",
                      ntohs(tcp->source), ntohs(tcp->dest), tcp->syn, tcp->ack, tcp->fin, tcp->rst,
                      (unsigned int) pbuf.size(), (htons(ip->tot_len) - ippayloadlen),
                      (tcp->doff * 4), htons(ip->tot_len) - (ip->ihl * 4) - (tcp->doff * 4)
                      );
-#endif
             break;
         case UDP:
             snprintf(protoinfo, sizeof (protoinfo), "UDP %u->%u len|%u(%u)",

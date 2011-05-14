@@ -203,10 +203,13 @@ uint8_t TCPTrack::discernAvailScramble(const Packet &pkt)
  *
  * packets generated are a copy of the original (first seen) packet
  * with some little modifications to:
- *  - ip->id
- *  - ip->ttl
- *  - tcp->source
- *  - tcp->seq
+ *  - ip->id ....... is used a univoke marker, useful for detect which packet
+ *                   is returned as part of an ICMP time exceeded
+ *  - ip->ttl ...... is under incrmeental probe, like a traceroute
+ *  - tcp->source .. is required to modify it because will bring problem to 
+ *                   the real connection, if kept the same
+ *  - tcp->seq ..... same reason of ip->id, but used for check the SYN+ACK
+ *                   having this univoke random seq as +1 in the ack_seq
  *
  */
 void TCPTrack::injectTTLProbe(TTLFocus &ttlfocus)
@@ -644,10 +647,11 @@ bool TCPTrack::injectHack(Packet &origpkt)
  */
 bool TCPTrack::lastPktFix(Packet &pkt)
 {
-    /* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
     TTLFocus &ttlfocus = ttlfocus_map->get(pkt);
+
     if (ttlfocus.status == TTL_KNOWN)
     {
+        /* WHAT VALUE OF TTL GIVE TO THE PACKET ? */
         if (pkt.wtf == PRESCRIPTION)
         {
             pkt.ip->ttl = ttlfocus.ttl_estimate - (1 + (random() % 2)); /* [-1, -2], 2 values */
