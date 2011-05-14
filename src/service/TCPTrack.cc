@@ -714,7 +714,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             }
             catch (exception &e)
             {
-                LOG_ALL("inject corrupt IP opts not possible: %s", e.what());
+                LOG_ALL("strip & inject IP opts (target: corrupt) fail: %s", e.what());
             }
         }
         else
@@ -727,7 +727,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             }
             catch (exception &e)
             {
-                LOG_ALL("inject corrupt TCP opts not possible: %s", e.what());
+                LOG_ALL("strip & inject TCP opts (target: corrupt) fail: %s", e.what());
             }
         }
 
@@ -740,7 +740,7 @@ bool TCPTrack::lastPktFix(Packet &pkt)
             }
             else
             {
-                pkt.SELFLOG("failed to corrupt pkt using MALFORMED!");
+                pkt.SELFLOG("failed to corrupt pkt using MALFORMED: pkt dropped");
                 goto drop_packet;
             }
         }

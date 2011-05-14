@@ -41,7 +41,8 @@ struct optHdrData
 
     uint8_t getAvailableOptLen()
     {
-        return (uint8_t)optshdr.size() - actual_opts_len;
+        /* using size had cause too much fault: now fuck tha vector */
+        return 40 - /* (uint8_t)optshdr.size() - */ actual_opts_len;
     };
 };
 

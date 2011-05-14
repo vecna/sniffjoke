@@ -123,12 +123,19 @@ corruptDone(false)
         break;
     }
 
-    pkt.SELFLOG("IP/TCP HDRoptions: free %d actual protohdrlen %d mi/MA %d/%d", 
-                pkt.freespace(), *protD.hdrLen, protD.hdrMinLen, protD.optsMaxLen);
-
     /* initialization of "option Descriptor" */
     memset( &oD, 0x00, sizeof(oD) );
     oD.actual_opts_len = *protD.hdrLen - protD.hdrMinLen;
+
+    pkt.SELFLOG("IP/TCP HDRoptions: free space %d actual protohdrlen %d mi/MA %d/%d actual len %d avail %d", 
+                pkt.freespace(), *protD.hdrLen, protD.hdrMinLen, protD.optsMaxLen, 
+                oD.actual_opts_len, oD.getAvailableOptLen() );
+
+    if(oD.actual_opts_len > protD.optsMaxLen)
+    {
+        RUNTIME_EXCEPTION("Actual options length %d > max supported options length %d", 
+                          oD.actual_opts_len, protD.optsMaxLen);
+    }
 
     if(oD.actual_opts_len > 0)
     {
@@ -142,14 +149,16 @@ corruptDone(false)
     {
         uint16_t maxOptSpace = pkt.freespace() > protD.optsMaxLen ? protD.optsMaxLen : ((pkt.freespace() >> 4) << 4);
 
+        LOG_PACKET("! Resizing space of opts header: %d < %d, resizing from %d to %d", 
+                   oD.actual_opts_len, protD.optsMaxLen, oD.optshdr.size(), protD.optsMaxLen);
         oD.optshdr.resize(maxOptSpace, protD.EOL_code);
+        LOG_PACKET("? checking: this is the size now: %d", oD.optshdr.size());
     }
-
 }
 
 void HDRoptions::acquirePresentOptions(uint32_t PktID)
 {
-    LOG_PACKET("*0 analyzing present %sopts for packet #%u, with %d options bytes:", protD.protoName, PktID, oD.actual_opts_len);
+    LOG_PACKET("*0 analyzing present %sopts for packet #%u, actual opts %d", protD.protoName, PktID, oD.actual_opts_len);
 
     uint8_t option_len = 1;
 
@@ -352,7 +361,7 @@ bool HDRoptions::injectSingleOpt(bool corrupt, bool strip_previous, uint8_t sjOp
 {
     /* this check need to be done only on external public functions */
     if (sjOptIndex < protD.firstOptIndex || sjOptIndex > protD.lastOptIndex)
-        RUNTIME_EXCEPTION("invalid use of optcode index: %u");
+        RUNTIME_EXCEPTION("invalid use of optcode index: %u", sjOptIndex);
 
     LOG_PACKET("*1 injecting single %sopt [%u]: actual_opt_len(%u) (avail %u) goal %s",
                protD.protoName, sjOptIndex, oD.actual_opts_len, oD.getAvailableOptLen(),
