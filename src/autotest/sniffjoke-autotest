@@ -256,15 +256,6 @@ if [ -z $CURLBIN ]; then
     tput sgr0; exit;
 fi
 
-WGETBIN=`which wget`
-if [ -z $WGETBIN ]; then
-    echo "\n${red}"
-    echo "\"which wget\" has found nothing"
-    echo "wget is required by this testing script, because is retrivered the index file where get the testing servers"
-    echo "${white}"
-    tput sgr0; exit;
-fi
-
 SNIFFJOKECLIBIN=`which sniffjokectl`
 if [ -z $SNIFFJOKECLIBIN ]; then
     echo "\n${red}"
@@ -363,23 +354,39 @@ echo "* The test will use path $PPATH" to load plugins
 
 if [ -z $SERVERURL ]; 
 then
-    FILEURL="http://www.delirandom.net/sniffjoke/testsuite.php?v=$VERSION"
+    FILEURL="http://www.delirandom.net/sjA/autotest.php?v=$VERSION"
     echo "* retrivering multi-OS testing server list ($FILEURL)"
-    SERVERFILE="testsuite.info"
-    wget -O $SERVERFILE $FILEURL  >/dev/null 2>&1
+    SERVERFILE="sj-server.info"
+    curl -o $SERVERFILE $FILEURL  >/dev/null 2>&1
     if ! [ -e $SERVERFILE ]; 
     then
         echo "\n${red}"
-        echo "- unable to retriver $SERVERFILE with [$FILEURL]"
+        echo "- unable to retriver $SERVERFILE with curl from [$FILEURL]"
         echo "${white}"
         tput sgr0; exit;
     fi
 
-    # at the moment linux is the only tested OS
-    SERVER=`grep "LINUX=" $SERVERFILE | cut -b 7-`
+    # these are the variable retriverable from the server 
+    SERVER=`grep  "LINUX=" $SERVERFILE | cut -b 7-`
+    MESSAGE=`grep "MESSAGE=" $SERVERFILE | cut -b 9-`
+    RESULTS=`grep "RESULTS=" $SERVERFILE | cut -b 9-`
+    STOP=`grep "STOP=" $SERVERFILE | cut -b 6- | tr -c -d [:alpha:]`
 else
     echo "${blue} hello ${yellow}yellow ${blue}daddy! http://shinysushi.deviantart.com/art/Asari-Logic-194960943"
     SERVER=$SERVERURL
+fi
+
+if [ ! -z "$MESSAGE" ]; then
+    echo "${blue}Message retrivered from the sniffjoke support service:"
+    echo "* --------- ----- --- -- -"
+    echo "${green}$MESSAGE ${blue}"
+    echo "* --------- ----- --- -- -"
+    echo "Message finished"
+
+    if [ $STOP == "YES" ]; then
+        echo "\n${green}do you want continue ? if not, give ^C and remove $TEMPDIR/$LOCATION, otherwise, press return"
+        read
+    fi
 fi
 
 # uh remember coder: the http port www.umpalumpa.net:803213 is NOT SUPPORTED
@@ -397,6 +404,7 @@ if [ "$THREEDOTi" == "..." ]; then
 else
     if [ "$THREEDOTr" != "..." ]; then
         echo "${red} from $SERVER unable to resolve hostname '$SERVER_ADDR', check dns and etc..."
+        echo "${red} if the server is down, notify this fault to http://www.delirandom.net/sjA"
         tput sgr0; exit;
     fi
 fi
@@ -458,10 +466,15 @@ echo "# you are invited to regenerate this file" >> $PeL
 echo "# this plugins-enabled.conf are dumped for location: $LOCATION using $SERVER_IP" >> $PeL
 
 success_count=0
+TAR_EXCLUSION=""
 for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
     SCRAMBLES=`cat $PLUGIN/working_scrambles | tr " " "," | tr [:cntrl:] ","`
     echo "$PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     success_count=$(($success_count+1));
+
+    for SCRAMBLE in `cat $PLUGIN/working_scrambles`; do
+        TAR_EXCLUSION=$TAR_EXCLUSION" --exclude=$PLUGIN/$SCRAMBLE"
+    done
 done
 
 echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment \"$LOCATION\"\n" >> $PeL
@@ -481,7 +494,7 @@ echo " ${green} $success_count combinations of hack+scramble have worked correct
 
 if [ $failure_count -ge 6 ]; then
     echo "\n"
-    echo " ${red} Several combinations of hack+scramble have not worked: you can try to run the tests using a different MTU on your current interface: eg, ifconfig <interface> mtu 1200"
+    echo " ${red} Several combinations of hack+scramble have not worked: sometime has worked put an MTU lower, eg: ifconfig <interface> mtu 1300"
     echo "\n"
 fi
 
@@ -495,32 +508,45 @@ cp $WORKPATH/generic/sniffjoke-service.conf $DESTINATION
 cp $TEMPDIR/$LOCATION/iptcp-options.conf $DESTINATION
 cp plugins-enabled.conf $DESTINATION/plugins-enabled.conf
 
-echo "\n${yellow}* sniffjoke-autotest has  a conf file $TEMPDIR/$LOCATION/plugins-enabled.conf"
+echo "\n${yellow}* sniffjoke-autotest has dumped $TEMPDIR/$LOCATION/plugins-enabled.conf"
 echo "* that conf has been copyed in $DESTINATION with the other default configuration file."
-echo "* for custom configuration this config file can be text edited."
-echo "* now, when in this network environment, you could get the best sniffjoke behaviour starting it with the option --location $LOCATION${white}"
+echo "* now, when you are using internet in this network environment, use sniffjoke with the option --location $LOCATION${white}"
 
-echo "\n${violet}SniffJoke is in BETATESTING: if you want to contribute, please type a simple string,"
-echo "The typed string will be used to generate the name of the compressed data archive, ${green}after,"
-echo "you should choose to send to us, or to sent later whenever you could ask for support"
-echo "${violet}Otherwise, to don't generate the tar.gz, leave the string empty.${white}"
+tput sgr0
+if [ $failure_count -eq 0 ]; then
+    echo "compliments, every attack tech work in your location '$LOCATION'"
+    exit
+fi
 
-echo "\n"
-echo -n "a-random-string [empty for not generate anything]: "
-read testerID
+echo "if you want to: 1) have an easyest support 2) have an automatized analysis of your network capability 3) contribute in sniffjoke"
+echo "automatically this script will send to the testing server some data collected in this test. what data are send:"
+echo "  networking/system information (routing table, kernel configuration)"
+echo "  log files of sniffjoke execution, warning: some IP address of your present connection may result (obviously, not the data)"
+echo "  traffic monitor of the testing session and ICMP error traffic"
+echo "  only the tests related the plugins that have failed"
+echo "${green}the data are intended to be used for debug and optimization only, and you could delete your submission when you wish."
+tput sgr0
+echo "if you want to send, write: ${green}OK"
+read YESORNOT 
 
-if [ -z $testerID ]; then
-    echo "empty string: sniffjoke-autotest done."
+if [ $YESORNOT == "OK" ]; then
+    dFname="sjAlogs-$LOCATION.tar.bz2"
+    echo "tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *"
+    tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
+    echo "${green} sending of the file... to $RESULTS"
+    output_put="$TEMPDIR/$LOCATION/HTTP_put.out"
+    curl -o $output_put -d @$dFname http://www.delirandom.net/sjA/pr.php
+    if [ -e "$output_put" ]; then
+        MESSAGE=`grep "MESSAGE="cat $output_put | cut -b 9-`
+        URL=`grep "URL="cat $output_put | cut -b 5-`
+        echo "${blue} message received from the server:"
+        echo "${green}$MESSAGE"
+        echo "$URL"
+    else
+        echo "${red}Error in uploading: operation fail"
+    fi
 else
-    dFname="autout-$testerID-$LOCATION.tar.bz2"
-    tar -c -j -f $dFname --exclude='*DATA*' *
-    echo "\n"
-    echo "${green}Thanks you \"$testerID\"! ${white}$dFname has been generated in $TEMPDIR/$LOCATION/$dFname"
-    echo "in your $TEMPDIR/$LOCATION there are the traffic test done by sniffjoke, recorded by tcpdump and the logfiles"
-    echo "${red}No personal data, nor payload of non-testing packets are recorded, but some destination IP address will be present"
-    echo "if you belive to have privacy issue, delete your entire $TEMPDIR/$LOCATION directory${white} and don't send us the file.\n"
-    echo "If you have some trouble using sniffjoke, making the configuration or you want contribute to the project"
-    echo "send it via mail to ${green}sniffjoke-team@delirandom.net${white} thank you!"
+    echo "freedom of choice imply that my script must accept '$YESORNOT' as different of 'OK'. no upload for this time :( amen"
 fi
 
 # clearing gay colors
