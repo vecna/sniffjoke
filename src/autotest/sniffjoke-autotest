@@ -531,14 +531,13 @@ read YESORNOT
 
 if [ $YESORNOT == "OK" ]; then
     dFname="sjAlogs-$LOCATION.tar.bz2"
-    echo "tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *"
     tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
     echo "${green} sending of the file... to $RESULTS"
     output_put="$TEMPDIR/$LOCATION/HTTP_put.out"
-    curl -o $output_put -d @$dFname http://www.delirandom.net/sjA/pr.php
+    curl -o $output_put -T $dFname http://www.delirandom.net/sjA/pr.php
     if [ -e "$output_put" ]; then
-        MESSAGE=`grep "MESSAGE="cat $output_put | cut -b 9-`
-        URL=`grep "URL="cat $output_put | cut -b 5-`
+        MESSAGE=`grep "MESSAGE=" $output_put | cut -b 9-`
+        URL=`grep "URL=" $output_put | cut -b 5-`
         echo "${blue} message received from the server:"
         echo "${green}$MESSAGE"
         echo "$URL"
