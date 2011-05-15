@@ -24,5 +24,5 @@
 # delirandom.net, useful in testing with:
 #
 # GENERATEDDATA=`seq 1 1500 | tr -d [:cntrl:] | sed -e's/6/111/g'`
-# curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o /tmp/recv_DATA http://www.delirandom.net/sniffjoke_autotest/post_echo.php
+# curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o /tmp/recv_DATA http://www.delirandom.net/sjA/pe.php
 89.186.95.190

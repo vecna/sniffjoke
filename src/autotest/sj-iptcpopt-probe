@@ -64,7 +64,7 @@ start_option_test() {
         echo "${blue}User Group\t${yellow}\t[$UGPD]"
     fi
     echo "${blue}Tested Option\t${yellow}\t[$CMDPART]${white}"
-    # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
+    # $SERVER is like http://www.delirandom.net/sjA/pe.php
 
     mkdir testLocat && cd testLocat
     # now setup a temporary location, with the essential things required during tests:

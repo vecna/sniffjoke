@@ -144,7 +144,7 @@ public:
        
         for x in `seq 1 2000`; do echo -n "$x" >> /tmp/sparedata; done 
         cat /tmp/sparedata | sed -es/6/111/g > /tmp/send
-        curl -s --retry 0 --max-time 10 -d "sparedata=`cat /tmp/send`" -o /tmp/recv http://www.delirandom.net/sniffjoke_autotest/post_echo.php
+        curl -s --retry 0 --max-time 10 -d "sparedata=`cat /tmp/send`" -o /tmp/recv http://www.delirandom.net/sjA/pe.php
 
          ** */
     }

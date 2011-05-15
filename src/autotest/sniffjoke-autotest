@@ -97,7 +97,7 @@ start_test() {
     echo "${green}| ${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
     echo "${green}| ${blue}TestID\t${yellow}\t[$TESTID]"
     echo "${green}| ${blue}Test directory${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
-    # $SERVER is like http://www.delirandom.net/sniffjoke_autotest/post_echo.php
+    # $SERVER is like http://www.delirandom.net/sjA/pe.php
     for i in `seq 1 $REPLICAn`;
     do
         WORKDIR=$TESTID/replica-${i}
