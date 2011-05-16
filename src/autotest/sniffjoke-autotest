@@ -513,11 +513,6 @@ echo "* that conf has been copyed in $DESTINATION with the other default configu
 echo "* now, when you are using internet in this network environment, use sniffjoke with the option --location $LOCATION${white}"
 
 tput sgr0
-if [ $failure_count -eq 0 ]; then
-    echo "compliments, every attack tech work in your location '$LOCATION'"
-    exit
-fi
-
 echo "if you want to: 1) have an easyest support 2) have an automatized analysis of your network capability 3) contribute in sniffjoke"
 echo "automatically this script will send to the testing server some data collected in this test. what data are send:"
 echo "  networking/system information (routing table, kernel configuration)"
@@ -539,8 +534,10 @@ if [ $YESORNOT == "OK" ]; then
         MESSAGE=`grep "MESSAGE=" $output_put | cut -b 9-`
         URL=`grep "URL=" $output_put | cut -b 5-`
         echo "${blue} message received from the server:"
-        echo "${green}$MESSAGE"
-        echo "$URL"
+        echo "* --------- ----- --- -- -"
+        echo "${green}$MESSAGE${blue}"
+        echo "* --------- ----- --- -- -"
+        echo "${green}$URL"
     else
         echo "${red}Error in uploading: operation fail"
     fi
