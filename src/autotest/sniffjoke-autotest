@@ -524,7 +524,7 @@ tput sgr0
 echo "if you want to send, write: ${green}OK"
 read YESORNOT 
 
-if [ $YESORNOT == "OK" ]; then
+if [ "$YESORNOT" == "OK" ]; then
     dFname="sjAlogs-$LOCATION.tar.bz2"
     tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
     echo "${green} sending of the file... to $RESULTS"
