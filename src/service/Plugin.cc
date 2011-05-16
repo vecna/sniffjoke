@@ -196,3 +196,4 @@ void Plugin::upgradeChainFlag(Packet *pkt)
                 pkt->SjPacketId);
     }
 }
+

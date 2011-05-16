@@ -100,9 +100,9 @@ void SniffJoke::run(void)
         LOG_VERBOSE("option --force ignore: not found a previously running SniffJoke");
 
     if (!userconf->runcfg.active)
-        LOG_ALL("SniffJoke is INACTIVE: use \"sniffjokectl start\" to activate");
+        LOG_ALL("SniffJoke started correctly, as INACTIVE: use \"sniffjokectl start\" to activate");
     else
-        LOG_ALL("SniffJoke started already ACTIVE, manage it with \"sniffjokectl\" if needed");
+        LOG_ALL("SniffJoke started correctly and already ACTIVE, manage it with \"sniffjokectl\" if needed");
 
     if (!opts.go_foreground)
     {

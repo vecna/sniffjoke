@@ -71,6 +71,7 @@
 #define FILE_LOG_PACKET         "sniffjoke.log.packets"
 #define FILE_IPTCPOPT_CONF      "iptcp-options.conf"
 #define IPTCPOPT_TEST_PLUGIN    "HDRoptions_probe"
+#define GENERIC_MARKER_FILE     "THIS_IS_GENERIC"
 
 #define SMALLBUF                64
 #define MEDIUMBUF               256
@@ -104,7 +105,11 @@
  */
 
 #define TUN_IF_NAME            "sniffjoke"
-#define NET_IF_MTU              1500
+/*
+  this has to be checked: ADSL has an MTU of 1492, but sometime will
+  not be understand by local interface reading
+ */
+#define NET_IF_MTU              1492
 #define TUN_IF_MTU_DIFF         80
 
 #define PORTSNUMBER             65536

@@ -22,14 +22,16 @@
 
 #include "Utils.h"
 
-runtime_error runtime_exception(const char* func, const char* file, uint32_t line, const char* format, ...)
+/* runtime_error runtime_exception(const char* func, const char* file, uint32_t line, const char* format, ...) */
+runtime_error runtime_exception(const char* func, const char* format, ...)
 {
     char error[LARGEBUF];
     char complete_error[LARGEBUF];
     va_list arguments;
     va_start(arguments, format);
     vsnprintf(error, sizeof (error), format, arguments);
-    snprintf(complete_error, sizeof (complete_error), "%s:%d %s() [ %s ]", file, line, func, error);
+    /* snprintf(complete_error, sizeof (complete_error), "%s:%d %s() [ %s ]", file, line, func, error); */
+    snprintf(complete_error, sizeof (complete_error), "%s() [ %s ]", func, error);
     va_end(arguments);
 
     stringstream stream;

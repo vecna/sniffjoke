@@ -36,6 +36,7 @@
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 cmdline_opts(cmdline_opts)
 {
+    char generic_errormsg[MEDIUMBUF];
     LOG_DEBUG("");
 
     const char *selected_basedir = NULL, *selected_location = NULL;
@@ -62,9 +63,7 @@ cmdline_opts(cmdline_opts)
     }
     else
     {
-        LOG_VERBOSE("is highly suggestes to use sniffjoke specifying a location (--location option)");
-        LOG_VERBOSE("a defined location means that the network it's profiled for the best results");
-        LOG_VERBOSE("a brief explanation about this can be found at: http://www.delirandom.net/sniffjoke/location");
+        LOG_ALL("is mandatory to use sniffjoke specifying a location (--location option)");
         selected_location = DEFAULT_LOCATION;
     }
 
@@ -91,6 +90,25 @@ cmdline_opts(cmdline_opts)
     else
     {
         LOG_DEBUG("checked working directory %s accessible", runcfg.working_dir);
+    }
+
+    snprintf(generic_errormsg, sizeof (generic_errormsg), "%s%s/%s", selected_basedir, selected_location, GENERIC_MARKER_FILE);
+
+    /* if the user has not specify a location, and thus we are on the generic: show them the fatal error */
+    if (!(access(generic_errormsg, R_OK)))
+    {
+        FILE *ferrormsg = fopen(generic_errormsg, "r");
+
+        while(!feof(ferrormsg))
+        {
+            fgets(generic_errormsg, MEDIUMBUF, ferrormsg);
+            fputs(generic_errormsg, stdout);
+        }
+
+        fclose(ferrormsg);
+
+        LOG_ALL("The 'generic' configuration is located here: %s", selected_basedir);
+        RUNTIME_EXCEPTION("location required: generate with sniffjoke-autotest");
     }
 
     snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
