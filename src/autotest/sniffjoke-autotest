@@ -265,6 +265,15 @@ if [ -z $SNIFFJOKECLIBIN ]; then
     tput sgr0; exit;
 fi
 
+IPTCPPROBE=`which sj-iptcpopt-probe`
+if [ -z $IPTCPPROBE ]; then
+    echo "\n${red}"
+    echo "\"which sj-iptcpopt-probe\" has found nothing"
+    echo "Are sniffjoke installed correctly ? sj-iptcpopt-probe and sniffjoke-autotest are installed together.."
+    echo "${white}"
+    tput sgr0; exit;
+fi
+
 USERID=`id -u`
 if [ $USERID != "0" ]; then
     echo "- Error, only root should run $0"
@@ -445,7 +454,6 @@ mv $TEMPDIR/$LOCATION/segmentation/INNOCENT/replica-1 $firstsimple
 
 # TEST 2
 # (now in $firstsimple/ttlfocusmap.bin is cached the traceroute)
-IPTCPPROBE=`which sj-iptcpopt-probe`
 $IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER" -n $USERNAME -g $GROUPNAME -i $SERVER_IP
 
 # TEST 3
