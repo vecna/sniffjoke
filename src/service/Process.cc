@@ -268,3 +268,4 @@ void Process::isolation(void)
     setsid();
     umask(027);
 }
+

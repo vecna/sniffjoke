@@ -5,7 +5,7 @@ PROJECT( sniffjoke )
 SET( PREFIX "/usr/local" )
 SET( VERSION_MAJOR 0 )
 SET( VERSION_MINOR 4 )
-SET( SUFFIX "-rc1" )
+SET( SUFFIX "-1" )
 
 SET(CMAKE_SHARED_LIBRARY_PREFIX "")
 # SET(CMAKE_CXX_FLAGS "-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros ${CMAKE_CXX_FLAGS}")

@@ -11,12 +11,13 @@ violet="\e[1;35m"
 white="\e[1;39m"
 
 #default values
-VERSION="04"
+VERSION="041"
 LOCATION=
 WORKPATH=
 USERNAME=
 GROUPNAME=
 SERVERURL=
+GNUPGTRUST="NO"
 REPN=1
 firstsimple=
 
@@ -25,11 +26,14 @@ usage()
 cat << EOF
 usage: $0 options
 
-This script runs plugins test along different destinations OS
-to determinate the selection of plugins that correctly works
-in the current location.
+  This script runs plugins test along different destinations OS to determinate the 
+selection of plugins and options that correctly works in the current location. 
 
-every plugin it's tested with one of each scrambling tech.
+  Every workplace (office, home, freewifi) you use, neet to be setup as location.
+
+  Having a location correctly configurated IS THE ONLY WAY to have SniffJoke working;
+  technical details will be found in: 
+http://www.delirandom.net/sniffjoke/sniffjoke-locations
 
 OPTIONS:
    -h      show this message
@@ -228,6 +232,10 @@ do
          s)
              SERVERURL=$OPTARG
              ;;
+# -a MUST BE USED with -s
+         a)
+             SERVERADDR=$OPTARG
+             ;;
          ?)
              usage
              tput sgr0; exit 1
@@ -345,6 +353,71 @@ else
 fi
 
 cd $TEMPDIR/$LOCATION
+
+# this is the trustable key
+#
+# pub   1024D/7D9E677D 2011-05-21
+#       Key fingerprint = F37C 2042 5052 27E2 2FD7  D511 947F 574B 7D9E 677D
+# uid                  SniffJoke project (http://www.delirandom.net/sniffjoke)
+#
+# and, to be sure became installed in every box:
+#
+# $ gpg -a --export 7D9E677D
+# -----BEGIN PGP PUBLIC KEY BLOCK-----
+# Version: GnuPG v1.4.10 (GNU/Linux)
+# 
+# mQGiBE3YHaMRBACLou45ad2TnK6iQKHym7Q4AuySv+pxFVjd5QEJ/Gy3b5dM4bRn
+# y1NzuTxnCPpuR4c/Iv+rZbhSsoxqTAZ8YYJ4wdFEvDTLap9l1n8D66oYzYr9C1Tl
+# lxeCtz4hzJZK1M8agoBpnu0xRWCkZNziSdKPQGAlrSaTzLcrKaNYx727uwCg8XKF
+# fMe93oJtEmKSxl6S1V+mbOsD/j/2CfDuhtjJnHZWgmrlBrtghw9BubCi/o+TWNPs
+# a++FqUI+tw5G2CZiOS2HzR6/UIEcWr99HBGnyC6+B3TzyiU20T22DOCt8Dii65qt
+# j47rhKFAo6kUlJymY0X+fLzxxNBzS7BzrNIvLzCcdNmDsxjGtGtCedJCV09WNgRk
+# SgVpA/sHMF1rsYb4LGeg+unp7b6IyJgpeGagvTVqS366IReoftPatvbP18t4pdlD
+# wkGG2MnVtQFgz8o5LiS1AR6B74Lpr0FTIhMBUpi7A1JOetsliNImNPkrMJs1sYog
+# tWv59uDOYj7TfV2F9jMu1hWoedCLMsvwouXwaqFtk13PFg2hMbQ3U25pZmZKb2tl
+# IHByb2plY3QgKGh0dHA6Ly93d3cuZGVsaXJhbmRvbS5uZXQvc25pZmZqb2tlKYhg
+# BBMRAgAgBQJN2B2jAhsDBgsJCAcDAgQVAggDBBYCAwECHgECF4AACgkQlH9XS32e
+# Z31bjgCeIm4ft9zSztcsVFjdWnOyyKvNWckAnA6Ndf9Ps97Ve0u82ySNYFgHVqRR
+# iEoEEBECAAoFAk3YHmsDBQJ4AAoJELhCCT3GdlQwEl4AnA/OX42uxbC5GCn2tgBC
+# mJ7sBRawAKDfZ2G6q0S+JUWlQDFtbHwocCaIYA==
+# =FK0c
+# -----END PGP PUBLIC KEY BLOCK-----
+#
+# is a "sign only" key, that's why is so short
+
+GPGBIN=`which gpg`
+if [ ! -z "$GPGBIN" ]; then
+
+    # REMIND: this is needed to avoid:
+    KEYRINGOPT="--no-permission-warning --no-default-keyring --keyring $TEMPDIR/$LOCATION/sj.gpgkeyring"
+    # gpg: WARNING: unsafe ownership on configuration file `/home/vecna/.gnupg/gpg.conf'
+    # gpg: error reading key: public key not found
+
+    echo "${green}GNuPG binary found: checking if key (1024D/7D9E677D 2011-05-21) is present on your keyring..."
+    echo "${blue}"
+    $GPGBIN --list-keys 7D9E677D >/dev/null 2>&1
+    if [ "$?" != "0" ]; then
+        echo "${yellow} SniffJoke key not found: importing in a temporary keyring..."
+        tput sgr0
+        $GPGBIN $KEYRINGOPT --keyserver pgp.mit.edu --recv-key 7D9E677D 
+    fi
+
+    fingercheck=`$GPGBIN $KEYRINGOPT --fingerprint 7D9E677D | grep "fingerprint" | tr -d " " | cut -b 16- 2>&1`
+    if [ -z "$fingercheck" ]; then
+        echo "${red} Unable to retriver SniffJoke's key from ${blue}pgp.mit.edu${red}: Not required, but understimable neither"
+    else
+        if [ "$fingercheck" = "F37C2042505227E22FD7D511947F574B7D9E677D" ]; then
+            echo "${green} Key verified: 7D9E677D, SniffJoke project (http://www.delirandom.net/sniffjoke)"
+            GNUPGTRUST="YEP"
+        else
+            echo "${red} Something is wrong with your keys, keyserver or gpg: unable to verify the key"
+            # default, GNUPGTRUST="NO"
+        fi
+    fi
+else
+    echo "${red}gnupg not found! not required, but for paranoic guys, that's things matters"
+fi
+
 ln -s $WORKPATH/generic .
 
 # dumping of useful information when sniffjoke doesn't run and you ask to the dev
@@ -366,7 +439,8 @@ then
     FILEURL="http://www.delirandom.net/sjA/autotest.php?v=$VERSION"
     echo "* retrivering multi-OS testing server list ($FILEURL)"
     SERVERFILE="sj-server.info"
-    curl -o $SERVERFILE $FILEURL  >/dev/null 2>&1
+
+    $CURLBIN -o $SERVERFILE $FILEURL  >/dev/null 2>&1
     if ! [ -e $SERVERFILE ]; 
     then
         echo "\n${red}"
@@ -374,19 +448,38 @@ then
         echo "${white}"
         tput sgr0; exit;
     fi
+    if [ $GNUPGTRUST == "YEP" ]; then
+        $GPGBIN $KEYRINGOPT --verify $SERVERFILE >/dev/null 2>&1
+        if [ "$?" != "0" ]; then
+            echo "${red}Invalid GPG signature of received file! its a dangerous anomaly."
+            echo "${red}Check by hand, and if something don't seem plain to you, give ^c and asks to your friends using SniffJoke"
+            echo "${blue}Received file:"
+            tput sgr0;
+            cat $SERVERFILE
+            echo "${red}If you want proceed, press return"
+            read
+        else
+            echo ${green}Checked signature by gpg key: valid file received
+        fi
+    else
+        echo "${yellow}Received $SERVERFILE, but without GnuPG could not be verified"
+    fi
 
     # these are the variable retriverable from the server 
-    SERVER=`grep  "LINUX=" $SERVERFILE | cut -b 7-`
+    SERVER=`grep  "TESTSRV=" $SERVERFILE | cut -b 9-`
     MESSAGE=`grep "MESSAGE=" $SERVERFILE | cut -b 9-`
     RESULTS=`grep "RESULTS=" $SERVERFILE | cut -b 9-`
+    SERVER_IP=`grep  "IPTEST=" $SERVERFILE | cut -b 8-`
     STOP=`grep "STOP=" $SERVERFILE | cut -b 6- | tr -c -d [:alpha:]`
 else
+    # this is kind of easter egg, but, without cow super power
     echo "${blue} hello ${yellow}yellow ${blue}daddy! http://shinysushi.deviantart.com/art/Asari-Logic-194960943"
     SERVER=$SERVERURL
+    SERVER_IP=$SERVERADDR
 fi
 
 if [ ! -z "$MESSAGE" ]; then
-    echo "${blue}Message retrivered from the sniffjoke support service:"
+    echo "${blue}Message retrivered from the SniffJoke autotest service:"
     echo "* --------- ----- --- -- -"
     echo "${green}$MESSAGE ${blue}"
     echo "* --------- ----- --- -- -"
@@ -400,27 +493,15 @@ fi
 
 # uh remember coder: the http port www.umpalumpa.net:803213 is NOT SUPPORTED
 SERVER_ADDR=`echo $SERVER | sed -e's/.*\/\///' | sed -e's/\/.*//'`
-SERVER_IP=`host $SERVER_ADDR | head -1 | sed -e's/.*address\ //'`
 
-# mayhe host has result not able to resolve $SERVER_ADDR  -- *r stay for "Resolved"
-THREEDOTr=`echo $SERVER_IP | tr -d [:digit:]`
-
-# for whom use an IP addr                                 -- *i stay for "Inserted"
-THREEDOTi=`echo $SERVER_ADDR | tr -d [:digit:]`
-
-if [ "$THREEDOTi" == "..." ]; then
-    SERVER_IP=$SERVER_ADDR
-else
-    if [ "$THREEDOTr" != "..." ]; then
-        echo "${red} from $SERVER unable to resolve hostname '$SERVER_ADDR', check dns and etc..."
-        echo "${red} if the server is down, notify this fault to http://www.delirandom.net/sjA"
-        tput sgr0; exit;
-    fi
+if [ -z $SERVER_ADDR ] || [ -z $SERVER_IP ]; then
+    echo "${red}Server Address and Server IP lacking: if you are not using -a or -s, there are some problem in delirandom"
+    echo "Incidentally, delirandom is, at the moment, the single point of failure of this project"
+    tput sgr0; exit;
 fi
 
 # oh yeah pippa middleton, this line is for you!!1:
-echo "${green} resolved remote server IP '$SERVER_IP' address '$SERVER_ADDR'"
-
+echo "${green} remote server IP '$SERVER_IP' and HTTP URL '$SERVER_ADDR'"
 
 PLUGINLIST="plugins-testsuite"
 dump_plugin_file
@@ -537,7 +618,7 @@ if [ "$YESORNOT" == "OK" ]; then
     tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
     echo "${green} sending of the file... to $RESULTS"
     output_put="$TEMPDIR/$LOCATION/HTTP_put.out"
-    curl -o $output_put -T $dFname http://www.delirandom.net/sjA/pr.php
+    $CURLBIN -o $output_put -T $dFname "$RESULTS?v=$VERSION"
     if [ -e "$output_put" ]; then
         MESSAGE=`grep "MESSAGE=" $output_put | cut -b 9-`
         URL=`grep "URL=" $output_put | cut -b 5-`

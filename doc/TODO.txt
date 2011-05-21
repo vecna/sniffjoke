@@ -13,6 +13,7 @@ SERVICE
 CLIENT
 
 . make a C#/Windows porting for sniffjokecli
+. develop a better protocol instead of SJ-PROTOCOL.txt based on C struct
 . make a firefox button in order to add in the whitelist the sites in use
 
 PLUGINS
@@ -22,4 +23,3 @@ PLUGINS
       simply random
     . expand fake data with a template model, in order to exploit fault in 
       layer 5 sniffer flow reassembler
-
