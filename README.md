@@ -2,11 +2,11 @@
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
-# Requirement
+# Requirements
 
     cmake, gcc, iptables, tcpdump
 
-# or, if you're makin some code modify
+# or, if you're making some code modify
     mkdir build
     cd build
     cmake ..
@@ -14,7 +14,7 @@ SniffJoke is an application for Linux that handle transparently your TCP connect
     sudo -s
     make install
 
-and you could check the exaclty installed file by
+and you could check the exactly installed file by
     cat install_manifest.txt
 
 # Simple immediate verbose execution
@@ -59,66 +59,64 @@ wifi/eth as default gateway (no other interface supported).
 The service binary
     /usr/local/bin/sniffjoke
 
-The client, required for manage remotely the configuration of Sj
+The client, required to manage remotely the configuration of Sj
     /usr/local/bin/sniffjokectl
 
-The "generic location" configuration, contains every default configuration files
+The "generic location" configuration, containing every default configuration files
     /usr/local/var/sniffjoke/generic/
 
 SniffJoke plugins
     /usr/local/lib/sniffjoke/*.so
+
+Sniffjoke Man pages
+    /usr/local/man/man1/sniffjoke.1
+    /usr/local/man/man1/sniffjokectl.1
+    /usr/local/man/man1/sniffjoke-autotest.1
+
 
 Betatesting 
 -----------
 
 # How does it work + Documentation
 
-Sniffjoke is an userspace software able to delay, block and modify the packets sent from the kernel. For obtain this, use a fake default gateway make with a tunnel device. run in background, read some configuration files, and related to which place is started will support a different *location*.
+Sniffjoke is a userspace software able to delay, block and modify the packets sent from the kernel. To obtain this, it uses a fake default gateway implemented with a tunnel device. it runs in background, reading some configuration files, and related to which environment is started will support a different options.
 
-The doc/ directory include some usuful files:
+The doc/ directory includes some usuful files:
 
-This file contains know bugs and weird situation derived from the network/kernel use/misuse:
     bugs-and-warning.txt
+        this file contains know bugs and weird situation derived from the network/kernel use/misuse
 
-This explain the *location* concept, the generation of new location with *sniffjoke-autotest*:
     config-location.txt
+        this file explains the *location* concept, the generation of new location with *sniffjoke-autotest*
 
-This was the older README file, contain some generic info, syntetized and better explained in the other files:
     generic-infos-README.txt
+        this file was the older README file; contains some generic info, synthesized and better explained in the other files
 
-Explanation of the networking hacks for make the userspace service act after the kernel:
     networking.txt
+        this file explains the networking hacks to permit sniffjoke act after the kernel
 
-SniffJoke supports plugin (implementing the IDS/sniffers evasion techniques), this is the related howto:
     plugin-development.txt
+        this file explaing SniffJoke plugins programmer support (implementing the IDS/sniffers evasion techniques)
 
-SniffJoke use an internal protocol for comunication between the service (that will be start/stopped/logged/etc...) and the client: a binary that would run in another box (eg: your Linux gateway run sniffjoke, and from your client you manage it). This file explain the protocol, just in case other client will support it:
     SJ-PROTOCOL.txt
+        this file describes the internal protocolo used for communication the sniffjoke service (that will be start/stopped/logged/etc...) and the client (a binary that would/could run on a different box (eg: your Linux gateway run sniffjoke, and from your client you manage it). 
 
-Explanation about the script *sniffjoke-autotest* that check every plugin+scramble combination, searching for eventually couple that in your network environment will not work (thus generating coherent configuration files)
     sniffjoke-autotest.txt
+        this file explains the *sniffjoke-autotest* script, the one that verify every plugin+scramble combination, discriminating between ones that will in your network environment for ones that won't and generates a proper configuration file.
 
-Explanation of the plugin work and the scrambling concept: the technique that confuse the sniffers and the software that inject in the confused flow the unexpected data.
     tcp-hacks-and-scrambling.txt
+        this file explains how a plugin works and the scrambling concept, the technique that confuse the sniffers and the software that inject in the confused flow the unexpected data.
 
-Example of usage, configuration etc..
     usage.txt
+        this file simply show some examples of usage, configuration etc..
 
-TODO, and if you will help, we are glad:
     TODO.txt
+    TODOs, funny ideas that; if you want to help us, we will be glad. welcome!
 
 # Internal & external links
 
 Official sniffjoke page:
     http://www.delirandom.net/sniffjoke
-
-Binary installed:
-    sniffjoke
-    sniffjokectl
-
-Script installed:
-    sniffjoke-autotest
-    sj-iptcp-probe (not intended to be called directly by an user, useful for developer)
 
 (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf

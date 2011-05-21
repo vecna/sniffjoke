@@ -1,6 +1,6 @@
 Sniffjoke is an userspace software that could delay, inject, remove and modify the
 TCP packets sent by kernel.
-To clarify let we see some examples.
+To clarify, let we see some examples.
 
 this is an HTTP connection:
 
@@ -81,10 +81,10 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 eth0
 0.0.0.0         1.198.10.5      0.0.0.0         UG    0      0        0 tun1
 
-the ip address 1.198.10.5 (hardcoded in compile time, if you had the misfortune to live in
-a network in 1.0.0.0 classes, you need to recompile it - at the moment I've not
+the ip address 1.198.10.5 (hardcoded at compile time, if you had the misfortune to live in
+a network using 1.0.0.0 classes, you need to recompile it - at the moment I've not
 defined an option because class 1 is usually not used. I'll see how much users will
-throw this exception, and if necessarty I promis to handle this.
+throw this exception, and if necessarty I promise i'll handle this.
 
 So, your applications will send packets to the sniffjoke default gateway in tun1, 
 those packets will be handled by sniffjoke and resent to your original default 
@@ -93,7 +93,7 @@ packets between your packets.
 
                     USAGE OF THE LOCAL FIREWALL RULE
 
-Here is explained how an outgoing packet live with or without sniffjoke:
+Here is explained how an outgoing packet lives with or without sniffjoke:
 
 Without SniffJoke:
 
@@ -102,12 +102,11 @@ Without SniffJoke:
 
 With SniffJoke:
 
-
  Application -> socket() -> kernel TCP stack -> IPTCP packet to
  your gateway that is a VPN endpoint handled by -> SniffJoke ->
  mangling & hacking -> gateway -> hops -> destination.
 
-What about the return ? Whitout SniffJoke:
+What about the return ? Without SniffJoke:
 
  destination sent the answer IPTCP packet -> hops -> your gateway
  -> you box -> kernel TCP strack -> connect()/recv() -> application.
@@ -123,7 +122,7 @@ With SniffJoke:
  -> you box -> kernel TCP strack -> connect()/recv() -> application.
  
 
-                TRACKING OF THE Functions IN SEQUENCIAL MODE.
+                TRACKING OF FUNCTIONS IN SEQUENCIAL MODE.
 
 
 SniffJoke main flow:
@@ -174,8 +173,6 @@ SniffJoke main flow:
         9 TCPTrack::execTTLBruteforces
             22
             91 Packet::fixIpTcpSum
-
-
 
 Triva, Italian language only:
 

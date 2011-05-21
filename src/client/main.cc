@@ -45,7 +45,7 @@ static void sjcli_version(const char *pname)
 	" start\t\t\tstart sniffjoke hijacking/injection\n"\
 	" stop\t\t\tpause sniffjoke\n"\
 	" quit\t\t\tquit sniffjoke\n"\
-	" saveconf\t\tdump configutarion file\n"\
+	" saveconf\t\tdump configuration file\n"\
 	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
 	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
