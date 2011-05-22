@@ -247,7 +247,7 @@ TEMPDIR="/tmp"
 cd $TEMPDIR
 
 SNIFFJOKEBIN=`which sniffjoke`
-if [ -z $SNIFFJOKEBIN ]; then
+if [ -z "$SNIFFJOKEBIN" ]; then
     echo "\n${red}"
     echo "\"which sniffjoke\" has found nothing"
     echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
@@ -255,8 +255,18 @@ if [ -z $SNIFFJOKEBIN ]; then
     tput sgr0; exit;
 fi
 
+TCPDUMPBIN=`which tcpdump`
+if [ -z "$TCPDUMPBIN" ]; then
+    echo "\n${red}"
+    echo "\"which tcpdump\" has found nothing"
+    echo "tcpdump is required by this testing script, because the traffic need to be captured an analyzed"
+    # if you're asking "where are the .pcap(s) analyzed ?" "in sj-iptcpopt-probe"
+    echo "${white}"
+    tput sgr0; exit;
+fi
+
 CURLBIN=`which curl`
-if [ -z $CURLBIN ]; then
+if [ -z "$CURLBIN" ]; then
     echo "\n${red}"
     echo "\"which curl\" has found nothing"
     echo "curl is required by this testing script, because are performed some HTML POSTs"
@@ -265,7 +275,7 @@ if [ -z $CURLBIN ]; then
 fi
 
 SNIFFJOKECLIBIN=`which sniffjokectl`
-if [ -z $SNIFFJOKECLIBIN ]; then
+if [ -z "$SNIFFJOKECLIBIN" ]; then
     echo "\n${red}"
     echo "\"which sniffjokectl\" has found nothing"
     echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
@@ -274,7 +284,7 @@ if [ -z $SNIFFJOKECLIBIN ]; then
 fi
 
 IPTCPPROBE=`which sj-iptcpopt-probe`
-if [ -z $IPTCPPROBE ]; then
+if [ -z "$IPTCPPROBE" ]; then
     echo "\n${red}"
     echo "\"which sj-iptcpopt-probe\" has found nothing"
     echo "Are sniffjoke installed correctly ? sj-iptcpopt-probe and sniffjoke-autotest are installed together.."
