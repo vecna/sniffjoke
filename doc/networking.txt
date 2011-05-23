@@ -1,96 +1,3 @@
-Sniffjoke is an userspace software that could delay, inject, remove and modify the
-TCP packets sent by kernel.
-To clarify, let we see some examples.
-
-this is an HTTP connection:
-
-vecna@caturday:~$ curl http://www.delirandom.net
-
-vecna@caturday:~$ netstat -na | grep 89.186.95.190
-tcp        0      1 172.16.1.3:41815        89.186.95.190:80        SYN_SENT   
-
-vecna@caturday:~$ netstat -na | grep 89.186.95.190
-tcp        0    185 172.16.1.3:41815        89.186.95.190:80        ESTABLISHED
-
-vecna@caturday:~$ netstat -na | grep 89.186.95.190
-tcp        0      0 172.16.1.3:41815        89.186.95.190:80        TIME_WAIT  
-
-the host used as example had those interfaces:
-
-vecna@caturday:~$ ip link 
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue 
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
-    link/ether 00:2a:8c:3c:e9:1a brd ff:ff:ff:ff:ff:ff
-3: eth1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc pfifo_fast qlen 1000
-    link/ether 00:04:76:1d:84:4e brd ff:ff:ff:ff:ff:ff
-4: wmaster0: <BROADCAST,MULTICAST> mtu 1500 qdisc ieee80211 qlen 1000
-    link/ieee802.11 00:16:4a:f4:1e:ab brd ff:ff:ff:ff:ff:ff
-5: wlan0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop qlen 1000
-    link/ether 00:16:4a:f4:1e:ab brd ff:ff:ff:ff:ff:ff
-
-and those routes:
-
-vecna@caturday:~$ ip route show
-172.16.1.0/24 dev eth0  proto kernel  scope link  src 172.16.1.3 
-169.254.0.0/16 dev eth0  scope link  metric 1000 
-default via 172.16.1.1 dev eth0  metric 100 
-
-the curl application start a connect(2) from the local addr (172.16.1.3) to a remote
-addr (89.186.95.190), the kernel apply the mac address of the default gateway:
-
-vecna@caturday:~$ arp -an
-ciscosux (172.16.1.1) at 00:DE:E1:90:09:AA [ether] on eth0
-? (172.16.1.4) at 00:1B:42:F1:3F:8B [ether] on eth0
-
-the packets with source addr 172.16.1.3, dest 89.186.95.190, with the dest mac address
-of my default gateway, is accepted and routed to 89.186.95.190.
-
-this is how a packet is commonly sent, and via tcpdump will appear:
-
-root@caturday:~# tcpdump -vvv -s 0 -ni eth0 host 89.186.95.190
-tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
-18:01:43.256441 IP (tos 0x0, ttl 64, id 13915, offset 0, flags [DF], proto TCP (6), length 60) 
-    172.16.1.3.41599 > 89.186.95.190.80: S, cksum 0x6861 (correct), 1973795812:1973795812(0)
-    win 5840 <mss 1460,sackOK,timestamp 2788799 0,nop,wscale 7>
-18:01:43.474113 IP (tos 0x0, ttl 56, id 0, offset 0, flags [DF], proto TCP (6), length 60) 
-    89.186.95.190.80 > 172.16.1.3.41599: S, cksum 0x53a3 (correct), 3067518969:3067518969(0)
-    ack 1973795813 win 5792 <mss 1460,sackOK,timestamp 1294168298 2788799,nop,wscale 6>
-
-
-In the sniffjoke version of view, a routing table like:
-
-Kernel IP routing table
-Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
-10.10.100.1     10.10.100.5     255.255.255.255 UGH   0      0        0 tun0
-10.10.100.5     0.0.0.0         255.255.255.255 UH    0      0        0 tun0
-10.10.101.0     10.10.100.5     255.255.255.0   UG    0      0        0 tun0
-172.16.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
-169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 eth0
-0.0.0.0         172.16.1.1      0.0.0.0         UG    0      0        0 eth0
-
-is transformed in:
-
-Kernel IP routing table
-Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
-1.198.10.5      0.0.0.0         255.255.255.255 UH    0      0        0 tun1
-10.10.100.1     10.10.100.5     255.255.255.255 UGH   0      0        0 tun0
-10.10.100.5     0.0.0.0         255.255.255.255 UH    0      0        0 tun0
-10.10.101.0     10.10.100.5     255.255.255.0   UG    0      0        0 tun0
-172.16.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
-169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 eth0
-0.0.0.0         1.198.10.5      0.0.0.0         UG    0      0        0 tun1
-
-the ip address 1.198.10.5 (hardcoded at compile time, if you had the misfortune to live in
-a network using 1.0.0.0 classes, you need to recompile it - at the moment I've not
-defined an option because class 1 is usually not used. I'll see how much users will
-throw this exception, and if necessarty I promise i'll handle this.
-
-So, your applications will send packets to the sniffjoke default gateway in tun1, 
-those packets will be handled by sniffjoke and resent to your original default 
-gateway. the circle is closed, and sniffjoke will be able to inject the anti-sniffing
-packets between your packets.
-
                     USAGE OF THE LOCAL FIREWALL RULE
 
 Here is explained how an outgoing packet lives with or without sniffjoke:
@@ -122,57 +29,44 @@ With SniffJoke:
  -> you box -> kernel TCP strack -> connect()/recv() -> application.
  
 
-                TRACKING OF FUNCTIONS IN SEQUENCIAL MODE.
+        NETWORKING DUMPS STATUS:
 
+from ifconfig, when sniffjoke is runnig, you should see:
 
-SniffJoke main flow:
+sniffjoke Link encap:UNSPEC  HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00  
+          inet addr:172.16.1.3  P-t-P:1.198.10.5  Mask:255.255.255.255
+          UP POINTOPOINT RUNNING NOARP MULTICAST  MTU:1420  Metric:1
+          RX packets:11 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:3 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:500 
+          RX bytes:841 (841.0 B)  TX bytes:411 (411.0 B)
 
-(main) NetIO::networkIO
-    1 TCPTrack::readpacket
-       11 PacketQueue::select
-       12 PacketQueue::get
-       13 PacketQueue::remove
-    2 TCPTrack::writepacket
-       21 Packet::mark
-       22 PacketQueue::insert
-    3 TCPTrack::analyzePacketQueue
-        4 TCPTrack::handleYoungPackets
-            11, 12, 13, 22
-            41 TCPTrack::analyzeIncomingICMP
-                411 TTLFocusMap::find
-                13
-            42 TCPTrack::analyzeIncomingTCPTTL
-                411, 13
-            43 TCPTrack::analyzeIncomingTCPSynAck
-                411, 13
-            44 IPList::isPresent
-                (self contained)
-            45 TCPTrack::analyzeOutgoing
-                51, 22, 13
-        5 TCPTrack::handleKeepPackets
-            51 TTLFocusMap::get
-            13, 22
-            52 TCPTrack::lastPktFix
-                411, 
-                521 Packet::injectIPOpts
-                522 Packet::fixSum
-                523 Packet::corruptSum
-        6 TCPTrack::handleSendPackets
-            11, 12
-            61 TCPTrack::injectHack
-                611 SessionTrackMap::find
-                612 TCPTrack::percentage
-                613 Hack::Condition
-                614 Hack::createHack
-                615 Packet::selfIntegrityCheck
-                52, 21, 13
-                616 PacketQueue::inserBefore
-                617 PacketQueue::inserAfter
-        7 SessionTrackMap::manage
-        8 TTLFocusMap::manage
-        9 TCPTrack::execTTLBruteforces
-            22
-            91 Packet::fixIpTcpSum
+from "route -n":
+
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+10.254.254.254  0.0.0.0         255.255.255.255 UH    0      0        0 tun0
+1.198.10.5      0.0.0.0         255.255.255.255 UH    0      0        0 sniffjoke
+10.10.100.1     10.10.100.5     255.255.255.255 UGH   0      0        0 tun1
+10.10.100.5     0.0.0.0         255.255.255.255 UH    0      0        0 tun1
+10.10.101.0     10.10.100.5     255.255.255.0   UG    0      0        0 tun1
+172.16.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
+169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 eth0
+0.0.0.0         1.198.10.5      0.0.0.0         UG    0      0        0 sniffjoke
+
+tun1, tun0, eth0 are mine, but sniffjoke is added when the software is running, and 
+became default gateway
+
+iptables -L, show the rule add from source mac address (all these status are restored
+when sniffjoke quits)
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+DROP       all  --  anywhere             anywhere            MAC 0X:1X:EX:9X:X9:0X 
+
+via netstat -nap, you should see the administration port:
+
+udp        0      0 127.0.0.1:8844          0.0.0.0:*                           16705/sniffjoke 
 
 Triva, Italian language only:
 

@@ -25,3 +25,8 @@
 
         use a lot of tcpdump and let us know, we have some ideas to develop
         and few time.
+
+/autotest:
+        scripts used during autotest analysis, sniffjoke-autotest check the
+        plugins + scramble combinations, and sj-iptcpopt-probe check the
+        IP/TCP options header supports provided by your ISP/gateway

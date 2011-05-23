@@ -1,4 +1,5 @@
-The directory 'generic/' contains the default configuration settings.
+The directory 'generic/' contains the default configuration settings: SHALL NOT BE USED
+
 it's copied in /usr/local/var/sniffjoke/
 this directory will contain the "location" directories
 
@@ -10,27 +11,33 @@ and the generic will work instead for the most of the time.
 
 It's a script performing some sniffjoke tests and verifications to detect which kind of attack
 can be used in your network;
-this are the parameters required:
+this is the help:
 
 usage: /usr/local/bin/sniffjoke-autotest options
 
-This script runs plugins test along different destinations OS
-to determinate the selection of plugins that correctly work
-in the current location.
+  This script runs plugins test along different destinations OS to determinate the 
+selection of plugins and options that correctly works in the current location. 
 
-Every plugin it's tested with one of each scrambling tech.
+  Every workplace (office, home, freewifi) you use, neet to be setup as location.
+
+  Having a location correctly configurated IS THE ONLY WAY to have SniffJoke working;
+  technical details will be found in: 
+http://www.delirandom.net/sniffjoke/sniffjoke-locations
 
 OPTIONS:
    -h      show this message
    -l      location name                                       (required)
    -d      path of 'generic/' location, acting as default      (required)
    -n      number of replicas to be passed for the single hack (default 1)
+   -g      specify the group to privilege downgrade            (default: nogroup)
+   -u      specify the user to privilege downgrade             (default: nobody)
 
-It's required a LOCATION name, eg: office, home, nickhome, starbucks...
-sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment
-at the end of the tests (that include continuous restarting of sniffjoke with different options)
-will be created a new directory describing your location.
-at the and of the test options can be also text-customized for special applications.
+
+it's required a LOCATION name, eg: office, home, nickhome, starbucks...
+sniffjoke-autotest will generate the best plugins-enabled.conf usable in this environment
+at the end of the tests (that include continuos restarting of sniffjoke with different options)
+will be created a new directory describing your location. after you will customize the options
+
 
 * WHY sniffjoke-autotest EXISTS ?
 

@@ -1,10 +1,12 @@
-SniffJoke 0.4 
+SniffJoke 0.4.1
 
 developed by vecna and evilaliv3
 
 homepage: http://www.delirandom.net/sniffjoke
-developing 0.4 beta: http://github.com/vecna/sniffjoke
-developing 0.4 beta: http://github.com/evilaliv3/sniffjoke
+
+code repositories:
+    http://github.com/vecna/sniffjoke
+    http://github.com/evilaliv3/sniffjoke
 
 HEADLINE:
 
@@ -30,48 +32,46 @@ SniffJoke is a free software, implemented in C++, and at the moment supports
 only under Linux environment. Will be easy make the OSX+BSD mods, will became
 in short.
 
-HOW TO COMPILE/INSTALL:
+Some dumps from the site: http://www.deliandom.net/sniffjoke
 
-./configure && make && make install
-(sniffjoke is installed in /usr/local/bin, check your path when you do):
+What's SniffJoke ?
 
-SniffJoke package is composed by three software:
+    An internet client running SniffJoke injects in the transmission flow some packets 
+able to seriously disturb passive analysis like sniffing, interception and low level information 
+theft.  No server supports needed!
 
-sniffjoke
-    the service, when started in background make the network coolnes 
-sniffjokectl
-    the client, manage the service configuration when sniffjoke is running
-    (at the star time, is better used the command line options or the various
-    configuration file)
-sniffjoke-autotest
-    script able to test your network environment and generate a "location", the
-    options used in sniffjoke to describe a network environment with a specific
-    configuration
+Why is this possible ?
 
-# sniffjoke --help
-# sniffjokectl --help
+    The internet protocols have been developed to allow two elements to communicate, not some 
+third-parts to intercept their communication. This will happen, but the communication system 
+has been not developed with this objective.
+    SniffJoke uses the network protocol in a permitted way, exploiting the implicit difference 
+of network stack present in an operating system respect the sniffers dissector.
 
-FEW TECHNICAL INFO:
+Why has it been developed ?
 
-1) If you start SniffJoke without the --location parameter sniffjoke will use
-   the "generic" location. every location has a directory dedicated, the 
-   directory where the configuration files are stored, sniffjoke service chroot
-   himself and the logfile are written.
-2) SniffJoke is a software that mangles kernel traffic in userspace. To satisfy
-   this condition it requires some weird hack, like creation of a
-   fake-tunnel interface and use of the same local IP address. SniffJoke tries
-   to be verbose for the user. 
-3) Sniffjoke executes some commands on your box. the code is open, you should detect
-   how the command line are created grepping for the popen() functions, in the 
-   sniffjoke website you should find an exaustive documentation about how does Sj work.
-4) sniffjoke conf (and ttl cache) are BINARY, should not be edited from the user, 
-   and keep track about your ports setting. restaring Sniffjoke resume previously 
-   configuration.
-5) the TTL cache is tracked differenty for each network environment you use, and
-   in some location will neither work. for this reason, when sniffjoke is 
-   started in a new location, I suggest to run sniffjoke-autotest (a script
-   testing each plugin and each scrambling technology, to detect automatically
-   what kind of scrambling your network environment supports)
+    Because too many people believe that the only way to obtain self-security is through control, 
+I don't want to tell them they are wrong, but controlling internet is impossibile, if you want not to 
+be controlled. It is obvious that you should not trust a security control that could be bypassed, isn't it?
 
-DOCUMENTATION, will be found in doc/* directory, and an intesive commentary
-is spreaded in the code.
+    When you understand this, remember that the progressive acceptance of the control measure has 
+been treated like a "necessary sacrifice". when you realize that this security method don't bring security, 
+but only possibile abuses, you will be ready to stop accepting this useless sacrifice.
+
+What's SniffJoke don't protect from
+
+    If you are using a nontrusted third part (facebook?) it doesn't matter how much your data is 
+encrypted, scrambled or whatever: your data is in facebook store. Unprotected and presented. If you 
+use a trojanized box, it's the same, it's like have an invisible and weightless watchers sit on your 
+legs, transcribing everything you're doing. SniffJoke protects from: a sniffer in your network, a 
+sniffer in the provider flow, a sniffer in the destination network.
+
+Security and social GOALs
+
+    Various goals SniffJoke aim to achieves. Information security, will not be control based, 
+almost, not in traffic and data passive analysis, because Internet technology is not engineered 
+with this capability. Passive wiretapping is not only used by law enforcement (they have a lot 
+of other technology in their dispositions); Wiretapping technology is widespread and usable by every 
+entities, not for your safety, but for the value derived from your data.
+
+homepage updated 22/05/2011
