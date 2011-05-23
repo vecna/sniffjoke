@@ -1,0 +1,78 @@
+                      __ _________ _ _ _____ __
+                      == Sniffjoke 0.4 usage ==
+
+                ____ ____ __ ____ __ ____ ___ _______
+                this file is more or less the manpage
+                
+sniffjoke --help
+
+this command returns three pieces of information:
+
+the option usefull when sniffjoke is started (by hand or by init script)
+
+    Usage: sniffjoke [OPTION]... :
+     --location <name>    specify the network environment (suggested) [default: generic]
+     --dir <name>         specify the base directory where the location reside [default: /usr/local/var/sniffjoke/]
+                          [using both location and dir defaults, the configuration status will not be saved]
+     --user <username>    downgrade priviledge to the specified user [default: nobody]
+     --group <groupname>  downgrade priviledge to the specified group [default: nogroup]
+     --no-tcp             disable tcp mangling [default: tcp mangled]
+     --no-udp             disable udp mangling [default: udp mangled]
+     --whitelist          inject evasion packets only in the specified ip addresses
+     --blacklist          inject evasion packet in all session excluding the blacklisted ip address
+     --start              if present, evasion i'ts activated immediatly [default: not present]
+     --chain              enable chained hacking, powerful and entropic effects [default: disabled]
+     --debug <level 0-5>  set verbosity level [default: 2]
+                          0: suppress log, 1: common, 2: verbose, 3: debug, 4: session 5: packets
+     --foreground         running in foreground [default:background]
+     --admin <ip>[:port]  specify administration IP address [default: 127.0.0.1:8844]
+     --force              force restart (usable when another sniffjoke service is running)
+     --version            show sniffjoke version
+     --help               show this help
+
+when sniffjoke is running keep on memory the configuration settings and dump them
+in a binary file, sniffjoke run under chroot directory and inside them there are files
+usefull for sniffjoke and for the user.
+
+sniffjokectl --help
+
+and this is the sniffjoke manage, controller, client, whatever:
+
+    Usage: sniffjokectl [OPTIONS]... [COMMANDS]...
+     --address <ip>[:port]    specify administration IP address [default: 127.0.0.1:8844]
+     --version                show sniffjoke version
+     --timeout                set milliseconds timeout when contacting SniffJoke service [default: 500]
+     --help                   show this help
+
+    when sniffjoke is running, you should send commands with a command line argument:
+     start                    start sniffjoke hijacking/injection
+     stop                     pause sniffjoke
+     quit                     quit sniffjoke
+     saveconf                 dump configuration file
+     stat                     get statistics about sniffjoke configuration and network
+     info                     get statistics about sniffjoke active sessions
+     ttlmap                   show the mapped hop count for destination
+     showport                 show the running port-aggressivity configuration
+     set start:end value      set the injection's strogness over particular tcp/udp port
+                              typical values are: <NONE|RARE|COMMON|HEAVY|ALWAYS>
+                              eg.:    set 80 COMMON,PEAKATSTART
+                                      set 22,1194 NONE
+     clear                    alias to "set 1:65535 NONE"
+     debug                    [0-5] change the log debug level
+
+those command are used and accepted only when sniffjoke is running and the
+"client instance" is listening and reachable in the UDP port.
+
+when you set your port rules, save the configuration with saveconf and continue
+to use sniffjoke. when you restart sniffjoke, using the same --chroot-dir, the
+previous configurations are reloaded.
+
+SEMI-SECRET OPTION IN sniffjoke
+    --only-plugin plugin_name.so,SINGLESCRAMBLEUSED
+
+    is used during testing within sniffjoke-autotest
+
+[*] DEFAULTS:
+
+    the default values are hardcoded in the software, passed at compile time from the building script,
+    maybe a distribution-specific package will contain different paths.

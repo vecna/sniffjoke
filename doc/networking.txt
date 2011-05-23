@@ -1,6 +1,7 @@
-                    USAGE OF THE LOCAL FIREWALL RULE
+NETWORKING.txt                                      SniffJoke 0.4.1
 
-Here is explained how an outgoing packet live with or without sniffjoke:
+
+Here is explained how an outgoing packet lives with or without sniffjoke:
 
 Without SniffJoke:
 
@@ -9,12 +10,11 @@ Without SniffJoke:
 
 With SniffJoke:
 
-
  Application -> socket() -> kernel TCP stack -> IPTCP packet to
  your gateway that is a VPN endpoint handled by -> SniffJoke ->
  mangling & hacking -> gateway -> hops -> destination.
 
-What about the return ? Whitout SniffJoke:
+What about the return ? Without SniffJoke:
 
  destination sent the answer IPTCP packet -> hops -> your gateway
  -> you box -> kernel TCP strack -> connect()/recv() -> application.
@@ -29,8 +29,6 @@ With SniffJoke:
  In this way, SniffJoke is able to modify th
  -> you box -> kernel TCP strack -> connect()/recv() -> application.
  
-
-        NETWORKING DUMPS STATUS:
 
 from ifconfig, when sniffjoke is runnig, you should see:
 
@@ -72,5 +70,3 @@ udp        0      0 127.0.0.1:8844          0.0.0.0:*                           
 Triva, Italian language only:
 
 http://www.youtube.com/watch?v=vTbcos3MqrY Pino-holyshit!-Scotto & Caparezza !?
-
-

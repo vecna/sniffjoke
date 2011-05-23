@@ -2,7 +2,7 @@ TODO list for SniffJoke 0.5
 
 SERVICE
 
-. testing IP options in different target OS
+. testing IP options over different target OS
 . implement passive OS fingerprint with p0f in SessionTrack
 . verify gateway usage, implement ip source selection
 . accept whitelist/blacklist as configuration by client
@@ -19,7 +19,7 @@ CLIENT
 PLUGINS
 
 . layer 5 malformation, will support:
-    . expansion of fake_data in order to inject layer 5 acceptable data and not 
+    - expansion of fake_data in order to inject layer 5 acceptable data and not 
       simply random
-    . expand fake data with a template model, in order to exploit fault in 
+    - expand fake data with a template model, in order to exploit fault in 
       layer 5 sniffer flow reassembler

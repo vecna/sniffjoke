@@ -2,15 +2,19 @@
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
-# Requirement
+# Requirements
 
     cmake, gcc, iptables, tcpdump
 
+<<<<<<< HEAD:README.md
 Suggested
 
     gnupg
 
 # How to compile/install
+=======
+# or, if you're making some code modify
+>>>>>>> evil/master:README.md
     mkdir build
     cd build
     cmake ..
@@ -18,7 +22,7 @@ Suggested
     sudo -s
     make install
 
-and you could check the exaclty installed file by
+and you could check the exactly installed file by
     cat install_manifest.txt
 
 # Required setup, for configure your network capabilities
@@ -65,36 +69,99 @@ wifi/eth as default gateway (no other interface supported).
 The service binary
     /usr/local/bin/sniffjoke
 
-The client, required for manage remotely the configuration of Sj
+The client, required to manage remotely the configuration of Sj
     /usr/local/bin/sniffjokectl
 
-The "generic location" configuration, contains every default configuration files
+The "generic location" configuration, containing every default configuration files
     /usr/local/var/sniffjoke/generic/
 
 SniffJoke plugins
     /usr/local/lib/sniffjoke/*.so
 
+<<<<<<< HEAD:README.md
 Scripts:
     /usr/local/bin/sniffjoke-autotest
     /usr/local/bin/sj-iptcpopt-probe
+=======
+Sniffjoke Man pages
+    /usr/local/man/man1/sniffjoke.1
+    /usr/local/man/man1/sniffjokectl.1
+    /usr/local/man/man1/sniffjoke-autotest.1
 
+
+Betatesting 
+-----------
+
+# How does it work + Documentation
+
+Sniffjoke is a userspace software able to delay, block and modify the packets sent from the kernel. To obtain this, it uses a fake default gateway implemented with a tunnel device. it runs in background, reading some configuration files, and related to which environment is started will support a different options.
+
+The doc/ directory includes some usuful files:
+
+    bugs-and-warning.txt
+        this file contains know bugs and weird situation derived from the network/kernel use/misuse
+>>>>>>> evil/master:README.md
+
+<<<<<<< HEAD:README.md
 Man pages:
     sniffjoke.1
     sniffjokectl.1
     sniffjoke-autotest.1
+=======
+    config-location.txt
+        this file explains the *location* concept, the generation of new location with *sniffjoke-autotest*
+>>>>>>> evil/master:README.md
 
+<<<<<<< HEAD:README.md
 # External service
+=======
+    generic-infos-README.txt
+        this file was the older README file; contains some generic info, synthesized and better explained in the other files
+>>>>>>> evil/master:README.md
 
+<<<<<<< HEAD:README.md
 Sniffjoke in autotesting required to contact http://www.delirandom.net/sjA, this is not striclty required
 and if an user want to perform himself the test, will install the "pe.php" script, present in this package
 here
+=======
+    networking.txt
+        this file explains the networking hacks to permit sniffjoke act after the kernel
+>>>>>>> evil/master:README.md
 
+<<<<<<< HEAD:README.md
     conf/sjA/pe.php
+=======
+    plugin-development.txt
+        this file explaing SniffJoke plugins programmer support (implementing the IDS/sniffers evasion techniques)
+>>>>>>> evil/master:README.md
 
+<<<<<<< HEAD:README.md
 and using the semi-secret options -s and -a in sniffjoke-autotest (you will avoid every contact w/ delirandom)
+=======
+    SJ-PROTOCOL.txt
+        this file describes the internal protocolo used for communication the sniffjoke service (that will be start/stopped/logged/etc...) and the client (a binary that would/could run on a different box (eg: your Linux gateway run sniffjoke, and from your client you manage it). 
+
+    sniffjoke-autotest.txt
+        this file explains the *sniffjoke-autotest* script, the one that verify every plugin+scramble combination, discriminating between ones that will in your network environment for ones that won't and generates a proper configuration file.
+
+    tcp-hacks-and-scrambling.txt
+        this file explains how a plugin works and the scrambling concept, the technique that confuse the sniffers and the software that inject in the confused flow the unexpected data.
+
+    usage.txt
+        this file simply show some examples of usage, configuration etc..
+
+    TODO.txt
+    TODOs, funny ideas that; if you want to help us, we will be glad. welcome!
+>>>>>>> evil/master:README.md
 
 # Internal & external links
 
+<<<<<<< HEAD:README.md
+=======
+Official sniffjoke page:
+    http://www.delirandom.net/sniffjoke
+
+>>>>>>> evil/master:README.md
 (old) academic researchs:
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
