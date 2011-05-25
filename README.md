@@ -77,18 +77,24 @@ SniffJoke plugins:
 Scripts:
     /usr/local/bin/sniffjoke-autotest
     /usr/local/bin/sj-iptcpopt-probe
+    /usr/local/bin/sj-commit-results
 
 Sniffjoke Man pages
     /usr/local/man/man1/sniffjoke.1
     /usr/local/man/man1/sniffjokectl.1
     /usr/local/man/man1/sniffjoke-autotest.1
 
+# External service
+
+Sniffjoke in autotesting required to contact http://www.delirandom.net/sjA, this is not striclty required
+and if an user want to perform himself the test, will install the "pe.php" script, present in this package
+here
+
     conf/sjA/pe.php
+
 and using the semi-secret options -s and -a in sniffjoke-autotest (you will avoid every contact w/ delirandom)
 
-# Internal & external links
-
-Official sniffjoke page:
+# Official sniffjoke page:
     http://www.delirandom.net/sniffjoke
 
 (old) academic researchs:

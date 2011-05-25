@@ -1,5 +1,6 @@
 NETWORKING.txt                                      SniffJoke 0.4.1
 
+                    USAGE OF THE LOCAL FIREWALL RULE
 
 Here is explained how an outgoing packet lives with or without sniffjoke:
 
@@ -29,6 +30,8 @@ With SniffJoke:
  In this way, SniffJoke is able to modify th
  -> you box -> kernel TCP strack -> connect()/recv() -> application.
  
+
+        NETWORKING DUMPS STATUS:
 
 from ifconfig, when sniffjoke is runnig, you should see:
 
