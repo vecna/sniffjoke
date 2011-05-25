@@ -141,14 +141,14 @@ judge_t Plugin::pktRandomDamage(uint8_t availableScrambles, uint8_t supportedScr
     snprintfScramblesList(supportStr, MEDIUMBUF, supportedScrambles);
     snprintfScramblesList(andedStr, MEDIUMBUF, scrambles);
 
-    if (ISSET_TTL(scrambles) && RANDOM_PERCENT(70))
+    if (ISSET_TTL(scrambles) && random_percent(70))
     {
         LOG_PACKET("%s %s: avail [%s] init [%s] both [%s], choosed PRESCRIPTION",
                    __func__, pluginName, availStr, supportStr, andedStr);
 
         return PRESCRIPTION;
     }
-    if (ISSET_MALFORMED(scrambles) && RANDOM_PERCENT(95))
+    if (ISSET_MALFORMED(scrambles) && random_percent(95))
     {
         LOG_PACKET("%s %s: avail [%s] init [%s] both [%s], choosed MALFORMED",
                    __func__, pluginName, availStr, supportStr, andedStr);

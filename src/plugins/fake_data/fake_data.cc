@@ -67,12 +67,11 @@ private:
         pkt->tcp->rst = 0;
         pkt->tcp->fin = 0;
 
-        if (random() % 2)
-            pkt->tcp->psh = 1;
-        else
-            pkt->tcp->psh = 0;
+        /* before, psh was random 50% to be set or not. now I keep the orig */
 
-        if (random() % 2)
+        /* urg pointer is not used and is a little off topic handle here */
+#if 0
+        if (random_percent(50))
         {
             pkt->tcp->urg = 1;
             pkt->tcp->urg_ptr = pkt->tcp->seq << random() % 5;
@@ -81,6 +80,7 @@ private:
         {
             pkt->tcp->urg = 0;
         }
+#endif
 
         return pkt;
     }

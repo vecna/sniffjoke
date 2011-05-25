@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2011, 2010 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ private:
         if (pkts > MAX_INJECTED_PKTS)
             return false;
 
-        return (RANDOM_PERCENT(100 - (pkts * MAX_INJECTED_PKTS)));
+        return (random_percent(100 - (pkts * MAX_INJECTED_PKTS)));
     }
 
 public:
@@ -124,32 +124,18 @@ public:
 
             ret = inverseProportionality(*previouslyInjected);
 
-            pLH.completeLog("cache present for %s:%u value of %d condition return %s",
+            pLH.completeLog("cache present for %s:%u injected #%d condition return %s (min %d max %d)",
                             inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
-                            *previouslyInjected, ret ? "TRUE" : "FALSE");
+                            *previouslyInjected, ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
         }
 
         return true;
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    void fixPushFin(Packet * const pkt, uint8_t availableScrambles)
     {
-        Packet * const pkt = new Packet(origpkt);
-
         pkt->randomizeID();
-
-        /* we have two guess:
-         * 1) the sniffer trust the FIN because has the last sequence number + 1
-         * 2) the sniffer trust the FIN because does see a coherent ack_seq in answer */
-        if (RANDOM_PERCENT(50))
-            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
-        /* else, the sequence number is not changed and will be acked after,
-         * because the remote host is receiving this data */
-
-        pkt->tcp->psh = 0;
         pkt->tcp->fin = 1;
-
-        pkt->tcppayloadResize(0);
 
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
@@ -159,6 +145,35 @@ public:
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
+    }
+
+    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    {
+        /* the sniffer trust the FIN because has the last sequence number + 1 */
+        if (random_percent(80))
+        {
+            Packet * const pkt = new Packet(origpkt);
+
+            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - pkt->tcppayloadlen + 1);
+            pkt->tcppayloadResize(0);
+            pkt->tcp->psh = 0;
+
+            fixPushFin(pkt, availableScrambles);
+
+            pLH.completeLog("injection with seq/push modification, id %d (psh %d ack %d)", 
+                ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack );
+        }
+
+         /* the sniffer trust the FIN because does see a coherent ack_seq in answer */
+        if (random_percent(80))
+        {
+            Packet * const pkt = new Packet(origpkt);
+
+            fixPushFin(pkt, availableScrambles);
+
+            pLH.completeLog("injection with seq/push coherence keeping, id %d (psh %d ack %d)", 
+                ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
+        }
     }
 };
 

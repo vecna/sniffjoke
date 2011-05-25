@@ -110,6 +110,14 @@ void* memset_random(void *s, size_t n)
     return s;
 }
 
+bool random_percent(int32_t percent)
+{
+    if(debug.level() == TESTING_LEVEL)
+        return true;
+
+    return ( (random() % 100) + 1 <= percent );
+}
+
 int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList)
 {
     int len = snprintf(str, size, "%s%s%s%s",

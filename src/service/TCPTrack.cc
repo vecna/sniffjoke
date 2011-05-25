@@ -704,7 +704,9 @@ bool TCPTrack::lastPktFix(Packet &pkt)
     if (pkt.wtf == MALFORMED)
     {
         bool malformed = false;
-        if (pkt.fragment == true || pkt.proto != TCP || RANDOM_PERCENT(50))
+
+        /* testing at the moment: are the IP options more relaibalbe ? */
+        if (true /* pkt.fragment == true || pkt.proto != TCP || malformed == false */)
         {
             try
             {
@@ -717,7 +719,8 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 LOG_ALL("strip & inject IP opts (target: corrupt) fail: %s", e.what());
             }
         }
-        else
+
+        if (malformed == false /* pkt.fragment == false && ( pkt.proto == TCP || random_percent(80) ) */)
         {
             try
             {
@@ -748,17 +751,21 @@ bool TCPTrack::lastPktFix(Packet &pkt)
 
     if (pkt.wtf != MALFORMED)
     {
-        /* MISTIFICATION PACKET NOT CORRUPTED BY IP/TCP OPTIONS */
+        /* MISTIFICATION OF THE PACKET NOT YET CORRUPTED BY IP/TCP OPTIONS */
 
         /* IP/TCP options scambling enabled globally (and/or for destination) */
         if (ISSET_MALFORMED(plugin_pool->enabledScrambles()))
         {
-            if (RANDOM_PERCENT(66))
+            bool optmysty = false;
+
+            /* testing in MALFORMED, 66 in normal usage, autotest usage is 100% */
+            if ( random_percent(66) )
             {
                 try
                 {
                     HDRoptions IPInjector(IPOPTS_INJECTOR, pkt, ttlfocus);
                     IPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                    optmysty = true;
                 }
                 catch (exception &e)
                 {
@@ -766,12 +773,13 @@ bool TCPTrack::lastPktFix(Packet &pkt)
                 }
             }
 
-            if (RANDOM_PERCENT(66) && pkt.proto == TCP)
+            if (optmysty == false /* random_percent(66) && pkt.proto == TCP */)
             {
                 try
                 {
                     HDRoptions TCPInjector(TCPOPTS_INJECTOR, pkt, ttlfocus);
                     TCPInjector.injectRandomOpts(/* corrupt ? */ false, /* strip previous options ? */ false);
+                    optmysty = true;
                 }
                 catch (exception &e)
                 {

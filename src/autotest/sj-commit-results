@@ -1,0 +1,77 @@
+#!/bin/bash
+
+shopt -s expand_aliases
+alias echo="echo -e"
+
+red="\e[1;31m"
+green="\e[1;32m"
+yellow="\e[1;33m"
+blue="\e[1;34m"
+violet="\e[1;35m"
+white="\e[1;39m"
+
+VERSION="041"
+
+usage()
+{
+cat << EOF
+usage: $0 options
+This script is part of SniffJoke autotest
+USUALLY - an user has not any needings in use this script
+
+OPTIONS:
+   -l      target location to send remotely 
+   -u      URL which commit to
+           (both required)
+EOF
+}
+
+while getopts “hl:u:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             tput sgr0; exit 1
+             ;;
+         l)
+             LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
+             ;;
+         u)
+             RESULTS=$OPTARG
+             ;;
+         ?)
+             usage
+             tput sgr0; exit 1
+             ;;
+     esac
+done
+
+if [ -z "$LOCATION" ]; then
+    echo "${red} -l is required, location specify where will be found /tmp/_location_name_/sjAlogs-..."
+    tput sgr0; exit 1
+fi
+
+if [ -z "$RESULTS" ]; then
+    echo "${red} -u is required, specify where the results will be posted: remind http://www.delirandom.net/sjA/pr.php"
+    tput sgr0; exit 1
+fi
+
+dFname="/tmp/$LOCATION/sjAlogs-$LOCATION.tar.bz2"
+cd /tmp/$LOCATION
+
+echo "${green} sending of the file $dFname to $RESULTS"
+output_put="/tmp/$LOCATION/HTTP_put.out"
+curl -o $output_put -T $dFname "$RESULTS?v=$VERSION"
+if [ -e "$output_put" ]; then
+    MESSAGE=`grep "MESSAGE=" $output_put | cut -b 9-`
+    URL=`grep "URL=" $output_put | cut -b 5-`
+    echo "${blue} message received from the server:"
+    echo "* --------- ----- --- -- -"
+    echo "${green}$MESSAGE"
+    echo "${green}$URL"
+else
+    echo "${red}Error in uploading: operation fail"
+fi
+
+# clearing gay colors
+tput sgr0

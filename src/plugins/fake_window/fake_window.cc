@@ -72,13 +72,14 @@ public:
 
         pkt->randomizeID();
 
-        if (RANDOM_PERCENT(50))
+        /* all to re - do */
+        if (random_percent(50))
             pkt->tcp->window = 0; /* ZERO WINDOW */
         else
             memset_random(&(pkt->tcp->window), sizeof (pkt->tcp->window)); /* WINDOW UPDATE */
 
         /* a zero/update window could ack segments */
-        if (RANDOM_PERCENT(66))
+        if (random_percent(66))
         {
             pkt->tcp->ack = 1;
             memset_random(&(pkt->tcp->ack_seq), sizeof (pkt->tcp->ack_seq));

@@ -72,27 +72,22 @@ public:
 
         pkt->randomizeID();
 
-        if (RANDOM_PERCENT(33))
-            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000));
-        else
-            pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000));
+        /* under test the anticipation seq only */
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (random() % 5000) + 300);
+        /* pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) - (random() % 5000)); */
 
         pkt->tcp->window = htons((random() % 80) * 64);
         pkt->tcp->ack = pkt->tcp->ack_seq = 0;
 
-        uint16_t diff = ntohs(pkt->ip->tot_len) - ((pkt->ip->ihl * 4) + (pkt->tcp->doff * 4));
+        uint16_t newpayloadlen = random() % 100 + 200;
 
-        if (diff > 200)
-        {
-            diff = random() % 200;
-            pkt->tcppayloadResize(diff);
-        }
+        pkt->tcppayloadResize(newpayloadlen);
+        pkt->tcppayloadRandomFill();
 
         pkt->source = PLUGIN;
-        pkt->position = ANY_POSITION;
+        pkt->position = ANTICIPATION;
         pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
         pkt->choosableScramble = availableScrambles & supportedScrambles;
-        pkt->tcppayloadRandomFill();
 
         upgradeChainFlag(pkt);
 

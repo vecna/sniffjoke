@@ -63,10 +63,8 @@ extern char sj_clock_str[MEDIUMBUF];
 #define ISSET_CHECKSUM(byte)    (byte & SCRAMBLE_CHECKSUM)
 #define ISSET_MALFORMED(byte)   (byte & SCRAMBLE_MALFORMED)
 #define ISSET_INNOCENT(byte)    (byte & SCRAMBLE_INNOCENT)
-#define RANDOM_PERCENT(percent) ((uint32_t)random() % 100 <= percent)
 #define RANDOM_IPOPT            ((random() % (LAST_IPOPT - FIRST_IPOPT )) + FIRST_IPOPT + 1)
 #define RANDOM_TCPOPT           ((random() % (LAST_TCPOPT - FIRST_TCPOPT )) + FIRST_TCPOPT + 1)
-
 
 /* std::runtime_error runtime_exception(const char *, const char *, uint32_t, const char *, ...); */
 std::runtime_error runtime_exception(const char *, const char *, ...);
@@ -75,6 +73,7 @@ string execOSCmd(string cmd);
 void init_random(void);
 void* memset_random(void *, size_t);
 int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList);
+bool random_percent(int32_t percent);
 
 #define SELFLOG(...) selflog(__func__, __VA_ARGS__)
 

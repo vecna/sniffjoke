@@ -23,3 +23,15 @@ PLUGINS
       simply random
     - expand fake data with a template model, in order to exploit fault in 
       layer 5 sniffer flow reassembler
+
+BUGS - HEADER OPTIONS
+
+The main problems in IP/TCP options handling is:
+    - you need to probe each of them for every destination, like ttlbruteforce does
+    - you need a incominfilter like the plugins, for understood if a packet is generate
+      by an options error and thus need to be stripped off
+    - is needed a condition too, because in IP header options is not a problem use/abuse
+      but in the TCP, the flags and the connection status *does matter*, and a 
+      condition() became required.
+
+    - this will be solved developing the Scramble classes

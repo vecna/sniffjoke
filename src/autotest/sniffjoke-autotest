@@ -73,11 +73,79 @@ valid_rst_fake_seq,INNOCENT
 __EOF__
 }
 
+trusted_server_contact()
+{
+    # this is the trustable key
+    #
+    # pub   1024D/7D9E677D 2011-05-21
+    #       Key fingerprint = F37C 2042 5052 27E2 2FD7  D511 947F 574B 7D9E 677D
+    # uid                  SniffJoke project (http://www.delirandom.net/sniffjoke)
+    #
+    # and, to be sure became installed in every box:
+    #
+    # $ gpg -a --export 7D9E677D
+    # -----BEGIN PGP PUBLIC KEY BLOCK-----
+    # Version: GnuPG v1.4.10 (GNU/Linux)
+    # 
+    # mQGiBE3YHaMRBACLou45ad2TnK6iQKHym7Q4AuySv+pxFVjd5QEJ/Gy3b5dM4bRn
+    # y1NzuTxnCPpuR4c/Iv+rZbhSsoxqTAZ8YYJ4wdFEvDTLap9l1n8D66oYzYr9C1Tl
+    # lxeCtz4hzJZK1M8agoBpnu0xRWCkZNziSdKPQGAlrSaTzLcrKaNYx727uwCg8XKF
+    # fMe93oJtEmKSxl6S1V+mbOsD/j/2CfDuhtjJnHZWgmrlBrtghw9BubCi/o+TWNPs
+    # a++FqUI+tw5G2CZiOS2HzR6/UIEcWr99HBGnyC6+B3TzyiU20T22DOCt8Dii65qt
+    # j47rhKFAo6kUlJymY0X+fLzxxNBzS7BzrNIvLzCcdNmDsxjGtGtCedJCV09WNgRk
+    # SgVpA/sHMF1rsYb4LGeg+unp7b6IyJgpeGagvTVqS366IReoftPatvbP18t4pdlD
+    # wkGG2MnVtQFgz8o5LiS1AR6B74Lpr0FTIhMBUpi7A1JOetsliNImNPkrMJs1sYog
+    # tWv59uDOYj7TfV2F9jMu1hWoedCLMsvwouXwaqFtk13PFg2hMbQ3U25pZmZKb2tl
+    # IHByb2plY3QgKGh0dHA6Ly93d3cuZGVsaXJhbmRvbS5uZXQvc25pZmZqb2tlKYhg
+    # BBMRAgAgBQJN2B2jAhsDBgsJCAcDAgQVAggDBBYCAwECHgECF4AACgkQlH9XS32e
+    # Z31bjgCeIm4ft9zSztcsVFjdWnOyyKvNWckAnA6Ndf9Ps97Ve0u82ySNYFgHVqRR
+    # iEoEEBECAAoFAk3YHmsDBQJ4AAoJELhCCT3GdlQwEl4AnA/OX42uxbC5GCn2tgBC
+    # mJ7sBRawAKDfZ2G6q0S+JUWlQDFtbHwocCaIYA==
+    # =FK0c
+    # -----END PGP PUBLIC KEY BLOCK-----
+    #
+    # is a "sign only" key, that's why is so short
+
+    GPGBIN=`which gpg`
+    if [ ! -z "$GPGBIN" ]; then
+
+        # REMIND: this is needed to avoid:
+        KEYRINGOPT="--no-permission-warning --no-default-keyring --keyring $TEMPDIR/$LOCATION/sj.gpgkeyring"
+        # gpg: WARNING: unsafe ownership on configuration file `/home/vecna/.gnupg/gpg.conf'
+        # gpg: error reading key: public key not found
+
+        echo "${green}GNuPG binary found: checking if key (1024D/7D9E677D 2011-05-21) is present on your keyring..."
+        echo "${blue}"
+        $GPGBIN --list-keys 7D9E677D >/dev/null 2>&1
+        if [ "$?" != "0" ]; then
+            echo "${yellow} SniffJoke key not found: importing in a temporary keyring..."
+            tput sgr0
+            $GPGBIN $KEYRINGOPT --keyserver pgp.mit.edu --recv-key 7D9E677D 
+        fi
+
+        fingercheck=`$GPGBIN $KEYRINGOPT --fingerprint 7D9E677D | grep "fingerprint" | tr -d " " | cut -b 16- 2>&1`
+        if [ -z "$fingercheck" ]; then
+            echo "${red} Unable to retriver SniffJoke's key from ${blue}pgp.mit.edu${red}: Not required, but understimable neither"
+        else
+            if [ "$fingercheck" = "F37C2042505227E22FD7D511947F574B7D9E677D" ]; then
+                echo "${green} Key verified: 7D9E677D, SniffJoke project (http://www.delirandom.net/sniffjoke)"
+                GNUPGTRUST="YEP"
+            else
+                echo "${red} Something is wrong with your keys, keyserver or gpg: unable to verify the key"
+                # default, GNUPGTRUST="NO"
+            fi
+        fi
+    else
+        echo "${red}gnupg not found! not required, but for paranoic guys, that's things matters"
+    fi
+}
+
 routing_table_log() {
     route -n > $WORKDIR/route-$1.log
 }
 
-group_check() {
+group_check() 
+{
     GROUPNAME=`groups $USERNAME | cut -d " " -f 3` 
     if [ -z "$GROUPNAME" ]; then
         echo "${red}Unable to found, in your system, the group of $USERNAME. ${white}please specify with the option -g and -u username/group"
@@ -136,7 +204,7 @@ start_test() {
 
         INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface:" | awk '{print $3}'`
         if [ -n "$INTERFACE" ]; then
-            echo "${yellow}** Starting tcpdump on $INTERFACE${white}"
+            echo "${yellow}** Starting tcpdump on $INTERFACE${white}, listening only $SERVER_URL and ICMP"
         else
             echo "${red}Unable to detect hijacked interface name by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
             tput sgr0; exit
@@ -205,7 +273,13 @@ start_test() {
     fi
 }
 
-while getopts “hl:d:n:u:g:s:” OPTION
+compress_location_output()
+{
+    dFname="sjAlogs-$LOCATION.tar.bz2"
+    tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
+}
+
+while getopts “hl:d:n:u:g:s:a:” OPTION
 do
      case $OPTION in
          h)
@@ -364,69 +438,9 @@ fi
 
 cd $TEMPDIR/$LOCATION
 
-# this is the trustable key
-#
-# pub   1024D/7D9E677D 2011-05-21
-#       Key fingerprint = F37C 2042 5052 27E2 2FD7  D511 947F 574B 7D9E 677D
-# uid                  SniffJoke project (http://www.delirandom.net/sniffjoke)
-#
-# and, to be sure became installed in every box:
-#
-# $ gpg -a --export 7D9E677D
-# -----BEGIN PGP PUBLIC KEY BLOCK-----
-# Version: GnuPG v1.4.10 (GNU/Linux)
-# 
-# mQGiBE3YHaMRBACLou45ad2TnK6iQKHym7Q4AuySv+pxFVjd5QEJ/Gy3b5dM4bRn
-# y1NzuTxnCPpuR4c/Iv+rZbhSsoxqTAZ8YYJ4wdFEvDTLap9l1n8D66oYzYr9C1Tl
-# lxeCtz4hzJZK1M8agoBpnu0xRWCkZNziSdKPQGAlrSaTzLcrKaNYx727uwCg8XKF
-# fMe93oJtEmKSxl6S1V+mbOsD/j/2CfDuhtjJnHZWgmrlBrtghw9BubCi/o+TWNPs
-# a++FqUI+tw5G2CZiOS2HzR6/UIEcWr99HBGnyC6+B3TzyiU20T22DOCt8Dii65qt
-# j47rhKFAo6kUlJymY0X+fLzxxNBzS7BzrNIvLzCcdNmDsxjGtGtCedJCV09WNgRk
-# SgVpA/sHMF1rsYb4LGeg+unp7b6IyJgpeGagvTVqS366IReoftPatvbP18t4pdlD
-# wkGG2MnVtQFgz8o5LiS1AR6B74Lpr0FTIhMBUpi7A1JOetsliNImNPkrMJs1sYog
-# tWv59uDOYj7TfV2F9jMu1hWoedCLMsvwouXwaqFtk13PFg2hMbQ3U25pZmZKb2tl
-# IHByb2plY3QgKGh0dHA6Ly93d3cuZGVsaXJhbmRvbS5uZXQvc25pZmZqb2tlKYhg
-# BBMRAgAgBQJN2B2jAhsDBgsJCAcDAgQVAggDBBYCAwECHgECF4AACgkQlH9XS32e
-# Z31bjgCeIm4ft9zSztcsVFjdWnOyyKvNWckAnA6Ndf9Ps97Ve0u82ySNYFgHVqRR
-# iEoEEBECAAoFAk3YHmsDBQJ4AAoJELhCCT3GdlQwEl4AnA/OX42uxbC5GCn2tgBC
-# mJ7sBRawAKDfZ2G6q0S+JUWlQDFtbHwocCaIYA==
-# =FK0c
-# -----END PGP PUBLIC KEY BLOCK-----
-#
-# is a "sign only" key, that's why is so short
+echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
+$SNIFFJOKECLIBIN quit >/dev/null 2>&1
 
-GPGBIN=`which gpg`
-if [ ! -z "$GPGBIN" ]; then
-
-    # REMIND: this is needed to avoid:
-    KEYRINGOPT="--no-permission-warning --no-default-keyring --keyring $TEMPDIR/$LOCATION/sj.gpgkeyring"
-    # gpg: WARNING: unsafe ownership on configuration file `/home/vecna/.gnupg/gpg.conf'
-    # gpg: error reading key: public key not found
-
-    echo "${green}GNuPG binary found: checking if key (1024D/7D9E677D 2011-05-21) is present on your keyring..."
-    echo "${blue}"
-    $GPGBIN --list-keys 7D9E677D >/dev/null 2>&1
-    if [ "$?" != "0" ]; then
-        echo "${yellow} SniffJoke key not found: importing in a temporary keyring..."
-        tput sgr0
-        $GPGBIN $KEYRINGOPT --keyserver pgp.mit.edu --recv-key 7D9E677D 
-    fi
-
-    fingercheck=`$GPGBIN $KEYRINGOPT --fingerprint 7D9E677D | grep "fingerprint" | tr -d " " | cut -b 16- 2>&1`
-    if [ -z "$fingercheck" ]; then
-        echo "${red} Unable to retriver SniffJoke's key from ${blue}pgp.mit.edu${red}: Not required, but understimable neither"
-    else
-        if [ "$fingercheck" = "F37C2042505227E22FD7D511947F574B7D9E677D" ]; then
-            echo "${green} Key verified: 7D9E677D, SniffJoke project (http://www.delirandom.net/sniffjoke)"
-            GNUPGTRUST="YEP"
-        else
-            echo "${red} Something is wrong with your keys, keyserver or gpg: unable to verify the key"
-            # default, GNUPGTRUST="NO"
-        fi
-    fi
-else
-    echo "${red}gnupg not found! not required, but for paranoic guys, that's things matters"
-fi
 
 ln -s $WORKPATH/generic .
 
@@ -435,17 +449,10 @@ ifconfig >> LAN.info
 route -n >> LAN.info
 iptables -nL >> LAN.info
 uname -a >> LAN.info
-cp -r /proc/sys/net/ipv4/ kernel_ipv4.info/ >/dev/null 2>&1
 
-echo "${yellow}+ Starting SniffJoke hacks test"
-echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
-$SNIFFJOKECLIBIN quit >/dev/null 2>&1
+if [ -z "$SERVERURL" ]; then
+    trusted_server_contact
 
-PPATH="/usr/local/lib/sniffjoke"
-echo "* The test will use path $PPATH" to load plugins
-
-if [ -z $SERVERURL ]; 
-then
     FILEURL="http://www.delirandom.net/sjA/autotest.php?v=$VERSION"
     echo "* retrivering multi-OS testing server list ($FILEURL)"
     SERVERFILE="sj-server.info"
@@ -500,6 +507,11 @@ if [ ! -z "$MESSAGE" ]; then
         read
     fi
 fi
+
+echo "${yellow}+ Starting SniffJoke hacks test"
+
+PPATH="/usr/local/lib/sniffjoke"
+echo "* The test will use path $PPATH to load plugins"
 
 # uh remember coder: the http port www.umpalumpa.net:803213 is NOT SUPPORTED
 SERVER_ADDR=`echo $SERVER | sed -e's/.*\/\///' | sed -e's/\/.*//'`
@@ -562,7 +574,7 @@ PeL="plugins-enabled.conf"
 echo "# this is an autogenerated file by sniffjoke-autotest " > $PeL
 echo "# wheneven you change the network router, provider or some malfunction is detected" >> $PeL
 echo "# you are invited to regenerate this file" >> $PeL
-echo "# this plugins-enabled.conf are dumped for location: $LOCATION using $SERVER_IP" >> $PeL
+echo "# this plugins-enabled.conf \"$VERSION\" its for location: $LOCATION using $SERVER_IP" >> $PeL
 
 success_count=0
 TAR_EXCLUSION=""
@@ -611,6 +623,12 @@ echo "\n${yellow}* sniffjoke-autotest has dumped $TEMPDIR/$LOCATION/plugins-enab
 echo "* that conf has been copyed in $DESTINATION with the other default configuration file."
 echo "* now, when you are using internet in this network environment, use sniffjoke with the option --location $LOCATION${white}"
 
+if [ ! -z "$SERVERURL" ]; then
+    echo "${blue} compressig data and quitting: commit data not provided in hand usage"
+    compress_location_output
+    tput sgr0; exit;
+fi
+
 tput sgr0
 echo "if you want to: 1) have an easyest support 2) have an automatized analysis of your network capability 3) contribute in sniffjoke"
 echo "automatically this script will send to the testing server some data collected in this test. what data are send:"
@@ -619,13 +637,13 @@ echo "  log files of sniffjoke execution, warning: some IP address of your prese
 echo "  traffic monitor of the testing session and ICMP error traffic"
 echo "  only the tests related the plugins that have failed"
 echo "${green}the data are intended to be used for debug and optimization only, and you could delete your submission when you wish."
+echo "submission will be do to \"$RESULTS\""
 tput sgr0
 echo "if you want to send, write: ${green}OK"
 read YESORNOT 
 
 if [ "$YESORNOT" == "OK" ]; then
-    dFname="sjAlogs-$LOCATION.tar.bz2"
-    tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
+    compress_location_output
     echo "${green} sending of the file... to $RESULTS"
     output_put="$TEMPDIR/$LOCATION/HTTP_put.out"
     $CURLBIN -o $output_put -T $dFname "$RESULTS?v=$VERSION"
@@ -634,8 +652,7 @@ if [ "$YESORNOT" == "OK" ]; then
         URL=`grep "URL=" $output_put | cut -b 5-`
         echo "${blue} message received from the server:"
         echo "* --------- ----- --- -- -"
-        echo "${green}$MESSAGE${blue}"
-        echo "* --------- ----- --- -- -"
+        echo "${green}$MESSAGE"
         echo "${green}$URL"
     else
         echo "${red}Error in uploading: operation fail"
