@@ -1,0 +1,19 @@
+
+THE PLUGINS CATEGORY ARE:
+
+badSync
+forcedClosing
+payldBreakin
+
+The division in categories was made because the plugins attack, at this moment, will be divided in three big 
+categories.
+
+
+forcedClosing
+    The plugin inside this directory will try to inject packets who should bring an interruption.
+    If the interruption don't work, is not required try randomly for the entire session length,
+    for ths reason, in the fragmenteCorrent 
+
+
+
+HDRoptions_probe

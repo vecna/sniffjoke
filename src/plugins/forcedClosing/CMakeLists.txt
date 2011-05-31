@@ -1,0 +1,20 @@
+ADD_LIBRARY(fake_close_rst SHARED fake_close_rst.cc)
+ADD_LIBRARY(fake_close_fin SHARED fake_close_fin.cc)
+ADD_LIBRARY(valid_rst_fake_seq SHARED valid_rst_fake_seq.cc)
+ADD_LIBRARY(fake_syn SHARED fake_syn.cc)
+
+INSTALL(TARGETS fake_close_rst
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+
+INSTALL(TARGETS fake_close_fin
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+
+INSTALL(TARGETS valid_rst_fake_seq
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+
+INSTALL(TARGETS fake_syn
+        DESTINATION lib/${PROJECT_NAME}
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
