@@ -1,5 +1,0 @@
-ADD_LIBRARY(overlap_packet SHARED overlap_packet.cc)
-
-INSTALL(TARGETS overlap_packet
-        DESTINATION lib/${PROJECT_NAME}
-        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

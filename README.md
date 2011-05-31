@@ -19,12 +19,14 @@ Suggested
     make install
 
 and you could check the exactly installed file by
+
     cat install_manifest.txt
 
-# Required setup, for configure your network capabilities
+# Suggested setup, for configure your network capabilities
     sniffjoke-autotest -l name_of_your_location -d /usr/local/var/sniffjoke -n 2
 
-since you have runned the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with
+since you have runned the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with:
+
     sniffjoke --location name_of_your_location
     sniffjokectl --stat
     sniffjokectl --start
@@ -57,29 +59,36 @@ SniffJoke concepts, goals: http://www.delirandom.net/sniffjoke/sniffjoke-how-doe
 
 # Requirements
 
-Linux OS (>=2.6.19) with tun kernel module;
+Linux OS (>=2.6.19) with tun support;
+
 wifi/eth as default gateway (no other interface supported).
 
 ## Installed files 
 
 The service binary
+
     /usr/local/bin/sniffjoke
 
 The client, required to manage remotely the configuration of Sj
+
     /usr/local/bin/sniffjokectl
 
 The "generic location" configuration, containing every default configuration files
+
     /usr/local/var/sniffjoke/generic/
 
 SniffJoke plugins:
+
     /usr/local/lib/sniffjoke/*.so
 
 Scripts:
+
     /usr/local/bin/sniffjoke-autotest
     /usr/local/bin/sj-iptcpopt-probe
     /usr/local/bin/sj-commit-results
 
 Sniffjoke Man pages
+
     /usr/local/man/man1/sniffjoke.1
     /usr/local/man/man1/sniffjokectl.1
     /usr/local/man/man1/sniffjoke-autotest.1
@@ -95,18 +104,23 @@ here
 and using the semi-secret options -s and -a in sniffjoke-autotest (you will avoid every contact w/ delirandom)
 
 # Official sniffjoke page:
+
     http://www.delirandom.net/sniffjoke
 
 (old) academic researchs:
+
     http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
 Hacker's old bread:
+
     http://www.phrack.org/issues.html?issue=54&id=10#article
 
-MacOSx ports as kernel module:
+MacOSx 0.3 ports as kernel module:
+
     http://en.roolz.org/trafscrambler.html
 
 Wireshark thread about Sj 0.3:
+
     http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
 
 # Italian music support
@@ -114,7 +128,6 @@ Wireshark thread about Sj 0.3:
     http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica
 
 # GPG public keys
-
     X-2:~ X$ gpg --keyserver pgp.mit.edu --recv-key C6765430
     X-2:~ X$ gpg --fingerprint C6765430
     pub   1024D/C6765430 2009-08-25 [expires: 2011-08-25]

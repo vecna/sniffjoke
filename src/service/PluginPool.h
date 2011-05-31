@@ -46,6 +46,8 @@ public:
     char *declaredOpt;
 
     PluginTrack(const char *, uint8_t, char *);
+private:
+    void *forcedSymbolCopy( const char *, const char *);
 };
 
 class PluginPool

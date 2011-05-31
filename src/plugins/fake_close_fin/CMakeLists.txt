@@ -1,5 +1,0 @@
-ADD_LIBRARY(fake_close_fin SHARED fake_close_fin.cc)
-
-INSTALL(TARGETS fake_close_fin
-        DESTINATION lib/${PROJECT_NAME}
-        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

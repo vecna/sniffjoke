@@ -1,5 +1,0 @@
-ADD_LIBRARY(segmentation SHARED segmentation.cc)
-
-INSTALL(TARGETS segmentation
-        DESTINATION lib/${PROJECT_NAME}
-        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

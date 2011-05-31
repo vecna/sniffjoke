@@ -68,7 +68,10 @@ int Process::detach(void)
 {
     pid_t pid_child;
     int pdes[2];
-    pipe(pdes);
+
+
+    if ( pipe(pdes) == -1 )
+        RUNTIME_EXCEPTION("pid %d unable to open pipe: %s", getpid(), strerror(errno));
 
     if ((pid_child = fork()) == -1)
         RUNTIME_EXCEPTION("unable to fork (calling pid %d, parent %d)", getpid(), getppid());
@@ -81,7 +84,10 @@ int Process::detach(void)
          */
 
         close(pdes[1]);
-        read(pdes[0], &pid_child, sizeof (pid_t));
+        
+        if(read(pdes[0], &pid_child, sizeof (pid_t)) == -1)
+            LOG_ALL("failure in father/child communication: %s", strerror(errno));
+
         close(pdes[0]);
 
         return pid_child;
@@ -97,7 +103,10 @@ int Process::detach(void)
         pid_child = getpid();
 
         close(pdes[0]);
+
         write(pdes[1], &pid_child, sizeof (pid_t));
+            LOG_ALL("failure in child/father communication: %s", strerror(errno));
+
         close(pdes[1]);
 
         LOG_DEBUG("forked child process, pid %d", getpid());
@@ -183,8 +192,9 @@ pid_t Process::readPidfile(void)
         return ret;
     }
 
-    char tmpstr[10];
-    if (fgets(tmpstr, 100, pidFile) != NULL)
+#define PIDBLEN  7
+    char tmpstr[PIDBLEN];
+    if (fgets(tmpstr, PIDBLEN, pidFile) != NULL)
         ret = atoi(tmpstr);
     fclose(pidFile);
 
@@ -217,8 +227,14 @@ void Process::unlinkPidfile(bool killOther)
         return;
     }
 
-    fgets(line, SMALLBUF, pidFile);
-    written = atoi(line);
+    if( fgets(line, SMALLBUF, pidFile) == NULL)
+    {
+        LOG_ALL("weird, %s unable to read ? or empty ? [%s] anyway, will be removed", SJ_PIDFILE, strerror(errno));
+        written = 0;
+    }
+    else
+        written = atoi(line);
+
     fclose(pidFile);
 
     if (!written)
@@ -256,9 +272,12 @@ void Process::background(void)
     for (i = getdtablesize(); i >= 0; --i)
         close(i);
 
-    i = open("/dev/null", O_RDWR); /* stdin  */
-    dup(i); /* stdout */
-    dup(i); /* stderr */
+    /* stdin  */
+    i = open("/dev/null", O_RDWR); 
+
+    /* stdout   lazy eval  stderr */
+    if(dup(i) == -1 || dup(i) == -1)
+        RUNTIME_EXCEPTION("unable to go in background: %s", strerror(errno));
 }
 
 void Process::isolation(void)

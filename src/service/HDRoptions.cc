@@ -66,6 +66,9 @@ ttlfocus(ttlfocus),
 corruptRequest(false),
 corruptDone(false)
 {
+    /* this 'swapPtr' is required to solve:
+     * warning: dereferencing type-punned pointer will break strict-aliasing rules */
+    void *swapPtr;
 
     /* initialization of header and indexes on specific proto basis */
     switch (type)
@@ -77,11 +80,14 @@ corruptDone(false)
         protD.lastOptIndex = LAST_IPOPT;
         protD.NOP_code = IPOPT_NOOP;
         protD.EOL_code = IPOPT_END;
-        protD.hdrAddr = (void **)(&pkt.ip);
-        protD.hdrLen = (uint8_t *)&pkt.iphdrlen;
         protD.hdrMinLen = sizeof (struct iphdr);
         protD.optsMaxLen = MAXIPOPTIONS;
+
+        /* protocol dependend pointer */
         protD.hdrResize = &Packet::iphdrResize;
+        swapPtr = reinterpret_cast<void *>(&(pkt.ip));
+        memcpy( &protD.hdrAddr, &swapPtr, sizeof(void *) );
+        protD.hdrLen = (uint8_t*) &pkt.iphdrlen;
 
         for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {
@@ -105,11 +111,14 @@ corruptDone(false)
         protD.lastOptIndex = LAST_TCPOPT;
         protD.NOP_code = TCPOPT_NOP;
         protD.EOL_code = TCPOPT_EOL;
-        protD.hdrAddr = (void **)&(pkt.tcp);
-        protD.hdrLen = (uint8_t*) & pkt.tcphdrlen;
         protD.hdrMinLen = sizeof (struct tcphdr);
         protD.optsMaxLen = MAXTCPOPTIONS;
+
+        /* protocol dependend pointer */
         protD.hdrResize = &Packet::tcphdrResize;
+        swapPtr = reinterpret_cast<void *>(&(pkt.tcp));
+        memcpy( &protD.hdrAddr, &swapPtr, sizeof(void *) );
+        protD.hdrLen = (uint8_t*) &pkt.tcphdrlen;
 
         for (uint8_t i = protD.firstOptIndex; i <= protD.lastOptIndex; ++i)
         {

@@ -59,11 +59,10 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
 
     do
     {
-        fgets(line, MEDIUMBUF, flow);
-        ++linecnt;
-
-        if (feof(flow))
+        if( fgets(line, MEDIUMBUF, flow) == NULL)
             break;
+
+        ++linecnt;
 
         if (strlen(line) < 2 || line[0] == '#')
             continue;
@@ -78,6 +77,9 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
         else
             RUNTIME_EXCEPTION("found index %u instead of the expected %u (line %u)",
                               readedIndex, optLooked, linecnt);
+
+        if (feof(flow))
+            break;
     }
     while (retval == CORRUPTUNASSIGNED);
 

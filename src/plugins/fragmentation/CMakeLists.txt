@@ -1,5 +1,0 @@
-ADD_LIBRARY(fragmentation SHARED fragmentation.cc)
-
-INSTALL(TARGETS fragmentation
-        DESTINATION lib/${PROJECT_NAME}
-        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)

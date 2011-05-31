@@ -115,7 +115,8 @@ void IPListMap::load(void)
         tmp_a = tmp_b = tmp_c = 0;
         memset(record, 0x00, MEDIUMBUF);
 
-        fgets(record, sizeof (record), IPfileP);
+        if ( fgets(record, sizeof (record), IPfileP) == NULL )
+            break;
 
         if (record[0] == '#' || record[0] == '\n' || record[0] == ' ' || strlen(record) < 7)
             continue;

@@ -128,13 +128,16 @@ void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
         return;
 
     if (logstream != NULL)
-        fchown(fileno(logstream), uid, gid);
+        if(fchown(fileno(logstream), uid, gid) == -1)
+            RUNTIME_EXCEPTION("unable to change privileges to %d %d: %s", uid, gid, strerror(errno));
 
     if (packet_logstream != NULL)
-        fchown(fileno(packet_logstream), uid, gid);
+        if(fchown(fileno(packet_logstream), uid, gid) == -1)
+            RUNTIME_EXCEPTION("unable to change privileges to %d %d: %s", uid, gid, strerror(errno));
 
     if (session_logstream != NULL)
-        fchown(fileno(session_logstream), uid, gid);
+        if(fchown(fileno(session_logstream), uid, gid) == -1)
+            RUNTIME_EXCEPTION("unable to change privileges to %d %d: %s", uid, gid, strerror(errno));
 }
 
 /* Class pluginLogHandler used by plugins for selective logging */

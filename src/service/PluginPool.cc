@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2011, 2010 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -32,28 +32,33 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
     LOG_VERBOSE("constructor %s to %s option [%s]", __func__, plugabspath, plugOpt);
 
     char enabledScramblesStr[LARGEBUF] = {0};
+    void *swapPtr;
 
     pluginHandler = dlopen(plugabspath, RTLD_NOW);
     if (pluginHandler == NULL)
         RUNTIME_EXCEPTION("unable to load plugin %s: %s", plugabspath, dlerror());
 
-    /* http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html */
-
-    /*
-     * GCC/GXX -> warning: ISO C++ forbids casting between pointer-to-function and pointer-to-object
+    /* 
+     * Coder: we had used 
+     * http://www.opengroup.org/onlinepubs/009695399/functions/dlsym.html as reference
+     * for use dlsym() insice C++, but if you serch in the web the following string:
      *
-     * THERE IS NO WAY TO AVOID IT!
-     * for this reason our makefile is without -Werror
+     * ISO C++ forbids casting between pointer-to-function and pointer-to-object
+     *
+     * you will understand because the old way:
+     * fp_DeletePluginObj = (destructor_f *) dlsym(pluginHandler, "deletePluginObj");
+     * has been substituted at the moment with the less safe, but without warning,
+     * usage of memcpy between the pointer returned by dlsym and the function pointer (fp_Blah)
      */
 
-    fp_CreatePluginObj = (constructor_f *) dlsym(pluginHandler, "createPluginObj");
-    fp_DeletePluginObj = (destructor_f *) dlsym(pluginHandler, "deletePluginObj");
-    fp_versionValue = (version_f *) dlsym(pluginHandler, "versionValue");
+    swapPtr = forcedSymbolCopy("createPluginObj", plugabspath);
+    memcpy( (void *)&fp_CreatePluginObj, &swapPtr, sizeof(void *));
 
-    if (fp_CreatePluginObj == NULL || fp_DeletePluginObj == NULL || fp_versionValue == NULL)
-    {
-        RUNTIME_EXCEPTION("plugin %s lack of packet mangling symbols", plugabspath);
-    }
+    swapPtr = forcedSymbolCopy("deletePluginObj", plugabspath);
+    memcpy( (void *)&fp_DeletePluginObj, &swapPtr, sizeof(void *));
+
+    swapPtr = forcedSymbolCopy("versionValue", plugabspath);
+    memcpy( (void *)&fp_versionValue, &swapPtr, sizeof(void *));
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
     {
@@ -82,6 +87,18 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
             enabledScramblesStr, enabledScrambles,
             plugOpt != NULL ? plugOpt : "NONE"
             );
+}
+
+void *PluginTrack::forcedSymbolCopy( const char *symName, const char *pap)
+{
+    void *obtainPtr = dlsym(pluginHandler, symName);
+
+    if (obtainPtr == NULL )
+    {
+        RUNTIME_EXCEPTION("plugin %s lack of the symbol %s mangling symbols", pap, symName);
+    }
+
+    return obtainPtr;
 }
 
 void PluginPool::initializeAll(struct sjEnviron *autoptrList)
@@ -164,7 +181,6 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
 {
     try
     {
-        /* when onlyPlugin is true, is read as forceAlways, the frequence which happen to apply the plugin */
         PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, pOpt);
         pool.push_back(plugin);
     }
@@ -240,8 +256,7 @@ invalid_parsing:
 
 void PluginPool::parseOnlyPlugin(void)
 {
-    LOG_VERBOSE("onlyplugin [%s]", userconf->runcfg.onlyplugin);
-    LOG_DEBUG("a single plugin is used and will be forced to be applied ALWAYS a session permits it");
+    LOG_VERBOSE("onlyplugin [%s] forced to be applied ALWAYS", userconf->runcfg.onlyplugin);
 
     char *comma;
     char *pluginOpt = NULL;
@@ -288,7 +303,9 @@ void PluginPool::parseEnablerFile(void)
         char *pluginOpt = NULL;
         uint8_t enabledScrambles = 0;
 
-        fgets(enablerentry, LARGEBUF, plugfile);
+        if( fgets(enablerentry, LARGEBUF, plugfile) == NULL)
+            break;
+
         ++line;
 
         if (enablerentry[0] == '#' || enablerentry[0] == '\n' || enablerentry[0] == ' ')

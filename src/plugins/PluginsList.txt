@@ -1,19 +1,39 @@
 
 THE PLUGINS CATEGORY ARE:
 
-badSync
+    forcedClosing
+    badSync
+    payldBreakin
+
+The division in categories was made because the plugins attack, at this moment, will be 
+divided in three big categories.
+
 forcedClosing
+    The plugins inside this directory will try to inject packets who should bring an interruption.
+    If the interruption don't work, is not required try randomly for the entire session length,
+
+    Common facts about those plugins:
+
+    1) Its require an internal caching for inject a limited number inside a connection: these attacks
+       work as "one-shot", if a sniffer follow it, a better mechanism of injection has been evaluated
+
+    TODO
+       fake_close_fin alredy implement that, is required make some MACROS inside Plugin.cc 
+
+    2) Its will provide the random internal selection of foreseen the incoming ACK from the received,
+       or to inject a packet that alone make the interruption
+
+badSync
+
+    The injection here placed will damage the reassembled flow internal routines, it try to disrupt
+    the seq-acking in both directions
+
 payldBreakin
 
-The division in categories was made because the plugins attack, at this moment, will be divided in three big 
-categories.
+    The payload Breaker plugins inject data in a smart way, fragment the packets in different layers,
+    and try the overlapping segment attack (at the moment, under testing). 
 
-
-forcedClosing
-    The plugin inside this directory will try to inject packets who should bring an interruption.
-    If the interruption don't work, is not required try randomly for the entire session length,
-    for ths reason, in the fragmenteCorrent 
-
-
+    These in the future will be expanded with layer 5 and more, injection
 
 HDRoptions_probe
+    Used only by autotest software (called in sj-iptcpopt-probe shell script) 

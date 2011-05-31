@@ -16,8 +16,19 @@ INCLUDE_DIRECTORIES( src src/service )
 ADD_SUBDIRECTORY( src )
 ADD_SUBDIRECTORY( conf )
 
+if( MANDIR )
+    set( PATH_MAN ${MANDIR} )
+else( MANDIR )
+    find_path( PATH_MAN NAMES "man" PATHS ${SEARCH_SYS} NO_DEFAULT_PATH )
+    if( PATH_MAN )
+        set( PATH_MAN "${PATH_MAN}/man/man1" )
+    else( PATH_MAN )
+        set( PATH_MAN "${CMAKE_INSTALL_PREFIX}/man/man1" )
+    endif( PATH_MAN )
+endif( MANDIR )
+
 INSTALL(FILES doc/sniffjoke.1 doc/sniffjokectl.1 doc/sniffjoke-autotest.1
-        DESTINATION man/man1
+        DESTINATION PATH_MAN
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # uninstall target as officially explained on:

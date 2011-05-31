@@ -36,7 +36,6 @@
 UserConf::UserConf(const struct sj_cmdline_opts &cmdline_opts) :
 cmdline_opts(cmdline_opts)
 {
-    char generic_errormsg[MEDIUMBUF];
     LOG_DEBUG("");
 
     const char *selected_basedir = NULL, *selected_location = NULL;
@@ -63,7 +62,7 @@ cmdline_opts(cmdline_opts)
     }
     else
     {
-        LOG_ALL("is mandatory to use sniffjoke specifying a location (--location option)");
+        LOG_ALL("is strongly suggest to use sniffjoke specifying a location (--location option): 'generic/' is used");
         selected_location = DEFAULT_LOCATION;
     }
 
@@ -92,6 +91,10 @@ cmdline_opts(cmdline_opts)
         LOG_DEBUG("checked working directory %s accessible", runcfg.working_dir);
     }
 
+    /* generic has been make usefull again as default, but without MALfORMED attacks supports, this section of code
+     * is kept until stabilized. */
+#if 0
+    char generic_errormsg[MEDIUMBUF];
     snprintf(generic_errormsg, sizeof (generic_errormsg), "%s%s/%s", selected_basedir, selected_location, GENERIC_MARKER_FILE);
 
     /* if the user has not specify a location, and thus we are on the generic: show them the fatal error */
@@ -110,6 +113,7 @@ cmdline_opts(cmdline_opts)
         LOG_ALL("The 'generic' configuration is located here: %s", selected_basedir);
         RUNTIME_EXCEPTION("location required: generate with sniffjoke-autotest");
     }
+#endif
 
     snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
 
