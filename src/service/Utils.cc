@@ -51,11 +51,16 @@ string execOSCmd(string cmd)
 
     /* get only the first line, to avoid the use of "| line" at the end of every command line,
      * before the data.append was derived collecting  */
-    fgets(buffer, sizeof (buffer), stream);
-
-    /* cut the '\n' instead append "| tr -d '\n'", because this will join togheder more lines */
-    buffer[strlen(buffer) -1] = 0x00;
-    data.append(buffer);
+    if(fgets(buffer, sizeof (buffer), stream) == NULL)
+    {
+        LOG_DEBUG("command [%s] return no any answer!", cmd.c_str());
+    }
+    else
+    {
+        /* cut the '\n' instead append "| tr -d '\n'", because this will join togheder more lines */
+        buffer[strlen(buffer) -1] = 0x00;
+        data.append(buffer);
+    }
 
     pclose(stream);
 

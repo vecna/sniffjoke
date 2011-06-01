@@ -264,7 +264,7 @@ void PluginPool::parseOnlyPlugin(void)
     char plugabspath[MEDIUMBUF] = {0};
     uint8_t pluginEnabledScrambles = 0;
 
-    snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), userconf->runcfg.onlyplugin);
+    snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), "%s", userconf->runcfg.onlyplugin);
 
     if ((comma = strchr(onlyplugin_cpy, ',')) == NULL)
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", userconf->runcfg.onlyplugin);

@@ -284,7 +284,8 @@ bool UserConf::parseKeyword(FILE *cf, char* userchoose, const char *keyword)
 
     do
     {
-        fgets(line, MEDIUMBUF, cf);
+        if(fgets(line, MEDIUMBUF, cf) == NULL)
+            break;
 
         if (line[0] == '#' || line[0] == '\n' || line[0] == ' ')
             continue;
@@ -463,7 +464,9 @@ void UserConf::loadAggressivity(void)
         ++linecnt;
 
         char line[MEDIUMBUF];
-        fgets(line, MEDIUMBUF, loadstream);
+
+        if(fgets(line, MEDIUMBUF, loadstream) == NULL)
+            break;
 
         if (!strlen(line) || line[0] == '#' || line[0] == '\n')
             continue;
@@ -477,7 +480,8 @@ void UserConf::loadAggressivity(void)
         pl.extractValue();
 
         if (pl.error_message)
-            RUNTIME_EXCEPTION("unable to parse aggressivity file %s/%s line %d: %s", runcfg.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
+            RUNTIME_EXCEPTION("unable to parse aggressivity file %s/%s line %d: %s", 
+                              runcfg.working_dir, FILE_AGGRESSIVITY, linecnt, pl.error_message);
 
         pl.mergeLine(runcfg.portconf);
     }

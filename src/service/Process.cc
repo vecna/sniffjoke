@@ -85,7 +85,7 @@ int Process::detach(void)
 
         close(pdes[1]);
         
-        if(read(pdes[0], &pid_child, sizeof (pid_t)) == -1)
+        if( read(pdes[0], &pid_child, sizeof (pid_t)) == -1)
             LOG_ALL("failure in father/child communication: %s", strerror(errno));
 
         close(pdes[0]);
@@ -104,7 +104,7 @@ int Process::detach(void)
 
         close(pdes[0]);
 
-        write(pdes[1], &pid_child, sizeof (pid_t));
+        if( write(pdes[1], &pid_child, sizeof (pid_t)) == -1)
             LOG_ALL("failure in child/father communication: %s", strerror(errno));
 
         close(pdes[1]);
