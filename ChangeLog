@@ -1,3 +1,8 @@
+02 Jun 2011:	published 0.4.2
+		- 'generic/' working again as default
+		- no more hardcoded path
+		- gentoo package, fixed warnings by 'QA'
+
 22 May 2011:	published 0.4.1
 		- gpg verified autotest files
 		- documented autotest operations

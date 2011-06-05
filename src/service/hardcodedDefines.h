@@ -196,7 +196,7 @@
 #define TTLPROBE_RETRY_ON_UNKNOWN               600     /* schedule time on UNKNOWN TTL status (10 MINUTES) */
 
 /* enable the intensive debug: DEVELOPERS AND TESTER ONLY! */
-#if 1
+#if 0
     /* = create directories of log inside the running location */
     #define HEAVY_SESSION_DEBUG /* checked in SessionTrack.cc */
     #define HEAVY_PACKET_DEBUG  /* checked in Packet.cc */

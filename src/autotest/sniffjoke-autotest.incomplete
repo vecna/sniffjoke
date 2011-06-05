@@ -1,4 +1,22 @@
-#!/bin/bash
+
+# WARNING: before ther are the variables sets by src/autotest/CMakeLists.txt |
+#          this variable in sets with the intall prefix, this is required    |
+#          to avoid:                                                         |
+#               1) hardcoding of plugins directory in this script            |
+#               2) avoid an option that point the 'generic/' dir             |
+#                                                                            |
+#                                                                            |
+# ---------------------------------------------------------------------------^
+
+if [ -z "$PREFIX" ]; 
+then
+    echo "fatal error! :( "
+    echo "This script is not installed by CMake, if you are a package mantainer, open this file and understand why is required"
+    echo "the checked var is \$INITIALIZED_PREPHIX, its must contain the installation prefix (will differ between distros)"
+    echo "If you are testing sniffjoke without installing it, you have to use generic location, or hack a bit the"
+    echo "sniffjoke-autotest script. I'll suggest to install, from the cmake building dir is supported \"make uninstall\" btw"
+    exit
+fi
 
 shopt -s expand_aliases
 alias echo="echo -e"
@@ -441,7 +459,6 @@ cd $TEMPDIR/$LOCATION
 echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
 $SNIFFJOKECLIBIN quit >/dev/null 2>&1
 
-
 ln -s $WORKPATH/generic .
 
 # dumping of useful information when sniffjoke doesn't run and you ask to the dev
@@ -509,9 +526,6 @@ if [ ! -z "$MESSAGE" ]; then
 fi
 
 echo "${yellow}+ Starting SniffJoke hacks test"
-
-PPATH="/usr/local/lib/sniffjoke"
-echo "* The test will use path $PPATH to load plugins"
 
 # uh remember coder: the http port www.umpalumpa.net:803213 is NOT SUPPORTED
 SERVER_ADDR=`echo $SERVER | sed -e's/.*\/\///' | sed -e's/\/.*//'`

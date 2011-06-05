@@ -36,7 +36,9 @@ since you have runned the "autotest" in this network location (office, home, lab
 # Link and info
 
 SniffJoke man page: http://www.delirandom.net/sniffjoke/
+
 SniffJoke location requirement: http://www.delirandom.net/sniffjoke/sniffjoke-locations
+
 SniffJoke concepts, goals: http://www.delirandom.net/sniffjoke/sniffjoke-how-does-work
 
 # CONFIG FILES installed in the 'generic' location
@@ -105,27 +107,27 @@ and using the semi-secret options -s and -a in sniffjoke-autotest (you will avoi
 
 # Official sniffjoke page:
 
-    http://www.delirandom.net/sniffjoke
+http://www.delirandom.net/sniffjoke
 
 (old) academic researchs:
 
-    http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
+http://www.delirandom.net/sniffjoke/Insertion%20Evasion%20and%20denial%20of%20service%20on%20IDS.pdf
 
 Hacker's old bread:
 
-    http://www.phrack.org/issues.html?issue=54&id=10#article
+http://www.phrack.org/issues.html?issue=54&id=10#article
 
 MacOSx 0.3 ports as kernel module:
 
-    http://en.roolz.org/trafscrambler.html
+http://en.roolz.org/trafscrambler.html
 
 Wireshark thread about Sj 0.3:
 
-    http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
+http://www.mail-archive.com/wireshark-dev@wireshark.org/msg13465.html
 
 # Italian music support
-    http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
-    http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica
+http://www.youtube.com/watch?v=y2pZ8C7ODSs Uochi Toki - Il ladro
+http://www.youtube.com/watch?v=T1-3q-vFsBY Uochi Toki - L'estetica
 
 # GPG public keys
     X-2:~ X$ gpg --keyserver pgp.mit.edu --recv-key C6765430

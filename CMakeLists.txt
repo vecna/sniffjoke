@@ -28,7 +28,7 @@ else( MANDIR )
 endif( MANDIR )
 
 INSTALL(FILES doc/sniffjoke.1 doc/sniffjokectl.1 doc/sniffjoke-autotest.1
-        DESTINATION PATH_MAN
+        DESTINATION ${PATH_MAN}
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # uninstall target as officially explained on:

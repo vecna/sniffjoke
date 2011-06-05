@@ -47,7 +47,7 @@ do
 done
 
 if [ -z "$LOCATION" ]; then
-    echo "${red} -l is required, location specify where will be found /tmp/_location_name_/sjAlogs-..."
+    echo "${red} -l is required, is the location name"
     tput sgr0; exit 1
 fi
 

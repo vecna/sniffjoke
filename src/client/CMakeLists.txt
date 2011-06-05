@@ -1,2 +1,2 @@
 ADD_EXECUTABLE(sniffjokectl main SniffJokeCli)
-INSTALL(TARGETS sniffjokectl RUNTIME DESTINATION /usr/local/bin)
+INSTALL(TARGETS sniffjokectl RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

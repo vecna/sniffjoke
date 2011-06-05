@@ -1,6 +1,9 @@
-The directory 'generic/' contains the default configuration settings: SHALL NOT BE USED
+The directory 'generic/' contains the default configuration settings: SHOULD BE USED...
 
-it's copied in /usr/local/var/sniffjoke/
+ ... ...          BUT IS NOT SUGGESTED!
+
+
+it's copied in {INSTALL_PREFIX}/var/sniffjoke/
 this directory will contain the "location" directories
 
 The concept of location stands for a network place where you use sniffjoke;
@@ -13,7 +16,7 @@ It's a script performing some sniffjoke tests and verifications to detect which 
 can be used in your network;
 this is the help:
 
-usage: /usr/local/bin/sniffjoke-autotest options
+usage: {INSTALL_PREFIX}/bin/sniffjoke-autotest options
 
   This script runs plugins test along different destinations OS to determinate the 
 selection of plugins and options that correctly works in the current location. 
