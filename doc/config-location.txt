@@ -30,7 +30,6 @@ http://www.delirandom.net/sniffjoke/sniffjoke-locations
 OPTIONS:
    -h      show this message
    -l      location name                                       (required)
-   -d      path of 'generic/' location, acting as default      (required)
    -n      number of replicas to be passed for the single hack (default 1)
    -g      specify the group to privilege downgrade            (default: nogroup)
    -u      specify the user to privilege downgrade             (default: nobody)

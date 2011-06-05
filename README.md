@@ -23,7 +23,7 @@ and you could check the exactly installed file by
     cat install_manifest.txt
 
 # Suggested setup, for configure your network capabilities
-    sniffjoke-autotest -l name_of_your_location -d /usr/local/var/sniffjoke -n 2
+    sniffjoke-autotest -l name_of_your_location 
 
 since you have runned the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with:
 

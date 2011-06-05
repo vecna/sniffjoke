@@ -1,18 +1,27 @@
+#!/bin/bash
 
-# WARNING: before ther are the variables sets by src/autotest/CMakeLists.txt |
+tofilterout_PREFIX="useless"
+tofilterout_LIBDIR="useless"
+tofilterout_STATEDIR="useless"
+tofilterout_BINDIR="useless"
+
+# WARNING: before there are the "useless" variables because they became sets %
+#          sets by src/autotest/CMakeLists.txt - their value are system dep  |
 #          this variable in sets with the intall prefix, this is required    |
 #          to avoid:                                                         |
 #               1) hardcoding of plugins directory in this script            |
 #               2) avoid an option that point the 'generic/' dir             |
 #                                                                            |
+#          they became substituted by:                                       |
+#                                                                            |
 #                                                                            |
 # ---------------------------------------------------------------------------^
 
-if [ -z "$PREFIX" ]; 
+if [ -z "$PREFIX" ] || [ -z "$INSTALL_STATEDIR" ]; 
 then
     echo "fatal error! :( "
-    echo "This script is not installed by CMake, if you are a package mantainer, open this file and understand why is required"
-    echo "the checked var is \$INITIALIZED_PREPHIX, its must contain the installation prefix (will differ between distros)"
+    echo "This script is not simply installed by CMake. It is setup of some variables in the head of the file, with your"
+    echo "system dependent informations (information like: the directory which sniffjoke conf is installed)"
     echo "If you are testing sniffjoke without installing it, you have to use generic location, or hack a bit the"
     echo "sniffjoke-autotest script. I'll suggest to install, from the cmake building dir is supported \"make uninstall\" btw"
     exit
@@ -56,7 +65,6 @@ http://www.delirandom.net/sniffjoke/sniffjoke-locations
 OPTIONS:
    -h      show this message
    -l      location name                                       (required)
-   -d      path of 'generic/' location, acting as default      (required)
    -n      number of replicas to be passed for the single hack (default 1)
    -g      specify the group to privilege downgrade            (default: nogroup)
    -u      specify the user to privilege downgrade             (default: nobody)
@@ -101,26 +109,26 @@ trusted_server_contact()
     #
     # and, to be sure became installed in every box:
     #
-    # $ gpg -a --export 7D9E677D
-    # -----BEGIN PGP PUBLIC KEY BLOCK-----
-    # Version: GnuPG v1.4.10 (GNU/Linux)
-    # 
-    # mQGiBE3YHaMRBACLou45ad2TnK6iQKHym7Q4AuySv+pxFVjd5QEJ/Gy3b5dM4bRn
-    # y1NzuTxnCPpuR4c/Iv+rZbhSsoxqTAZ8YYJ4wdFEvDTLap9l1n8D66oYzYr9C1Tl
-    # lxeCtz4hzJZK1M8agoBpnu0xRWCkZNziSdKPQGAlrSaTzLcrKaNYx727uwCg8XKF
-    # fMe93oJtEmKSxl6S1V+mbOsD/j/2CfDuhtjJnHZWgmrlBrtghw9BubCi/o+TWNPs
-    # a++FqUI+tw5G2CZiOS2HzR6/UIEcWr99HBGnyC6+B3TzyiU20T22DOCt8Dii65qt
-    # j47rhKFAo6kUlJymY0X+fLzxxNBzS7BzrNIvLzCcdNmDsxjGtGtCedJCV09WNgRk
-    # SgVpA/sHMF1rsYb4LGeg+unp7b6IyJgpeGagvTVqS366IReoftPatvbP18t4pdlD
-    # wkGG2MnVtQFgz8o5LiS1AR6B74Lpr0FTIhMBUpi7A1JOetsliNImNPkrMJs1sYog
-    # tWv59uDOYj7TfV2F9jMu1hWoedCLMsvwouXwaqFtk13PFg2hMbQ3U25pZmZKb2tl
-    # IHByb2plY3QgKGh0dHA6Ly93d3cuZGVsaXJhbmRvbS5uZXQvc25pZmZqb2tlKYhg
-    # BBMRAgAgBQJN2B2jAhsDBgsJCAcDAgQVAggDBBYCAwECHgECF4AACgkQlH9XS32e
-    # Z31bjgCeIm4ft9zSztcsVFjdWnOyyKvNWckAnA6Ndf9Ps97Ve0u82ySNYFgHVqRR
-    # iEoEEBECAAoFAk3YHmsDBQJ4AAoJELhCCT3GdlQwEl4AnA/OX42uxbC5GCn2tgBC
-    # mJ7sBRawAKDfZ2G6q0S+JUWlQDFtbHwocCaIYA==
-    # =FK0c
-    # -----END PGP PUBLIC KEY BLOCK-----
+    # $ gpg -a --export 7D9E677D
+    # -----BEGIN PGP PUBLIC KEY BLOCK-----
+    # Version: GnuPG v1.4.10 (GNU/Linux)
+    # 
+    # mQGiBE3YHaMRBACLou45ad2TnK6iQKHym7Q4AuySv+pxFVjd5QEJ/Gy3b5dM4bRn
+    # y1NzuTxnCPpuR4c/Iv+rZbhSsoxqTAZ8YYJ4wdFEvDTLap9l1n8D66oYzYr9C1Tl
+    # lxeCtz4hzJZK1M8agoBpnu0xRWCkZNziSdKPQGAlrSaTzLcrKaNYx727uwCg8XKF
+    # fMe93oJtEmKSxl6S1V+mbOsD/j/2CfDuhtjJnHZWgmrlBrtghw9BubCi/o+TWNPs
+    # a++FqUI+tw5G2CZiOS2HzR6/UIEcWr99HBGnyC6+B3TzyiU20T22DOCt8Dii65qt
+    # j47rhKFAo6kUlJymY0X+fLzxxNBzS7BzrNIvLzCcdNmDsxjGtGtCedJCV09WNgRk
+    # SgVpA/sHMF1rsYb4LGeg+unp7b6IyJgpeGagvTVqS366IReoftPatvbP18t4pdlD
+    # wkGG2MnVtQFgz8o5LiS1AR6B74Lpr0FTIhMBUpi7A1JOetsliNImNPkrMJs1sYog
+    # tWv59uDOYj7TfV2F9jMu1hWoedCLMsvwouXwaqFtk13PFg2hMbQ3U25pZmZKb2tl
+    # IHByb2plY3QgKGh0dHA6Ly93d3cuZGVsaXJhbmRvbS5uZXQvc25pZmZqb2tlKYhg
+    # BBMRAgAgBQJN2B2jAhsDBgsJCAcDAgQVAggDBBYCAwECHgECF4AACgkQlH9XS32e
+    # Z31bjgCeIm4ft9zSztcsVFjdWnOyyKvNWckAnA6Ndf9Ps97Ve0u82ySNYFgHVqRR
+    # iEoEEBECAAoFAk3YHmsDBQJ4AAoJELhCCT3GdlQwEl4AnA/OX42uxbC5GCn2tgBC
+    # mJ7sBRawAKDfZ2G6q0S+JUWlQDFtbHwocCaIYA==
+    # =FK0c
+    # -----END PGP PUBLIC KEY BLOCK-----
     #
     # is a "sign only" key, that's why is so short
 
@@ -130,7 +138,7 @@ trusted_server_contact()
         # REMIND: this is needed to avoid:
         KEYRINGOPT="--no-permission-warning --no-default-keyring --keyring $TEMPDIR/$LOCATION/sj.gpgkeyring"
         # gpg: WARNING: unsafe ownership on configuration file `/home/vecna/.gnupg/gpg.conf'
-        # gpg: error reading key: public key not found
+        # gpg: error reading key: public key not found
 
         echo "${green}GNuPG binary found: checking if key (1024D/7D9E677D 2011-05-21) is present on your keyring..."
         echo "${blue}"
@@ -187,7 +195,7 @@ start_test() {
     echo "${green}| ${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
     echo "${green}| ${blue}TestID\t${yellow}\t[$TESTID]"
     echo "${green}| ${blue}Test directory${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
-    # $SERVER is like http://www.delirandom.net/sjA/pe.php
+    # $SERVER is like http://www.delirandom.net/sjA/pe.php
     for i in `seq 1 $REPLICAn`;
     do
         WORKDIR=$TESTID/replica-${i}
@@ -297,7 +305,7 @@ compress_location_output()
     tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
 }
 
-while getopts “hl:d:n:u:g:s:a:” OPTION
+while getopts “hl:n:u:g:s:a:” OPTION
 do
      case $OPTION in
          h)
@@ -306,9 +314,6 @@ do
              ;;
          l)
              LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
-             ;;
-         d)
-             WORKPATH=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          n)
              REPN=$OPTARG
@@ -335,6 +340,7 @@ do
      esac
 done
 
+WORKPATH=$PREFIX$INSTALL_STATEDIR
 TEMPDIR="/tmp"
 cd $TEMPDIR
 
@@ -401,20 +407,11 @@ if [ -z $LOCATION ]; then
     tput sgr0; exit;
 fi
 
-if [ -z $WORKPATH ]; then
-    usage
-    echo "\n${red}"
-    echo "it's required the PATH of commonly used working dir, where 'generic' is installed"
-    echo "usually it's /usr/local/var/sniffjoke, otherwise, try to locate where generic location has"
-    echo "been installed in your distro"
-    echo "${white}"
-    tput sgr0; exit;
-fi
-
 if [ ! -d $WORKPATH ]; then
     usage
     echo "\n${red}"
-    echo "option \"-d\" wrong argument: no such directory exist"
+    echo "Weird issue: the parameter derived from the $INSTALL_STATEDIR does not seem to be a directory"
+    echo "Maybe you've ruined your sniffjoke installation ?"
     echo "${white}"
     tput sgr0; exit;
 fi
@@ -563,7 +560,7 @@ VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 PLUGIN="segmentation,INNOCENT"
 start_test 1
 if [ ! $? ]; then
-    echo "${red} the simplest test has failed, something dirty don't work in your network"
+    echo "${red} the simplest test has failed, something dirty don't work in your network"
     tput sgr0; exit;
 fi
 firstsimple=$TEMPDIR/$LOCATION/firstsimple
@@ -677,3 +674,4 @@ fi
 
 # clearing gay colors
 tput sgr0
+
