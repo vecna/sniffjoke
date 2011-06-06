@@ -23,7 +23,7 @@ else( MANDIR )
     if( PATH_MAN )
         set( PATH_MAN "${PATH_MAN}/man/man1" )
     else( PATH_MAN )
-        set( PATH_MAN "${CMAKE_INSTALL_PREFIX}/man/man1" )
+        set( PATH_MAN "${CMAKE_INSTALL_PREFIX}/share/man/man1" )
     endif( PATH_MAN )
 endif( MANDIR )
 

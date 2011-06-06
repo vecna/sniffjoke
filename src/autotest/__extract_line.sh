@@ -1,73 +1,76 @@
 #!/bin/sh
 
 # pattern to match, and to call
-PATTERN="$1"
-CLEANPATTERN=`echo $PATTERN | tr "_" " " | tr -d [:space:]`
+PATTERN1="$1"
+PATTERN2="$2"
+PATTERN3="$3"
+PATTERN4="$4"
 
 # source header
-SRCH="$2"
+SRCH="$5"
 
-# source script
-DSTS="$3"
+# scripts path
+WHEREPATH="$6"
+SOURCE="unusable-sj-autotest.sh"
+DEST="sniffjoke-autotest"
 
-# grep the line number where the vars to filter out exist
-LINEPOS=`grep -n "tofilterout_"$CLEANPATTERN $DSTS | head -1 | sed -e's/:.*//'`
-
-# if the destination, sniffjoke-autotest is a symbolic link, mean that
-# we are on the first execution of this install script
-if [ -L $DSTS ]; then
-    TEMPNAME=$DSTS.$RANDOM.$RANDOM
-    echo "found to be a symbolic link $DSTS, copying its contents"
-    cp $DSTS $TEMPNAME
-    echo "removing the symlink..."
-    rm -f $DSTS
-    echo "preparing the sniffjoke-autotest script"
-    mv $TEMPNAME $DSTS
-else
-    if [ -z "$LINEPOS" ]; then
-        UNUSABLE_NAME="unusable-sj-autotest.sh"
-        echo "Not a symbolic link $DSTS, (this is not the first installation!) looking for the original"
-        DIRNAME=`dirname $DSTS`
-        if [ -e $DIRNAME/$UNUSABLE_NAME ]; then
-            echo "found: copying as base for the sniffjoke-autotest setup..."
-            cp $DIRNAME/$UNUSABLE_NAME $DSTS
-            LINEPOS=`grep -n "tofilterout_"$CLEANPATTERN $DSTS | head -1 | sed -e's/:.*//'`
-        else
-            echo "Error in generation: Installation aborted, clean sniffjoke directory, somethins is goes wrong!"
-            exit
-        fi
-    else
-        echo "setup is going well..."
-    fi
-fi
-
-if [ -z "$PATTERN" ] || [ -z "$SRCH" ] || [ -z "$DSTS" ]; then
+if [ -z "$PATTERN1" ] || [ -z "$PATTERN2" ] || [ -z "$PATTERN3" ] || [ -z "$PATTERN4" ] ||  [ -z "$SRCH" ] || [ -z "$WHEREPATH" ]; then
     echo "Hi, this script is intended to be runned only by CMake"
     echo "I'm expecting you could not have a real benefit" # [*]
     exit
 fi
 
-# grep from config.h and cut off the #define
-LINE=`grep "$PATTERN" $SRCH | cut -b 9-`
+if [ ! -e $WHEREPATH/$SOURCE ] || [ ! -e $WHEREPATH/$DEST ]; then
+    echo "fatal error: $WHEREPATH/$SOURCE does not exist or $WHEREPATH/$DEST do not."
+    echo "Installation will not work"
+    exit
+fi
+
+# grep the line number where the vars to filter out exist
+CLEANPATTERN1=`echo $PATTERN1 | tr "_" " " | tr -d [:space:]`
+STARTLINEPOS=`grep -n "tofilterout_"$CLEANPATTERN1 $WHEREPATH/$SOURCE | head -1 | sed -e's/:.*//'`
+
+CLEANPATTERN4=`echo $PATTERN4 | tr "_" " " | tr -d [:space:]`
+ENDLINEPOS=`grep -n "tofilterout_"$CLEANPATTERN4 $WHEREPATH/$SOURCE | head -1 | sed -e's/:.*//'`
 
 # we need the entire length of the source file, in order to copy correctly in the new one
-LINELEN=`wc -l < $DSTS`
-
-# extracting the system dependent value
-VARNAME=`echo $LINE | awk {' print $1 '}`
-VARVALUE=`echo $LINE | awk {' print $2 '} | sed -e's/PREFIX//' | tr -d '"' | tr -d "'"`
+SRCLINELEN=`wc -l < $WHEREPATH/$SOURCE`
 
 # the section before the line should be copyed, as the section after
-before_line=$(($LINEPOS -1))
-after_line=$(($LINELEN - $LINEPOS))
+before_line=$(($STARTLINEPOS -1))
+after_line=$(($SRCLINELEN - $ENDLINEPOS))
 
-head -"$before_line" $DSTS > $DSTS.$LINEPOS
-echo "$VARNAME=\"$VARVALUE\"" >> $DSTS.$LINEPOS
-tail -"$after_line" $DSTS >> $DSTS.$LINEPOS
+# echo "working with: $before_line, $after_line"
+# ----------- file generation follow:
+
+head -"$before_line" $WHEREPATH/$SOURCE > $WHEREPATH/$DEST.tmp
+
+DATALINE=`grep "$PATTERN1" $SRCH | cut -b 9-`
+VARNAME=`echo $DATALINE | awk {' print $1 '}`
+VARVALUE=`echo $DATALINE | awk {' print $2 '} | sed -e's/PREFIX//' | tr -d '"' | tr -d "'"`
+echo "$VARNAME=\"$VARVALUE\"" >> $WHEREPATH/$DEST.tmp
+
+DATALINE=`grep "$PATTERN2" $SRCH | cut -b 9-`
+VARNAME=`echo $DATALINE | awk {' print $1 '}`
+VARVALUE=`echo $DATALINE | awk {' print $2 '} | sed -e's/PREFIX//' | tr -d '"' | tr -d "'"`
+echo "$VARNAME=\"$VARVALUE\"" >> $WHEREPATH/$DEST.tmp
+
+DATALINE=`grep "$PATTERN3" $SRCH | cut -b 9-`
+VARNAME=`echo $DATALINE | awk {' print $1 '}`
+VARVALUE=`echo $DATALINE | awk {' print $2 '} | sed -e's/PREFIX//' | tr -d '"' | tr -d "'"`
+echo "$VARNAME=\"$VARVALUE\"" >> $WHEREPATH/$DEST.tmp
+
+DATALINE=`grep "$PATTERN4" $SRCH | cut -b 9-`
+VARNAME=`echo $DATALINE | awk {' print $1 '}`
+VARVALUE=`echo $DATALINE | awk {' print $2 '} | sed -e's/PREFIX//' | tr -d '"' | tr -d "'"`
+echo "$VARNAME=\"$VARVALUE\"" >> $WHEREPATH/$DEST.tmp
+
+tail -"$after_line" $WHEREPATH/$SOURCE >> $WHEREPATH/$DEST.tmp
+# ----------- end of file generation
 
 # remind: for a debug, comment this mv is the best way
-mv $DSTS.$LINEPOS $DSTS
-chmod +x $DSTS
+mv $WHEREPATH/$DEST.tmp $WHEREPATH/$DEST
+chmod +x $WHEREPATH/$DEST
 
 # [*] except, of course, if the hypothetical attack you are planning, is a 
 #     local root one shot with race condition and user interation. 
