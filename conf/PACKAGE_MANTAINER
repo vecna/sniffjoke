@@ -21,6 +21,10 @@ TROUBLE+POSSIBLE BUGS WHILE INSTALLING:
     The usage of different paths, unability to call the three executables, not
     indexed man pages
 
+    sniffjoke-autotest use 'locate' inside, for found some relevant directory, if you
+    want to avoid, you should set the variable LOCSDIR= by hand, at the start of the
+    script
+
 TROUBLE+POSSIBLE BUGS WHILE RUNNING AUTOTEST:
 
     Immediate exiting after the test of segmentation,INNOCENT
