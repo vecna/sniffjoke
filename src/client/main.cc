@@ -50,11 +50,8 @@ static void sjcli_version(const char *pname)
 	" info\t\t\tget statistics about sniffjoke active sessions\n"\
 	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
 	" showport\t\tshow the running port-aggressivity configuration\n"\
-	" set start:end value\tset the injection's strogness over particular tcp/udp port\n"\
-	" \t\t\ttypical values are: <NONE|RARE|COMMON|HEAVY|ALWAYS>\n"\
-	" \t\t\teg.:\tset 80 COMMON,PEAKATSTART\n"\
-	" \t\t\t\tset 22,1194 NONE\n"\
-        " clear\t\t\talias to \"set 1:65535 NONE\"\n"\
+	" set start:end value\tset the injection's strogness over selected port [not supported!]\n"\
+    "\t\tneed to be set in port-aggressivity.conf\n"\
 	" debug\t\t\t[%d-%d] change the log debug level\n\n"\
 	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
 

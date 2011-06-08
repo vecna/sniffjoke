@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2011, 2010 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -67,7 +67,8 @@ bool Debug::appendOpen(uint8_t thislevel, const char *fname, char *buf, FILE **p
         if ((fname == NULL) || ((*previously = fopen(fname, "a+")) == NULL))
             return false;
 
-        setbuffer(*previously, buf, DEBUGBUFFER);
+        /* setbuffer(*previously, buf, DEBUGBUFFER); */
+        setlinebuf(*previously);
 
         log(thislevel, __func__, "opened logfile %s successful with debug level %d", fname, debuglevel);
     }
@@ -147,7 +148,13 @@ selfName(sN)
     if ((logstream = fopen(LfN, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s: %s", LfN, strerror(errno));
 
-    setbuffer(logstream, logstream_buf, DEBUGBUFFER);
+    /* at the moment is used this solution. soon, janus integration, will solve
+     * every father/child/root/chroot/perm issue */
+    if(fchmod(fileno(logstream),  0666) == -1)
+        RUNTIME_EXCEPTION("unable to make plugin %s (%s) rw+uga: %s", selfName, LfN, strerror(errno));
+
+    /* setbuffer(logstream, logstream_buf, DEBUGBUFFER); */
+    setlinebuf(logstream);
 
     completeLog("opened file %s successful for handler %s", LfN, selfName);
 }

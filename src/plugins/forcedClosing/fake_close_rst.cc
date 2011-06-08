@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2010, 2011 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -47,33 +47,23 @@ private:
 
     pluginLogHandler pLH;
 
-    PluginCache cache;
-
-    /* define the cache filter: we need to get info about the session tuple */
-    static bool filter(const cacheRecord &record, const Packet &pkt)
-    {
-        const Packet &refpkt = record.cached_packet;
-
-        return (refpkt.ip->daddr == pkt.ip->daddr &&
-                refpkt.tcp->source == pkt.tcp->source &&
-                refpkt.tcp->dest == pkt.tcp->dest);
-    }
-
-    bool inverseProportionality(uint32_t pkts)
-    {
-        if (pkts < MIN_INJECTED_PKTS)
-            return true;
-
-        if (pkts > MAX_INJECTED_PKTS)
-            return false;
-
-        return (random_percent (100 - (pkts * MAX_INJECTED_PKTS)));
-    }
+   /* every hack in "forcedClosing" will be useful "few times in a session", not for the
+    * entire duration of the connections: for this reason is kept a cache record to count every 
+    * time a condition is returned "true"
+    *
+    * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
+    * to be true the condition use an inverted probability, until reach MAX, than will never be 
+    * injected again.
+    *
+    * this is implemented in the condition check and the useful generic method are implemented
+    * in Plugin class, explanation useful will be found in ../PluginList.txt
+    */
+    PluginCache RSTcache;
 
 public:
 
     fake_close_rst() :
-    Plugin(PLUGIN_NAME, AGG_TIMEBASED20S),
+    Plugin(PLUGIN_NAME, AGG_PACKETS30PEEK),
     pLH(PLUGIN_NAME, PKT_LOG)
     {
     };
@@ -86,51 +76,40 @@ public:
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
-        pLH.completeLog("verifing condition for id %d datalen %d total len %d",
-                        origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
-
-        if (origpkt.chainflag == FINALHACK)
+        if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
 
-        /* preliminar condition */
-        bool ret = origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                !origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin;
+        pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
+                        origpkt.tcppayloadlen, origpkt.pbuf.size());
+
+        /* preliminar condition, TCP and fragment already checked */
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin );
 
         if (!ret)
             return false;
 
-        cacheRecord *record = cache.check(&filter, origpkt);
+        /* cache checking, using the methods provide in the section 'forcedClosing' of Plugin.cc */
+        cacheRecord* matchRecord;
 
-        if (record == NULL)
+        if((matchRecord = verifyIfCache(&(tupleMatch), &RSTcache, origpkt)) != NULL)
         {
-            uint32_t firstCached = 1;
+            uint32_t *injectedYet = (uint32_t*)&(matchRecord->cached_data[0]);
 
-            cache.add(origpkt, (const unsigned char*) &firstCached, sizeof (firstCached));
+            /* if is present, inverseProp, return true with decreasing probability up to MAX_INJ */
+            ret = inverseProportionality(*injectedYet, MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
 
-            pLH.completeLog("cache created for %s:%u",
-                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest));
-        }
-        else
-        {
-            /* an hack like Fake RST will be useful few times, not for all the
-             * connections: we are keeping a cache record to count every injected RST and after
-             * a randomic number (between a min of 4 and 12), the RST is not injected again */
-            uint32_t *previouslyInjected = (uint32_t*)&(record->cached_data[0]);
+            if(ret)
+            {
+                ++(*injectedYet);
 
-            /* we use the pointer to updat the cached data directly */
-            ++(*previouslyInjected);
-
-            ret = inverseProportionality(*previouslyInjected);
-
-            pLH.completeLog("cache present for %s:%u value of %d condition return %s",
-                            inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
-                            *previouslyInjected, ret ? "TRUE" : "FALSE");
+                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet, 
+                                inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
+                                ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
+            }
         }
 
-        return true;
+        return ret;
     }
 
     virtual void apply(const Packet &origpkt, uint8_t availableScrambles)

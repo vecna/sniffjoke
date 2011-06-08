@@ -197,3 +197,62 @@ void Plugin::upgradeChainFlag(Packet *pkt)
     }
 }
 
+/* easy interface for cache handling inside an extended Plugin class,
+ * you need to register as private plugins own "cache" onject and pass them, it
+ * work more or less like the "get" and "find" differencies in the Pool */
+cacheRecord *Plugin::verifyIfCache( bool(*pktFilter)(const cacheRecord &, const Packet &), 
+                                    PluginCache *localCache, const Packet &origpkt)
+{
+    cacheRecord *ret = localCache->check(pktFilter, origpkt);
+
+    /* if not present, need to be created a new entry */
+    if (ret == NULL)
+    {
+        uint32_t firstCachedPkt = 1;
+
+        localCache->add(origpkt, (const unsigned char*) &firstCachedPkt, sizeof (firstCachedPkt));
+    }
+
+    return ret;
+}
+
+/************
+ *
+ * As explained in PluginList.txt, at the moment exists three kind of different macrotype of plugins,
+ * every of these three kind, will require different method in supports 
+ *
+ ************/
+
+/* ___ forcedClosing section ___
+ * this is used as cache filter, aiming to match */
+bool Plugin::tupleMatch(const cacheRecord &record, const Packet &pkt)
+{
+    const Packet &refpkt = record.cached_packet;
+
+    return (refpkt.ip->daddr == pkt.ip->daddr &&
+            refpkt.tcp->source == pkt.tcp->source &&
+            refpkt.tcp->dest == pkt.tcp->dest);
+}
+
+/* ___ forcedClosing section ___
+ * this is used for increase the probability af a matched packet, to be send early in the session */
+bool Plugin::inverseProportionality(uint32_t pkts, uint32_t min_inj_pkts, uint32_t max_inj_pkts)
+{
+    if (pkts < min_inj_pkts)
+        return true;
+
+    if (pkts > max_inj_pkts)
+        return false;
+
+    return (random_percent(100 - (pkts * max_inj_pkts)));
+}
+
+/* ___ forcedClosing section ___ */
+
+
+/* ___ payldBreakin section ___ */
+/* ___ payldBreakin section ___ */
+
+/* ___ badSync section ___ */
+/* ___ badSync section ___ */
+

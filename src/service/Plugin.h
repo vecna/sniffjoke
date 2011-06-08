@@ -76,7 +76,7 @@ public:
       we export the iterator as return to permit explicit cache removal;
       this is not a requirement for plugins, due to the mangage routine included in cacheCheck
      */
-    cacheRecord* check(bool(*filter)(const cacheRecord &, const Packet &), const Packet &);
+    cacheRecord* check(bool(*)(const cacheRecord &, const Packet &), const Packet &);
     cacheRecord* add(const Packet &);
     cacheRecord* add(const Packet &, const unsigned char*, size_t);
     void explicitDelete(struct cacheRecord *);
@@ -106,6 +106,13 @@ public:
     virtual void apply(const Packet &, uint8_t);
     virtual void mangleIncoming(Packet &);
     virtual void reset(void);
+
+    /* follow the utilities usable by the plugins */
+    cacheRecord *verifyIfCache(bool(*)(const cacheRecord &, const Packet &), PluginCache *, const Packet &);
+    bool inverseProportionality(uint32_t, uint32_t, uint32_t);
+
+    /* filter used in caching, these are passed to cache.check and verifyIfCache */
+    static bool tupleMatch(const cacheRecord &, const Packet &);
 };
 
 #endif /* SJ_PLUGIN_H */

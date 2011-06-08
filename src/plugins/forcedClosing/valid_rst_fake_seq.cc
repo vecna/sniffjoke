@@ -40,14 +40,34 @@
 
 class valid_rst_fake_seq : public Plugin
 {
-#define PLUGIN_NAME "valid RST / fake SEQ"
+#define PLUGIN_NAME "valid offseq RST "
+#define PKT_LOG "plugin.valid_offseq_rst.log"
+#define MIN_INJECTED_PKTS    4
+#define MAX_INJECTED_PKTS    10
+
+private:
+    pluginLogHandler pLH;
+
+   /* every hack in "forcedClosing" will be useful "few times in a session", not for the
+    * entire duration of the connections: for this reason is kept a cache record to count every 
+    * time a condition is returned "true"
+    *
+    * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
+    * to be true the condition use an inverted probability, until reach MAX, than will never be 
+    * injected again.
+    *
+    * this is implemented in the condition check and the useful generic method are implemented
+    * in Plugin class, explanation useful will be found in ../PluginList.txt
+    */
+    PluginCache OFFRSTcache;
 
 public:
 
     valid_rst_fake_seq() :
-    Plugin(PLUGIN_NAME, AGG_STARTPEEK)
+    Plugin(PLUGIN_NAME, AGG_PACKETS30PEEK),
+    pLH(PLUGIN_NAME, PKT_LOG)
     {
-    }
+    };
 
     virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
@@ -64,15 +84,40 @@ public:
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
-        if (origpkt.chainflag != HACKUNASSIGNED)
+        if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
 
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                !origpkt.tcp->syn &&
-                !origpkt.tcp->rst &&
-                !origpkt.tcp->fin &&
-                origpkt.tcp->ack);
+        pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
+                        origpkt.tcppayloadlen, origpkt.pbuf.size());
+
+        /* preliminar condition, TCP and fragment already checked */
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin );
+
+        if (!ret)
+            return false;
+
+        /* cache checking, using the methods provide in the section 'forcedClosing' of Plugin.cc */
+        cacheRecord* matchRecord;
+
+        if((matchRecord = verifyIfCache(&(tupleMatch), &OFFRSTcache, origpkt)) != NULL)
+        {
+            uint32_t *injectedYet = (uint32_t*)&(matchRecord->cached_data[0]);
+
+            /* if is present, inverseProp, return true with decreasing probability up to MAX_INJ */
+            ret = inverseProportionality(*injectedYet, MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
+
+            if(ret)
+            {
+                ++(*injectedYet);
+
+                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet, 
+                                inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
+                                ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
+            }
+        }
+
+        return ret;
     }
 
     virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
@@ -81,9 +126,11 @@ public:
 
         pkt->randomizeID();
 
-        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + 65535 + (random() % 12345));
+        pkt->tcp->rst = 1;
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (65535 * 5) + (random() % 65535) );
         pkt->tcp->window = htons((uint16_t) (-1));
-        pkt->tcp->ack_seq = htonl(ntohl(pkt->tcp->seq) + 1);
+
+        /* tcp->ack and tcp->ack_seq is kept untouched */
         pkt->tcp->psh = 0;
 
         pkt->tcppayloadResize(0);
@@ -92,7 +139,7 @@ public:
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
 
-        /* useless because INNOCENT is never downgraded in last_pkt_fix */
+        /* useless, INNOCENT is never downgraded in last_pkt_fix, but safe */
         pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
         /* this packet will became dangerous if hacked again...

@@ -233,7 +233,7 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, uint32_t rcvdlen)
         printf("received (%d bytes) confirm of SAVECONF command\n", rcvdlen);
         return printSJStat(&recvd[sizeof (blockInfo)], rcvdlen - sizeof (blockInfo));
     case SETPORT_COMMAND_TYPE:
-        printf("received (%d bytes) confirm of SET PORT command\n", rcvdlen);
+        printf("received (%d bytes) SET PORT is read only at the moment!\n", rcvdlen);
         return printSJPort(&recvd[sizeof (blockInfo)], rcvdlen - sizeof (blockInfo));
     case SHOWPORT_COMMAND_TYPE:
         printf("received (%d bytes) confirm of SHOW PORT command\n", rcvdlen);
