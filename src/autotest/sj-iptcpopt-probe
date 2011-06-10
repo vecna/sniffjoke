@@ -124,8 +124,8 @@ start_option_test()
         tput sgr0; exit
     fi
 
-    echo "tcpdump -i $INTERFACE -U -w $PCAPS$OPTION_NAME"_"$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
-    tcpdump -i $INTERFACE -U -w $PCAPS$OPTION_NAME"_"$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >output.tcpdump 2>&1 &
+    echo "tcpdump -p -i $INTERFACE -U -w $PCAPS$OPTION_NAME"_"$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
+    tcpdump -p -i $INTERFACE -U -w $PCAPS$OPTION_NAME"_"$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >output.tcpdump 2>&1 &
     sleep 0.2
     echo "${yellow}** Starting curl to post/echo at $SERVER ($SERVER_IP) under monitoring${white}"
     curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o SPAREDATARECEIVED $SERVER >output.curl 2>&1

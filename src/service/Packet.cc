@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2010, 2011 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -47,10 +47,11 @@ wtf(JUDGEUNASSIGNED),
 choosableScramble(0),
 chainflag(HACKUNASSIGNED),
 fragment(false),
+fragFakeMTU(0),
 pbuf(size)
 {
     memcpy(&(pbuf[0]), buff, size);
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
 }
 
 Packet::Packet(const Packet& pkt) :
@@ -65,15 +66,57 @@ wtf(JUDGEUNASSIGNED),
 choosableScramble(0),
 chainflag(pkt.chainflag),
 fragment(false),
+fragFakeMTU(0),
 pbuf(pkt.pbuf)
 {
-    pkt.SELFLOG("generating a duplicated packet: %d", SjPacketId);
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
+    this->SELFLOG("newly generated packet from: sjI#%d", pkt.SjPacketId);
+}
+
+Packet::Packet(const Packet& pkt, uint16_t ipdataoff, uint16_t fragdatalen, uint16_t fakeMTU) :
+prev(NULL),
+next(NULL),
+queue(QUEUEUNASSIGNED),
+SjPacketId(++SjPacketIdCounter),
+source(SOURCEUNASSIGNED),
+proto(PROTOUNASSIGNED),
+position(POSITIONUNASSIGNED),
+wtf(JUDGEUNASSIGNED),
+choosableScramble(0),
+chainflag(pkt.chainflag),
+fragment(true),
+fragFakeMTU(fakeMTU),
+pbuf(fragdatalen + sizeof(struct iphdr))
+{
+    /* copy of the IP header */
+    memcpy(&(pbuf[0]), &(pkt.pbuf[0]), sizeof(struct iphdr));
+
+    /* and of the selected IP payload */
+    memcpy(&(pbuf[sizeof(struct iphdr)]), &(pkt.pbuf[pkt.iphdrlen + ipdataoff]), fragdatalen);
+
+    if ( (fragdatalen + sizeof(struct iphdr)) > fakeMTU )
+    {
+        RUNTIME_EXCEPTION("creation of a fragment of (%d + %d ) with fake MTU of %d", 
+                          fragdatalen, sizeof(struct iphdr), fakeMTU);
+    }
+
+    /* 
+     * now the packet has only the iphdr, without option and the ip payload, 
+     * 12 bytes options are assured between pbuf.size() and fakeMTU, if required a resize
+     */
+    updatePacketMetadata(sizeof(struct iphdr), fragdatalen);
+
+    this->SELFLOG("newly generated fragment (dataoff %d fraglen %d fakeMTU %d) source: sjI#%d", 
+                ipdataoff, fragdatalen, fakeMTU, pkt.SjPacketId);
 }
 
 uint32_t Packet::maxMTU(void)
 {
-    return userconf->runcfg.net_iface_mtu;
+    /* when a fragment is created, also a fake MTU is passed as value */
+    if(fragment)
+        return fragFakeMTU;
+    else
+        return userconf->runcfg.net_iface_mtu;
 }
 
 uint32_t Packet::freespace(void)
@@ -81,7 +124,10 @@ uint32_t Packet::freespace(void)
     return maxMTU() - pbuf.size();
 }
 
-void Packet::updatePacketMetadata(void)
+/* the arguments are usually (0, 0): except in fragment creation: in this case,
+ * the iphdr is stripped of the options and thus became iphdr, and tot_len is
+ * resized by the construct in memcpy, therfore the new value is forced here */
+void Packet::updatePacketMetadata(uint16_t forceHDRsize, uint16_t forceTOTsize)
 {
     const uint16_t pktlen = pbuf.size();
 
@@ -101,12 +147,22 @@ void Packet::updatePacketMetadata(void)
 
     /* end initial metadata reset */
 
-    /* start ip update */
+    /* start IP update */
     if (pktlen < sizeof (struct iphdr))
         RUNTIME_EXCEPTION("pktlen < sizeof(struct iphdr)");
 
     ip = (struct iphdr *) &(pbuf[0]);
-    iphdrlen = ip->ihl * 4;
+
+    if (!forceHDRsize)
+    {
+        iphdrlen = ip->ihl * 4;
+    }
+    else
+    {
+        iphdrlen = forceHDRsize;
+        ip->ihl = (forceHDRsize / 4);
+    }
+
     ippayloadlen = pbuf.size() - iphdrlen;
     if (ippayloadlen)
         ippayload = (unsigned char *) ip + iphdrlen;
@@ -114,17 +170,17 @@ void Packet::updatePacketMetadata(void)
     if (pktlen < iphdrlen)
         RUNTIME_EXCEPTION("pktlen < iphdrlen");
 
-    if (pktlen < ntohs(ip->tot_len))
-        RUNTIME_EXCEPTION("pktlen < ntohs(ip->tot_len)");
-    /* end ip update */
+    if (forceTOTsize)
+        ip->tot_len = htons(forceTOTsize + sizeof(struct iphdr));
+    /* end IP update */
 
-    /*
-     * if the packet it's a fragment sniffjoke does treat it
-     * as a pure ip packet.
-     */
-    if (ip->frag_off & htons(0x3FFF))
+    if (fragment)
     {
-        fragment = true;
+        /* note: the frag_off and the flags at the moment is managed by the 
+         * calling functions, not by Packet. This will be not clean, but for 
+         * permit a selfcontained management, is required a passage of various 
+         * data (more fragment, the effective offset) and in fact these info 
+         * are decided by the calling member. */
         proto = OTHER_IP;
         return;
     }
@@ -373,7 +429,7 @@ void Packet::iphdrResize(uint8_t size)
         pbuf.erase(it + size, it + iphdrlen);
     }
 
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
 }
 
 void Packet::tcphdrResize(uint8_t size)
@@ -411,7 +467,7 @@ void Packet::tcphdrResize(uint8_t size)
         pbuf.erase(it + size, it + tcphdrlen);
     }
 
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
 }
 
 void Packet::ippayloadResize(uint16_t size)
@@ -423,7 +479,7 @@ void Packet::ippayloadResize(uint16_t size)
 
     /* begin safety checks */
     if (pktlen - ippayloadlen + size > (int16_t) maxMTU())
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("pktlen - ippayloadlen + (new) size > MTU");
     /* end safety checks */
 
     const uint16_t new_total_len = pktlen - ippayloadlen + size;
@@ -433,7 +489,7 @@ void Packet::ippayloadResize(uint16_t size)
 
     pbuf.resize(new_total_len);
 
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
 }
 
 void Packet::tcppayloadResize(uint16_t size)
@@ -445,7 +501,7 @@ void Packet::tcppayloadResize(uint16_t size)
 
     /* begin safety checks */
     if (pktlen - tcppayloadlen + size > (int16_t) maxMTU())
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("pktlen - tcppayloadlen + (new) size > MTU");
     /* end safety checks */
 
     const uint16_t new_total_len = pktlen - tcppayloadlen + size;
@@ -455,7 +511,7 @@ void Packet::tcppayloadResize(uint16_t size)
 
     pbuf.resize(new_total_len);
 
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
 }
 
 void Packet::udppayloadResize(uint16_t size)
@@ -467,7 +523,7 @@ void Packet::udppayloadResize(uint16_t size)
 
     /* begin safety checks */
     if (pktlen - udppayloadlen + size > (int16_t) maxMTU())
-        RUNTIME_EXCEPTION("");
+        RUNTIME_EXCEPTION("pktlen - udppayload + (new) size > MTU");
     /* end safety checks */
 
     const uint16_t new_total_len = pktlen - udppayloadlen + size;
@@ -480,7 +536,7 @@ void Packet::udppayloadResize(uint16_t size)
 
     pbuf.resize(new_total_len);
 
-    updatePacketMetadata();
+    updatePacketMetadata(0, 0);
 }
 
 void Packet::ippayloadRandomFill(void)
@@ -576,26 +632,16 @@ void Packet::selflog(const char *func, const char *format, ...) const
             break;
         }
 
-#if 0
-        LOG_PACKET("%s: i%u %s|%s|%s %s->%s [%s] ttl:%u %s",
-                   func, SjPacketId,
-                   sourcestr, wtfstr, chainstr,
-                   saddr, daddr,
-                   protoinfo,
-                   ip->ttl, loginfo);
-#else   /* I'm looking for a better debug, but I'm keeping the previous logline for an easy fallback */
-        LOG_PACKET("%s: i%u %s/%s %s->%s [%s] ttl:%u %s",
-                   func, SjPacketId, sourcestr, wtfstr,
+        LOG_PACKET("%s: i%u s'%s w'%s c'%s %s->%s [%s] ttl:%u %s",
+                   func, SjPacketId, sourcestr, wtfstr, chainstr,
                    saddr, daddr, protoinfo, ip->ttl, loginfo);
-#endif
     }
     else
     {
-        LOG_PACKET("%s: i%u %s/%s/%s %s->%s FRAGMENT:%u ttl:%u %s",
-                   func, SjPacketId,
-                   sourcestr, wtfstr, chainstr,
-                   saddr, daddr,
-                   ntohs(ip->frag_off),
+        LOG_PACKET("%s: i%u s'%s w'%s c'%s %s->%s FRAG:%u '%s' ttl:%u %s",
+                   func, SjPacketId, sourcestr, wtfstr, chainstr,
+                   saddr, daddr, ntohs(ip->frag_off & IP_OFFMASK),
+                   ntohs(ip->frag_off & IP_MF) ? "MF" : "!MF",
                    ip->ttl, loginfo);
     }
 }
@@ -638,9 +684,9 @@ Packet::~Packet()
     if (packetLog == NULL)
         RUNTIME_EXCEPTION("unable to open %s:%s", fopen, strerror(errno));
 
-    fprintf(packetLog, "%d\t%d:%d\t%s\t%d\tchain %s, position %d, judge [%s], queue %d, from [%s]\n",
+    fprintf(packetLog, "%d\t%d:%d%s%d\tchain %s, position %d, judge [%s], queue %d, from [%s]\n",
             SjPacketId, sport, dport,
-            fragment ? "frg" : "", (unsigned int) pbuf.size(), getChainStr(chainflag),
+            fragment ? "\tfrag " : "\t", (unsigned int) pbuf.size(), getChainStr(chainflag),
             position, getWtfStr(wtf), queue, getSourceStr(source));
 
     fclose(packetLog);
@@ -660,7 +706,7 @@ const char * Packet::getWtfStr(judge_t wtf) const
     case MALFORMED:
         return "malformed";
     case JUDGEUNASSIGNED:
-        return "UNDEF-wtf";
+        return "U";
     default:
         RUNTIME_EXCEPTION("FATAL CODE [3V0LUT10N4RYSL33PER]: please send a notification to the developers");
     }
@@ -679,7 +725,7 @@ const char * Packet::getSourceStr(source_t source) const
     case TRACEROUTE:
         return "tracert";
     case SOURCEUNASSIGNED:
-        return "UNDEF-src";
+        return "U";
     default:
         RUNTIME_EXCEPTION("FATAL CODE [S1KT4MBUR0]: please send a notification to the developers");
     }
@@ -694,7 +740,7 @@ const char * Packet::getChainStr(chaining_t chainflag) const
     case REHACKABLE:
         return "reHackable";
     case HACKUNASSIGNED:
-        return "UNDEF-chain";
+        return "U";
     default:
         RUNTIME_EXCEPTION("FATAL CODE [P4ND3LD14V0L0]: please send a notification to the developers");
     }

@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2010, 2011 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -116,6 +116,7 @@ public:
     chaining_t chainflag;
 
     bool fragment;
+    uint16_t fragFakeMTU;
 
     struct iphdr *ip;
     uint8_t iphdrlen; /* [20 - 60] bytes */
@@ -152,14 +153,19 @@ public:
 
     vector<unsigned char> pbuf;
 
+    /* pkt creation from readed buffer */
     Packet(const unsigned char *, uint16_t);
+    /* pkt creation from exisiting Packet object */
     Packet(const Packet &);
+    /* pkt fragment creation from an existing packet */
+    Packet(const Packet &, uint16_t, uint16_t, uint16_t);
+
     ~Packet();
 
     uint32_t maxMTU(void);
     uint32_t freespace(void);
 
-    void updatePacketMetadata(void);
+    void updatePacketMetadata(uint16_t, uint16_t);
 
     /* IP/TCP checksum functions */
     uint32_t computeHalfSum(const unsigned char*, uint16_t);

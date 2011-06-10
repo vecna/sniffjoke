@@ -41,14 +41,32 @@ class fragmentation : public Plugin
 #define PLUGIN_NAME "Fragmentation"
 #define PKT_LOG "plugin.fragmentation.log"
 
-#define MIN_SPLIT_PAYLOAD 8 /* bytes */
-#define MIN_SPLIT_PKTS    2
-#define MAX_SPLIT_PKTS    5
-#define MIN_IP_PAYLOAD    (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
+    /*  RFC 791 states:
+     * "Every internet module must be able to forward a datagram of 68
+     *  octets without further fragmentation.  This is because an internet
+     *  header may be up to 60 octets, and the minimum fragment is 8 octets."
+     */
+#define MIN_EXIST_PAYLOAD 8 
+
+    /*
+     * An IP Fragment Too Small exploit is when any fragment other than the final fragment 
+     * is less than 400 bytes, indicating that the fragment is likely intentionally crafted. 
+     * Small fragments may be used in denial of service attacks or in an attempt to bypass 
+     * security measures or detection. -- we don't want trigger this alarm!
+     * https://secure.wikimedia.org/wikipedia/en/wiki/IP_fragmentation_attacks
+     */
+#define MIN_USABLE_MTU      576
+#define MIN_HANDLING_LEN  (MIN_USABLE_MTU + MIN_EXIST_PAYLOAD)
+
+/* space kept beside iphdr for ip options injection: the payload remaning = 68 * 8 */
+#define MIN_OPTION_RESERVED 12
 
 private:
 
     pluginLogHandler pLH;
+
+    /* the cache is used for keep track of the packet loss impact over a fragmented session */
+    PluginCache FRAGcache;
 
 public:
 
@@ -66,6 +84,7 @@ public:
             return false;
         }
 
+        pLH.completeLog("Initialization of fragmentation plugin (in the future, will be a scramble)");
         supportedScrambles = SCRAMBLE_INNOCENT;
 
         return true;
@@ -73,10 +92,9 @@ public:
 
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
     {
-        pLH.completeLog("verifing condition for id %d datalen %d total len %d",
-                        origpkt.ip->id, ntohs(origpkt.ip->tot_len), origpkt.pbuf.size());
+        bool ret;
 
-        if (origpkt.chainflag == FINALHACK)
+        if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
 
         if (!(availableScrambles & supportedScrambles))
@@ -85,98 +103,92 @@ public:
             return false;
         }
 
-        /*
-         *  RFC 791 states:
-         *
-         * "Every internet module must be able to forward a datagram of 68
-         *  octets without further fragmentation.  This is because an internet
-         *  header may be up to 60 octets, and the minimum fragment is 8 octets."
-         *
-         */
-        return (!(origpkt.ip->frag_off & htons(IP_DF)) &&
-                origpkt.ippayloadlen >= MIN_IP_PAYLOAD);
+        /* we didn't check "origpkt.ip->frag_off & htons(IP_DF)" because want to _force_ frag */
+        ret = (origpkt.ippayloadlen >= MIN_HANDLING_LEN);
+
+        pLH.completeLog("verified condition for ip.id %d Sj#%u ip payld %d tcp payld %d total len %d: %s",
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, origpkt.ippayloadlen,
+                        origpkt.tcppayloadlen, origpkt.pbuf.size(), ret ? "ACCEPT" : "REJECT");
+
+        return ret;
+    }
+
+    Packet * create_fragment(const Packet &origpkt, uint16_t since, uint16_t len)
+    {
+        Packet * ret = new Packet(origpkt, since, len, MIN_USABLE_MTU);
+
+        ret->source = PLUGIN;
+
+        /* the orig packet is removed, the position has no particular importance for the hack
+         * anyway ANTICIPATION keep packets trasmission ordered. */
+        ret->position = ANTICIPATION;
+
+        /* we keep the origpkt.wtf to permit this hack to segment both good and evil pkts */
+        ret->wtf = origpkt.wtf;
+
+        /* will be re-hacked, of couse, also if not all plugins supports frag */
+        upgradeChainFlag(ret);
+
+        return ret;
     }
 
     virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
     {
-        /*
-         * due to the ratio: MIN_IP_PAYLOAD = (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
-         * the hack will produce pkts between a min of MIN_SPLIT_PKTS and a max of MAX_SPLIT_PKTS
-         */
-        uint8_t pkts_n = MIN_SPLIT_PKTS + random() % (MAX_SPLIT_PKTS - (MIN_SPLIT_PKTS - 1));
-        uint32_t split_size = origpkt.ippayloadlen / pkts_n;
-        split_size = split_size > MIN_SPLIT_PAYLOAD ? split_size : MIN_SPLIT_PAYLOAD;
-        split_size = (split_size >> 3) << 3; /* we need an offset multiple */
-        pkts_n = (origpkt.ippayloadlen / split_size) + ((origpkt.ippayloadlen % split_size) ? 1 : 0);
-        const uint32_t carry = (origpkt.ippayloadlen % split_size) ? (origpkt.ippayloadlen % split_size) : split_size;
+        uint16_t start = 0;
+        uint16_t tobesend = origpkt.ippayloadlen;
+        Packet * fragPkt;
 
-        vector<unsigned char> pbufcpy(origpkt.pbuf);
-        vector<unsigned char>::iterator it = pbufcpy.begin() + origpkt.iphdrlen;
+        /* fragDataLen is 544 byte of ip payload */
+        uint16_t fragDataLen = (MIN_USABLE_MTU - (sizeof(struct iphdr) + MIN_OPTION_RESERVED) );
 
-        pLH.completeLog("packet size %d, splitted in %d chunk of %d bytes",
-                        ntohs(origpkt.ip->tot_len), pkts_n, split_size);
+        /* ** ** **
+         * choose if generate TWO or THREE fragments:
+         *
+         * REMIND/TODO/WISHLIST: declaring our MTU to $ALOT, sniffjoke will choose internally if use 
+         * TCP segmentation or IP fragmentation, where is possibile. 
+         * ** ** **/
+        int32_t not_last_pkts;
 
-        uint16_t offset = ntohs(origpkt.ip->frag_off) & ~htons(~IP_DF | ~IP_MF);
-        bool justfragmented = ntohs(origpkt.ip->frag_off) & htons(IP_MF);
+        /* packets with (tcp + data) > 1088 are splitted in three, one "last pkts" is always present */
+        if (( origpkt.ippayloadlen - (fragDataLen * 2) )  > 0 )
+            not_last_pkts = 2;
+        else
+            not_last_pkts = 1;
 
-        for (uint8_t pkts = 0; pkts < pkts_n; pkts++)
+        /* create the 1st (and 2nd ?) fragments */
+        do 
         {
-            vector<unsigned char> pktbuf(pbufcpy.begin(), pbufcpy.begin() + origpkt.iphdrlen);
+            fragPkt = create_fragment(origpkt, start, fragDataLen);
+            fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
 
-            struct iphdr *ip = (struct iphdr *) &(pktbuf[0]);
+            fragPkt->ip->frag_off = htons( (start >> 3) & IP_OFFMASK);
 
-            if (pkts < (pkts_n - 1)) /* first (pkt - 1) segments */
-            {
-                ip->tot_len = htons(origpkt.iphdrlen + split_size);
-                ip->frag_off = htons(offset | IP_MF);
-                pktbuf.insert(pktbuf.end(), it, it + split_size);
-                offset += split_size >> 3;
-                it += split_size;
-            }
-            else /* last segment */
-            {
-                ip->tot_len = htons(origpkt.iphdrlen + carry);
-                if (justfragmented)
-                    ip->frag_off = htons(offset | IP_MF);
-                else
-                    ip->frag_off = htons(offset);
+            pLH.completeLog("%d (Sj#%u) totl %d start %d fragl %u (tobesnd %d) frag_off %u origseq %u origippld %u", 
+                            not_last_pkts, fragPkt->SjPacketId, fragPkt->pbuf.size(), start, fragDataLen, tobesend,
+                            ntohs(fragPkt->ip->frag_off), ntohl(origpkt.tcp->seq), origpkt.ippayloadlen );
 
-                pktbuf.insert(pktbuf.end(), it, it + carry);
-            }
+            fragPkt->ip->frag_off |= htons(IP_MF);
 
-            Packet * const pkt = new Packet(&pktbuf[0], pktbuf.size());
+            pktVector.push_back(fragPkt);
 
-            pkt->randomizeID();
+            start += fragDataLen;
+            tobesend -= fragDataLen;
 
-            pkt->source = PLUGIN;
+        } while(--not_last_pkts);
 
-            /*
-             * the orig packet is removed, so the value of the position
-             * has no particular importance for the hack
-             *
-             * by the way setting this to ANTICIPATION it's fundamental
-             * to keep packets trasmission ordered.
-             */
-            pkt->position = ANTICIPATION;
+        /* create the last fragment */
+        fragPkt = create_fragment(origpkt, start, tobesend);
+        fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
 
-            /* we keep the origpkt.wtf to permit this hack to segment both good and evil pkts */
-            pkt->wtf = origpkt.wtf;
+        fragPkt->ip->frag_off = htons( (start >> 3) & IP_OFFMASK);
 
-            /* useless, INNOCENT is never downgraded in last_pkt_fix */
-            pkt->choosableScramble = (availableScrambles & supportedScrambles);
+        pktVector.push_back(fragPkt);
 
-            /* we need to force inheriet of chainflag due to packet creation */
-            pkt->chainflag = origpkt.chainflag;
-
-            upgradeChainFlag(pkt);
-
-            pktVector.push_back(pkt);
-
-            pLH.completeLog(" INNOCENT chunk %d of %d size %d", pkts, pkts_n, pkt->pbuf.size());
-        }
+        pLH.completeLog("final fragment (Sj#%u) size %d start %d (frag_off %u) orig seq %u", 
+                        fragPkt->SjPacketId, fragPkt->pbuf.size(), start,
+                        ntohs(fragPkt->ip->frag_off), ntohl(origpkt.tcp->seq) );
 
         removeOrigPkt = true;
-
     }
 };
 
