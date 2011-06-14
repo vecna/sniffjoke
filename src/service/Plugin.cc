@@ -251,6 +251,16 @@ bool Plugin::inverseProportionality(uint32_t pkts, uint32_t min_inj_pkts, uint32
 
 
 /* ___ payldBreakin section ___ */
+bool Plugin::ackedseqMatch(const cacheRecord &record, const Packet &pkt)
+{
+    const Packet &refpkt = record.cached_packet;
+    uint32_t expectedAck = *((uint32_t *)(&record.cached_data[0]));
+
+    /* is used to check if a sequence sent is being ACKed */
+    return (refpkt.ip->daddr == pkt.ip->saddr && refpkt.tcp->dest == pkt.tcp->source &&
+            refpkt.tcp->dest == pkt.tcp->source && expectedAck == pkt.tcp->ack_seq);
+}
+
 /* ___ payldBreakin section ___ */
 
 /* ___ badSync section ___ */

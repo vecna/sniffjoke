@@ -113,6 +113,7 @@ public:
 
     /* filter used in caching, these are passed to cache.check and verifyIfCache */
     static bool tupleMatch(const cacheRecord &, const Packet &);
+    static bool ackedseqMatch(const cacheRecord &, const Packet &);
 };
 
 #endif /* SJ_PLUGIN_H */

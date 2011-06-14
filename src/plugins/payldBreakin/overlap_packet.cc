@@ -41,24 +41,76 @@ class overlap_packet : public Plugin
 {
 #define PLUGIN_NAME "Overlap Packet"
 #define PKT_LOG "plugin.overlap_packet.log"
-#define MIN_PACKET_OVERTRY 600
+#define MIN_PACKET_OVERTRY 200
 
 #define SEQINFO 1
 
 private:
 
     pluginLogHandler pLH;
+    /*
+     * how does it works ? 
+     * suppose to have a packet long 200 byte with sequcence X
+     *
+     * this plugin will send:
+     * seq X len 60
+     * seq (X + 40) len 80 (and cache, X + 120 value)
+     * seq X len 200
+     * seq (X + 120) len 80 (and cache ? boh!)
+     *
+     * when the incoming check found an ack_seq of X + 60, drop it.
+     */
+    PluginCache OVRLAPcache;
 
-    PluginCache cache;
-
-    static bool filter(const cacheRecord &record, const Packet &pkt)
+    Packet * create_segment(const Packet &pkt, uint32_t seqOff, uint16_t newTcplen, bool cache, bool psh, bool ackkeep)
     {
+        Packet * ret = new Packet(pkt);
 
-        const Packet &refpkt = record.cached_packet;
+        ret->randomizeID();
+        ret->tcp->seq = htonl( ntohl(ret->tcp->seq) + seqOff );
 
-        return (refpkt.ip->daddr == pkt.ip->daddr &&
-                refpkt.tcp->source == pkt.tcp->source &&
-                refpkt.tcp->seq == pkt.tcp->seq);
+        pLH.completeLog("creation of %d: seqOff %d (%u) new len %d + cache (%s) push (%s) ack (%s)",
+                        ret->SjPacketId, seqOff, ntohl(ret->tcp->seq), newTcplen,
+                        cache ? "YES" : "NO", psh ? "YES" : "NO", ackkeep ? "YES" : "NO");
+
+        if(newTcplen != ret->tcppayloadlen)
+        {
+            ret->tcppayloadResize(newTcplen);
+            memset_random(ret->tcppayload, newTcplen);
+        }
+
+        if(!psh)
+        {
+            ret->tcp->psh = 0;
+        }
+
+        /* this is checked in every generated packet, to avoid ack duplications */
+        if(!ackkeep)
+        {
+            ret->tcp->ack = 0;
+            ret->tcp->ack_seq = 0;
+        }
+
+        ret->source = PLUGIN;
+        ret->wtf = INNOCENT;
+        ret->choosableScramble = SCRAMBLE_INNOCENT;
+        upgradeChainFlag(ret);
+
+        if(cache)
+        {
+            uint32_t expectedAck = htonl(ntohl(ret->tcp->seq) + newTcplen);
+
+            pLH.completeLog("+ expected Ack %u added to the cache (orig seq %u)", ntohl(expectedAck), ntohl(ret->tcp->seq) );
+            
+            OVRLAPcache.add(*ret, (const unsigned char *)&expectedAck, sizeof(expectedAck));
+        }
+        else
+        {
+            uint32_t dbg = (ntohl(ret->tcp->seq) + newTcplen);
+            pLH.completeLog("? debug: orig seq %u ack_seq %u pushed len %d (w/out cache)", ntohl(ret->tcp->seq), (dbg), newTcplen );
+        }
+
+        return ret;
     }
 
 public:
@@ -82,6 +134,23 @@ public:
         return true;
     }
 
+    virtual void mangleIncoming(Packet &inpkt)
+    {
+        if( ntohs(inpkt.tcp->source) != 80 )
+            return;
+
+        cacheRecord *acked = OVRLAPcache.check(&ackedseqMatch, inpkt);
+
+        if (acked != NULL)
+        {
+            pLH.completeLog("! ack-seq match: (%u) packet removed", ntohl(inpkt.tcp->ack_seq));
+
+            removeOrigPkt = true;
+        }
+        else
+            pLH.completeLog("# incoming ack_seq (%u) not removed", ntohl(inpkt.tcp->ack_seq));
+    }
+
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
     virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
@@ -89,76 +158,40 @@ public:
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
 
-        return (origpkt.fragment == false &&
-                origpkt.proto == TCP &&
-                origpkt.tcppayload != NULL &&
-                origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
+        if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
+            return false;
+/*
+        pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d seq %u",
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
+                        origpkt.tcppayloadlen, origpkt.pbuf.size(), ntohl(origpkt.tcp->seq) );
+*/
+        /* preliminar condition, TCP and fragment already checked */
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && 
+                     origpkt.tcppayload != NULL && origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
+
+        if (!ret)
+            return false;
+
+        return ret;
     }
 
     virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
     {
-        /* 
-         * TODO -- 
-         * with posticipation under Linux and Window the FIRST packet is accepted, and
-         * the sniffer will keep the first or the last depends from the sniffing tech
-         *
-                pkt->position = POSTICIPATION;
-         *
-         * Here is explored the usabilility of some TCPOPT making the packets unable
-         * to be accepted (PAWS with expired timestamp) --- TODO
-         */
+        Packet * const pkt1 = create_segment(origpkt, 0, 60, false, false, true);
+        pkt1->position = ANTICIPATION;
+        pktVector.push_back(pkt1);
 
-        /* the test: a valid packet with a lenght LESS THAN the real size sent by
-         * the kernel, followed by the same packet of good dimension. seems that
-         * windows uses the first received packet while unix the last one.
-         */
+        Packet * const pkt2 = create_segment(origpkt, 40, 80, true, false, false);
+        pkt2->position = ANTICIPATION;
+        pktVector.push_back(pkt2);
 
-        Packet * const pkt = new Packet(origpkt);
+        Packet * const pkt3 = create_segment(origpkt, 0, origpkt.tcppayloadlen, false, true, false);
+        pkt3->position = ANTICIPATION;
+        pktVector.push_back(pkt3);
 
-        pkt->randomizeID();
-
-        /* is cached the amount of data cached in the first segment */
-        uint32_t sentData;
-
-        cacheRecord *record = cache.check(&filter, origpkt);
-
-        if (record == NULL)
-        {
-            sentData = (origpkt.tcppayloadlen / 2);
-
-            cache.add(origpkt, (const unsigned char*) &sentData, sizeof(sentData));
-
-            pkt->tcppayloadResize(sentData);
-            pkt->tcp->psh = 0;
-
-            pLH.completeLog("1) original pkt size %d truncated of %d byte to %d (sport %u seq %u)",
-                            origpkt.tcppayloadlen, origpkt.tcppayloadlen - sentData, sentData,
-                            ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
-                            );
-        }
-        else
-        {
-
-            sentData = *(uint32_t*)&(record->cached_data[0]);
-
-            cache.explicitDelete(record);
-
-            memset_random(pkt->tcppayload, sentData);
-
-            pLH.completeLog("2) injected packet size %d, first %d random (sport %u seq %u)",
-                            pkt->tcppayloadlen, sentData,
-                            ntohs(pkt->tcp->source), ntohl(pkt->tcp->seq)
-                            );
-        }
-
-        pkt->source = PLUGIN;
-
-        pkt->position = ANTICIPATION;
-        pkt->wtf = INNOCENT;
-
-        upgradeChainFlag(pkt);
-
-        pktVector.push_back(pkt);
+        Packet * const pkt4 = create_segment(origpkt, 120, 80, false, false, false);
+        pkt4->position = POSTICIPATION;
+        pktVector.push_back(pkt4);
 
         removeOrigPkt = true;
     }
@@ -180,3 +213,5 @@ extern "C" const char *versionValue()
 {
     return SW_VERSION;
 }
+
+
