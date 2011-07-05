@@ -1,7 +1,7 @@
 .TH sniffjoke 1
 .PP
 .SH NAME
-Sniffjoke 0.4 usage
+Sniffjoke 0.4.2 usage
 .PP
 .SH SYNOPSIS
 sniffjoke [OPTION]...
@@ -24,6 +24,9 @@ specify the base directory where the location resides [default: /usr/local/var/s
 .PP
 .B --user <username> 
 downgrade priviledge to the specified user [default: nobody]
+.PP
+.B --gw-mac-addr <XX:YY:KK:PP:00:RR>
+specify the default gateway mac address. by default is not required, because SniffJoke use some auto detection commands in order to acquire the local network informations. In some distribution, a fatal exception is triggered when tried, in those case this option became mandatory for the correct execution of SniffJoke.
 .PP
 .B --group <groupname> 
 downgrade priviledge to the specified group [default: nogroup]
@@ -81,6 +84,6 @@ Copyright (GPL) 2008,2009,2010,2011 Claudio Agosti & Giovanni Pellerano.
 .br
 This is free software; see the source for copying conditions.  There is NO  warranty;  not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 .SH "SEE ALSO"
-Because SniffJoke is a 0.4-rc1 release, we didn't setup correctly a man page, and will be better if you check http://www.delirandom.net/sniffjoke for the usage information you should need.
+http://www.delirandom.net/sniffjoke
 .TP
 .I sniffjokectl(1) sniffjoke-autotest(1)

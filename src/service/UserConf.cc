@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2011, 2010 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -219,32 +219,36 @@ void UserConf::autodetectGWIPAddress(void)
     }
 }
 
+void UserConf::importMacAddr(const char *cmd_out)
+{
+    uint32_t mac[6];
+    uint32_t i;
+
+    for (i = 0; i < strlen(cmd_out) && (isxdigit(cmd_out[i])) || (cmd_out[i] == ':'); ++i)
+        runcfg.gw_mac_str[i] = cmd_out[i];
+
+    if (i != 17)
+        RUNTIME_EXCEPTION("invalid mac address format: [%s] is not long 17 bytes", cmd_out);
+
+    LOG_ALL("acquired gateway mac address from the arp table: %s", runcfg.gw_mac_str);
+    sscanf(runcfg.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+    for (i = 0; i < ETH_ALEN; ++i)
+        runcfg.gw_mac_addr[i] = mac[i];
+}
+
 void UserConf::autodetectGWMACAddress(void)
 {
     char cmd[MEDIUMBUF];
-    string imp_str;
-    uint32_t i;
+    string cmdout_str;
 
     snprintf(cmd, MEDIUMBUF, "arp -ni %s %s | grep %s | awk '{print $3}'",
              runcfg.net_iface_name, runcfg.gw_ip_addr, runcfg.gw_ip_addr);
 
     LOG_ALL("detecting mac address of gateway with [%s]", cmd);
 
-    imp_str = execOSCmd(cmd);
-
-    for (i = 0; i < strlen(imp_str.c_str()) && (isxdigit((imp_str.c_str())[i]) || (imp_str.c_str())[i] == ':'); ++i)
-        runcfg.gw_mac_str[i] = (imp_str.c_str())[i];
-
-    if (i != 17)
-        RUNTIME_EXCEPTION("unable to autodetect gateway mac address");
-    else
-    {
-        LOG_ALL("acquired gateway mac address from the arp table: %s", runcfg.gw_mac_str);
-        uint32_t mac[6];
-        sscanf(runcfg.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-        for (i = 0; i < 6; ++i)
-            runcfg.gw_mac_addr[i] = mac[i];
-    }
+    cmdout_str = execOSCmd(cmd);
+    LOG_VERBOSE("received output to detect gateway mac address: %s", cmdout_str.c_str() );
+    importMacAddr( cmdout_str.c_str() );
 }
 
 /* this method is called by SniffJoke.cc */
@@ -252,11 +256,15 @@ void UserConf::networkSetup(void)
 {
     LOG_DEBUG("initializing network for service/child: %d", getpid());
 
-    /* autodetect is always used, we should not trust the preloaded configuration */
+    /* autodetect is always used, but will be override by --options, for this reason is checked
+     * the presence of previously assignments */
+
     autodetectLocalInterface();
     autodetectLocalInterfaceIPAddress();
     autodetectGWIPAddress();
-    autodetectGWMACAddress();
+
+    if(!strlen(runcfg.gw_mac_str))
+        autodetectGWMACAddress();
 
     LOG_VERBOSE("* system local interface: %s, %s address", runcfg.net_iface_name, runcfg.net_iface_ip);
     LOG_VERBOSE("* default gateway mac address: %s", runcfg.gw_mac_str);
@@ -408,6 +416,7 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runcfg.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
     parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, DEFAULT_ONLYPLUGIN);
     parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
+    parseMatch(runcfg.gw_mac_str, "gw-mac-addr", loadstream, cmdline_opts.gw_mac_str, DEFAULT_GW_MAC_ADDR);
 
     /* loading of IP lists, in future also the source IP address should be useful */
     if (runcfg.use_blacklist)
@@ -415,6 +424,12 @@ bool UserConf::loadDiskConfiguration(void)
         runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
         if ((*(runcfg.blacklist)).empty())
             RUNTIME_EXCEPTION("requested blacklist but blacklist file not found or empty");
+    }
+
+    /* if the network details are passed by options, complete the acquisition */
+    if (strlen(runcfg.gw_mac_str))
+    {
+        importMacAddr(runcfg.gw_mac_str);
     }
 
     if (runcfg.use_whitelist)

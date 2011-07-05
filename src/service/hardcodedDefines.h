@@ -52,6 +52,7 @@
 #define DEFAULT_ONLYPLUGIN      ""
 #define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_MAX_TTLPROBE    35
+#define DEFAULT_GW_MAC_ADDR     ""
 
 /* this is not configurabile anyway in some (wrong) local network the
  * class 1.0.0.0/8 is used and should be require change this puppet-IP */

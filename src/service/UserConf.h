@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2011, 2010 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ struct sj_cmdline_opts
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
+    char gw_mac_str[SMALLBUF];
     /* END OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
 
     bool force_restart;
@@ -89,6 +90,7 @@ struct sj_config
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
+    char gw_mac_str[SMALLBUF];
     /* END OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
 
     /* mangling policies */
@@ -98,7 +100,6 @@ struct sj_config
 
     /* system informations, autodetected */
     char gw_ip_addr[SMALLBUF];
-    char gw_mac_str[SMALLBUF];
     char gw_mac_addr[ETH_ALEN];
     char net_iface_name[SMALLBUF];
     /* char tun_iface_name[SMALLBUF] statically know as TUN_IF_NAME */
@@ -119,6 +120,9 @@ private:
     void autodetectGWIPAddress(void);
     void autodetectGWMACAddress(void);
     void autodetectFirstAvailableTunnelInterface(void);
+
+    /* network configuration, autodetect utilities */
+    void importMacAddr(const char*);
 
     void parseOnlyParam(const char*);
 

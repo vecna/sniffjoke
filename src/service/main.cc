@@ -3,8 +3,8 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2010 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2011, 2010 vecna <vecna@delirandom.net>
+ *                            evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ static void sj_version(const char *pname)
     " --foreground\t\trunning in foreground [default:background]\n"\
     " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
     " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
+    " --gw-mac-addr\t\tspecify default gateway mac address [default: is autodetected]\n"\
     " --version\t\tshow sniffjoke version\n"\
     " --help\t\t\tshow this help\n\n"\
     "\t\t\thttp://www.delirandom.net/sniffjoke\n"
@@ -129,6 +130,7 @@ int main(int argc, char **argv)
         { "debug", required_argument, NULL, 'd'},
         { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
         { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
+        { "gw-mac-addr", required_argument, NULL, 'e'},
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
         { NULL, 0, NULL, 0}
@@ -198,6 +200,9 @@ int main(int argc, char **argv)
             break;
         case 'p':
             snprintf(useropt.onlyplugin, sizeof (useropt.onlyplugin), "%s", optarg);
+            break;
+        case 'e':
+            snprintf(useropt.gw_mac_str, sizeof (useropt.gw_mac_str), "%s", optarg);
             break;
         case 'm':
             useropt.max_ttl_probe = atoi(optarg);
