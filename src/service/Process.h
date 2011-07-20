@@ -35,11 +35,6 @@ class Process
 {
 private:
 
-    struct passwd userinfo;
-    void* userinfo_buf;
-    struct group groupinfo;
-    void* groupinfo_buf;
-
     sigset_t sig_nset;
     sigset_t sig_oset;
 
@@ -51,12 +46,11 @@ public:
     void writePidfile(void);
     void unlinkPidfile(bool);
 
-    int detach(void);
-    void jail(void);
-    void privilegesDowngrade(void);
     void sigtrapSetup(sig_t);
     void sigtrapEnable(void);
     void sigtrapDisable(void);
+
+    void changedir(void);
     void background(void);
     void isolation(void);
 };

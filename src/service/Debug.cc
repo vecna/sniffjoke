@@ -67,7 +67,6 @@ bool Debug::appendOpen(uint8_t thislevel, const char *fname, char *buf, FILE **p
         if ((fname == NULL) || ((*previously = fopen(fname, "a+")) == NULL))
             return false;
 
-        /* setbuffer(*previously, buf, DEBUGBUFFER); */
         setlinebuf(*previously);
 
         log(thislevel, __func__, "opened logfile %s successful with debug level %d", fname, debuglevel);
@@ -107,9 +106,8 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
         else if (errorlevel == SESSION_LEVEL && session_logstream != NULL)
             output_flow = session_logstream;
 
-        /* the debug level used in development include function/pid/uid addictional infos */
         if (errorlevel == DEBUG_LEVEL)
-            fprintf(output_flow, "%s %s %d/%d ", sj_clock_str, funcname, getpid(), getuid());
+            fprintf(output_flow, "%s %s ", sj_clock_str, funcname);
         else
             fprintf(output_flow, "%s ", sj_clock_str);
 
@@ -124,10 +122,6 @@ void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
 
 void Debug::downgradeOpenlog(uid_t uid, gid_t gid)
 {
-    /* this should not be called when is not the root process to do */
-    if (getuid() && getgid())
-        return;
-
     if (logstream != NULL)
         if(fchown(fileno(logstream), uid, gid) == -1)
             RUNTIME_EXCEPTION("unable to change privileges to %d %d: %s", uid, gid, strerror(errno));
@@ -148,12 +142,6 @@ selfName(sN)
     if ((logstream = fopen(LfN, "a+")) == NULL)
         RUNTIME_EXCEPTION("unable to open %s: %s", LfN, strerror(errno));
 
-    /* at the moment is used this solution. soon, janus integration, will solve
-     * every father/child/root/chroot/perm issue */
-    if(fchmod(fileno(logstream),  0666) == -1)
-        RUNTIME_EXCEPTION("unable to make plugin %s (%s) rw+uga: %s", selfName, LfN, strerror(errno));
-
-    /* setbuffer(logstream, logstream_buf, DEBUGBUFFER); */
     setlinebuf(logstream);
 
     completeLog("opened file %s successful for handler %s", LfN, selfName);

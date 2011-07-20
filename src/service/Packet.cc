@@ -116,7 +116,7 @@ uint32_t Packet::maxMTU(void)
     if(fragment)
         return fragFakeMTU;
     else
-        return userconf->runcfg.net_iface_mtu;
+        return MTU;
 }
 
 uint32_t Packet::freespace(void)

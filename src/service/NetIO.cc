@@ -23,198 +23,62 @@
 #include "NetIO.h"
 #include "UserConf.h"
 
-#include <fcntl.h>
 #include <poll.h>
-#include <linux/if_tun.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
 
 extern auto_ptr<UserConf> userconf;
 
 void NetIO::setupNET()
 {
-    int tmpflags;
-    int tmpfd;
-    struct ifreq tmpifr;
+    struct sockaddr_in addr;
 
-    memset(&tmpifr, 0x00, sizeof (tmpifr));
+    netfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(netfd == -1)
+        RUNTIME_EXCEPTION("unable to allocate resources for janus netmitm socket");
 
-    if ((netfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) != -1)
-        LOG_DEBUG("datalink layer socket packet opened successfully");
-    else
-        RUNTIME_EXCEPTION("unable to open datalink layer packet: %s", strerror(errno));
+    memset(&addr, 0, sizeof(addr));            
+    addr.sin_family      = AF_INET; 
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");   
+    addr.sin_port        = htons(10203);  
 
-    if (((tmpflags = fcntl(netfd, F_GETFD)) != -1) && (fcntl(netfd, F_SETFD, tmpflags | FD_CLOEXEC) != -1))
-        LOG_DEBUG("flag FD_CLOEXEC set successfully in netfd (F_SETFD)");
-    else
-        RUNTIME_EXCEPTION("unable to set flag FD_CLOEXEC on netfd (F_SETFD): %s", strerror(errno));
-
-    strncpy(tmpifr.ifr_name, userconf->runcfg.net_iface_name, sizeof (tmpifr.ifr_name));
-    if (ioctl(netfd, SIOCGIFINDEX, &tmpifr) != -1)
-        LOG_DEBUG("ioctl(SIOCGIFINDEX) executed successfully on interface %s", userconf->runcfg.net_iface_name);
-    else
-        RUNTIME_EXCEPTION("unable to execute ioctl(SIOCGIFINDEX) on interface %s: %s", userconf->runcfg.net_iface_name, strerror(errno));
-
-    memset(&send_ll, 0x00, sizeof (send_ll));
-    send_ll.sll_family = PF_PACKET;
-    send_ll.sll_protocol = htons(ETH_P_IP);
-    send_ll.sll_ifindex = tmpifr.ifr_ifindex;
-    send_ll.sll_hatype = 0;
-    send_ll.sll_pkttype = PACKET_HOST;
-    send_ll.sll_halen = ETH_ALEN;
-    memcpy(send_ll.sll_addr, userconf->runcfg.gw_mac_addr, ETH_ALEN);
-
-    if (bind(netfd, (struct sockaddr *) &send_ll, sizeof (send_ll)) != -1)
-        LOG_DEBUG("binding datalink layer interface successfully");
-    else
-        RUNTIME_EXCEPTION("unable to bind datalink layer interface: %s", strerror(errno));
-
-    tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-
-    if (ioctl(tmpfd, SIOCGIFMTU, &tmpifr) != -1)
-        LOG_DEBUG("netfd mtu correctly get read %u (SIOCGIFMTU)", tmpifr.ifr_mtu);
-    else
-        RUNTIME_EXCEPTION("unable to get netfd mtu(SIOCGIFMTU): %s", strerror(errno));
-    userconf->runcfg.net_iface_mtu = tmpifr.ifr_mtu;
-
-    close(tmpfd);
+    if(connect(netfd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
+        RUNTIME_EXCEPTION("unable to connect to janus netmitm socket");
 }
 
 void NetIO::setupTUN()
 {
-    const char *tundev = "/dev/net/tun";
+    struct sockaddr_in addr;
 
-    int tmpflags;
-    int tmpfd;
-    struct ifreq tmpifr;
+    tunfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(tunfd == -1)
+        RUNTIME_EXCEPTION("unable to allocate resources for janus tunmitm socket");
 
-    memset(&tmpifr, 0x00, sizeof (tmpifr));
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_port        = htons(30201);
 
-    if ((tunfd = open(tundev, O_RDWR)) != -1)
-        LOG_DEBUG("%s opened successfully", tundev);
-    else
-        RUNTIME_EXCEPTION("unable to open %s: %s, check the kernel module", tundev, strerror(errno));
-
-    if (((tmpflags = fcntl(tunfd, F_GETFD)) != -1) && (fcntl(tunfd, F_SETFD, tmpflags | FD_CLOEXEC) != -1))
-        LOG_DEBUG("flag FD_CLOEXEC set successfully on tunfd (F_SETFD)");
-    else
-        RUNTIME_EXCEPTION("unable to set flag FD_CLOEXEC on tunfd (F_SETFD): %s", strerror(errno));
-
-    strncpy(tmpifr.ifr_name, TUN_IF_NAME, sizeof (tmpifr.ifr_name));
-    tmpifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-    if (ioctl(tunfd, TUNSETIFF, &tmpifr) != -1)
-        LOG_DEBUG("flags set successfully on tunfd (TUNSETIFF)");
-    else
-        RUNTIME_EXCEPTION("unable to set flags on tunfd (TUNSETIFF): %s", strerror(errno));
-
-    tmpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-
-    if (ioctl(tmpfd, SIOCGIFFLAGS, &tmpifr) != -1)
-        LOG_DEBUG("tunfd flags correctly read (SIOCGIFFLAGS)");
-    else
-        RUNTIME_EXCEPTION("unable to get tunfd flags (SIOCGIFFLAGS): %s", strerror(errno));
-    tmpifr.ifr_flags |= IFF_UP | IFF_RUNNING | IFF_POINTOPOINT;
-
-    if (ioctl(tmpfd, SIOCSIFFLAGS, &tmpifr) != -1)
-        LOG_DEBUG("tunfd flags correctly set (SIOCSIFFLAGS)");
-    else
-        RUNTIME_EXCEPTION("unable to get tunfd flags (SIOCSIFFLAGS): %s", strerror(errno));
-
-    userconf->runcfg.tun_iface_mtu = userconf->runcfg.net_iface_mtu - TUN_IF_MTU_DIFF;
-    tmpifr.ifr_mtu = userconf->runcfg.tun_iface_mtu;
-    if (ioctl(tmpfd, SIOCSIFMTU, &tmpifr) != -1)
-        LOG_DEBUG("tunfd mtu correctly set to %u (SIOCSIFMTU)", userconf->runcfg.tun_iface_mtu);
-    else
-        RUNTIME_EXCEPTION("unable to set tunfd mtu to %u (SIOCSIFMTU): %s", userconf->runcfg.tun_iface_mtu, strerror(errno));
-
-    ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_family = AF_INET;
-    ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_addr.s_addr = inet_addr(userconf->runcfg.net_iface_ip);
-    if (ioctl(tmpfd, SIOCSIFADDR, &tmpifr) != -1)
-        LOG_DEBUG("tunfd local addr correctly set to %s", userconf->runcfg.net_iface_ip);
-    else
-        RUNTIME_EXCEPTION("unable to set tunfd local addr to %s: %s", userconf->runcfg.net_iface_ip, strerror(errno));
-
-    ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_family = AF_INET;
-    ((struct sockaddr_in *) &tmpifr.ifr_addr)->sin_addr.s_addr = inet_addr(DEFAULT_FAKE_IPADDR);
-    memcpy(userconf->runcfg.tun_iface_ip, DEFAULT_FAKE_IPADDR, strlen(DEFAULT_FAKE_IPADDR));
-    if (ioctl(tmpfd, SIOCSIFDSTADDR, &tmpifr) != -1)
-        LOG_DEBUG("tunfd point-to-point dest addr correctly set to %s", DEFAULT_FAKE_IPADDR);
-    else
-        RUNTIME_EXCEPTION("unable to set tunfd point-to-point dest addr  to %s: %s", DEFAULT_FAKE_IPADDR, strerror(errno));
-
-
-    close(tmpfd);
+    if(connect(tunfd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
+        RUNTIME_EXCEPTION("unable to connect to janus tunmitm socket");
 }
 
-NetIO::NetIO(void)
+NetIO::NetIO(TCPTrack *ct) :
+conntrack(ct)
 {
     LOG_DEBUG("");
-
-    char cmd[MEDIUMBUF];
-
-    if (getuid() || geteuid())
-        RUNTIME_EXCEPTION("required root privileges");
-
-    /* pseudo sanity check of received data, sjconf had already make something */
-    if (strlen(userconf->runcfg.gw_ip_addr) < 7 || strlen(userconf->runcfg.gw_ip_addr) > 17)
-        RUNTIME_EXCEPTION("invalid ip address [%s] is not an IPv4, check the config", userconf->runcfg.gw_ip_addr);
-
-    if (strlen(userconf->runcfg.gw_mac_str) != 17)
-        RUNTIME_EXCEPTION("invalid mac address [%s] is not a MAC, check the config", userconf->runcfg.gw_mac_str);
 
     setupNET();
     setupTUN();
 
-    fds[0].fd = tunfd;
-    fds[1].fd = netfd;
-
-    snprintf(cmd, sizeof (cmd), "route del default");
-    LOG_VERBOSE("deleting default gateway in routing table");
-    execOSCmd(cmd);
-
-    snprintf(cmd, sizeof (cmd), "route add default gw %s", DEFAULT_FAKE_IPADDR"");
-    LOG_VERBOSE("setting default gateway our fake TUN endpoint ip address: %s", DEFAULT_FAKE_IPADDR);
-    execOSCmd(cmd);
-
-    snprintf(cmd, sizeof (cmd), "iptables -A INPUT -m mac --mac-source %s -j DROP", userconf->runcfg.gw_mac_str);
-    LOG_ALL("dropping all traffic from the gateway [%s]", cmd);
-    execOSCmd(cmd);
+    fds[0].fd = netfd;
+    fds[1].fd = tunfd;
 }
 
 NetIO::~NetIO(void)
 {
     LOG_DEBUG("");
 
-    char cmd[MEDIUMBUF];
-
-    if (getuid() || geteuid())
-        LOG_VERBOSE("this process (%d) is not root: unable to restore default gw", getpid());
-    else
-    {
-        snprintf(cmd, sizeof (cmd), "route del default");
-        LOG_VERBOSE("root process (%d): deleting our default gw [route del default]", getpid());
-        execOSCmd(cmd);
-
-        snprintf(cmd, sizeof (cmd), "ifconfig %s down", TUN_IF_NAME);
-        LOG_VERBOSE("shutting down  interface [%s]", TUN_IF_NAME, cmd);
-        execOSCmd(cmd);
-
-        snprintf(cmd, sizeof (cmd), "route add default gw %s", userconf->runcfg.gw_ip_addr);
-        LOG_VERBOSE("restoring previous default gateway [%s]", cmd);
-        execOSCmd(cmd);
-
-        snprintf(cmd, sizeof (cmd), "iptables -D INPUT -m mac --mac-source %s -j DROP", userconf->runcfg.gw_mac_str);
-        LOG_VERBOSE("deleting the filtering rule: [%s]", cmd);
-        execOSCmd(cmd);
-    }
-
-    close(tunfd);
     close(netfd);
-}
-
-void NetIO::prepareConntrack(TCPTrack *ct)
-{
-    conntrack = ct;
+    close(tunfd);
 }
 
 void NetIO::networkIO(void)
@@ -241,26 +105,31 @@ void NetIO::networkIO(void)
      */
     uint32_t max_cycle = NETIOBURSTSIZE;
 
-    vector<unsigned char> pktbuf(userconf->runcfg.net_iface_mtu);
+    vector<unsigned char> recv_buf(MTU);
 
+    uint16_t pkt_size;
     ssize_t ret;
+    uint8_t i;
 
-    Packet *pkt_tun = conntrack->readpacket(TUNNEL);
-    Packet *pkt_net = conntrack->readpacket(NETWORK);
+    Packet *send_buf[2];
+    send_buf[0] = conntrack->readpacket(NETWORK);
+    send_buf[1] = conntrack->readpacket(TUNNEL);
 
-    while (pkt_tun != NULL || pkt_net != NULL || max_cycle)
+    source_t source;
+
+    while (send_buf[0] != NULL || send_buf[1] != NULL || max_cycle)
     {
         if (max_cycle != 0) max_cycle--;
 
-        if (pkt_tun != NULL || pkt_net != NULL)
+        if (send_buf[0] != NULL || send_buf[1] != NULL)
         {
             /*
              * if there is some data to flush out the poll
              * timeout is set to infinite
              */
 
-            fds[0].events = (pkt_net != NULL) ? POLLIN | POLLOUT : POLLIN;
-            fds[1].events = (pkt_tun != NULL) ? POLLIN | POLLOUT : POLLIN;
+            fds[0].events = (send_buf[0] != NULL) ? POLLIN | POLLOUT : POLLIN;
+            fds[1].events = (send_buf[1] != NULL) ? POLLIN | POLLOUT : POLLIN;
 
             nfds = poll(fds, 2, -1);
         }
@@ -287,48 +156,40 @@ void NetIO::networkIO(void)
         if (nfds == -1)
             RUNTIME_EXCEPTION("strange and dangerous error in ppoll: %s", strerror(errno));
 
-        if (fds[0].revents & POLLIN) /* it's possibile to read from tunfd */
+        for(i = 0; i < 2; ++i)
         {
-            ret = read(tunfd, &(pktbuf[0]), userconf->runcfg.tun_iface_mtu);
+            source = (i == 0) ? NETWORK : TUNNEL;
 
-            if (ret == -1)
-                RUNTIME_EXCEPTION("error reading from tunnel: %s", strerror(errno));
+            if (fds[i].revents & POLLIN) /* it's possibile to read from tunfd */
+            {
+                ret = recv(fds[i].fd, &pkt_size, sizeof(pkt_size), MSG_WAITALL);
+                if(ret != sizeof(pkt_size))
+                    goto netio_recv_error;
+                
+                pkt_size = ntohs(pkt_size);
 
-            conntrack->writepacket(TUNNEL, &(pktbuf[0]), ret);
-        }
+                ret = recv(fds[i].fd, &(recv_buf[0]), pkt_size, MSG_WAITALL);
+                if(ret != pkt_size)
+                    goto netio_recv_error;
 
-        if (fds[0].revents & POLLOUT) /* it's possibile to write in tunfd */
-        {
-            ret = write(tunfd, &(pkt_net->pbuf[0]), pkt_net->pbuf.size());
+                conntrack->writepacket(source, &(recv_buf[0]), pkt_size);
+            }
 
-            if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */
-                RUNTIME_EXCEPTION("error writing in tunnel: %s", strerror(errno));
+            if (fds[i].revents & POLLOUT) /* it's possibile to write in tunfd */
+            {
+                pkt_size = htons(send_buf[i]->pbuf.size());
+                ret = send(fds[i].fd, &pkt_size, sizeof(pkt_size), 0);
+                if (ret != sizeof(pkt_size))
+                    goto netio_send_error;
 
-            /* correctly written in tunfd */
-            delete pkt_net;
-            pkt_net = conntrack->readpacket(NETWORK);
-        }
+                ret = send(fds[i].fd, &(send_buf[i]->pbuf[0]), send_buf[i]->pbuf.size(), 0);
+                if (ret != (int)send_buf[i]->pbuf.size())
+                    goto netio_send_error;
 
-        if (fds[1].revents & POLLIN) /* it's possible to read from netfd */
-        {
-            ret = recv(netfd, &(pktbuf[0]), userconf->runcfg.net_iface_mtu, 0);
-
-            if (ret == -1)
-                RUNTIME_EXCEPTION("error reading from network: %s", strerror(errno));
-
-            conntrack->writepacket(NETWORK, &(pktbuf[0]), ret);
-        }
-
-        if (fds[1].revents & POLLOUT) /* it's possibile to write in netfd */
-        {
-            ret = sendto(netfd, &(pkt_tun->pbuf[0]), pkt_tun->pbuf.size(), 0x00, (struct sockaddr *) &send_ll, sizeof (send_ll));
-
-            if (ret == -1) /* on single thread applications after a poll a write returns -1 only on error's case. */
-                RUNTIME_EXCEPTION("error writing in network: %s", strerror(errno));
-
-            /* correctly written in netfd */
-            delete pkt_tun;
-            pkt_tun = conntrack->readpacket(TUNNEL);
+                /* correctly written in tunfd */
+                delete send_buf[i];
+                send_buf[i] = conntrack->readpacket(source);
+            }
         }
     }
 
@@ -339,5 +200,13 @@ void NetIO::networkIO(void)
      *     a max delay of 10ms it's passed.
      */
     conntrack->analyzePacketQueue();
+
+    return;
+
+netio_recv_error:
+    RUNTIME_EXCEPTION("error reading from janus %smitm socket", (source == NETWORK) ? "net" : "tun");
+
+netio_send_error:
+    RUNTIME_EXCEPTION("error writing to janus %smitm socket", (source == NETWORK) ? "net" : "tun");
 }
 

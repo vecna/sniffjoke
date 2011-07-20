@@ -52,15 +52,12 @@
 #define DEFAULT_ONLYPLUGIN      ""
 #define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_MAX_TTLPROBE    35
-#define DEFAULT_GW_MAC_ADDR     ""
 
-/* this is not configurabile anyway in some (wrong) local network the
- * class 1.0.0.0/8 is used and should be require change this puppet-IP */
-#define DEFAULT_FAKE_IPADDR     "1.198.10.5"
+#define MTU                     1500
 
 /* configuration dirs/files */
 #define WORK_DIR                INSTALL_STATEDIR
-#define SJ_PIDFILE              "/var/run/sniffjoke.pid"
+#define SJ_PIDFILE              WORK_DIR"sniffjoke.pid"
 #define FILE_CONF               "sniffjoke-service.conf"
 #define FILE_PLUGINSENABLER     "plugins-enabled.conf"
 #define FILE_TTLFOCUSMAP        "ttlfocusmap.bin"

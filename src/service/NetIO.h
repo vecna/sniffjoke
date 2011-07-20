@@ -27,7 +27,6 @@
 #include "TCPTrack.h"
 
 #include <poll.h>
-#include <netpacket/packet.h>
 
 class NetIO
 {
@@ -39,13 +38,6 @@ private:
     int tunfd;
     int netfd;
 
-    /*
-     * these data are required for handle
-     * tunnel/ethernet man in the middle
-     */
-    struct sockaddr_ll send_ll;
-
-    /* poll variables, two file descriptors */
     struct pollfd fds[2];
     int nfds;
 
@@ -61,9 +53,8 @@ public:
      *       --- but not killed!
      */
 
-    NetIO(void);
+    NetIO(TCPTrack *);
     ~NetIO(void);
-    void prepareConntrack(TCPTrack *);
     void networkIO(void);
 };
 

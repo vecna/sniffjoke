@@ -45,8 +45,6 @@ static void sj_version(const char *pname)
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
     " --dir <name>\t\tspecify the base directory where the location reside [default: %s]\n"\
     "\t\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
-    " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
-    " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
     " --no-tcp\t\tdisable tcp mangling [default: %s]\n"\
     " --no-udp\t\tdisable udp mangling [default: %s]\n"\
     " --whitelist\t\tinject evasion packets only in the specified ip addresses\n"\
@@ -58,7 +56,6 @@ static void sj_version(const char *pname)
     " --foreground\t\trunning in foreground [default:background]\n"\
     " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
     " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
-    " --gw-mac-addr\t\tspecify default gateway mac address [default: is autodetected]\n"\
     " --version\t\tshow sniffjoke version\n"\
     " --help\t\t\tshow this help\n\n"\
     "\t\t\thttp://www.delirandom.net/sniffjoke\n"
@@ -69,7 +66,6 @@ static void sj_help(const char *pname)
            pname,
            DEFAULT_LOCATION,
            WORK_DIR,
-           DEFAULT_USER, DEFAULT_GROUP,
            DEFAULT_NO_TCP ? "tcp not mangled" : "tcp mangled",
            DEFAULT_NO_UDP ? "udp not mangled" : "udp mangled",
            DEFAULT_START_STOPPED ? "present" : "not present",
@@ -82,13 +78,6 @@ static void sj_help(const char *pname)
 
 int main(int argc, char **argv)
 {
-
-    if (getuid() || geteuid())
-    {
-        printf("SniffJoke is too dangerous to be run by an humble user; go to fetch daddy root, now!\n");
-        exit(1);
-    }
-
     /*
      * set the default values in the configuration struct
      */
@@ -116,8 +105,6 @@ int main(int argc, char **argv)
     struct option sj_option[] = {
         { "dir", required_argument, NULL, 'i'},
         { "location", required_argument, NULL, 'o'},
-        { "user", required_argument, NULL, 'u'},
-        { "group", required_argument, NULL, 'g'},
         { "admin", required_argument, NULL, 'a'},
         { "chain", no_argument, NULL, 'c'},
         { "no-tcp", no_argument, NULL, 't'},
@@ -137,7 +124,7 @@ int main(int argc, char **argv)
     };
 
     int charopt;
-    while ((charopt = getopt_long(argc, argv, "i:o:u:g:a:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
+    while ((charopt = getopt_long(argc, argv, "i:o:a:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
@@ -148,9 +135,6 @@ int main(int argc, char **argv)
             break;
         case 'o':
             snprintf(useropt.location, sizeof (useropt.location), "%s", optarg);
-            break;
-        case 'u':
-            snprintf(useropt.user, sizeof (useropt.user), "%s", optarg);
             break;
         case 'g':
             snprintf(useropt.group, sizeof (useropt.group), "%s", optarg);
@@ -200,9 +184,6 @@ int main(int argc, char **argv)
             break;
         case 'p':
             snprintf(useropt.onlyplugin, sizeof (useropt.onlyplugin), "%s", optarg);
-            break;
-        case 'e':
-            snprintf(useropt.gw_mac_str, sizeof (useropt.gw_mac_str), "%s", optarg);
             break;
         case 'm':
             useropt.max_ttl_probe = atoi(optarg);

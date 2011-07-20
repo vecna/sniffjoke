@@ -22,8 +22,6 @@
 #include "SniffJoke.h"
 
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 
 /* global variables */
 time_t sj_clock;
@@ -41,30 +39,24 @@ void sigtrap(int);
 
 SniffJoke::SniffJoke(const struct sj_cmdline_opts &opts) :
 alive(true),
-opts(opts),
-service_pid(0)
+opts(opts)
 {
     updateClock();
 
     userconf = auto_ptr<UserConf > (new UserConf(opts));
     proc = auto_ptr<Process > (new Process);
 
+    proc->changedir();
+
     LOG_DEBUG("");
 }
 
 SniffJoke::~SniffJoke(void)
 {
-    if (getuid() || geteuid())
-    {
-        LOG_DEBUG("service with user privileges [%d]", getpid());
-        cleanServerUser();
-    }
-    else
-    {
-        LOG_DEBUG("service with root privileges [%d]", getpid());
-        cleanServerRoot();
-    }
-    /* closing the log files */
+    chdir("../"); /* FIXME */
+
+    proc->unlinkPidfile(false);
+
     cleanDebug();
 }
 
@@ -109,81 +101,41 @@ void SniffJoke::run(void)
         proc->background();
     }
 
-    /* networkSetup read the config, the system and setup the local mitm */
-    userconf->networkSetup();
-
-    /* the code flow reach here, SniffJoke is ready to instance network environment */
-    mitm = auto_ptr<NetIO > (new NetIO);
-
-    /* sigtrap handler mapped the same in both Sj processes */
     proc->sigtrapSetup(sigtrap);
 
-    /* proc->detach: fork() into two processes,
-       from now on the real configuration is the one mantained by the child */
-    service_pid = proc->detach();
+    proc->isolation();
 
-    /* this is the root privileges thread, need to run for restore the network
-     * environment in shutdown */
-    if (service_pid)
+    proc->writePidfile();
+
+    setupDebug();
+
+    plugin_pool = auto_ptr<PluginPool > (new PluginPool);
+    opt_pool = auto_ptr<OptionPool > (new OptionPool);
+    sessiontrack_map = auto_ptr<SessionTrackMap > (new SessionTrackMap);
+    ttlfocus_map = auto_ptr<TTLFocusMap > (new TTLFocusMap);
+    conntrack = auto_ptr<TCPTrack > (new TCPTrack);
+    mitm = auto_ptr<NetIO > (new NetIO(conntrack.get()));
+
+    /* merge all auto_ptr instanced in a struct */
+    createSjEnvironment();
+
+    /* use this struct, and the data collected in PluginPool, to initialize all the plugins */
+    plugin_pool->initializeAll(&autoptrList);
+
+    setupAdminSocket();
+
+    /* main block */
+    while (alive)
     {
-        int deadtrace;
+        updateClock();
 
-        proc->writePidfile();
-        if (waitpid(service_pid, &deadtrace, WUNTRACED) > 0)
-        {
-            if (WIFEXITED(deadtrace))
-                LOG_VERBOSE("child %d WIFEXITED", service_pid);
-            if (WIFSIGNALED(deadtrace))
-                LOG_VERBOSE("child %d WIFSIGNALED", service_pid);
-            if (WIFSTOPPED(deadtrace))
-                LOG_VERBOSE("child %d WIFSTOPPED", service_pid);
-        }
-        else
-            LOG_VERBOSE("child waitpid failed with: %s", strerror(errno));
+        proc->sigtrapDisable();
 
-        LOG_DEBUG("child %d died, going to shutdown", service_pid);
+        mitm->networkIO();
 
-    }
-    else
-    {
-        proc->isolation();
+        handleAdminSocket();
 
-        setupDebug();
-
-        /* loading the plugins used for tcp hacking, MUST be done before proc->jail() */
-        plugin_pool = auto_ptr<PluginPool > (new PluginPool);
-        opt_pool = auto_ptr<OptionPool > (new OptionPool);
-
-        proc->jail();
-        proc->privilegesDowngrade();
-
-        sessiontrack_map = auto_ptr<SessionTrackMap > (new SessionTrackMap);
-        ttlfocus_map = auto_ptr<TTLFocusMap > (new TTLFocusMap);
-        conntrack = auto_ptr<TCPTrack > (new TCPTrack);
-
-        mitm->prepareConntrack(conntrack.get());
-
-        /* merge all auto_ptr instanced in a struct */
-        createSjEnvironment();
-
-        /* use this struct, and the data collected in PluginPool, to initialize all the plugins */
-        plugin_pool->initializeAll(&autoptrList);
-
-        setupAdminSocket();
-
-        /* main block */
-        while (alive)
-        {
-            updateClock();
-
-            proc->sigtrapDisable();
-
-            mitm->networkIO();
-
-            handleAdminSocket();
-
-            proc->sigtrapEnable();
-        }
+        proc->sigtrapEnable();
     }
 }
 
@@ -226,23 +178,6 @@ void SniffJoke::cleanDebug(void)
         fflush(debug.session_logstream);
 }
 
-void SniffJoke::cleanServerRoot(void)
-{
-    if (service_pid)
-    {
-        LOG_VERBOSE("found server root pid %d (from %d)", service_pid, getpid());
-        kill(service_pid, SIGTERM);
-        waitpid(service_pid, NULL, WUNTRACED);
-    }
-
-    proc->unlinkPidfile(false);
-}
-
-void SniffJoke::cleanServerUser(void)
-{
-    LOG_DEBUG("");
-}
-
 void SniffJoke::setupAdminSocket(void)
 {
     int tmp;
@@ -257,7 +192,6 @@ void SniffJoke::setupAdminSocket(void)
 
     memset(&in_service, 0x00, sizeof (in_service));
 
-    /* here we are running under chroot, resolution will not work without /etc/hosts and /etc/resolv.conf */
     if (!inet_aton(userconf->runcfg.admin_address, &in_service.sin_addr))
     {
         RUNTIME_EXCEPTION("unable to accept hostname (%s): only IP address allow",
@@ -295,7 +229,6 @@ void SniffJoke::createSjEnvironment(void)
     autoptrList.instanced_proc = reinterpret_cast<void *> (proc.get());
     autoptrList.instanced_mitm = reinterpret_cast<void *> (mitm.get());
     autoptrList.instanced_ct = reinterpret_cast<void *> (conntrack.get());
-
     autoptrList.instanced_ucfg = reinterpret_cast<void *> (userconf.get());
     autoptrList.instanced_ttl = reinterpret_cast<void *> (ttlfocus_map.get());
     autoptrList.instanced_sex = reinterpret_cast<void *> (sessiontrack_map.get());
@@ -592,14 +525,6 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     /* SJStatus is totally inspired by the IP/TCP options */
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ACTIVE, sizeof (userconf->runcfg.active), userconf->runcfg.active);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_DEBUGL, sizeof (userconf->runcfg.debug_level), userconf->runcfg.debug_level);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_MACGW, strlen(userconf->runcfg.gw_mac_str), userconf->runcfg.gw_mac_str);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GWADDR, strlen(userconf->runcfg.gw_ip_addr), userconf->runcfg.gw_ip_addr);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACENAME, strlen(userconf->runcfg.net_iface_name), userconf->runcfg.net_iface_name);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACEIP, strlen(userconf->runcfg.net_iface_ip), userconf->runcfg.net_iface_ip);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_NETIFACEMTU, sizeof (userconf->runcfg.net_iface_mtu), userconf->runcfg.net_iface_mtu);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACENAME, strlen(TUN_IF_NAME), TUN_IF_NAME);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACEIP, strlen(userconf->runcfg.tun_iface_ip), userconf->runcfg.tun_iface_ip);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_TUNIFACEMTU, sizeof (userconf->runcfg.tun_iface_mtu), userconf->runcfg.tun_iface_mtu);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf->runcfg.onlyplugin), userconf->runcfg.onlyplugin);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf->runcfg.admin_address), userconf->runcfg.admin_address);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf->runcfg.admin_port), userconf->runcfg.admin_port);

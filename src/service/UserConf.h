@@ -97,32 +97,11 @@ struct sj_config
     uint16_t portconf[PORTSNUMBER];
     IPListMap *whitelist;
     IPListMap *blacklist;
-
-    /* system informations, autodetected */
-    char gw_ip_addr[SMALLBUF];
-    char gw_mac_addr[ETH_ALEN];
-    char net_iface_name[SMALLBUF];
-    /* char tun_iface_name[SMALLBUF] statically know as TUN_IF_NAME */
-    char net_iface_ip[SMALLBUF];
-    char tun_iface_ip[SMALLBUF];
-    uint16_t net_iface_mtu;
-    uint16_t tun_iface_mtu;
-
 };
 
 class UserConf
 {
 private:
-
-    /* network configuration autodetect support functions */
-    void autodetectLocalInterface(void);
-    void autodetectLocalInterfaceIPAddress(void);
-    void autodetectGWIPAddress(void);
-    void autodetectGWMACAddress(void);
-    void autodetectFirstAvailableTunnelInterface(void);
-
-    /* network configuration, autodetect utilities */
-    void importMacAddr(const char*);
 
     void parseOnlyParam(const char*);
 

@@ -49,12 +49,6 @@ private:
     auto_ptr<NetIO> mitm;
     auto_ptr<TCPTrack> conntrack;
 
-    /* after detach:
-     *     service_pid in the root process [the pid of the user process]
-     *                 in the user process [0]
-     */
-    pid_t service_pid;
-
     int admin_socket;
     int admin_socket_flags_blocking;
     int admin_socket_flags_nonblocking;
@@ -68,8 +62,6 @@ private:
     void updateClock(void);
     void setupDebug(void);
     void cleanDebug(void);
-    void cleanServerRoot(void);
-    void cleanServerUser(void);
     void setupAdminSocket(void);
     void handleAdminSocket(void);
     void createSjEnvironment(void);

@@ -28,122 +28,14 @@
 extern auto_ptr<UserConf> userconf;
 
 /* startup of the process */
-Process::Process(void) :
-userinfo_buf(NULL),
-groupinfo_buf(NULL)
+Process::Process(void)
 {
     LOG_DEBUG("");
-
-    if (getuid() || geteuid())
-        RUNTIME_EXCEPTION("required root privileges");
-
-    struct passwd *userinfo_result;
-    struct group *groupinfo_result;
-
-    size_t userinfo_buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-    size_t groupinfo_buf_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-
-    userinfo_buf = calloc(1, userinfo_buf_len);
-    groupinfo_buf = calloc(1, groupinfo_buf_len);
-
-    if (userinfo_buf == NULL || groupinfo_buf == NULL)
-        RUNTIME_EXCEPTION("problem during memory allocation for userinfo or groupinfo");
-
-    getpwnam_r(userconf->runcfg.user, &userinfo, (char*) userinfo_buf, userinfo_buf_len, &userinfo_result);
-    getgrnam_r(userconf->runcfg.group, &groupinfo, (char*) groupinfo_buf, groupinfo_buf_len, &groupinfo_result);
-
-    if (userinfo_result == NULL || groupinfo_result == NULL)
-        RUNTIME_EXCEPTION("invalid user or group specified: %s, %s", userconf->runcfg.user, userconf->runcfg.group);
 }
 
 Process::~Process(void)
 {
     LOG_DEBUG("[process id %d, uid %d]", getpid(), getuid());
-
-    free(userinfo_buf);
-    free(groupinfo_buf);
-}
-
-int Process::detach(void)
-{
-    pid_t pid_child;
-    int pdes[2];
-
-
-    if ( pipe(pdes) == -1 )
-        RUNTIME_EXCEPTION("pid %d unable to open pipe: %s", getpid(), strerror(errno));
-
-    if ((pid_child = fork()) == -1)
-        RUNTIME_EXCEPTION("unable to fork (calling pid %d, parent %d)", getpid(), getppid());
-
-    if (pid_child)
-    {
-        /*
-         * Sniffjoke SERVICE FATHER: root privileges
-         * process delegated to network cleanhup
-         */
-
-        close(pdes[1]);
-        
-        if( read(pdes[0], &pid_child, sizeof (pid_t)) == -1)
-            LOG_ALL("failure in father/child communication: %s", strerror(errno));
-
-        close(pdes[0]);
-
-        return pid_child;
-
-    }
-    else
-    {
-        /*
-         * Sniffjoke SERVICE CHILD: I/O, user privileges
-         * networking process
-         */
-
-        pid_child = getpid();
-
-        close(pdes[0]);
-
-        if( write(pdes[1], &pid_child, sizeof (pid_t)) == -1)
-            LOG_ALL("failure in child/father communication: %s", strerror(errno));
-
-        close(pdes[1]);
-
-        LOG_DEBUG("forked child process, pid %d", getpid());
-
-        return 0;
-    }
-}
-
-void Process::jail(void)
-{
-    const char* chroot_dir = userconf->runcfg.working_dir;
-
-    if (chown(chroot_dir, userinfo.pw_uid, groupinfo.gr_gid))
-    {
-        RUNTIME_EXCEPTION("chown of %s to %s:%s failed: %s: unable to start SniffJoke",
-                          chroot_dir, userconf->runcfg.user, userconf->runcfg.group, strerror(errno));
-    }
-
-    if (chdir(chroot_dir) || chroot(chroot_dir))
-        RUNTIME_EXCEPTION("chroot into %s: %s: unable to start sniffjoke",
-                          chroot_dir, strerror(errno));
-
-    LOG_VERBOSE("chroot'ed process %d in %s", getpid(), chroot_dir);
-}
-
-void Process::privilegesDowngrade(void)
-{
-    debug.downgradeOpenlog(userinfo.pw_uid, groupinfo.gr_gid);
-
-    if (setgid(groupinfo.gr_gid) || setuid(userinfo.pw_uid))
-        RUNTIME_EXCEPTION("error loosing root privileges");
-
-    if (!getuid() && !geteuid())
-        RUNTIME_EXCEPTION("SniffJoke user process can't be runned with root privileges");
-
-    LOG_VERBOSE("process %d downgrade privileges to uid %d gid %d",
-                getpid(), userinfo.pw_uid, groupinfo.gr_gid);
 }
 
 void Process::sigtrapSetup(sig_t sigtrap_function)
@@ -192,9 +84,8 @@ pid_t Process::readPidfile(void)
         return ret;
     }
 
-#define PIDBLEN  7
-    char tmpstr[PIDBLEN];
-    if (fgets(tmpstr, PIDBLEN, pidFile) != NULL)
+    char tmpstr[7];
+    if (fgets(tmpstr, sizeof(tmpstr), pidFile) != NULL)
         ret = atoi(tmpstr);
     fclose(pidFile);
 
@@ -263,6 +154,15 @@ __unlinkPidfile:
     LOG_DEBUG("pid %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
 }
 
+void Process::changedir(void)
+{
+    if(chdir(userconf->runcfg.working_dir))
+    {
+        RUNTIME_EXCEPTION("chdir into %s: %s: unable to start sniffjoke",
+                          userconf->runcfg.working_dir, strerror(errno));
+    }
+}
+
 void Process::background(void)
 {
     if (fork())
@@ -272,11 +172,7 @@ void Process::background(void)
     for (i = getdtablesize(); i >= 0; --i)
         close(i);
 
-    /* stdin  */
-    i = open("/dev/null", O_RDWR); 
-
-    /* stdout   lazy eval  stderr */
-    if(dup(i) == -1 || dup(i) == -1)
+    if ((i = open("/dev/null", O_RDWR)) != 0 || dup(i) != 1 || dup(i) != 2)
         RUNTIME_EXCEPTION("unable to go in background: %s", strerror(errno));
 }
 
