@@ -34,20 +34,26 @@
 #include "PluginPool.h"
 #include "config.h"
 
+#include <event.h>
+
 class SniffJoke
 {
 public:
-    bool alive;
+    struct event_base *ev_base;
+
+    struct event admin_evtimer;
+    struct timeval admin_timeout;
+
+    struct event analyze_evtimer;
+    struct timeval analyze_timeout;
+
     SniffJoke(const struct sj_cmdline_opts &);
     ~SniffJoke(void);
+    void handleAdminSocket(void);
     void run(void);
 
 private:
     const sj_cmdline_opts &opts;
-
-    auto_ptr<Process> proc;
-    auto_ptr<NetIO> mitm;
-    auto_ptr<TCPTrack> conntrack;
 
     int admin_socket;
     int admin_socket_flags_blocking;
@@ -63,7 +69,6 @@ private:
     void setupDebug(void);
     void cleanDebug(void);
     void setupAdminSocket(void);
-    void handleAdminSocket(void);
     void createSjEnvironment(void);
 
     /* internalProtocol handling */

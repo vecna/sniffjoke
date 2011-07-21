@@ -36,10 +36,11 @@
 /* Sniffjoke defaults config values */
 #define DEFAULT_DIR             INSTALL_STATEDIR
 #define DEFAULT_LOCATION        "generic"
-#define DEFAULT_USER            "nobody"
-#define DEFAULT_GROUP           "nogroup"
 #define DEFAULT_ADMIN_ADDRESS   "127.0.0.1"
 #define DEFAULT_ADMIN_PORT      8844
+#define DEFAULT_JANUS_ADDRESS   "127.0.0.1"
+#define DEFAULT_JANUS_PORTIN    30201
+#define DEFAULT_JANUS_PORTOUT   10203
 #define DEFAULT_CHAINING        false
 #define DEFAULT_NO_TCP          false
 #define DEFAULT_NO_UDP          false
@@ -57,8 +58,9 @@
 
 /* configuration dirs/files */
 #define WORK_DIR                INSTALL_STATEDIR
-#define SJ_PIDFILE              WORK_DIR"sniffjoke.pid"
+#define SJ_PIDFILE              "sniffjoke.pid"
 #define FILE_CONF               "sniffjoke-service.conf"
+#define PATH_PLUGINS            "plugins"
 #define FILE_PLUGINSENABLER     "plugins-enabled.conf"
 #define FILE_TTLFOCUSMAP        "ttlfocusmap.bin"
 #define FILE_IPWHITELIST        "ipwhitelist.conf"

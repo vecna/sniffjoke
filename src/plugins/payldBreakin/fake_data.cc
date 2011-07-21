@@ -174,7 +174,7 @@ extern "C" Plugin* createPluginObj()
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-    delete who;
+    delete (fake_data *) who;
 }
 
 extern "C" const char *versionValue()

@@ -46,6 +46,9 @@ struct sj_cmdline_opts
     char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
+    char janus_address[MEDIUMBUF];
+    uint16_t janus_portin;
+    uint16_t janus_portout;
     bool no_tcp;
     bool no_udp;
     bool chaining;
@@ -72,7 +75,9 @@ struct sj_config
     float MAGIC; /* integrity check for saved binary configuration */
     char version[SMALLBUF]; /* SW_VERSION from hardcoded-defines.h */
 
+    char base_dir[LARGEBUF];
     char working_dir[LARGEBUF];
+    char pidabspath[LARGEBUF];
     char location[MEDIUMBUF];
 
     /* START OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
@@ -80,6 +85,9 @@ struct sj_config
     char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
+    char janus_address[MEDIUMBUF];
+    uint16_t janus_portin;
+    uint16_t janus_portout;
     bool no_tcp;
     bool no_udp;
     bool chaining;

@@ -26,11 +26,18 @@
 #include "Utils.h"
 #include "TCPTrack.h"
 
-#include <poll.h>
+struct iodesc
+{
+    struct bufferevent *buff_ev;
+    source_t source;
+    source_t destination;
+    vector<unsigned char> pktrecv;
+    TCPTrack *conntrack;
+};
 
 class NetIO
 {
-private:
+public:
 
     TCPTrack *conntrack;
 
@@ -38,15 +45,11 @@ private:
     int tunfd;
     int netfd;
 
-    struct pollfd fds[2];
-    int nfds;
+    struct iodesc netiodesc[2];
 
-    int size;
-
+    int JanusConnect(uint16_t);
     void setupTUN();
     void setupNET();
-
-public:
 
     /*
      * networkdown_condition express if the network is down and sniffjoke must be interrupted
@@ -55,7 +58,7 @@ public:
 
     NetIO(TCPTrack *);
     ~NetIO(void);
-    void networkIO(void);
+    void write(void);
 };
 
 #endif /* SJ_NETIO_H */

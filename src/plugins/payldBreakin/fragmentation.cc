@@ -58,7 +58,7 @@ class fragmentation : public Plugin
 #define MIN_USABLE_MTU      576
 #define MIN_HANDLING_LEN  (MIN_USABLE_MTU + MIN_EXIST_PAYLOAD)
 
-/* space kept beside iphdr for ip options injection: the payload remaning = 68 * 8 */
+    /* space kept beside iphdr for ip options injection: the payload remaning = 68 * 8 */
 #define MIN_OPTION_RESERVED 12
 
 private:
@@ -139,7 +139,7 @@ public:
         Packet * fragPkt;
 
         /* fragDataLen is 544 byte of ip payload */
-        uint16_t fragDataLen = (MIN_USABLE_MTU - (sizeof(struct iphdr) + MIN_OPTION_RESERVED) );
+        uint16_t fragDataLen = (MIN_USABLE_MTU - (sizeof (struct iphdr) +MIN_OPTION_RESERVED));
 
         /* ** ** **
          * choose if generate TWO or THREE fragments:
@@ -150,22 +150,22 @@ public:
         int32_t not_last_pkts;
 
         /* packets with (tcp + data) > 1088 are splitted in three, one "last pkts" is always present */
-        if (( origpkt.ippayloadlen - (fragDataLen * 2) )  > 0 )
+        if ((origpkt.ippayloadlen - (fragDataLen * 2)) > 0)
             not_last_pkts = 2;
         else
             not_last_pkts = 1;
 
         /* create the 1st (and 2nd ?) fragments */
-        do 
+        do
         {
             fragPkt = create_fragment(origpkt, start, fragDataLen);
             fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
 
-            fragPkt->ip->frag_off = htons( (start >> 3) & IP_OFFMASK);
+            fragPkt->ip->frag_off = htons((start >> 3) & IP_OFFMASK);
 
-            pLH.completeLog("%d (Sj#%u) totl %d start %d fragl %u (tobesnd %d) frag_off %u origseq %u origippld %u", 
+            pLH.completeLog("%d (Sj#%u) totl %d start %d fragl %u (tobesnd %d) frag_off %u origseq %u origippld %u",
                             not_last_pkts, fragPkt->SjPacketId, fragPkt->pbuf.size(), start, fragDataLen, tobesend,
-                            ntohs(fragPkt->ip->frag_off), ntohl(origpkt.tcp->seq), origpkt.ippayloadlen );
+                            ntohs(fragPkt->ip->frag_off), ntohl(origpkt.tcp->seq), origpkt.ippayloadlen);
 
             fragPkt->ip->frag_off |= htons(IP_MF);
 
@@ -174,19 +174,20 @@ public:
             start += fragDataLen;
             tobesend -= fragDataLen;
 
-        } while(--not_last_pkts);
+        }
+        while (--not_last_pkts);
 
         /* create the last fragment */
         fragPkt = create_fragment(origpkt, start, tobesend);
         fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
 
-        fragPkt->ip->frag_off = htons( (start >> 3) & IP_OFFMASK);
+        fragPkt->ip->frag_off = htons((start >> 3) & IP_OFFMASK);
 
         pktVector.push_back(fragPkt);
 
-        pLH.completeLog("final fragment (Sj#%u) size %d start %d (frag_off %u) orig seq %u", 
+        pLH.completeLog("final fragment (Sj#%u) size %d start %d (frag_off %u) orig seq %u",
                         fragPkt->SjPacketId, fragPkt->pbuf.size(), start,
-                        ntohs(fragPkt->ip->frag_off), ntohl(origpkt.tcp->seq) );
+                        ntohs(fragPkt->ip->frag_off), ntohl(origpkt.tcp->seq));
 
         removeOrigPkt = true;
     }
@@ -199,8 +200,7 @@ extern "C" Plugin* createPluginObj()
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-
-    delete who;
+    delete (fragmentation *) who;
 }
 
 extern "C" const char *versionValue()

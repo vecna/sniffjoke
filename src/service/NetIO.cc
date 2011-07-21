@@ -23,42 +23,98 @@
 #include "NetIO.h"
 #include "UserConf.h"
 
-#include <poll.h>
+#include <event.h>
 
 extern auto_ptr<UserConf> userconf;
 
-void NetIO::setupNET()
+static void netio_recv_cb(struct bufferevent *sabe, void *arg)
+{
+    struct iodesc * const desc = (struct iodesc *) arg;
+
+    uint16_t pktsize;
+
+    if (desc->pktrecv.size() == 0)
+    {
+        if (bufferevent_read(desc->buff_ev, &pktsize, sizeof (pktsize)) != sizeof (pktsize))
+            goto netio_recv_error;
+
+        desc->pktrecv.resize(ntohs(pktsize));
+        bufferevent_setwatermark(desc->buff_ev, EV_READ, desc->pktrecv.size(), desc->pktrecv.size());
+    }
+    else
+    {
+        if (bufferevent_read(desc->buff_ev, &desc->pktrecv[0], desc->pktrecv.size()) != desc->pktrecv.size())
+            goto netio_recv_error;
+
+        desc->conntrack->writepacket(desc->destination, &desc->pktrecv[0], desc->pktrecv.size());
+
+        desc->pktrecv.clear();
+        bufferevent_setwatermark(desc->buff_ev, EV_READ, sizeof (pktsize), sizeof (pktsize));
+    }
+
+    return;
+
+netio_recv_error:
+    LOG_ALL("error reading from janus %smitm socket", (desc->destination == TUNNEL) ? "net" : "tun");
+    event_loopbreak();
+}
+
+static void netio_error_cb(struct bufferevent *sabe, short what, void *arg)
+{
+    struct iodesc * const desc = (struct iodesc *) arg;
+    LOG_ALL("error over janus %smitm socket", (desc->destination == TUNNEL) ? "net" : "tun");
+    event_loopbreak();
+}
+
+int NetIO::JanusConnect(uint16_t port)
 {
     struct sockaddr_in addr;
 
-    netfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(netfd == -1)
-        RUNTIME_EXCEPTION("unable to allocate resources for janus netmitm socket");
+    int sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sock == -1)
+    {
+        RUNTIME_EXCEPTION("unable to allocate resources for janus socket [%s:%u]",
+                          userconf->runcfg.janus_address, port);
+    }
 
-    memset(&addr, 0, sizeof(addr));            
-    addr.sin_family      = AF_INET; 
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");   
-    addr.sin_port        = htons(10203);  
+    memset(&addr, 0, sizeof (addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(userconf->runcfg.janus_address);
+    addr.sin_port = htons(port);
 
-    if(connect(netfd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
-        RUNTIME_EXCEPTION("unable to connect to janus netmitm socket");
+    if (connect(sock, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+    {
+        RUNTIME_EXCEPTION("unable to connect to janus socket [%s:%u]",
+                          userconf->runcfg.janus_address, port);
+    }
+
+    return sock;
+}
+
+void NetIO::setupNET()
+{
+    netfd = JanusConnect(userconf->runcfg.janus_portin);
 }
 
 void NetIO::setupTUN()
 {
-    struct sockaddr_in addr;
+    tunfd = JanusConnect(userconf->runcfg.janus_portout);
+}
 
-    tunfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(tunfd == -1)
-        RUNTIME_EXCEPTION("unable to allocate resources for janus tunmitm socket");
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    addr.sin_port        = htons(30201);
-
-    if(connect(tunfd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
-        RUNTIME_EXCEPTION("unable to connect to janus tunmitm socket");
+void NetIO::write(void)
+{
+    for (uint8_t i = 0; i < 2; ++i)
+    {
+        uint8_t j = (i == 0) ? 1 : 0;
+        Packet *sendpkt;
+        while ((sendpkt = conntrack->readpacket(netiodesc[i].source)) != NULL)
+        {
+            uint16_t size = htons(sendpkt->pbuf.size());
+            bufferevent_write(netiodesc[j].buff_ev, &size, sizeof (size));
+            bufferevent_write(netiodesc[j].buff_ev, &(sendpkt->pbuf[0]), sendpkt->pbuf.size());
+            delete sendpkt;
+        }
+    }
 }
 
 NetIO::NetIO(TCPTrack *ct) :
@@ -69,8 +125,19 @@ conntrack(ct)
     setupNET();
     setupTUN();
 
-    fds[0].fd = netfd;
-    fds[1].fd = tunfd;
+    netiodesc[0].conntrack = ct;
+    netiodesc[0].source = NETWORK;
+    netiodesc[0].destination = TUNNEL;
+    netiodesc[0].buff_ev = bufferevent_new(netfd, netio_recv_cb, NULL, netio_error_cb, &netiodesc[0]);
+    bufferevent_setwatermark(netiodesc[0].buff_ev, EV_READ, 2, 2);
+    bufferevent_enable(netiodesc[0].buff_ev, EV_READ);
+
+    netiodesc[1].conntrack = ct;
+    netiodesc[1].source = TUNNEL;
+    netiodesc[1].destination = NETWORK;
+    netiodesc[1].buff_ev = bufferevent_new(tunfd, netio_recv_cb, NULL, netio_error_cb, &netiodesc[1]);
+    bufferevent_setwatermark(netiodesc[1].buff_ev, EV_READ, 2, 2);
+    bufferevent_enable(netiodesc[1].buff_ev, EV_READ);
 }
 
 NetIO::~NetIO(void)
@@ -79,134 +146,7 @@ NetIO::~NetIO(void)
 
     close(netfd);
     close(tunfd);
+
+    for (uint8_t i = 0; i < 2; ++i)
+        bufferevent_free(netiodesc[i].buff_ev);
 }
-
-void NetIO::networkIO(void)
-{
-    /*
-     * This is a critical function for sniffjoke operativity.
-     *
-     * this function implements a variable poll step
-
-     * if there is some data to send out the poll timout is set to
-     * infinite because it's important to force data flush.
-     *
-     * if there is no data to send out the poll timeout is always
-     * set to 1 ms;
-     *
-     * with a max cycle count of 10 and a poll timeout of 1ms
-     * we will exit if:
-     *    - a burst of 20 pkts (10 network + 10 tunnel) has been received;
-     *    - a delay of 10ms has passed.
-     *
-     * read, read, read and than re-read all comments hundred times
-     * before thinking to change this :P
-     *
-     */
-    uint32_t max_cycle = NETIOBURSTSIZE;
-
-    vector<unsigned char> recv_buf(MTU);
-
-    uint16_t pkt_size;
-    ssize_t ret;
-    uint8_t i;
-
-    Packet *send_buf[2];
-    send_buf[0] = conntrack->readpacket(NETWORK);
-    send_buf[1] = conntrack->readpacket(TUNNEL);
-
-    source_t source;
-
-    while (send_buf[0] != NULL || send_buf[1] != NULL || max_cycle)
-    {
-        if (max_cycle != 0) max_cycle--;
-
-        if (send_buf[0] != NULL || send_buf[1] != NULL)
-        {
-            /*
-             * if there is some data to flush out the poll
-             * timeout is set to infinite
-             */
-
-            fds[0].events = (send_buf[0] != NULL) ? POLLIN | POLLOUT : POLLIN;
-            fds[1].events = (send_buf[1] != NULL) ? POLLIN | POLLOUT : POLLIN;
-
-            nfds = poll(fds, 2, -1);
-        }
-        else
-        {
-            /*
-             * if there are not data to flush out the poll
-             * timeout is set to 1ms
-             */
-
-            fds[0].events = POLLIN;
-            fds[1].events = POLLIN;
-
-            timespec timeout;
-            timeout.tv_sec = 0;
-            timeout.tv_nsec = 1000000;
-            nfds = ppoll(fds, 2, &timeout, NULL);
-        }
-
-        if (!nfds)
-            continue;
-
-        /* in the three cases poll/ppoll is set, now we check the nfds return value */
-        if (nfds == -1)
-            RUNTIME_EXCEPTION("strange and dangerous error in ppoll: %s", strerror(errno));
-
-        for(i = 0; i < 2; ++i)
-        {
-            source = (i == 0) ? NETWORK : TUNNEL;
-
-            if (fds[i].revents & POLLIN) /* it's possibile to read from tunfd */
-            {
-                ret = recv(fds[i].fd, &pkt_size, sizeof(pkt_size), MSG_WAITALL);
-                if(ret != sizeof(pkt_size))
-                    goto netio_recv_error;
-                
-                pkt_size = ntohs(pkt_size);
-
-                ret = recv(fds[i].fd, &(recv_buf[0]), pkt_size, MSG_WAITALL);
-                if(ret != pkt_size)
-                    goto netio_recv_error;
-
-                conntrack->writepacket(source, &(recv_buf[0]), pkt_size);
-            }
-
-            if (fds[i].revents & POLLOUT) /* it's possibile to write in tunfd */
-            {
-                pkt_size = htons(send_buf[i]->pbuf.size());
-                ret = send(fds[i].fd, &pkt_size, sizeof(pkt_size), 0);
-                if (ret != sizeof(pkt_size))
-                    goto netio_send_error;
-
-                ret = send(fds[i].fd, &(send_buf[i]->pbuf[0]), send_buf[i]->pbuf.size(), 0);
-                if (ret != (int)send_buf[i]->pbuf.size())
-                    goto netio_send_error;
-
-                /* correctly written in tunfd */
-                delete send_buf[i];
-                send_buf[i] = conntrack->readpacket(source);
-            }
-        }
-    }
-
-    /*
-     * If the flow control arrives here:
-     *   - output data has been flushed entirely
-     *   - there is some input data to handle (maximum 20 pkts i/o) or
-     *     a max delay of 10ms it's passed.
-     */
-    conntrack->analyzePacketQueue();
-
-    return;
-
-netio_recv_error:
-    RUNTIME_EXCEPTION("error reading from janus %smitm socket", (source == NETWORK) ? "net" : "tun");
-
-netio_send_error:
-    RUNTIME_EXCEPTION("error writing to janus %smitm socket", (source == NETWORK) ? "net" : "tun");
-}
-

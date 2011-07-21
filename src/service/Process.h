@@ -34,7 +34,6 @@
 class Process
 {
 private:
-
     sigset_t sig_nset;
     sigset_t sig_oset;
 
@@ -44,9 +43,9 @@ public:
 
     pid_t readPidfile(void);
     void writePidfile(void);
-    void unlinkPidfile(bool);
+    void unlinkPidfile(void);
 
-    void sigtrapSetup(sig_t);
+    void sigtrapSetup(void);
     void sigtrapEnable(void);
     void sigtrapDisable(void);
 

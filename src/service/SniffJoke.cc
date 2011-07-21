@@ -29,33 +29,64 @@ char sj_clock_str[MEDIUMBUF];
 Debug debug;
 
 auto_ptr<UserConf> userconf;
+auto_ptr<Process> proc;
+auto_ptr<NetIO> mitm;
+auto_ptr<TCPTrack> conntrack;
 auto_ptr<TTLFocusMap> ttlfocus_map;
 auto_ptr<SessionTrackMap> sessiontrack_map;
 auto_ptr<OptionPool> opt_pool;
 auto_ptr<PluginPool> plugin_pool;
 
-/* the main must implement it */
-void sigtrap(int);
+void admin_cb(int fd, short what, void *arg)
+{
+    SniffJoke *sj = (SniffJoke *) arg;
+
+    sj->handleAdminSocket();
+
+    evtimer_add(&sj->admin_evtimer, &sj->admin_timeout);
+}
+
+void analyze_cb(int fd, short what, void *arg)
+{
+    SniffJoke *sj = (SniffJoke *) arg;
+
+    conntrack->analyzePacketQueue();
+    mitm->write();
+
+    evtimer_add(&sj->analyze_evtimer, &sj->analyze_timeout);
+}
 
 SniffJoke::SniffJoke(const struct sj_cmdline_opts &opts) :
-alive(true),
 opts(opts)
 {
+    ev_base = event_init();
+
     updateClock();
 
-    userconf = auto_ptr<UserConf > (new UserConf(opts));
-    proc = auto_ptr<Process > (new Process);
+    init_random();
 
-    proc->changedir();
+    userconf = auto_ptr<UserConf > (new UserConf(opts));
+
+    proc = auto_ptr<Process > (new Process);
 
     LOG_DEBUG("");
 }
 
 SniffJoke::~SniffJoke(void)
 {
-    chdir("../"); /* FIXME */
+    plugin_pool.reset();
+    opt_pool.reset();
+    sessiontrack_map.reset();
+    ttlfocus_map.reset();
+    conntrack.reset();
+    mitm.reset();
 
-    proc->unlinkPidfile(false);
+    proc->unlinkPidfile();
+    proc.reset();
+
+    userconf.reset();
+
+    event_base_free(ev_base);
 
     cleanDebug();
 }
@@ -75,14 +106,10 @@ void SniffJoke::run(void)
         {
             LOG_VERBOSE("forcing exit of previous running service %d ...", old_service_pid);
 
-            /* we have to do quite the same as in sniffjoke_server_cleanup,
-             * but relative to the service_pid read with readPidfile;
-             * here we can not use the waitpid because the process to kill it's not a child of us;
-             * we can use a sleep(2) instead. */
             kill(old_service_pid, SIGTERM);
             sleep(1);
             kill(old_service_pid, SIGKILL);
-            proc->unlinkPidfile(true);
+            proc->unlinkPidfile();
 
             LOG_ALL("a new instance of SniffJoke is starting");
         }
@@ -90,6 +117,8 @@ void SniffJoke::run(void)
 
     if (!old_service_pid && opts.force_restart)
         LOG_VERBOSE("option --force ignore: not found a previously running SniffJoke");
+
+    proc->writePidfile();
 
     if (!userconf->runcfg.active)
         LOG_ALL("SniffJoke started correctly, as INACTIVE: use \"sniffjokectl start\" to activate");
@@ -101,11 +130,9 @@ void SniffJoke::run(void)
         proc->background();
     }
 
-    proc->sigtrapSetup(sigtrap);
-
     proc->isolation();
 
-    proc->writePidfile();
+    proc->sigtrapSetup();
 
     setupDebug();
 
@@ -124,19 +151,17 @@ void SniffJoke::run(void)
 
     setupAdminSocket();
 
-    /* main block */
-    while (alive)
-    {
-        updateClock();
+    admin_timeout.tv_sec = 0;
+    admin_timeout.tv_usec = 500;
+    evtimer_set(&admin_evtimer, admin_cb, this);
+    evtimer_add(&admin_evtimer, &admin_timeout);
 
-        proc->sigtrapDisable();
+    analyze_timeout.tv_sec = 0;
+    analyze_timeout.tv_usec = 500;
+    evtimer_set(&analyze_evtimer, analyze_cb, this);
+    evtimer_add(&analyze_evtimer, &analyze_timeout);
 
-        mitm->networkIO();
-
-        handleAdminSocket();
-
-        proc->sigtrapEnable();
-    }
+    event_dispatch();
 }
 
 void SniffJoke::updateClock(void)
@@ -390,7 +415,7 @@ void SniffJoke::handleCmdStop(void)
 
 void SniffJoke::handleCmdQuit(void)
 {
-    alive = false;
+    event_loopbreak();
     LOG_VERBOSE("starting shutdown");
     writeSJStatus(QUIT_COMMAND_TYPE);
 }

@@ -54,7 +54,7 @@ class PluginPool
 {
 private:
     uint8_t globalEnabledScrambles;
-    void importPlugin(const char *, const char *, uint8_t, char *);
+    void importPlugin(const char *, uint8_t, char *);
     void parseOnlyPlugin(void);
     void parseEnablerFile(void);
     bool parseScrambleOpt(char *, uint8_t *, char **);

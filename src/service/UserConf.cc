@@ -78,7 +78,9 @@ cmdline_opts(cmdline_opts)
     memcpy(runcfg.location, selected_location, strlen(selected_location));
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
+    snprintf(runcfg.base_dir, sizeof (runcfg.base_dir), "%s", selected_basedir);
     snprintf(runcfg.working_dir, sizeof (runcfg.working_dir), "%s%s", selected_basedir, selected_location);
+    snprintf(runcfg.pidabspath, sizeof (runcfg.pidabspath), "%s%s", selected_basedir, SJ_PIDFILE);
 
     /* checking if the option --location has sense: will be a typo! */
     if (access(runcfg.working_dir, X_OK))
@@ -115,11 +117,11 @@ cmdline_opts(cmdline_opts)
     }
 #endif
 
-    snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
+    snprintf(configfile, sizeof (configfile), "%s/%s", runcfg.working_dir, FILE_CONF);
 
     /* loadDiskConfiguration() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
     if (chdir(runcfg.working_dir))
-        RUNTIME_EXCEPTION("unable to chdir in the specifiy location");
+        RUNTIME_EXCEPTION("unable to chdir in the specified working dir");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     loadDiskConfiguration();
 
@@ -288,10 +290,11 @@ bool UserConf::loadDiskConfiguration(void)
     else
         LOG_DEBUG("opening configuration file: %s", configfile);
 
-    parseMatch(runcfg.user, "user", loadstream, cmdline_opts.user, DEFAULT_USER);
-    parseMatch(runcfg.group, "group", loadstream, cmdline_opts.group, DEFAULT_GROUP);
     parseMatch(runcfg.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
     parseMatch(runcfg.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
+    parseMatch(runcfg.janus_address, "janus-address", loadstream, cmdline_opts.janus_address, DEFAULT_JANUS_ADDRESS);
+    parseMatch(runcfg.janus_portin, "janus-port-in", loadstream, cmdline_opts.janus_portin, DEFAULT_JANUS_PORTIN);
+    parseMatch(runcfg.janus_portout, "janus-port-out", loadstream, cmdline_opts.janus_portout, DEFAULT_JANUS_PORTOUT);
     parseMatch(runcfg.chaining, "chaining", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
     parseMatch(runcfg.no_tcp, "no-tcp", loadstream, cmdline_opts.no_tcp, DEFAULT_NO_TCP);
     parseMatch(runcfg.no_udp, "no-udp", loadstream, cmdline_opts.no_udp, DEFAULT_NO_UDP);
@@ -430,10 +433,11 @@ bool UserConf::syncDiskConfiguration(void)
 
     /* this is bad, this segment of code is more coherent in UserConf.cc */
     written += fprintf(out, "# this is a dumped file by SniffJoke version %s\n", SW_VERSION);
-    written += dumpIfPresent(out, "user", runcfg.user, DEFAULT_USER);
-    written += dumpIfPresent(out, "group", runcfg.group, DEFAULT_GROUP);
     written += dumpIfPresent(out, "management-address", runcfg.admin_address, DEFAULT_ADMIN_ADDRESS);
     written += dumpIfPresent(out, "management-port", runcfg.admin_port, DEFAULT_ADMIN_PORT);
+    written += dumpIfPresent(out, "janus-address", runcfg.janus_address, DEFAULT_JANUS_ADDRESS);
+    written += dumpIfPresent(out, "janus-port-in", runcfg.janus_portin, DEFAULT_JANUS_PORTIN);
+    written += dumpIfPresent(out, "janus-port-out", runcfg.janus_portout, DEFAULT_JANUS_PORTOUT);
     written += dumpIfPresent(out, "chaining", runcfg.chaining, DEFAULT_CHAINING);
     written += dumpIfPresent(out, "no-tcp", runcfg.no_tcp, DEFAULT_NO_TCP);
     written += dumpIfPresent(out, "no-udp", runcfg.no_udp, DEFAULT_NO_UDP);

@@ -27,6 +27,9 @@
 
 extern auto_ptr<UserConf> userconf;
 
+/* the main must implement it */
+void sigtrap(int);
+
 /* startup of the process */
 Process::Process(void)
 {
@@ -38,7 +41,7 @@ Process::~Process(void)
     LOG_DEBUG("[process id %d, uid %d]", getpid(), getuid());
 }
 
-void Process::sigtrapSetup(sig_t sigtrap_function)
+void Process::sigtrapSetup(void)
 {
     sigemptyset(&sig_nset);
     sigemptyset(&sig_oset);
@@ -51,7 +54,7 @@ void Process::sigtrapSetup(sig_t sigtrap_function)
 
     struct sigaction action;
     memset(&action, 0, sizeof (struct sigaction));
-    action.sa_handler = sigtrap_function;
+    action.sa_handler = sigtrap;
     action.sa_mask = sig_nset;
 
     sigaction(SIGINT, &action, NULL);
@@ -77,10 +80,10 @@ pid_t Process::readPidfile(void)
 {
     int ret = 0;
 
-    FILE *pidFile = fopen(SJ_PIDFILE, "r");
+    FILE *pidFile = fopen(userconf->runcfg.pidabspath, "r");
     if (pidFile == NULL)
     {
-        LOG_DEBUG("pidfile %s not present: %s", SJ_PIDFILE, strerror(errno));
+        LOG_DEBUG("pidfile %s not present: %s", userconf->runcfg.pidabspath, strerror(errno));
         return ret;
     }
 
@@ -95,72 +98,22 @@ pid_t Process::readPidfile(void)
 
 void Process::writePidfile(void)
 {
-    FILE *pidFile = fopen(SJ_PIDFILE, "w");
+    FILE *pidFile = fopen(userconf->runcfg.pidabspath, "w");
     if (pidFile == NULL)
-        RUNTIME_EXCEPTION("unable to open pidfile %s for pid %d for writing", SJ_PIDFILE, getpid());
+        RUNTIME_EXCEPTION("unable to open pidfile %s for pid %d for writing", userconf->runcfg.pidabspath, getpid());
 
-    LOG_DEBUG("created pidfile %s from %d", SJ_PIDFILE, getpid());
+    LOG_DEBUG("created pidfile %s from %d", userconf->runcfg.pidabspath, getpid());
 
     fprintf(pidFile, "%d", getpid());
     fclose(pidFile);
 }
 
-/* pidfile will be deleted if personal or derived from another process, the argument mean this */
-void Process::unlinkPidfile(bool killOther)
+void Process::unlinkPidfile(void)
 {
-    FILE *pidFile = fopen(SJ_PIDFILE, "r");
-    char line[SMALLBUF];
-    pid_t written;
+    if (unlink(userconf->runcfg.pidabspath))
+        RUNTIME_EXCEPTION("unable to unlink %s: %s", userconf->runcfg.pidabspath, strerror(errno));
 
-    if (pidFile == NULL)
-    {
-        LOG_DEBUG("error with file %s: %s", SJ_PIDFILE, strerror(errno));
-        return;
-    }
-
-    if( fgets(line, SMALLBUF, pidFile) == NULL)
-    {
-        LOG_ALL("weird, %s unable to read ? or empty ? [%s] anyway, will be removed", SJ_PIDFILE, strerror(errno));
-        written = 0;
-    }
-    else
-        written = atoi(line);
-
-    fclose(pidFile);
-
-    if (!written)
-    {
-        LOG_DEBUG("unable to read of %s", SJ_PIDFILE);
-        goto __unlinkPidfile;
-    }
-
-    if (written != getpid() && killOther)
-    {
-        LOG_DEBUG("ready to delete %s with %d pid (we are %d)", SJ_PIDFILE, written, getpid());
-        goto __unlinkPidfile;
-    }
-
-    if (written != getpid())
-    {
-        LOG_DEBUG("ignored request (written %d we %d)", written, getpid());
-        return;
-    }
-
-__unlinkPidfile:
-
-    if (unlink(SJ_PIDFILE))
-        RUNTIME_EXCEPTION("weird, I'm able to open but not to unlink %s: %s", SJ_PIDFILE, strerror(errno));
-
-    LOG_DEBUG("pid %d unlinked pidfile %s", getpid(), SJ_PIDFILE);
-}
-
-void Process::changedir(void)
-{
-    if(chdir(userconf->runcfg.working_dir))
-    {
-        RUNTIME_EXCEPTION("chdir into %s: %s: unable to start sniffjoke",
-                          userconf->runcfg.working_dir, strerror(errno));
-    }
+    LOG_DEBUG("pid %d unlinked pidfile %s", getpid(), userconf->runcfg.pidabspath);
 }
 
 void Process::background(void)

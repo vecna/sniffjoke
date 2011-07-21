@@ -60,6 +60,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
     swapPtr = forcedSymbolCopy("versionValue", plugabspath);
     memcpy( (void *)&fp_versionValue, &swapPtr, sizeof(void *));
 
+
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
     {
         RUNTIME_EXCEPTION("loading %s incorred version (%s) with SniffJoke %s",
@@ -69,9 +70,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
     selfObj = fp_CreatePluginObj();
 
     if (selfObj->pluginName == NULL)
-    {
         RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugabspath);
-    }
 
     declaredScramble = enabledScrambles;
 
@@ -85,8 +84,8 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
     LOG_ALL("Loading of %s: %s, scramble sets %s(%d), acquired option [%s]",
             plugabspath, selfObj->pluginName,
             enabledScramblesStr, enabledScrambles,
-            plugOpt != NULL ? plugOpt : "NONE"
-            );
+            plugOpt != NULL ? plugOpt : "NONE");
+
 }
 
 void *PluginTrack::forcedSymbolCopy( const char *symName, const char *pap)
@@ -94,9 +93,7 @@ void *PluginTrack::forcedSymbolCopy( const char *symName, const char *pap)
     void *obtainPtr = dlsym(pluginHandler, symName);
 
     if (obtainPtr == NULL )
-    {
         RUNTIME_EXCEPTION("plugin %s lack of the symbol %s mangling symbols", pap, symName);
-    }
 
     return obtainPtr;
 }
@@ -177,22 +174,13 @@ PluginPool::~PluginPool(void)
     }
 }
 
-void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, char *pOpt)
+void PluginPool::importPlugin(const char *plugabspath, uint8_t enabledScramble, char *pOpt)
 {
-    try
-    {
-        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, pOpt);
-        pool.push_back(plugin);
-    }
-    catch (runtime_error &e)
-    {
-        RUNTIME_EXCEPTION("unable to load plugin %s", enablerEntry);
-    }
+    pool.push_back(new PluginTrack(plugabspath, enabledScramble, pOpt));
 }
 
 bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
 {
-
     struct scrambleparm
     {
         const char *keyword;
@@ -208,7 +196,8 @@ bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
     };
 
     bool foundScramble = false;
-    char copyStr[MEDIUMBUF] = {0}, *optParse = NULL;
+    char copyStr[MEDIUMBUF] = {0};
+    char *optParse = NULL;
 
     *retval = 0;
 
@@ -272,12 +261,12 @@ void PluginPool::parseOnlyPlugin(void)
     *comma = 0x00;
     comma++;
 
-    snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
+    snprintf(plugabspath, sizeof (plugabspath), "%splugins/%s.so", userconf->runcfg.base_dir, onlyplugin_cpy);
 
     if (!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", userconf->runcfg.onlyplugin);
 
-    importPlugin(plugabspath, userconf->runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
+    importPlugin(plugabspath, pluginEnabledScrambles, pluginOpt);
 
     /* we keep track of enabled scramble to apply confusion on real good packets */
     globalEnabledScrambles |= pluginEnabledScrambles;
@@ -332,7 +321,7 @@ void PluginPool::parseEnablerFile(void)
         *comma = 0x00;
         comma++;
 
-        snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
+        snprintf(plugabspath, sizeof (plugabspath), "%splugins/%s.so", userconf->runcfg.base_dir, enablerentry);
 
         if (!parseScrambleOpt(comma, &enabledScrambles, &pluginOpt))
         {
@@ -343,7 +332,7 @@ void PluginPool::parseEnablerFile(void)
         snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
         LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
-        importPlugin(plugabspath, enablerentry, enabledScrambles, pluginOpt);
+        importPlugin(plugabspath, enabledScrambles, pluginOpt);
 
         /* we keep track of enabled scramble to apply confusion on real good packets */
         globalEnabledScrambles |= enabledScrambles;
