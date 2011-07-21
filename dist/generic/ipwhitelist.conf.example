@@ -1,0 +1,28 @@
+# IP whitelist 
+# will be enabled using the option --blacklist in the sniffjoke command line
+# or using the directive "blacklist" inside the sniffjoke-service.conf
+# configuration file.
+# 
+# the IP address here are the ONLY IP addresses actively hacked by sniffjoke
+# whenever whitelist is enabled
+
+# www.punto-informatico.it
+62.85.163.47 1,2,3
+
+# www.canemucca.com
+62.149.130.186 0,0,1
+
+# www.saltonelcrudo.it
+194.185.49.18 444,333,222
+
+# encyclopediadramatica.com
+208.100.46.116 1,1,1
+
+# zrtp.org
+80.92.66.14 2,2,2
+
+# delirandom.net, useful in testing with:
+#
+# GENERATEDDATA=`seq 1 1500 | tr -d [:cntrl:] | sed -e's/6/111/g'`
+# curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o /tmp/recv_DATA http://www.delirandom.net/sjA/pe.php
+89.186.95.190

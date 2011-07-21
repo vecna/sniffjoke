@@ -1,0 +1,20 @@
+# IP blacklist
+# will be enabled using the option --blacklist in the sniffjoke command line
+# or using the directive "blacklist" inside the sniffjoke-service.conf
+# configuration file.
+#
+# the IP address here are the ONLY IP addresses actively AVOIDED to be
+# hacked by sniffjoke whenever blacklist is enabled
+
+# www.phrack.org
+120.138.19.103 123,100,444
+# hackitoergosum.org
+173.236.241.194 200,200,200
+# olografix.org
+195.32.69.44 4343,4242,4141
+
+# note - not used at the moment:
+# tecnically this white/black list supports also three 32-bit option
+# www.evilaliv3.org
+94.23.192.28 666,777,888
+# and every time an IP address is add, the new options are refreshed

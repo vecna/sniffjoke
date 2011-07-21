@@ -1,0 +1,138 @@
+
+  RFCSJ001                                        STATUS: INCOMPLETE
+  IT022011
+   ANTANI
+
+              SNIFFJOKE INTERNAL MANAGEMENT PROTOCOL
+
+                             (SIMP ?)
+
+
+Sniffjoke service is listening in UDP, waiting for a TEXTUAL COMMAND, followed 
+optionally by a binary options
+
+for every command sent, an operation in sniffjoke is performed, and a binary
+answer is sent via UDP to the client.
+
+this is not an RFC-like document, is a documented series of C structures used
+for data exchange.
+
+
+                                    SENT DATA:
+
+
+a variable string in an UDP packet, that will contain the following value
+to be accepted by the service:
+
+    start               start the mangling + return updated "stat"
+    stop                stop the mangling + return updated "stat"
+    quit                stop and close the sniffjoke service + return "stat" before close
+    saveconf            dump the current configuration
+    stat                get statistics about sniffjoke service process and configuration
+    info                get the list of the established session, injected packets count
+    ttlmap              get the list of the tracerouted host and the retrivered info
+    showports           get the list of the destination port/configuration
+
+    debug [0:6]         change the current debug value to the selected debug level (0 to 6)
+                        + return the updated "stat"
+
+                                    RECEIVED DATA:
+
+the file containing the settings is: src/service/internalProtocol.h
+
+#define START_COMMAND_TYPE          1
+#define STOP_COMMAND_TYPE           2
+#define QUIT_COMMAND_TYPE           3
+#define SAVECONF_COMMAND_TYPE       4
+#define STAT_COMMAND_TYPE           5
+#define LOGLEVEL_COMMAND_TYPE       6
+#define SETPORT_COMMAND_TYPE        7
+#define SHOWPORT_COMMAND_TYPE       8
+#define INFO_COMMAND_TYPE           9
+#define TTLMAP_COMMAND_TYPE        10
+
+every command is stored in a command struct named "command_ret":
+
+struct command_ret
+{
+    uint32_t cmd_len;
+    uint32_t cmd_type;
+};
+
+the cmd_type has one of the *_COMMAND_TYPE value, the cmd_len contains
+the entire lenght of the packet. 
+
+the return type will be of few type: stat, ttl mapping, port configuration,
+session list.
+
+the STAT block:
+
+after the command_ret there are a lists of "single_block" structures:
+
+struct single_block
+{
+    uint32_t len;
+    uint32_t WHO;
+};
+
+#define STAT_ACTIVE      1
+#define STAT_DEBUGL      2
+#define STAT_LOCAT       3
+#define STAT_MACGW       4
+#define STAT_GWADDR      5
+#define STAT_IFACE       6
+#define STAT_LOIP        7
+#define STAT_TUNN        8
+#define STAT_BINDA       9
+#define STAT_BINDP      10
+#define STAT_USER       11
+#define STAT_GROUP      12
+#define STAT_CHAINING   13
+#define STAT_NO_TCP     14
+#define STAT_NO_UDP     15
+#define STAT_WHITELIST  16
+#define STAT_BLACKLIST  17
+#define STAT_ONLYP      18
+
+after every single block structured there are the data described by "WHO", WHO
+take the value of the previously defined STAT_*
+
+the SHOWPORT return:
+
+struct port_info
+{
+    uint16_t start;
+    uint16_t end;
+    uint16_t weight;
+}
+
+weight is the or-value containing the different strength values of injection applied
+to the range of port from "start" to "end". there are a list of there structured until
+all ports range are reported.
+
+the SESSION list:
+
+struct sex_record
+{
+    uint8_t proto;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
+    uint32_t packet_number;
+    uint32_t injected_pktnumber;
+}
+
+every session is described in a list of "sex_record" until all are reported.
+
+struct ttl_record
+{
+    time_t access;
+    time_t nextprobe;
+    uint32_t daddr;
+    uint8_t sentprobe;
+    uint8_t receivedprobe;
+    uint8_t synackval;
+    uint8_t ttlestimate;
+}
+
+rvery host tracked is described in a list of "ttl_record" until all are reported.

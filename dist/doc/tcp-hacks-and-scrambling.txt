@@ -1,0 +1,85 @@
+HACKS & SCAMBLE TECH
+
+THIS FILE IS NOT UPDATED WITH THE RELEASE 0.4 and THEREFORE WILL NOT BE SAFE READ IT!
+
+
+the hacks define type of injected packet in order to cause a desync in the sniffed flow,
+every hacks is implemented in a separate plugin, present in sniffjoke under the plugins/
+directory
+
+vecna@caturday:~/Desktop/sniffjoke-project/sniffjoke/src$ ls plugins/*/*.cc
+plugins/fake_close_fin/fake_close_fin.cc  plugins/fake_zero_window/fake_zero_window.cc
+plugins/fake_close_rst/fake_close_rst.cc  plugins/fragmentation/fragmentation.cc
+plugins/fake_fragment/fake_fragment.cc    plugins/overlap_packet/overlap_packet.cc
+plugins/fake_segment/fake_segment.cc      plugins/segmentation/segmentation.cc
+plugins/fake_seq/fake_seq.cc              plugins/shift_ack/shift_ack.cc
+plugins/fake_syn/fake_syn.cc              plugins/valid_rst_fake_seq/valid_rst_fake_seq.cc
+
+close: hacks that inject a fake signaling that mean the end of the session, the flag
+	    RST or FIN is used. In some network, the flag RST cause the session kill in some
+	    useful third parts (like a transparent proxy), and you will try to disable this
+	    hacks in your hackfile [info at the end of this file].
+
+fake data: hacks that inject block of data that will overwrite the real trasmitted data inside
+	   the reassembled flow
+
+fake seq: h.t.i a packet with a fake sequence number, wishing the sniffer belive to it and goes 
+	  out of sequence
+
+fake zero window: a packet with a tcp window value set to 0
+
+shift ack: acking of a different sequence number 
+
+valid reset fake seq: a *valid* packet (because the other are fake, [below information about the 
+		      scrambling tech]) with a valid RST and a sequence number shifted of 
+		      tcp.window value (or 64k) anyway the kernel ignore them.
+
+SCRAMBLING TECHNOLOGY
+
+when send a fake packet, the packet must appear acceptable for the sniffer and unacceptable
+(or unaccepted) by the server, the technics are three at the moment:
+
+1) fake checksum: tcp checksum is corrupted, if the sniffer don't check it, it record the 
+   packet as good and the server drop it
+
+2) ttl expire: the packets has a TTL value forged to expire before reach the server. the 
+   sniffer record it and the server not
+
+3) corrupted IP options: the IP header support some extension in the options field. some kernel 
+   support them and some other not. A packet with an unsupported option will be dropped by the
+   kernel, and the sniffer read it. this technique is growing in detail, OS analysis and 
+   related studies.
+
+SELECT AND HACKS 
+
+SniffJoke search in your location the plugins-enabled.conf file:
+
+	# SniffJoke plugins enabler file
+	#
+	# comment supported
+	#
+	fake_close_fin.so,TYPEOFSCRAMBLESUPPORTED
+	#fake_close_rst.so,TYPEOFSCRAMBLESUPPORTED
+	fake_data.so,TYPEOFSCRAMBLESUPPORTED
+	fake_seq.so,TYPEOFSCRAMBLESUPPORTED
+	#fake_syn.so
+	#fake_zero_window.so
+	#shift_ack.so
+	valid_rst_fake_seq.so,TYPEOFSCRAMBLESUPPORTED
+	# regards
+
+this is the plugins-enabled.conf file inside the "generic" location, acting as default
+for the user who don't have run sniffjoke-autotest.
+
+the type of scramble depends on your network, because some type of combination
+(like, real RST injection that will expire before reach the remote server, will
+be interpreted by your NAT gateway closing your session.) for this reason is 
+done the autotest: it test every combination of hack + scramble and save a 
+related configuration for the network environment you're are using (office, home)
+
+
+
+
+
+this is a freaking free software: documents well is a matter of respect and
+I understand, but truly, is painful, I prefer coding.

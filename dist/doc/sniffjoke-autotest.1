@@ -1,0 +1,58 @@
+.TH sniffjoke-autotest 1
+.PP
+.SH NAME
+Sniffjoke Autotest Suite 0.4.2 usage
+.PP
+.SH SYNOPSIS
+sniffjoke-autotest [OPTION]...
+.PP
+.SH DESCRIPTION
+This script runs plugins test along different destinations OS to determinate the selection of plugins that correctly works in the current location.
+.PP
+it's required a LOCATION name, eg: office, home, nickhome, starbucks...
+.PP
+sniffjoke-autotest will generate the best plugins_enabled.conf usable in this environment at the end of the tests (that include continuos restarting of sniffjoke with different options) will be created a new directory describing your location. after you will customize the options
+.PP
+sniffjoke-autotest verify every IP/TCP options implemented in sniffjoke, checking if your ISP filter them or not. Is generated iptcp-options.conf containing these information.
+.PP
+The options usefull when sniffjoke is started (by hand or by init script)
+.PP
+.SH SNIFFJOKE-AUTOTEST OPTIONS
+.PP
+.B -h
+show a command line options resume
+.PP
+.B -l <location>
+accept a name for the currently profiling environment [required]
+.PP
+.B -n <number> 
+set the number of test replicas [default: 1]
+.PP
+.PP
+.SH "ERRORS, BUGS, ISSUE"
+Sometime sniffjoke-autotest simply exit with the message: 
+.B Something in the network is not going well, and will not be a SniffJoke fault
+
+I suggest to copy paste the previously executed sniffjoke command line, adding the option "--foreground" and see by hand which kind of exception is triggered.
+.PP
+.SH "DEPENDENCIES"
+
+ pub   1024D/7D9E677D 2011-05-21
+       Key fingerprint = F37C 2042 5052 27E2 2FD7  D511 947F 574B 7D9E 677D
+ uid                  SniffJoke project (http://www.delirandom.net/sniffjoke)
+
+sniffjoke-autotest reports some URLs, message and info retrivered from delirandom.net, in order to authenticate these message, in a shell script, is downloaded the public key of the project, because the communications will be accepted only if verified by GnuPG signature. Inside sniffjoke-autotest is hardcoded the fingerprint.
+.PP
+.SH "AUTHOR"
+Claudio Agosti <vecna@delirandom.net>, Giovanni Pellerano <giovanni.pellerano@evilaliv3.org>
+.PP
+.SH "REPORTING BUGS"
+Report bugs to <sniffjoke-team@delirandom.net>.
+.SH "COPYRIGHT"
+Copyright (GPL) 2008,2009,2010,2011 Claudio Agosti & Giovanni Pellerano.
+.br
+This is free software; see the source for copying conditions.  There is NO  warranty;  not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH "SEE ALSO"
+http://www.delirandom.net/sniffjoke 
+.TP
+.I sniffjoke(1) sniffjoke-autotest(1)

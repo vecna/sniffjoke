@@ -1,0 +1,75 @@
+NETWORKING.txt                                      SniffJoke 0.4.1
+
+                    USAGE OF THE LOCAL FIREWALL RULE
+
+Here is explained how an outgoing packet lives with or without sniffjoke:
+
+Without SniffJoke:
+
+ Application -> socket() -> kernel TCP stack -> IPTCP packet to your
+ gateway -> hops (sniffer! :) -> destination.
+
+With SniffJoke:
+
+ Application -> socket() -> kernel TCP stack -> IPTCP packet to
+ your gateway that is a VPN endpoint handled by -> SniffJoke ->
+ mangling & hacking -> gateway -> hops -> destination.
+
+What about the return ? Without SniffJoke:
+
+ destination sent the answer IPTCP packet -> hops -> your gateway
+ -> you box -> kernel TCP strack -> connect()/recv() -> application.
+
+With SniffJoke:
+
+ destination sent the answer IPTCP packet -> hops -> your gateway
+ -> the packet is read by sniffjoke AND by your box. 
+ (but your box have a firewall rule able to block the packets from
+  your gateway mac address). SniffJoke sent the packet locally and
+ becaming from a different interface is not blocked by the firewall.
+ In this way, SniffJoke is able to modify th
+ -> you box -> kernel TCP strack -> connect()/recv() -> application.
+ 
+
+        NETWORKING DUMPS STATUS:
+
+from ifconfig, when sniffjoke is runnig, you should see:
+
+sniffjoke Link encap:UNSPEC  HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00  
+          inet addr:172.16.1.3  P-t-P:1.198.10.5  Mask:255.255.255.255
+          UP POINTOPOINT RUNNING NOARP MULTICAST  MTU:1420  Metric:1
+          RX packets:11 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:3 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:500 
+          RX bytes:841 (841.0 B)  TX bytes:411 (411.0 B)
+
+from "route -n":
+
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+10.254.254.254  0.0.0.0         255.255.255.255 UH    0      0        0 tun0
+1.198.10.5      0.0.0.0         255.255.255.255 UH    0      0        0 sniffjoke
+10.10.100.1     10.10.100.5     255.255.255.255 UGH   0      0        0 tun1
+10.10.100.5     0.0.0.0         255.255.255.255 UH    0      0        0 tun1
+10.10.101.0     10.10.100.5     255.255.255.0   UG    0      0        0 tun1
+172.16.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
+169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 eth0
+0.0.0.0         1.198.10.5      0.0.0.0         UG    0      0        0 sniffjoke
+
+tun1, tun0, eth0 are mine, but sniffjoke is added when the software is running, and 
+became default gateway
+
+iptables -L, show the rule add from source mac address (all these status are restored
+when sniffjoke quits)
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+DROP       all  --  anywhere             anywhere            MAC 0X:1X:EX:9X:X9:0X 
+
+via netstat -nap, you should see the administration port:
+
+udp        0      0 127.0.0.1:8844          0.0.0.0:*                           16705/sniffjoke 
+
+Triva, Italian language only:
+
+http://www.youtube.com/watch?v=vTbcos3MqrY Pino-holyshit!-Scotto & Caparezza !?

@@ -1,0 +1,75 @@
+.TH sniffjokectl 1
+.PP
+.SH NAME
+Sniffjoke CTL 0.4.2 usage
+.PP
+.SH SYNOPSIS
+sniffjokectl [OPTION]... [COMMAND]
+.PP
+.SH DESCRIPTION
+sniffjokectl is the sniffjoke manager, controller, client, whaterver.
+.PP
+When sniffjoke is running, you should send commands as command line arguments
+.PP
+.SH SNIFFJOKECTL OPTIONS
+.PP
+.B --address <ip>[:port] 
+specify administration IP address [default: 127.0.0.1:8844]
+.PP
+.B --version 
+show sniffjoke version
+.PP
+.B --timeout 
+set milliseconds timeout when contacting SniffJoke service [default: 500]
+.PP
+.B --help 
+show this help
+.PP
+.SH SNIFFJOKECTL COMMANDS
+.PP
+.B start 
+start sniffjoke hijacking/injection
+.PP
+.B stop 
+stop sniffjoke (sniffjoke will work in passive mode, like in pause)
+.PP
+.B quit 
+stop sniffjoke, save config, abort the service
+.PP
+.B saveconf 
+dump config file
+.PP
+.B stat 
+get statistics about sniffjoke configuration and network
+.PP
+.B info 
+get massive info about sniffjoke internet stats
+.PP
+.B showport 
+show TCP ports strongness of injection
+.PP
+.B debug [1-6] 
+change the log debug level
+.PP
+.PP
+Those commands are used and accepted only when sniffjoke is running and the "client instance" is listening and reachable in the UDP port.
+.PP
+When you start sniffjoke you could set your port rules and save the configuration with saveconf.
+.PP
+When you than restart sniffjoke, using the same --chroot-dir, the previous configurations are reloaded.
+.PP
+.SH "AUTHOR"
+Claudio Agosti <vecna@delirandom.net>, Giovanni Pellerano <giovanni.pellerano@evilaliv3.org>
+.PP
+.SH "REPORTING BUGS"
+Report bugs to <sniffjoke-team@delirandom.net>.
+.SH "COPYRIGHT"
+Copyright (GPL) 2008,2009,2010,2011 Claudio Agosti & Giovanni Pellerano.
+.br
+This is free software; see the source for copying conditions.  There is NO  warranty;  not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH "SEE ALSO"
+http://www.delirandom.net/sniffjoke 
+.TP
+.I sniffjoke(1) sniffjoke-autotest(1)
+
+
