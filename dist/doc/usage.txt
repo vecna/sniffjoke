@@ -11,28 +11,27 @@ this command returns three pieces of information:
 the option usefull when sniffjoke is started (by hand or by init script)
 
     Usage: sniffjoke [OPTION]... :
-     --location <name>    specify the network environment (suggested) [default: generic]
-     --dir <name>         specify the base directory where the location reside [default: /usr/local/var/sniffjoke/]
-                          [using both location and dir defaults, the configuration status will not be saved]
-     --user <username>    downgrade priviledge to the specified user [default: nobody]
-     --group <groupname>  downgrade priviledge to the specified group [default: nogroup]
-     --no-tcp             disable tcp mangling [default: tcp mangled]
-     --no-udp             disable udp mangling [default: udp mangled]
-     --whitelist          inject evasion packets only in the specified ip addresses
-     --blacklist          inject evasion packet in all session excluding the blacklisted ip address
-     --start              if present, evasion i'ts activated immediatly [default: not present]
-     --chain              enable chained hacking, powerful and entropic effects [default: disabled]
-     --debug <level 0-5>  set verbosity level [default: 2]
-                          0: suppress log, 1: common, 2: verbose, 3: debug, 4: session 5: packets
-     --foreground         running in foreground [default:background]
-     --admin <ip>[:port]  specify administration IP address [default: 127.0.0.1:8844]
-     --force              force restart (usable when another sniffjoke service is running)
-     --version            show sniffjoke version
-     --help               show this help
+     --location <name>     specify the network environment (suggested) [default: generic]
+     --dir <name>          specify the base directory where the location reside [default: /usr/local/var/sniffjoke/]
+                           [using both location and dir defaults, the configuration status will not be saved]
+     --no-tcp              disable tcp mangling [default: tcp mangled]
+     --no-udp              disable udp mangling [default: udp mangled]
+     --whitelist           inject evasion packets only in the specified ip addresses
+     --blacklist           inject evasion packet in all session excluding the blacklisted ip address
+     --start               if present, evasion i'ts activated immediatly [default: not present]
+     --chain               enable chained hacking, powerful and entropic effects [default: disabled]
+     --debug <level 0-5>   set verbosity level [default: 2]
+                           0: suppress log, 1: common, 2: verbose, 3: debug, 4: session 5: packets
+     --foreground          running in foreground [default:background]
+     --admin <ip>[:port]   specify administration IP address [default: 127.0.0.1:8844]
+     --janus <ip>[:in:out] specify janus IP address/ports [default: 127.0.0.1:30201:10203]
+     --force               force restart (usable when another sniffjoke service is running)
+     --version             show sniffjoke version
+     --help                show this help
 
-when sniffjoke is running keep on memory the configuration settings and dump them
-in a binary file, sniffjoke run under chroot directory and inside them there are files
-usefull for sniffjoke and for the user.
+when sniffjoke is running keeps on memory the configuration settings and dumps them
+in a binary file; sniffjoke runs inside the location directory and inside that there
+are files usefull for sniffjoke and for the user.
 
 sniffjokectl --help
 
@@ -64,7 +63,7 @@ those command are used and accepted only when sniffjoke is running and the
 "client instance" is listening and reachable in the UDP port.
 
 when you set your port rules, save the configuration with saveconf and continue
-to use sniffjoke. when you restart sniffjoke, using the same --chroot-dir, the
+to use sniffjoke. when you restart sniffjoke, using the same --location, the
 previous configurations are reloaded.
 
 SEMI-SECRET OPTION IN sniffjoke

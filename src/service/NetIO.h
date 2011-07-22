@@ -30,7 +30,6 @@ struct iodesc
 {
     struct bufferevent *buff_ev;
     source_t source;
-    source_t destination;
     vector<unsigned char> pktrecv;
     TCPTrack *conntrack;
 };

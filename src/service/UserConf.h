@@ -42,8 +42,6 @@ struct sj_cmdline_opts
     char location[MEDIUMBUF];
 
     /* START OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
-    char user[MEDIUMBUF];
-    char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
     char janus_address[MEDIUMBUF];
@@ -59,7 +57,6 @@ struct sj_cmdline_opts
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
-    char gw_mac_str[SMALLBUF];
     /* END OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
 
     bool force_restart;
@@ -81,8 +78,6 @@ struct sj_config
     char location[MEDIUMBUF];
 
     /* START OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
-    char user[MEDIUMBUF];
-    char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
     char janus_address[MEDIUMBUF];
@@ -98,7 +93,6 @@ struct sj_config
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
-    char gw_mac_str[SMALLBUF];
     /* END OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
 
     /* mangling policies */

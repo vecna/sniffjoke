@@ -129,7 +129,7 @@ int main(int argc, char **argv)
     uint8_t i;
     char *port;
     uint16_t checked_port[2] = {0};
-    while ((charopt = getopt_long(argc, argv, "i:o:a:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
+    while ((charopt = getopt_long(argc, argv, "i:o:a:j:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
@@ -140,9 +140,6 @@ int main(int argc, char **argv)
             break;
         case 'o':
             snprintf(useropt.location, sizeof (useropt.location), "%s", optarg);
-            break;
-        case 'g':
-            snprintf(useropt.group, sizeof (useropt.group), "%s", optarg);
             break;
         case 'a':
             snprintf(useropt.admin_address, sizeof (useropt.admin_address), "%s", optarg);

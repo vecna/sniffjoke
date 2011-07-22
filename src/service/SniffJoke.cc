@@ -128,6 +128,7 @@ void SniffJoke::run(void)
     if (!opts.go_foreground)
     {
         proc->background();
+        event_reinit(ev_base);
     }
 
     proc->isolation();
@@ -135,7 +136,6 @@ void SniffJoke::run(void)
     proc->sigtrapSetup();
 
     setupDebug();
-
     plugin_pool = auto_ptr<PluginPool > (new PluginPool);
     opt_pool = auto_ptr<OptionPool > (new OptionPool);
     sessiontrack_map = auto_ptr<SessionTrackMap > (new SessionTrackMap);
@@ -152,12 +152,12 @@ void SniffJoke::run(void)
     setupAdminSocket();
 
     admin_timeout.tv_sec = 0;
-    admin_timeout.tv_usec = 500;
+    admin_timeout.tv_usec = HANDLE_ADMIN_SOCKET_TIMER;
     evtimer_set(&admin_evtimer, admin_cb, this);
     evtimer_add(&admin_evtimer, &admin_timeout);
 
     analyze_timeout.tv_sec = 0;
-    analyze_timeout.tv_usec = 500;
+    analyze_timeout.tv_usec = ANALYZE_PACKET_QUEUE_TIMER;
     evtimer_set(&analyze_evtimer, analyze_cb, this);
     evtimer_add(&analyze_evtimer, &analyze_timeout);
 
@@ -553,8 +553,9 @@ void SniffJoke::writeSJStatus(uint8_t commandReceived)
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_ONLYP, strlen(userconf->runcfg.onlyplugin), userconf->runcfg.onlyplugin);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDA, strlen(userconf->runcfg.admin_address), userconf->runcfg.admin_address);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_BINDP, sizeof (userconf->runcfg.admin_port), userconf->runcfg.admin_port);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_USER, strlen(userconf->runcfg.user), userconf->runcfg.user);
-    accumulen += appendSJStatus(&io_buf[accumulen], STAT_GROUP, strlen(userconf->runcfg.group), userconf->runcfg.group);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_JANUSA, strlen(userconf->runcfg.janus_address), userconf->runcfg.janus_address);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_JANUSPIN, sizeof (userconf->runcfg.janus_portin), userconf->runcfg.janus_portin);
+    accumulen += appendSJStatus(&io_buf[accumulen], STAT_JANUSPOUT, sizeof (userconf->runcfg.janus_portout), userconf->runcfg.janus_portout);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_LOCAT, strlen(userconf->runcfg.location), userconf->runcfg.location);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_CHAINING, sizeof (userconf->runcfg.chaining), userconf->runcfg.chaining);
     accumulen += appendSJStatus(&io_buf[accumulen], STAT_NO_TCP, sizeof (userconf->runcfg.no_tcp), userconf->runcfg.no_tcp);

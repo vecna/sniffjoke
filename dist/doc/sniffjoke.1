@@ -22,15 +22,6 @@ specify the network environment (suggested) [default: generic]. use the script "
 .B --dir <name> 
 specify the base directory where the location resides [default: /usr/local/var/sniffjoke/] [using both location and dir defaults, the configuration status will not be saved]
 .PP
-.B --user <username> 
-downgrade priviledge to the specified user [default: nobody]
-.PP
-.B --gw-mac-addr <XX:YY:KK:PP:00:RR>
-specify the default gateway mac address. by default is not required, because SniffJoke use some auto detection commands in order to acquire the local network informations. In some distribution, a fatal exception is triggered when tried, in those case this option became mandatory for the correct execution of SniffJoke.
-.PP
-.B --group <groupname> 
-downgrade priviledge to the specified group [default: nogroup]
-.PP
 .B --whitelist 
 inject evasion packets only in the specified ip addresses. blacklist and whitelist are mutually exclusive.
 .PP
@@ -46,8 +37,11 @@ set up verbosity level [default: 2] 1: suppress log, 2: common, 3: verbose, 4: d
 .B --foreground 
 execute sniffjoke with foreground logging [default:background]
 .PP
-.B --admin <ip>[:port] 
+.B --admin <ip>[:port]
 specify administration IP address [default: 127.0.0.1:8844]
+.PP
+.B --janus <ip>[:in:out]
+specify janus IP address/ports [default: 127.0.0.1:30201:10203]
 .PP
 .B --force 
 force restart (usable when another sniffjoke service is running)
@@ -59,7 +53,7 @@ show sniffjoke version
 show a command line options resume
 .PP
 .PP
-When sniffjoke is running, it keeps on memory the configuration settings and dump them in a binary file, sniffjoke run under chroot directory and inside that there are files usefull for sniffjoke and for the user.
+When sniffjoke is running, it keeps on memory the configuration settings and dumps them in a binary file; sniffjoke runs inside the location directory and inside that there are files usefull for sniffjoke and for the user.
 .PP
 .PP
 When sniffjoke is running, you should send commands using sniffjokect.

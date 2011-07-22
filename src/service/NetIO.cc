@@ -46,7 +46,7 @@ static void netio_recv_cb(struct bufferevent *sabe, void *arg)
         if (bufferevent_read(desc->buff_ev, &desc->pktrecv[0], desc->pktrecv.size()) != desc->pktrecv.size())
             goto netio_recv_error;
 
-        desc->conntrack->writepacket(desc->destination, &desc->pktrecv[0], desc->pktrecv.size());
+        desc->conntrack->writepacket(desc->source, &desc->pktrecv[0], desc->pktrecv.size());
 
         desc->pktrecv.clear();
         bufferevent_setwatermark(desc->buff_ev, EV_READ, sizeof (pktsize), sizeof (pktsize));
@@ -55,14 +55,14 @@ static void netio_recv_cb(struct bufferevent *sabe, void *arg)
     return;
 
 netio_recv_error:
-    LOG_ALL("error reading from janus %smitm socket", (desc->destination == TUNNEL) ? "net" : "tun");
+    LOG_ALL("error reading from janus %smitm socket", (desc->source == NETWORK) ? "net" : "tun");
     event_loopbreak();
 }
 
 static void netio_error_cb(struct bufferevent *sabe, short what, void *arg)
 {
     struct iodesc * const desc = (struct iodesc *) arg;
-    LOG_ALL("error over janus %smitm socket", (desc->destination == TUNNEL) ? "net" : "tun");
+    LOG_ALL("error over janus %smitm socket", (desc->source == NETWORK) ? "net" : "tun");
     event_loopbreak();
 }
 
@@ -105,13 +105,12 @@ void NetIO::write(void)
 {
     for (uint8_t i = 0; i < 2; ++i)
     {
-        uint8_t j = (i == 0) ? 1 : 0;
         Packet *sendpkt;
         while ((sendpkt = conntrack->readpacket(netiodesc[i].source)) != NULL)
         {
             uint16_t size = htons(sendpkt->pbuf.size());
-            bufferevent_write(netiodesc[j].buff_ev, &size, sizeof (size));
-            bufferevent_write(netiodesc[j].buff_ev, &(sendpkt->pbuf[0]), sendpkt->pbuf.size());
+            bufferevent_write(netiodesc[i].buff_ev, &size, sizeof (size));
+            bufferevent_write(netiodesc[i].buff_ev, &(sendpkt->pbuf[0]), sendpkt->pbuf.size());
             delete sendpkt;
         }
     }
@@ -127,14 +126,12 @@ conntrack(ct)
 
     netiodesc[0].conntrack = ct;
     netiodesc[0].source = NETWORK;
-    netiodesc[0].destination = TUNNEL;
     netiodesc[0].buff_ev = bufferevent_new(netfd, netio_recv_cb, NULL, netio_error_cb, &netiodesc[0]);
     bufferevent_setwatermark(netiodesc[0].buff_ev, EV_READ, 2, 2);
     bufferevent_enable(netiodesc[0].buff_ev, EV_READ);
 
     netiodesc[1].conntrack = ct;
     netiodesc[1].source = TUNNEL;
-    netiodesc[1].destination = NETWORK;
     netiodesc[1].buff_ev = bufferevent_new(tunfd, netio_recv_cb, NULL, netio_error_cb, &netiodesc[1]);
     bufferevent_setwatermark(netiodesc[1].buff_ev, EV_READ, 2, 2);
     bufferevent_enable(netiodesc[1].buff_ev, EV_READ);
