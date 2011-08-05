@@ -20,6 +20,8 @@ ADD_EXECUTABLE(sniffjoke
                TCPTrack
                TTLFocus
                UserConf
+               Scramble
+               ScrambleImpl
                Utils
                Debug)
 

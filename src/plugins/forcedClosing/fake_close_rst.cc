@@ -38,43 +38,41 @@
 
 class fake_close_rst : public Plugin
 {
+private:
+    pluginLogHandler pLH;
+    PluginCache RSTcache;
+
 #define PLUGIN_NAME "Fake RST"
 #define PKT_LOG "plugin.fake_close_rst.log"
 #define MIN_INJECTED_PKTS    4
 #define MAX_INJECTED_PKTS    10
 
-private:
-
-    pluginLogHandler pLH;
-
-   /* every hack in "forcedClosing" will be useful "few times in a session", not for the
-    * entire duration of the connections: for this reason is kept a cache record to count every 
-    * time a condition is returned "true"
-    *
-    * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
-    * to be true the condition use an inverted probability, until reach MAX, than will never be 
-    * injected again.
-    *
-    * this is implemented in the condition check and the useful generic method are implemented
-    * in Plugin class, explanation useful will be found in ../PluginList.txt
-    */
-    PluginCache RSTcache;
+    /* every hack in "forcedClosing" will be useful "few times in a session", not for the
+     * entire duration of the connections: for this reason is kept a cache record to count every 
+     * time a condition is returned "true"
+     *
+     * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
+     * to be true the condition use an inverted probability, until reach MAX, than will never be 
+     * injected again.
+     *
+     * this is implemented in the condition check and the useful generic method are implemented
+     * in Plugin class, explanation useful will be found in ../PluginList.txt
+     */
 
 public:
-
     fake_close_rst() :
     Plugin(PLUGIN_NAME, AGG_PACKETS30PEEK),
     pLH(PLUGIN_NAME, PKT_LOG)
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
@@ -112,7 +110,7 @@ public:
         return ret;
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -128,13 +126,14 @@ public:
 
         pkt->position = ANTICIPATION;
 
-        pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
-        pkt->choosableScramble = (availableScrambles & supportedScrambles);
+        pkt->wtf = CORRUPTNEED;
+    //        pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
     }
+
 };
 
 extern "C" Plugin* createPluginObj()

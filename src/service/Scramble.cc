@@ -8,29 +8,53 @@
 #include "Scramble.h"
 #include "ScrambleImpl.h"
 
+/* this static buffer is used for debug/dump/write the scramble name sets in the bitMask */
+char scrambleMask::scrambleList[ SCRAMBLE_SUPPORTED * 14 ];
+
 /*
  * scrambleMask is used as variable inside Packet, Plugin and Scramble classess
  * to keep track of the series of scramble used, configured, supported, implemented, etc...
  */
-scrambleMask scrambleMask::operator+=(const scramble_t toAdd)
+scrambleMask & scrambleMask::operator+=(const scramble_t toAdd)
 {
-    innerMask |= toAdd;
-    return this;
+    innerMask |= (uint8_t)toAdd;
+    return *this;
 }
 
-scrambleMask scrambleMask::operator-=(const scramble_t toSub)
+scrambleMask & scrambleMask::operator-=(const scramble_t toSub)
 {
-    innerMask ~= toSub;
-    return this;
+    innerMask |= (!(uint8_t)toSub);
+    return *this;
 }
 
-scrambleMask scrambleMask::operator=(const scramble_t newVal)
+scrambleMask & scrambleMask::operator=(const scramble_t newVal)
 {
     innerMask = (uint8_t)newVal;
-    return this;
+    return *this;
 }
 
-bool scrambleMask scrambleMask::operator!(void)
+/* overloading again the same operators to support operations
+ * between scrambleMask(s) */
+scrambleMask & scrambleMask::operator+=(const scrambleMask toAdd)
+{
+    innerMask |= toAdd.innerMask;
+    return *this;
+}
+
+scrambleMask & scrambleMask::operator-=(const scrambleMask toSub)
+{
+    innerMask |= (!(toSub.innerMask)); // boh ? XXX fixme antani, prima era ~=
+    return *this;
+}
+
+scrambleMask & scrambleMask::operator=(const scrambleMask newVal)
+{
+    innerMask = (uint8_t)newVal.innerMask;
+    return *this;
+}
+
+/* validity check replacing not/"!" */
+bool scrambleMask::operator!(void)
 {
     /* this works because enum scramble_t NOSCRAMBLESET has the 0 value */
     return (!(bool)innerMask);
@@ -39,10 +63,10 @@ bool scrambleMask scrambleMask::operator!(void)
 const char *scrambleMask::debug(void)
 {
     uint32_t i;
-    char *p = scrambleList[0];
+    char *p = &scrambleList[0];
 
     if(!innerMask)
-        return NO_ONE_SCRAMBLE;
+        return reinterpret_cast<const char *>(NO_ONE_SCRAMBLE);
 
     memset(scrambleList, 0x00, sizeof(scrambleList));
 
@@ -56,17 +80,17 @@ const char *scrambleMask::debug(void)
                 p++;
             }
 
-            snprintf(p, sizeof(scrambleList) - strlen(p), "%s", sjImplementedScramble[i]);
+            snprintf(p, sizeof(scrambleList) - strlen(p), "%s", sjImplementedScramble[i].keyword);
         }
     }
 
-    return scrambleList[0];
+    return const_cast<const char *>(&scrambleList[0]);
 }
 
 /* three kind of construction type: empty, single, mask */
 scrambleMask::scrambleMask(void) : innerMask(NOSCRAMBLESET) { }
 scrambleMask::scrambleMask(scramble_t init) : innerMask(init) { }
-scrambleMask::scrambleMask(scrambleMask source) : innerMask(source) { }
+scrambleMask::scrambleMask(const scrambleMask &source) : innerMask(source.innerMask) { }
 
 scrambleMask::~scrambleMask(void) { }
 
@@ -190,10 +214,10 @@ void Scramble::periodicEvent(void)
 /* constructor: created as singleton */
 Scramble::Scramble(void)
 {
-    LOG_VERBOSE("Scramble");
+    LOG_VERBOSE("");
 
-    scramble_pool.push_back(new TTLScramble( &scramblePkt ));
-    scramble_pool.push_back(new CKSUMScramble( &scramblePkt ));
+    scramble_pool.push_back(new TTLScramble( &scramblePktV ));
+    scramble_pool.push_back(new CKSUMScramble( &scramblePktV ));
 }
 
 Scramble::~Scramble(void)
@@ -212,6 +236,10 @@ registeredPktVec(rV),
 scrambleID(sID),
 scrambleName(sN),
 removeOrigPkt(rOp),
-whenmask(when)
+whenMask(when)
+{
+}
+
+ScrambleImpl::~ScrambleImpl(void)
 {
 }

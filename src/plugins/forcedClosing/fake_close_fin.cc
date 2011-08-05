@@ -65,13 +65,13 @@ public:
     {
     }
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
@@ -109,22 +109,23 @@ public:
         return ret;
     }
 
-    void fixPushFin(Packet * const pkt, uint8_t availableScrambles)
+    /* to review - scramble not useful */
+    void fixPushFin(Packet * const pkt, scrambleMask & availableScrambles)
     {
         pkt->randomizeID();
         pkt->tcp->fin = 1;
 
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
-        pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
-        pkt->choosableScramble = (availableScrambles & supportedScrambles);
+        pkt->wtf = CORRUPTNEED;
+//        pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         /* the sniffer trust the FIN because has the last sequence number + 1 */
         if (random_percent(80))

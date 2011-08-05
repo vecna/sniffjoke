@@ -22,16 +22,16 @@
 
 #include "PluginPool.h"
 #include "UserConf.h"
+#include "Scramble.h"
 
 #include <dlfcn.h>
 
 extern auto_ptr<UserConf> userconf;
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char *plugOpt)
+PluginTrack::PluginTrack(const char *plugabspath, scrambleMask &pluginSupportedScr, char *plugOpt)
 {
     LOG_VERBOSE("constructor %s to %s option [%s]", __func__, plugabspath, plugOpt);
 
-    char enabledScramblesStr[LARGEBUF] = {0};
     void *swapPtr;
 
     pluginHandler = dlopen(plugabspath, RTLD_NOW);
@@ -73,18 +73,15 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
         RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugabspath);
     }
 
-    declaredScramble = enabledScrambles;
+    configuredScramble = pluginSupportedScr;
 
     if(plugOpt != NULL)
         declaredOpt = strdup(plugOpt);
     else
         declaredOpt = NULL;
 
-    snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
-
-    LOG_ALL("Loading of %s: %s, scramble sets %s(%d), acquired option [%s]",
-            plugabspath, selfObj->pluginName,
-            enabledScramblesStr, enabledScrambles,
+    LOG_ALL("Loading of %s: %s, scramble sets %s, acquired option [%s]",
+            plugabspath, selfObj->pluginName, configuredScramble.debug(), 
             plugOpt != NULL ? plugOpt : "NONE"
             );
 }
@@ -109,18 +106,20 @@ void PluginPool::initializeAll(struct sjEnviron *autoptrList)
         const PluginTrack *plugin = *it;
         bool initval;
 
-        initval = plugin->selfObj->init(plugin->declaredScramble, plugin->declaredOpt, autoptrList);
+        initval = plugin->selfObj->init(plugin->configuredScramble, plugin->declaredOpt, autoptrList);
 
         if(initval == false)
         {
-            RUNTIME_EXCEPTION("Unable to init %s whitin the current configuration context: scramble %d opt [%s]", 
-                             plugin->selfObj->pluginName, plugin->declaredScramble, 
-                             plugin->declaredOpt != NULL ? plugin->declaredOpt : "/" );
+            RUNTIME_EXCEPTION("Unable to init %s whitin the current configuration context: scramble %s opt [%s]", 
+                              plugin->selfObj->pluginName, 
+                              (const_cast<scrambleMask &>(plugin->configuredScramble)).debug(), 
+                              plugin->declaredOpt != NULL ? plugin->declaredOpt : "/" );
         }
 
-        LOG_DEBUG("%d) Initialized %s successfull with complete configuration context: scramble %d opt [%s]", 
-                 counter, plugin->selfObj->pluginName, plugin->declaredScramble, 
-                 plugin->declaredOpt != NULL ? plugin->declaredOpt : "/" );
+        LOG_DEBUG("%d) Initialized %s successfull with complete configuration context: scramble %s opt [%s]", 
+                  counter, plugin->selfObj->pluginName, 
+                  (const_cast<scrambleMask &>(plugin->configuredScramble)).debug(), 
+                  plugin->declaredOpt != NULL ? plugin->declaredOpt : "/" );
 
         counter++;
     }
@@ -136,7 +135,7 @@ void PluginPool::initializeAll(struct sjEnviron *autoptrList)
  * (class TCPTrack).plugin_pool is the name of the unique PluginPool element
  */
 PluginPool::PluginPool(void) :
-globalEnabledScrambles(0)
+globalEnabledScrambles()
 {
     /* globalEnabledScrambles is set from the sum of each plugin configuration */
     if (userconf->runcfg.onlyplugin[0])
@@ -149,9 +148,7 @@ globalEnabledScrambles(0)
     else
         LOG_ALL("loaded correctly %d plugins", pool.size());
 
-    char enabledScramblesStr[LARGEBUF];
-    snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), globalEnabledScrambles);
-    LOG_ALL("Globally enabled scrambles: [%s]", enabledScramblesStr);
+    LOG_ALL("Globally enabled scrambles: [%s]", globalEnabledScrambles.debug());
     LOG_ALL("SniffJoke will use this configuration to create confusion also on real packets");
 }
 
@@ -177,11 +174,11 @@ PluginPool::~PluginPool(void)
     }
 }
 
-void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, uint8_t enabledScramble, char *pOpt)
+void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, scrambleMask &configuredScramble, char *pOpt)
 {
     try
     {
-        PluginTrack *plugin = new PluginTrack(plugabspath, enabledScramble, pOpt);
+        PluginTrack *plugin = new PluginTrack(plugabspath, configuredScramble, pOpt);
         pool.push_back(plugin);
     }
     catch (runtime_error &e)
@@ -190,27 +187,10 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
     }
 }
 
-bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
+bool PluginPool::parseScrambleOpt(char *list_str, scrambleMask *retval, char **opt)
 {
-
-    struct scrambleparm
-    {
-        const char *keyword;
-        uint8_t scramble;
-    };
-
-#define SCRAMBLE_SUPPORTED    4
-    const struct scrambleparm availablescramble[SCRAMBLE_SUPPORTED] = {
-        { SCRAMBLE_TTL_STR, SCRAMBLE_TTL},
-        { SCRAMBLE_MALFORMED_STR, SCRAMBLE_MALFORMED},
-        { SCRAMBLE_CHECKSUM_STR, SCRAMBLE_CHECKSUM},
-        { SCRAMBLE_INNOCENT_STR, SCRAMBLE_INNOCENT}
-    };
-
     bool foundScramble = false;
     char copyStr[MEDIUMBUF] = {0}, *optParse = NULL;
-
-    *retval = 0;
 
     memcpy(copyStr, list_str, strlen(list_str));
 
@@ -243,10 +223,10 @@ bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
      *   plugin.so,SCRAMBLE1[,SCRAMBLE2][,SCRAMBLE3]         */
     for (uint32_t i = 0; i < SCRAMBLE_SUPPORTED; i++)
     {
-        if (strstr(copyStr, availablescramble[i].keyword))
+        if (strstr(copyStr, sjImplementedScramble[i].keyword))
         {
             foundScramble = true;
-            (*retval) |= availablescramble[i].scramble;
+            (*retval) += sjImplementedScramble[i].scrambleBit;
         }
     }
 
@@ -262,7 +242,7 @@ void PluginPool::parseOnlyPlugin(void)
     char *pluginOpt = NULL;
     char onlyplugin_cpy[MEDIUMBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
-    uint8_t pluginEnabledScrambles = 0;
+    scrambleMask pluginEnabledScrambles;
 
     snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), "%s", userconf->runcfg.onlyplugin);
 
@@ -280,14 +260,13 @@ void PluginPool::parseOnlyPlugin(void)
     importPlugin(plugabspath, userconf->runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
 
     /* we keep track of enabled scramble to apply confusion on real good packets */
-    globalEnabledScrambles |= pluginEnabledScrambles;
+    globalEnabledScrambles += pluginEnabledScrambles;
 }
 
 void PluginPool::parseEnablerFile(void)
 {
     char enablerabspath[LARGEBUF] = {0};
     char plugabspath[MEDIUMBUF] = {0};
-    char enabledScramblesStr[LARGEBUF] = {0};
     char enablerentry[LARGEBUF] = {0};
 
     snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", userconf->runcfg.working_dir, FILE_PLUGINSENABLER);
@@ -301,7 +280,7 @@ void PluginPool::parseEnablerFile(void)
     {
         char *comma;
         char *pluginOpt = NULL;
-        uint8_t enabledScrambles = 0;
+        scrambleMask enabledScrambles;
 
         if( fgets(enablerentry, LARGEBUF, plugfile) == NULL)
             break;
@@ -340,22 +319,14 @@ void PluginPool::parseEnablerFile(void)
                               line, enablerentry, FILE_PLUGINSENABLER);
         }
 
-        snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
-
-        LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
+        LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScrambles.debug());
         importPlugin(plugabspath, enablerentry, enabledScrambles, pluginOpt);
 
         /* we keep track of enabled scramble to apply confusion on real good packets */
-        globalEnabledScrambles |= enabledScrambles;
+        globalEnabledScrambles += enabledScrambles;
 
     }
     while (!feof(plugfile));
 
     fclose(plugfile);
 }
-
-uint8_t PluginPool::enabledScrambles()
-{
-    return globalEnabledScrambles;
-}
-

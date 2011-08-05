@@ -86,24 +86,30 @@ class Plugin
 {
 public:
 
-    const char * const pluginName; /* plugin name as const string */
-    uint8_t supportedScrambles; /* supported by the location, derived
-                                   from plugin_enabler.conf.$location */
-    const uint16_t pluginFrequency; /* plugin frequency, using the value  */
-    bool removeOrigPkt; /* boolean to be set true if the plugin
+    const char * const pluginName; 
+
+    /* supported by the location, derived from plugin_enabler.conf.$location */
+    scrambleMask supportedScrambles; 
+
+    /* plugin frequency, will be set, when a lonely plugin is specify to match ALWAYS,
+     * otherwise using the value  */
+    const uint16_t pluginFrequency; 
+
+    /* the true if the plugin
                            needs to remove the original packet */
+    bool removeOrigPkt; 
 
     vector<Packet *> pktVector; /* std vector of Packet* used for created packets */
 
     Plugin(const char *, uint16_t);
 
-    judge_t pktRandomDamage(uint8_t, uint8_t);
     void upgradeChainFlag(Packet *);
 
     /* Plugin is an abstract class */
-    virtual bool init(uint8_t, char *, struct sjEnviron *) = 0;
-    virtual bool condition(const Packet &, uint8_t);
-    virtual void apply(const Packet &, uint8_t);
+    virtual bool init(const scrambleMask &, char *, struct sjEnviron *) = 0;
+
+    virtual bool condition(const Packet &, scrambleMask &);
+    virtual void apply(const Packet &, scrambleMask &);
     virtual void mangleIncoming(Packet &);
     virtual void reset(void);
 

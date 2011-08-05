@@ -1,4 +1,4 @@
-ADD_SUBDIRECTORY(HDRoptions_probe)
-ADD_SUBDIRECTORY(payldBreakin)
-ADD_SUBDIRECTORY(badSync)
+### ADD_SUBDIRECTORY(HDRoptions_probe)
+# ADD_SUBDIRECTORY(payldBreakin)
+# ADD_SUBDIRECTORY(badSync)
 ADD_SUBDIRECTORY(forcedClosing)

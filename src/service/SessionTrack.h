@@ -26,6 +26,12 @@
 #include "Utils.h"
 #include "Packet.h"
 
+struct pkt_n_track {
+    uint16_t natural;
+    uint16_t injected;
+    uint16_t dropped;
+};
+
 class SessionTrack
 {
     friend class SessionTrackMap;
@@ -40,8 +46,8 @@ public:
     uint16_t sport;
     uint16_t dport;
 
-    uint32_t packet_number;
-    uint32_t injected_pktnumber;
+    struct pkt_n_track ingoing;
+    struct pkt_n_track outgoing;
 
     SessionTrack(const Packet &);
     ~SessionTrack(void);

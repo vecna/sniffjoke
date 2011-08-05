@@ -31,10 +31,11 @@
 
 SessionTrack::SessionTrack(const Packet &pkt) :
 access_timestamp(0),
-daddr(pkt.ip->daddr),
-packet_number(0),
-injected_pktnumber(0)
+daddr(pkt.ip->daddr)
 {
+    memset(&ingoing, 0x00, sizeof(struct pkt_n_track));
+    memset(&outgoing, 0x00, sizeof(struct pkt_n_track));
+
     if (pkt.proto == TCP)
     {
         proto = IPPROTO_TCP;
@@ -69,8 +70,11 @@ SessionTrack::~SessionTrack(void)
 
     char sj_clock_str[MEDIUMBUF];
     strftime(sj_clock_str, sizeof (sj_clock_str), "%F %T", localtime(&access_timestamp));
-    fprintf(sessionLog, "%s\t%d:%d\t#%d, inj #%d\n",
-            sj_clock_str, ntohs(sport), ntohs(dport), packet_number, injected_pktnumber);
+    fprintf(sessionLog, "%s\t%d:%d\t#%d, I (N: %d inj %d D: %d) O (N: %d inj %d D: %d)\n",
+            sj_clock_str, ntohs(sport), ntohs(dport), 
+            ingoing.natural, ingoing.injected, ingoing.dropped,
+            outgoing.natural, outgoing.injected, outgoing.dropped
+            );
 
     fclose(sessionLog);
 #endif
@@ -87,12 +91,12 @@ void SessionTrack::selflog(const char *func, const char *format, ...) const
     vsnprintf(loginfo, sizeof (loginfo), format, arguments);
     va_end(arguments);
 
-    LOG_SESSION("%s %s S|-:%u D|%s:%d #pkts|%d #injs|%d %s",
-                func, proto == IPPROTO_TCP ? "TCP" : "UDP",
+    LOG_SESSION("%s [%s] %s S|%u D|%s:%d I+(N: %d inj %d D: %d) O+(N: %d inj %d D: %d)",
+                func, loginfo, proto == IPPROTO_TCP ? "TCP" : "UDP",
                 ntohs(sport),
                 inet_ntoa(*((struct in_addr *) &daddr)), ntohs(dport),
-                packet_number, injected_pktnumber,
-                loginfo
+                ingoing.natural, ingoing.injected, ingoing.dropped,
+                outgoing.natural, outgoing.injected, outgoing.dropped
                 );
 }
 

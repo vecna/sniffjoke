@@ -34,18 +34,17 @@ typedef const char* version_f(void);
 class PluginTrack
 {
 public:
+    scrambleMask configuredScramble;
     void *pluginHandler;
+    char *declaredOpt;
+    Plugin *selfObj;
 
     constructor_f *fp_CreatePluginObj;
     destructor_f *fp_DeletePluginObj;
     version_f *fp_versionValue;
 
-    Plugin *selfObj;
+    PluginTrack(const char *, scrambleMask &, char *);
 
-    uint8_t declaredScramble;
-    char *declaredOpt;
-
-    PluginTrack(const char *, uint8_t, char *);
 private:
     void *forcedSymbolCopy( const char *, const char *);
 };
@@ -53,19 +52,20 @@ private:
 class PluginPool
 {
 private:
-    uint8_t globalEnabledScrambles;
-    void importPlugin(const char *, const char *, uint8_t, char *);
+    void importPlugin(const char *, const char *, scrambleMask &, char *);
     void parseOnlyPlugin(void);
     void parseEnablerFile(void);
-    bool parseScrambleOpt(char *, uint8_t *, char **);
+    bool parseScrambleOpt(char *, scrambleMask *, char **);
 
 public:
-    PluginPool();
-    ~PluginPool(void);
-    uint8_t enabledScrambles();
+    vector<PluginTrack *> pool;
+    scrambleMask globalEnabledScrambles;
+
     void initializeAll(struct sjEnviron *);
 
-    vector<PluginTrack *> pool;
+    PluginPool();
+    ~PluginPool(void);
+
 };
 
 #endif /* SJ_PLUGINPOOL_H */

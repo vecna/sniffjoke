@@ -19,7 +19,10 @@ public:
 
     bool apply(Packet &);
     bool mystification(Packet &);
-    bool isScrambleAvailable(IPList &);
+    bool isScrambleAvailable(Packet & /* IPList & */);
+
+    bool scramInitSetup(void);
+    void scramRegisterSession(Packet &, SessionTrack &);
 
     bool pktKeepRefresh(Packet &);
     bool periodicEvent(void);
@@ -28,7 +31,6 @@ protected:
     void execTTLBruteforces(void);
     void injectTTLProbe(TTLFocus &);
     bool extractTTLinfo(const Packet &);
-
 };
 
 class CKSUMScramble : public ScrambleImpl
@@ -39,7 +41,10 @@ public:
 
     bool apply(Packet &);
     bool mystification(Packet &);
-    bool isScrambleAvailable(IPList &);
+    bool isScrambleAvailable(Packet & /* IPList & */);
+
+    bool scramInitSetup(void);
+    void scramRegisterSession(Packet &, SessionTrack &);
 
     bool pktKeepRefresh(Packet &);
     bool periodicEvent(void);

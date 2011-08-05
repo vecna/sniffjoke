@@ -1,4 +1,33 @@
-HACKS & SCAMBLE TECH
+Rammestain                                                                     Aug 2011
+Official SniffJoke soundtrack                                        Near the CCC camp!
+
+
+
+                              PLUGINS & SCAMBLE TECHNOLOGY
+
+
+    1) WHAT and WHY 
+
+    2) HOW SCRAMBLE&PLUGINS INTERACTS + LOGICAL SEQUENCE 
+
+    3) WHAT'S IS PROVIDED AT THE MOMENT
+
+
+                                        abstract
+
+  
+
+
+                                 abstract "happy ending"
+
+
+ [ 1 ] ------- WHAT and WHY ----------------------------------------------------[ * ]
+
+ [ 2 ] ------- HOW SCRAMBLE & PLUGINS INTERACTS + LOGICAL SEQUENCE -------------[ * ]
+
+ [ 3 ] ------- WHAT'S IS PROVIDED AT THE MOMENT --------------------------------[ * ]
+
+
 
 THIS FILE IS NOT UPDATED WITH THE RELEASE 0.4 and THEREFORE WILL NOT BE SAFE READ IT!
 

@@ -69,20 +69,25 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
-        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
+/*        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
             return false;
         }
+*/
+/* TEMP XXX - how INNOCENT should be done ? */
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
+            return false;
+/* TEMP XXX */
 
-        supportedScrambles = SCRAMBLE_INNOCENT;
+//        supportedScrambles = SCRAMBLE_INNOCENT;
 
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
@@ -120,7 +125,7 @@ public:
         return ret;
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -140,7 +145,7 @@ public:
         pkt->wtf = INNOCENT;
 
         /* useless, INNOCENT is never downgraded in last_pkt_fix, but safe */
-        pkt->choosableScramble = SCRAMBLE_INNOCENT;
+//        pkt->choosableScramble = SCRAMBLE_INNOCENT;
 
         /* this packet will became dangerous if hacked again...
            is an INNOCENT RST based on the seq... */

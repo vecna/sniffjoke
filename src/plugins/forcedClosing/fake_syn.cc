@@ -47,13 +47,13 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         supportedScrambles = configuredScramble;
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -65,7 +65,7 @@ public:
                 !origpkt.tcp->fin);
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         for (uint8_t pkts = 0; pkts < 2; pkts++)
         {
@@ -102,8 +102,8 @@ public:
             else /* second packet */
                 pkt->position = POSTICIPATION;
 
-            pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
-            pkt->choosableScramble = (availableScrambles & supportedScrambles);
+            pkt->wtf = CORRUPTNEED;
+//            pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             upgradeChainFlag(pkt);
 

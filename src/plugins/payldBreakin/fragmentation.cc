@@ -76,32 +76,37 @@ public:
     {
     }
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
+/* XXX
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
             return false;
         }
-
+*/
         pLH.completeLog("Initialization of fragmentation plugin (in the future, will be a scramble)");
-        supportedScrambles = SCRAMBLE_INNOCENT;
+//        supportedScrambles = SCRAMBLE_INNOCENT;
+
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
+            return false;
 
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         bool ret;
 
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
-
+/*
         if (!(availableScrambles & supportedScrambles))
         {
             origpkt.SELFLOG("no scramble avalable for %s", PLUGIN_NAME);
             return false;
         }
+*/
 
         /* we didn't check "origpkt.ip->frag_off & htons(IP_DF)" because want to _force_ frag */
         ret = (origpkt.ippayloadlen >= MIN_HANDLING_LEN);
@@ -132,7 +137,7 @@ public:
         return ret;
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         uint16_t start = 0;
         uint16_t tobesend = origpkt.ippayloadlen;
@@ -159,7 +164,7 @@ public:
         do 
         {
             fragPkt = create_fragment(origpkt, start, fragDataLen);
-            fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
+//            fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             fragPkt->ip->frag_off = htons( (start >> 3) & IP_OFFMASK);
 
@@ -178,7 +183,7 @@ public:
 
         /* create the last fragment */
         fragPkt = create_fragment(origpkt, start, tobesend);
-        fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
+//        fragPkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         fragPkt->ip->frag_off = htons( (start >> 3) & IP_OFFMASK);
 

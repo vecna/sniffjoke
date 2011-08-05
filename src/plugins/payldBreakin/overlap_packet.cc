@@ -93,7 +93,7 @@ private:
 
         ret->source = PLUGIN;
         ret->wtf = INNOCENT;
-        ret->choosableScramble = SCRAMBLE_INNOCENT;
+//        ret->choosableScramble = SCRAMBLE_INNOCENT;
         upgradeChainFlag(ret);
 
         if(cache)
@@ -121,15 +121,19 @@ public:
     {
     }
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
+/*
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", pluginName);
             return false;
         }
-
         supportedScrambles = SCRAMBLE_INNOCENT;
+
+*/
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", pluginName);
+            return false;
 
         return true;
     }
@@ -153,7 +157,7 @@ public:
 
     /* the only acceptable Scramble is INNOCENT, because the hack is based on
      * overlap the fragment of the same packet */
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         if (origpkt.chainflag != HACKUNASSIGNED)
             return false;
@@ -175,7 +179,7 @@ public:
         return ret;
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         Packet * const pkt1 = create_segment(origpkt, 0, 60, false, false, true);
         pkt1->position = ANTICIPATION;
