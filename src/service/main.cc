@@ -49,6 +49,7 @@ static void sj_version(const char *pname)
     " --blacklist\t\tinject evasion packet in all session excluding the blacklisted ip address\n"\
     " --start\t\tif present, evasion i'ts activated immediatly [default: %s]\n"\
     " --chain\t\tenable chained hacking, powerful and entropic effects [default: %s]\n"\
+    " --dump-packets\tdump all traffic data\n"\
     " --debug <level %d-%d>\tset verbosity level [default: %d]\n"\
     "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\
     " --foreground\t\trunning in foreground [default:background]\n"\
@@ -95,9 +96,10 @@ int main(int argc, char **argv)
     useropt.use_blacklist = DEFAULT_USE_BLACKLIST;
     useropt.active = DEFAULT_START_STOPPED;
     useropt.go_foreground = DEFAULT_GO_FOREGROUND;
+    useropt.force_restart = DEFAULT_FORCE_RESTART;
+    useropt.dump_packets = DEFAULT_DUMP_PACKETS;
     useropt.debug_level = DEFAULT_DEBUG_LEVEL;
     useropt.max_ttl_probe = DEFAULT_MAX_TTLPROBE;
-    useropt.force_restart = false;
 
     /*
      * no explicit inizialization needed for string values;
@@ -117,6 +119,7 @@ int main(int argc, char **argv)
         { "start", no_argument, NULL, 's'},
         { "foreground", no_argument, NULL, 'x'},
         { "force", no_argument, NULL, 'r'},
+        { "dump-packets", no_argument, NULL, 'u'},
         { "debug", required_argument, NULL, 'd'},
         { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
         { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
@@ -129,7 +132,7 @@ int main(int argc, char **argv)
     uint8_t i;
     char *port;
     uint16_t checked_port[2] = {0};
-    while ((charopt = getopt_long(argc, argv, "i:o:a:j:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
+    while ((charopt = getopt_long(argc, argv, "i:o:a:j:ctlwbsxrd:up:m:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
@@ -196,6 +199,9 @@ int main(int argc, char **argv)
             break;
         case 'r':
             useropt.force_restart = true;
+            break;
+        case 'u':
+            useropt.dump_packets = true;
             break;
         case 'd':
             useropt.debug_level = atoi(optarg);

@@ -1,21 +1,5 @@
 #!/bin/bash
 
-locate_info()
-{
-cat << EOF
-$0 has not found, via locate, the path of the 'generic/' location
-
-you have three options to solve this issue:
-  . install locate, launch updatedb and restart sniffjoke-autotest
-  . you already has locate, but you need to updatedb
-  . or, use the option:
-         -d /directory/of/sniffjoke/locations/
-    checking that in 'locations/' will be present 'generic/'
-
-note: $0 use as marker the file THIS_IS_GENERIC
-EOF
-}
-
 shopt -s expand_aliases
 alias echo="echo -e"
 
@@ -28,15 +12,14 @@ white="\e[1;39m"
 
 #default values
 VERSION="041"
+ROOTDIR="/usr/local/var/sniffjoke"
+TEMPDIR="temp"
 LOCATION=
-LOCSDIR=
-GENERICDIR=
-USERNAME=
-GROUPNAME=
+PLUGINLIST="plugins-testsuite"
 SERVERURL=
 GNUPGTRUST="NO"
 REPN=1
-firstsimple=
+FIRSTSIMPLE=
 
 usage()
 {
@@ -54,15 +37,14 @@ http://www.delirandom.net/sniffjoke/sniffjoke-locations
 
 OPTIONS:
    -h      show this message
+   -d      sniffjoke root directory                            (default /usr/local/var/sniffjoke)
    -l      location name                                       (required)
    -n      number of replicas to be passed for the single hack (default 1)
-   -g      specify the group to privilege downgrade            (default: nogroup)
-   -u      specify the user to privilege downgrade             (default: nobody)
 EOF
 }
 
 dump_plugin_file() {
-cat >> $PLUGINLIST <<__EOF__
+cat > $PLUGINLIST <<__EOF__
 fake_close_fin,PRESCRIPTION
 fake_close_fin,MALFORMED
 fake_close_fin,GUILTY
@@ -126,11 +108,11 @@ trusted_server_contact()
     if [ ! -z "$GPGBIN" ]; then
 
         # REMIND: this is needed to avoid:
-        KEYRINGOPT="--no-permission-warning --no-default-keyring --keyring $TEMPDIR/$LOCATION/sj.gpgkeyring"
+        KEYRINGOPT="--no-permission-warning --no-default-keyring --keyring $ROOTDIR/sj.gpgkeyring"
         # gpg: WARNING: unsafe ownership on configuration file `/home/vecna/.gnupg/gpg.conf'
         # gpg: error reading key: public key not found
 
-        echo "${green}GNuPG binary found: checking if key (1024D/7D9E677D 2011-05-21) is present on your keyring..."
+        echo "${green}GNUPG binary found: checking if key (1024D/7D9E677D 2011-05-21) is present on your keyring..."
         echo "${blue}"
         $GPGBIN --list-keys 7D9E677D >/dev/null 2>&1
         if [ "$?" != "0" ]; then
@@ -156,22 +138,6 @@ trusted_server_contact()
     fi
 }
 
-routing_table_log() {
-    route -n > $WORKDIR/route-$1.log
-}
-
-group_check() 
-{
-    GROUPNAME=`groups $USERNAME | cut -d " " -f 3` 
-    if [ -z "$GROUPNAME" ]; then
-        echo "${red}Unable to found, in your system, the group of $USERNAME. ${white}please specify with the option -g and -u username/group"
-        echo "(hey, you package mantainer! is better you create a dedicated sniffjoke user/group)"
-        echo "A group is required because sniffjoke drop privileges. You will need to customize the ${green}sniffjoke-server.conf ${white}"
-        echo "because by default is used nobody/nogroup"
-        tput sgr0; exit
-    fi
-}
-
 start_test() {
     REPLICAn=$1
     if [[ $PLUGIN =~ ([a-z_]+),([A-Z0-9\+]+) ]]; then
@@ -179,132 +145,88 @@ start_test() {
         SCRAMBLE=${BASH_REMATCH[2]}
         TESTID=$PNAME/$SCRAMBLE
     fi
-    mkdir -p $TESTID
     echo "${green}.----"
     echo "${green}| ${blue}Plugin Name\t${yellow}\t[$PNAME]"
     echo "${green}| ${blue}Scramble\t${yellow}\t[$SCRAMBLE]"
     echo "${green}| ${blue}TestID\t${yellow}\t[$TESTID]"
-    echo "${green}| ${blue}Test directory${yellow}\t[$TEMPDIR/$LOCATION/$TESTID]${white}"
+    echo "${green}| ${blue}Test directory${yellow}\t[$ROOTDIR/$TEMPDIR/$TESTID]${white}"
     # $SERVER is like http://www.delirandom.net/sjA/pe.php
     for i in `seq 1 $REPLICAn`;
     do
-        WORKDIR=$TESTID/replica-${i}
-        mkdir -p $TESTID/replica-${i}
+        WORKDIR=$TEMPDIR/$TESTID/replica-${i}
+        mkdir -p $TEMPDIR/$TESTID/replica-${i}
 
-        cp $LOCSDIR/generic/sniffjoke-service.conf $TESTID/replica-${i}/
+        cp generic/sniffjoke-service.conf $WORKDIR
         echo $SERVER_IP > $WORKDIR/ipwhitelist.conf
 
-        if [ -e $firstsimple/ttlfocusmap.bin ]; then
-            cp $firstsimple/ttlfocusmap.bin $TESTID/replica-${i}/
-            cp $TEMPDIR/$LOCATION/iptcp-options.conf $TESTID/replica-${i}
+        if [ -e $FIRSTSIMPLE/ttlfocusmap.bin ]; then
+            cp $FIRSTSIMPLE/ttlfocusmap.bin $WORKDIR
+            cp $TEMPDIR/iptcp-options.conf $WORKDIR
             echo "${green}| * COMBINATION OF TESTS (${yellow}$PLUGNDX/$PLUGIN_NUMBER${green}) REPLICA (${yellow}$i/$REPLICAn${green})"
         else
             echo "${green}| * ${blue}Goal:\t${green}\t[generate ttlfocusmap.bin, and test sniffjoke without any esoteric network trick]${white}"
-            cp $LOCSDIR/generic/iptcp-options.conf $TESTID/replica-${i}
+            cp generic/iptcp-options.conf $WORKDIR
         fi
 
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
-        echo "sniffjoke --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist"
-
-        $SNIFFJOKEBIN --debug 6 $UGPD --start --dir $TEMPDIR/$LOCATION/$TESTID --location replica-${i} --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
-        sleep 0.8
-        routing_table_log "after"
+        echo "$SNIFFJOKEBIN --debug 6 --dir $ROOTDIR --location $WORKDIR --only-plugin $PLUGIN --no-udp --whitelist"
+        $SNIFFJOKEBIN --start --dump-packets --debug 6 --dir $ROOTDIR --location $WORKDIR --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
+        sleep 0.1
 
         $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
         if [ "$?" -eq 0 ]; then
             echo "${green}sniffjoke is correctly running${white}"
         else
-            echo "${red}sniffjoke is not running - fatal error - remove $TEMPDIR/$LOCATION by hand${white}"
+            echo "${red}sniffjoke is not running - fatal error - remove $ROOTDIR/$LOCATION by hand${white}"
             tput sgr0; exit
         fi
 
-        INTERFACE=`cat $WORKDIR/dumpService_stat.log | grep "hijacked interface:" | awk '{print $3}'`
-        if [ -n "$INTERFACE" ]; then
-            echo "${yellow}** Starting tcpdump on $INTERFACE${white}, listening only $SERVER_IP and ICMP"
-        else
-            echo "${red}Unable to detect hijacked interface name by $WORKDIR/dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
-            tput sgr0; exit
-        fi
-
-        echo "$TCPDUMPBIN -p -i $INTERFACE -U -w $PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
-        $TCPDUMPBIN -p -i $INTERFACE -U -w $WORKDIR/$PNAME-$SCRAMBLE-$i.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >$WORKDIR/output.tcpdump 2>&1 &
-        sleep 0.2
         echo "${yellow}** Starting curl to post/echo at $SERVER_ADDR ($SERVER_IP) under monitoring${white}"
         curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER >/dev/null 2>&1
+
         $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
         $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
         $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
         if [ "$?" -eq 0 ]; then
             echo "${green}sniffjoke correctly closed${white}"
         else
-            echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $TEMPDIR/$LOCATION by hand${white}"
+            echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $WORKDIR/$LOCATION by hand${white}"
             tput sgr0; exit
         fi
-
-        sleep 0.5
-        killall -HUP tcpdump
     done;
 
-    echo 0 > $TESTID/passed_count
+    echo 0 > $TEMPDIR/$TESTID/passed_count
     for i in `seq 1 $REPLICAn`;
     do
-        WORKDIR=$TESTID/replica-${i}
+        WORKDIR=$TEMPDIR/$TESTID/replica-${i}
         if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; 
         then
             tr -d "\n" < $WORKDIR/SPAREDATARECEIVED > $WORKDIR/SPAREDATARECEIVED.clean
             CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED.clean" | cut -b -32`
         else
             CHECKSUM="{unexistent-output-file}"
-
-            # maybe the network has get an error
-            isWorked=`grep "^0 packets captured" $WORKDIR/output.tcpdump`
-
-            if [ -n "$isWorked" ]; then
-                echo "${red}Something in the network is not going well, and will not be a SniffJoke fault"
-                echo "${red}please, restart the test and remove the $TEMPDIR/$LOCATION"
-                tput sgr0; exit;
-            fi
         fi
 
-        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> plugins-collected-feedback
+        echo "orig:$VERIFYSUM recv:$CHECKSUM $TESTID $i" >> $TEMPDIR/plugins-collected-feedback
         if [ $VERIFYSUM != $CHECKSUM ];
         then
             # the failed_hacks and the working_hacks are generated and treated in the same style
             # the follow are useful infos for debug
-            echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE replica $i" >> $TESTID/failed_info
+            echo "$VERIFYSUM vs $CHECKSUM from $PNAME-$SCRAMBLE replica $i" >> $TEMPDIR/$TESTID/failed_info
         else
-            echo $i > $TESTID/passed_count
+            echo $i > $TEMPDIR/$TESTID/passed_count
         fi
     done
 
-    if [ `cat $TESTID/passed_count` -eq $REPLICAn ];
+    if [ `cat $TEMPDIR/$TESTID/passed_count` -eq $REPLICAn ];
     then
-        echo $SCRAMBLE >> $PNAME/working_scrambles
+        echo $SCRAMBLE >>  $TEMPDIR/$PNAME/working_scrambles
         echo "${yellow}* FINISHED TEST $TESTID: ${green}TEST PASSED${white}\n"
         return 1
     else
-        echo $SCRAMBLE >> $PNAME/failed_scrambles
+        echo $SCRAMBLE >> $TEMPDIR/$PNAME/failed_scrambles
         echo "${yellow}* FINISHED TEST $TESTID: ${red}TEST FAILED${white}\n"
         return 0
-    fi
-}
-
-get_STATEDIR()
-{
-
-    locate_exists=`which locate`
-    if [ -z "$locate_exists" ]; then
-        locate_info
-        tput sgr0; exit;
-    fi
-
-    marker=`locate THIS_IS_GENERIC | grep "var/sniffjoke"`
-    if [ ! -z "$marker" ]; then
-        GENERICDIR=`dirname $marker`
-        LOCSDIR=`echo $GENERICDIR | sed -e's/generic//g'`
-    else
-        locate_info
-        tput sgr0; exit;
     fi
 }
 
@@ -314,32 +236,21 @@ compress_location_output()
     tar -c -j -f $dFname --exclude='*DATA*' $TAR_EXCLUSION *
 }
 
-while getopts “hl:d:n:u:g:s:a:” OPTION
+while getopts “hd:l:n:s:a:” OPTION
 do
      case $OPTION in
          h)
              usage
              tput sgr0; exit 1
              ;;
+         d)
+             ROOTDIR=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
+             ;;
          l)
              LOCATION=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          n)
              REPN=$OPTARG
-             ;;
-         u)
-             USERNAME=$OPTARG
-             ;;
-# -d is became a semi-secret not more required options, because to avoid every system
-# dependent requirement, now I'm using locate. this will cause some trouble in the developers,
-# or in the other with some sniffjoke broked installation.
-# the only solution, is keeping in your pants: http://www.youtube.com/watch?v=x-0FUCg7swU
-         d)
-             LOCSDIR=$OPTARG
-             GENERICDIR="$LOCSDIR/generic"
-             ;;
-         g)
-             GROUPNAME=$OPTARG
              ;;
 # -s option is semi-secret, because I use them while testing a server side method 
 # more complex than the post_echo.php
@@ -357,20 +268,27 @@ do
      esac
 done
 
-# every system dependend path, will be obtain here, and checked below
-if [ -z "$LOCSDIR" ]; then
-    get_STATEDIR
-fi
-
-TEMPDIR="/tmp"
-cd $TEMPDIR
-
 SNIFFJOKEBIN=`which sniffjoke`
 if [ -z "$SNIFFJOKEBIN" ]; then
     echo "\n${red}"
     echo "\"which sniffjoke\" has found nothing"
     echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
-    echo "${white}"
+    tput sgr0; exit;
+fi
+
+SNIFFJOKECLIBIN=`which sniffjokectl`
+if [ -z "$SNIFFJOKECLIBIN" ]; then
+    echo "\n${red}"
+    echo "\"which sniffjokectl\" has found nothing"
+    echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
+    tput sgr0; exit;
+fi
+
+IPTCPPROBE=`which sj-iptcpopt-probe`
+if [ -z "$IPTCPPROBE" ]; then
+    echo "\n${red}"
+    echo "\"which sj-iptcpopt-probe\" has found nothing"
+    echo "Are sniffjoke installed correctly ? sj-iptcpopt-probe and sniffjoke-autotest are installed together.."
     tput sgr0; exit;
 fi
 
@@ -389,31 +307,23 @@ if [ -z "$CURLBIN" ]; then
     echo "\n${red}"
     echo "\"which curl\" has found nothing"
     echo "curl is required by this testing script, because are performed some HTML POSTs"
-    echo "${white}"
     tput sgr0; exit;
 fi
 
-SNIFFJOKECLIBIN=`which sniffjokectl`
-if [ -z "$SNIFFJOKECLIBIN" ]; then
+if [ ! -d $ROOTDIR ]; then
+    usage
     echo "\n${red}"
-    echo "\"which sniffjokectl\" has found nothing"
-    echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
-    echo "${white}"
+    echo "Bad issue: $DIR is expected to be a directory"
     tput sgr0; exit;
 fi
 
-IPTCPPROBE=`which sj-iptcpopt-probe`
-if [ -z "$IPTCPPROBE" ]; then
+cd $ROOTDIR
+
+if [ ! -d generic ]; then
+    usage
     echo "\n${red}"
-    echo "\"which sj-iptcpopt-probe\" has found nothing"
-    echo "Are sniffjoke installed correctly ? sj-iptcpopt-probe and sniffjoke-autotest are installed together.."
-    echo "${white}"
-    tput sgr0; exit;
-fi
-
-USERID=`id -u`
-if [ $USERID != "0" ]; then
-    echo "- Error, only root should run $0"
+    echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
+    echo "sniffjoke-autotest creates at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
     tput sgr0; exit;
 fi
 
@@ -424,66 +334,30 @@ if [ -z $LOCATION ]; then
     echo "sniffjoke-autotest will generate the best plugins-enabled.conf usable in this environment"
     echo "at the end of the tests (that include continuos restarting of sniffjoke with different options)"
     echo "will be created a new directory describing your location. after you will customize the options"
-    echo "${white}"
     tput sgr0; exit;
 fi
 
-if [ ! -d $LOCSDIR ]; then
+if [ -d $LOCATION ]; then
     usage
     echo "\n${red}"
-    echo "Bad issue: $LOCSDIR is expected to be a directory"
-    echo "(should became from -d option or from internal usage of 'locate') "
-    echo "${white}"
+    echo "- error: $ROOTDIR/$LOCATION directory already present"
     tput sgr0; exit;
 fi
 
-if [ -z $USERNAME ]; then
-    USERNAME="nobody"
+if [ -d $TEMPDIR ]; then
+    rm -r $TEMPDIR
 fi
 
-if [ -z $GROUPNAME ]; then
-    group_check
-fi
-# user group privilege downgrade, this variable will be passed to ipopt testing
-UGPD="--user $USERNAME --group $GROUPNAME"
-
-if [ ! -d $GENERICDIR ]; then
-    usage
-    echo "\n${red}"
-    echo "options \"-d\" invalid directory: we are looking for the path containing 'generic/'"
-    echo "sniffjoke-autotest create at the given \"-d\", the new '$LOCATION/' copying some files from 'generic/'"
-    echo "${white}"
-    tput sgr0; exit;
-fi
-
-if [ -d $LOCSDIR/$LOCATION ]; then
-    echo "\n${red}"
-    echo "error: $LOCSDIR/$LOCATION directory already present, remove by hand: don't keep old location, nor two location with the same name :P"
-    tput sgr0; exit;
-fi
-
-if [ -d $TEMPDIR/$LOCATION ]; then
-    usage
-    echo "\n${red}"
-    echo "- error: $TEMPDIR/$LOCATION directory already present"
-    echo "${white}"
-    tput sgr0; exit;
-else
-    mkdir $TEMPDIR/$LOCATION
-fi
-
-cd $TEMPDIR/$LOCATION
+mkdir $TEMPDIR
 
 echo "* Stopping possible running sniffjoke ($SNIFFJOKECLIBIN quit)"
 $SNIFFJOKECLIBIN quit >/dev/null 2>&1
 
-ln -s $GENERICDIR . 
-
 # dumping of useful information when sniffjoke doesn't run and you ask to the dev
-ifconfig >> LAN.info
-route -n >> LAN.info
-iptables -nL >> LAN.info
-uname -a >> LAN.info
+ifconfig >> $TEMPDIR/LAN.info
+route -n >> $TEMPDIR/LAN.info
+iptables -nL >> $TEMPDIR/LAN.info
+uname -a >> $TEMPDIR/LAN.info
 
 if [ -z "$SERVERURL" ]; then
     trusted_server_contact
@@ -518,10 +392,10 @@ if [ -z "$SERVERURL" ]; then
     fi
 
     # these are the variable retriverable from the server 
-    SERVER=`grep  "TESTSRV=" $SERVERFILE | cut -b 9-`
+    SERVER=`grep "TESTSRV=" $SERVERFILE | cut -b 9-`
     MESSAGE=`grep "MESSAGE=" $SERVERFILE | cut -b 9-`
     RESULTS=`grep "RESULTS=" $SERVERFILE | cut -b 9-`
-    SERVER_IP=`grep  "IPTEST=" $SERVERFILE | cut -b 8-`
+    SERVER_IP=`grep "IPTEST=" $SERVERFILE | cut -b 8-`
     STOP=`grep "STOP=" $SERVERFILE | cut -b 6- | tr -c -d [:alpha:]`
 else
     # this is kind of easter egg, but, without cow super power
@@ -538,7 +412,7 @@ if [ ! -z "$MESSAGE" ]; then
     echo "Message finished"
 
     if [ $STOP == "YES" ]; then
-        echo "\n${green}do you want continue ? if not, give ^C and remove $TEMPDIR/$LOCATION, otherwise, press return"
+        echo "\n${green}do you want continue ? if not, give ^C and remove $WORKDIR/$LOCATION, otherwise, press return"
         read
     fi
 fi
@@ -557,12 +431,11 @@ fi
 # oh yeah pippa middleton, this line is for you!!1:
 echo "${green} remote server IP '$SERVER_IP' and HTTP URL '$SERVER_ADDR'"
 
-PLUGINLIST="plugins-testsuite"
 dump_plugin_file
 PLUGIN_NUMBER=`wc -l < $PLUGINLIST`
 
 # generate the SPAREDATA file to send
-GENERATEDFILE="SPAREDATA_plugin"
+GENERATEDFILE=$TEMPDIR/"SPAREDATA_plugin"
 # the number '6' is not used in the test because sniffjoke, when runned
 # in debug mode (--debug 6) instead of filling the random segment of data
 # inject with random data, use the number '6'. Is useful when debugging 
@@ -570,6 +443,10 @@ GENERATEDFILE="SPAREDATA_plugin"
 seq 1000 9000 | tr -d [:cntrl:] | sed -e's/6/111/g' | strings | tr -d "\n" > $GENERATEDFILE
 GENERATEDDATA=`cat $GENERATEDFILE`
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
+
+echo "${yellow}** Starting Janus${white}"
+janus --mtu-fix -80
+sleep 0.8
 
 # OK GUYS, SINCE HERE WE'D SETUP THE ENVIRONMENT, NOW START THE THREE SECTION Of TESTS:
 # TEST 1) a simple plain connection, useful for the first traceroute and general checkup
@@ -584,15 +461,20 @@ if [ ! $? ]; then
     echo "${red} the simplest test has failed, something dirty don't work in your network"
     tput sgr0; exit;
 fi
-firstsimple=$TEMPDIR/$LOCATION/firstsimple
-mv $TEMPDIR/$LOCATION/segmentation/INNOCENT/replica-1 $firstsimple
+FIRSTSIMPLE=$TEMPDIR/firstsimple
+mv $TEMPDIR/segmentation/INNOCENT/replica-1 $FIRSTSIMPLE
+# (now in $FIRSTSIMPLE/ttlfocusmap.bin is cached the traceroute)
 
 # TEST 2
-# (now in $firstsimple/ttlfocusmap.bin is cached the traceroute)
-$IPTCPPROBE -w "$TEMPDIR/$LOCATION" -u "$SERVER" -n $USERNAME -g $GROUPNAME -i $SERVER_IP
+echo "$IPTCPPROBE -d "$ROOTDIR" -u "$SERVER" -i $SERVER_IP"
+$IPTCPPROBE -d "$ROOTDIR" -u "$SERVER" -i $SERVER_IP
+if [ ! $? ]; then
+    echo "${red} the optprobe test has failed, something dirty don't work in your network"
+    tput sgr0; exit;
+fi
+# (now in $LOCATION/iptcp-options.conf there are the correct usage for this location)
 
 # TEST 3
-# (now in $TEMPDIR/$LOCATION/iptcp-options.conf there are the correct usage for this location)
 for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     PLUGIN=`head -$PLUGNDX $PLUGINLIST | tail -1`
 
@@ -601,8 +483,11 @@ for PLUGNDX in `seq 1 $PLUGIN_NUMBER`; do
     start_test $REPN
 done
 
+echo "${yellow} ** Stopping Janus${white}"
+killall janus
+
 # Parsing & formatting the results of TEST 3
-PeL="plugins-enabled.conf"
+PeL="$TEMPDIR/plugins-enabled.conf"
 echo "# this is an autogenerated file by sniffjoke-autotest " > $PeL
 echo "# wheneven you change the network router, provider or some malfunction is detected" >> $PeL
 echo "# you are invited to regenerate this file" >> $PeL
@@ -610,20 +495,20 @@ echo "# this plugins-enabled.conf \"$VERSION\" its for location: $LOCATION using
 
 success_count=0
 TAR_EXCLUSION=""
-for PLUGIN in `ls */working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
-    SCRAMBLES=`cat $PLUGIN/working_scrambles | tr " " "," | tr [:cntrl:] ","`
+for PLUGIN in `ls $TEMPDIR/*/working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
+    SCRAMBLES=`cat $TEMPDIR/$PLUGIN/working_scrambles | tr " " "," | tr [:cntrl:] ","`
     echo "$PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     success_count=$(($success_count+1));
 
-    for SCRAMBLE in `cat $PLUGIN/working_scrambles`; do
+    for SCRAMBLE in `cat $TEMPDIR/$PLUGIN/working_scrambles`; do
         TAR_EXCLUSION=$TAR_EXCLUSION" --exclude=$PLUGIN/$SCRAMBLE"
     done
 done
 
 echo "\n# follow the hacks+scramble that don't pass the sniffjoke-autotest in environment \"$LOCATION\"\n" >> $PeL
 failure_count=0
-for PLUGIN in `ls */failed_scrambles 2>/dev/null | sed -e 's/\/failed_scrambles//'` ; do
-    SCRAMBLES=`cat $PLUGIN/failed_scrambles | tr " " "," | tr [:cntrl:] ","`
+for PLUGIN in `ls $TEMPDIR/*/failed_scrambles 2>/dev/null | sed -e 's/\/failed_scrambles//'` ; do
+    SCRAMBLES=`cat $TEMPDIR/$PLUGIN/failed_scrambles | tr " " "," | tr [:cntrl:] ","`
     echo "# $PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     failure_count=$(($failure_count+1));
 done
@@ -641,18 +526,14 @@ if [ $failure_count -ge 6 ]; then
     echo "\n"
 fi
 
-chmod 444 plugins-enabled.conf
+mkdir $LOCATION
+cp generic/port-aggressivity.conf $LOCATION 
+cp generic/sniffjoke-service.conf $LOCATION
+cp $TEMPDIR/iptcp-options.conf    $LOCATION
+cp $TEMPDIR/plugins-enabled.conf  $LOCATION
 
-DESTINATION=$LOCSDIR/$LOCATION
-mkdir $DESTINATION
-
-cp $GENERICDIR/port-aggressivity.conf $DESTINATION 
-cp $GENERICDIR/sniffjoke-service.conf $DESTINATION
-cp $TEMPDIR/$LOCATION/iptcp-options.conf $DESTINATION
-cp plugins-enabled.conf $DESTINATION/plugins-enabled.conf
-
-echo "\n${yellow}* sniffjoke-autotest has dumped $TEMPDIR/$LOCATION/plugins-enabled.conf"
-echo "* that conf has been copyed in $DESTINATION with the other default configuration file."
+echo "\n${yellow}* sniffjoke-autotest has dumped $ROOTDIR/$LOCATION/plugins-enabled.conf"
+echo "* that conf has been copyed in $LOCATION with the other default configuration file."
 echo "* now, when you are using internet in this network environment, use sniffjoke with the option --location $LOCATION${white}"
 
 if [ ! -z "$SERVERURL" ]; then
@@ -677,7 +558,7 @@ read YESORNOT
 if [ "$YESORNOT" == "OK" ]; then
     compress_location_output
     echo "${green} sending of the file... to $RESULTS"
-    output_put="$TEMPDIR/$LOCATION/HTTP_put.out"
+    output_put="$ROOTDIR/$LOCATION/HTTP_put.out"
     $CURLBIN -o $output_put -T $dFname "$RESULTS?v=$VERSION"
     if [ -e "$output_put" ]; then
         MESSAGE=`grep "MESSAGE=" $output_put | cut -b 9-`

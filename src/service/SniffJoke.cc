@@ -142,7 +142,7 @@ void SniffJoke::run(void)
     sessiontrack_map = auto_ptr<SessionTrackMap > (new SessionTrackMap);
     ttlfocus_map = auto_ptr<TTLFocusMap > (new TTLFocusMap);
     conntrack = auto_ptr<TCPTrack > (new TCPTrack);
-    mitm = auto_ptr<NetIO > (new NetIO(conntrack.get()));
+    mitm = auto_ptr<NetIO > (new NetIO(conntrack.get(), userconf->runcfg.dump_packets));
 
     /* merge all auto_ptr instanced in a struct */
     createSjEnvironment();

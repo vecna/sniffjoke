@@ -27,19 +27,45 @@ OPTNAME[12]="TCP_MD5"
 
 #default values
 VERSION="041"
-LOCATION=
-GENERIC=
+ROOTDIR="/usr/local/var/sniffjoke"
+TEMPDIR="temp"
 OPTIONSAMOUNT=18
 REALIMPLEMENTED=10
-USERNAME="nobody"
-GROUPNAME="nogroup"
 DONE=0
 SERVER_IP=
-PCAPS="../../"
 
 SNIFFJOKEBIN=`which sniffjoke`
-CURLBIN=`which curl`
+if [ -z "$SNIFFJOKEBIN" ]; then
+    echo "\n${red}"
+    echo "\"which sniffjoke\" has found nothing"
+    echo "Are sniffjoke installed with the name \"sniffjoke\" ?"
+    tput sgr0; exit;
+fi
+
 SNIFFJOKECLIBIN=`which sniffjokectl`
+if [ -z "$SNIFFJOKECLIBIN" ]; then
+    echo "\n${red}"
+    echo "\"which sniffjokectl\" has found nothing"
+    echo "Are sniffjoke installed with the name \"sniffjokectl\" ?"
+    tput sgr0; exit;
+fi
+
+TCPDUMPBIN=`which tcpdump`
+if [ -z "$TCPDUMPBIN" ]; then
+    echo "\n${red}"
+    echo "\"which tcpdump\" has found nothing"
+    echo "tcpdump is required by this testing script, because the traffic need to be captured an analyzed"
+    echo "${white}"
+    tput sgr0; exit;
+fi
+
+CURLBIN=`which curl`
+if [ -z "$CURLBIN" ]; then
+    echo "\n${red}"
+    echo "\"which curl\" has found nothing"
+    echo "curl is required by this testing script, because are performed some HTML POSTs"
+    tput sgr0; exit;
+fi
 
 usage()
 {
@@ -57,22 +83,20 @@ by internal policy, router configuration and updating frequency
 by hand this script should accept these argument:
 
 OPTIONS:
-   -h      show this message
-   -w      working directory                                   (required)
-            (eg: /tmp/home/, where sniffjoke-autotest is running)
-   -u      testing URL                                         (required)
-   -n      username to downgrade privileges
-   -g      group to downgrade privileges
-   -i      server IPv4 format 000.000.000.000                  (required)
+   -h    show this message
+   -d    working directory                                   (default /usr/local/var/sniffjoke)
+   -u    testing URL                                         (required)
+   -i    server IPv4 format 000.000.000.000                  (required)
    
 EOF
 }
 
 start_option_test() 
 {
-    pushd `dirname $TOTEST` >/dev/null 2>&1
-    CMDPART=`basename $TOTEST`
-    OPCODE=`cat $CMDPART | cut -d '+' -f 2`
+    WORKDIR=`dirname $TOTEST`
+    mkdir -p $WORKDIR
+
+    OPCODE=`cat $TOTEST | cut -d '+' -f 2`
     OPTINDEX=`echo $OPCODE | tr -d [:alpha:]`
     OPTION_NAME=${OPTNAME[$OPTINDEX]}
 
@@ -80,117 +104,87 @@ start_option_test()
     echo "${blue}working dir\t${yellow}\t[$PWD]"
     echo "${blue}Option\t\t${yellow}\t[$OPCODE], [$OPTION_NAME]"
 
-    if [ ! -z "$UGPD" ]; then
-        echo "${blue}User Group\t${yellow}\t[$UGPD]"
-    fi
-    echo "${blue}Tested Option\t${yellow}\t[$CMDPART]${white}"
+    echo "${blue}Tested Option\t${yellow}\t[`cat $TOTEST`]${white}"
     # $SERVER is like http://www.delirandom.net/sjA/pe.php
 
-    mkdir $OPTION_NAME && cd $OPTION_NAME
     # now setup a temporary location, with the essential things required during tests:
 
-    echo "# this a temporary generated IP whitelist configuration by sj-iptcp-probe, part of sniffjoke-autotest" > ipwhitelist.conf
-    echo "# tested URL $SERVER, cmd line section $CMDPART, user/group $UGPD" >> ipwhitelist.conf
-    echo $SERVER_IP >> ipwhitelist.conf
+    echo "# this a temporary generated IP whitelist configuration by sj-iptcp-probe, part of sniffjoke-autotest" > $WORKDIR/ipwhitelist.conf
+    echo "# tested URL $SERVER, cmd line section $TOTEST" >> $WORKDIR/ipwhitelist.conf
+    echo $SERVER_IP >> $WORKDIR/ipwhitelist.conf
 
-    cp $WORKDIR/generic/sniffjoke-service.conf .
-    cp $WORKDIR/firstsimple/ttlfocusmap.bin .
-
-    # port-aggressivity.conf is not required
-    # iptcp-options.conf is excluded because are in testing mode
-    # plugins-enabled too
-    cd ..
+    cp generic/sniffjoke-service.conf $WORKDIR
+    cp $TEMPDIR/firstsimple/ttlfocusmap.bin $WORKDIR
 
     echo "${yellow}** Executing sniffjoke while testing $OPTION_NAME${white}"
-    echo "$SNIFFJOKEBIN --debug 6 $UGPD --start --dir $PWD --location $OPTION_NAME --only-plugin `cat $CMDPART` --no-udp --whitelist"
+    echo "$SNIFFJOKEBIN --dump-packets --debug 6 --start --dir $ROOTDIR --location $WORKDIR --only-plugin `cat $TOTEST` --no-udp --whitelist"
 
-    $SNIFFJOKEBIN --debug 6 $UGPD --start --dir $PWD --location $OPTION_NAME --only-plugin `cat $CMDPART` --no-udp --whitelist >/dev/null 2>&1
-    sleep 0.8
+    $SNIFFJOKEBIN --dump-packets --debug 6 --dir $ROOTDIR --location $WORKDIR --only-plugin `cat $TOTEST` --no-udp --whitelist >/dev/null 2>&1
+    sleep 0.1
 
-    $SNIFFJOKECLIBIN stat > dumpService_stat.log
+    $SNIFFJOKECLIBIN stat > $WORKDIR/dumpService_stat.log
     if [ "$?" -eq 0 ]; then
         echo "${green}sniffjoke is correctly running${white}"
     else
-        echo "${red}sniffjoke is not running - fatal error - remove $WORKDIR by hand${white}"
+        echo "${red}sniffjoke is not running - fatal error - remove $ROOTDIR by hand${white}"
         tput sgr0; exit
     fi
 
-    INTERFACE=`cat dumpService_stat.log | grep "hijacked interface:" | awk '{print $3}'`
-    LOCALIP=`cat dumpService_stat.log | grep "hijacked local" | awk '{print $4}'`
-    if [ -n "$INTERFACE" ]; then
-        echo "${yellow}** Starting tcpdump on $INTERFACE${white} ($LOCALIP)"
-    else
-        echo "${red}Unable to detect hijacked interface by dumpService_stat.log - fatal - remove $TEMPDIR/$LOCATION by hand${white}"
-        tput sgr0; exit
-    fi
-
-    echo "tcpdump -p -i $INTERFACE -U -w $PCAPS$OPTION_NAME"_"$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp"
-    tcpdump -p -i $INTERFACE -U -w $PCAPS$OPTION_NAME"_"$OPCODE.pcap -s 0 tcp port 80 and host $SERVER_IP or icmp >output.tcpdump 2>&1 &
-    sleep 0.2
     echo "${yellow}** Starting curl to post/echo at $SERVER ($SERVER_IP) under monitoring${white}"
-    curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o SPAREDATARECEIVED $SERVER >output.curl 2>&1
-    $SNIFFJOKECLIBIN info > dumpService_info.log
-    $SNIFFJOKECLIBIN ttlmap > dumpService_ttlmap.log
-    $SNIFFJOKECLIBIN quit > dumpService_quit.log
+    curl -s --retry 0 --max-time 10 -d "sparedata=$GENERATEDDATA" -o $WORKDIR/SPAREDATARECEIVED $SERVER > $WORKDIR/output.curl 2>&1
+
+    $SNIFFJOKECLIBIN info > $WORKDIR/dumpService_info.log
+    $SNIFFJOKECLIBIN ttlmap > $WORKDIR/dumpService_ttlmap.log
+    $SNIFFJOKECLIBIN quit > $WORKDIR/dumpService_quit.log
     if [ "$?" -eq 0 ]; then
         echo "${green}sniffjoke correctly closed${white}"
     else
-        echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $LOCATION by hand${white}"
+        echo "${red}sniffjoke crashed during the test: very bad line to read :( remove $WORKDIR by hand${white}"
         tput sgr0; exit
     fi
 
-    sleep 0.5
-    killall -HUP tcpdump
-    TCPNUMBER=`tcpdump -n -r $PCAPS$OPTION_NAME"_"$OPCODE.pcap tcp and greater 1000 and dst port 80 | wc -l`
-    recv_TCPNUMBER=`tcpdump -n -r $PCAPS$OPTION_NAME"_"$OPCODE.pcap tcp and greater 1000 and src port 80 | wc -l`
+    TCPNUMBER=`tcpdump -n -r $WORKDIR/packetsdump.pcap tcp and greater 1000 and dst port 80 | wc -l`
+    recv_TCPNUMBER=`tcpdump -n -r $WORKDIR/packetsdump.pcap tcp and greater 1000 and src port 80 | wc -l`
     
     # happen too often, ping and udp port unreach
     icmpexpr="icmp[icmptype] != icmp-echo and icmp[icmptype] != icmp-echoreply and icmp[icmptype] != icmp-unreach"
-    ICMPNUMBER=`tcpdump -n -r $PCAPS$OPTION_NAME"_"$OPCODE.pcap $icmpexpr | wc -l`
-
-    if [ -e "SPAREDATARECEIVED" ]; then
-        tr -d "\n" < SPAREDATARECEIVED > SPAREDATARECEIVED.clean
-        CHECKSUM=`md5sum "SPAREDATARECEIVED.clean" | cut -b -32`
+    ICMPNUMBER=`tcpdump -n -r $WORKDIR/packetsdump.pcap $icmpexpr | wc -l`
+    
+    if [ -e "$WORKDIR/SPAREDATARECEIVED" ]; then
+        tr -d "\n" < $WORKDIR/SPAREDATARECEIVED > $WORKDIR/SPAREDATARECEIVED.clean
+        CHECKSUM=`md5sum "$WORKDIR/SPAREDATARECEIVED.clean" | cut -b -32`
     else
-        touch ZERO_BYTE_FILE
+        touch $WORKDIR/ZERO_BYTE_FILE
         CHECKSUM="{unexistent-output-file}"
     fi
 
-    echo "$OPCODE\t$OPTION_NAME " >> $WORKDIR/options-collected-feedback
+    echo "$OPCODE\t$OPTION_NAME " >> $TEMPDIR/options-collected-feedback
     echo "$OPCODE\torig:$VERIFYSUM recv:$CHECKSUM TCPo:$TCPNUMBER TCPi:$recv_TCPNUMBER ICMP:$ICMPNUMBER " >> $WORKDIR/options-collected-feedback
 
     if [ $VERIFYSUM != $CHECKSUM ];
     then
-        touch CHECKSUM_DIFFER
+        touch $WORKDIR/CHECKSUM_DIFFER
     else
-        touch CHECKSUM_MATCH
+        touch $WORKDIR/CHECKSUM_MATCH
     fi
 
-    echo $TCPNUMBER > TCP
-    echo $recv_TCPNUMBER > TCP.echoed
-    echo $ICMPNUMBER > ICMP
-
-    popd >/dev/null 2>&1
+    echo $TCPNUMBER > $WORKDIR/TCP
+    echo $recv_TCPNUMBER > $WORKDIR/TCP.echoed
+    echo $ICMPNUMBER > $WORKDIR/ICMP
 }
 
-while getopts “hw:n:g:u:i:” OPTION
+while getopts “hd:u:i:” OPTION
 do
      case $OPTION in
          h)
              usage
              exit 1
              ;;
-         n)
-             USERNAME=$OPTARG
-             ;;
-         g)
-             GROUPNAME=$OPTARG
+         d)
+             ROOTDIR=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          u)
              SERVER=$OPTARG
-             ;;
-         w)
-             WORKDIR=`echo $OPTARG | sed 's#/*$##'` #removing eventual(s) trailing slash
              ;;
          i)
              SERVER_IP=$OPTARG
@@ -202,14 +196,14 @@ do
      esac
 done
 
-if [ -z "$SERVER" ] || [ -z "$WORKDIR" ] || [ -z "$SERVER_IP" ]; then
+if [ -z "$SERVER" ] || [ -z "$ROOTDIR" ] || [ -z "$SERVER_IP" ]; then
     echo "\n${red}"
     echo "no parameters supply: there is a reason if the user must invoke sniffjoke-autotest only! <g>${white}\n"
     usage
     tput sgr0; exit
 fi
 
-if [ -d "$WORKDIR/0" ]; then
+if [ -d "$ROOTDIR/0" ]; then
     echo "\n${yellow}"
     echo "This location has been defiled by the option probe. now goes with capitan sheppard to probe uranus"
     echo "${red}"
@@ -217,8 +211,7 @@ if [ -d "$WORKDIR/0" ]; then
     tput sgr0; exit
 fi
 
-UGPD="--user $USERNAME --group $GROUPNAME"
-cd $WORKDIR
+cd $ROOTDIR
 
 # check in the generic/iptcp-options.conf CONSTANTLY: these number will change every time
 #                                                     a new options is implemented
@@ -229,7 +222,7 @@ cd $WORKDIR
 SUPPORTED_OPTIONS_N=`seq 0 $OPTIONSAMOUNT`
 for opt in $SUPPORTED_OPTIONS_N; 
 do 
-    DIRNAME="optprobe/$opt"
+    DIRNAME="$TEMPDIR/optprobe/$opt"
     mkdir -p $DIRNAME
 
     # YES YES YES I know! is dirty this piece of code. gimme few time.
@@ -261,7 +254,7 @@ do
 done
 
 # generate the SPAREDATA file to send
-GENERATEDFILE="SPAREDATA_options"
+GENERATEDFILE=$TEMPDIR/"SPAREDATA_options"
 # the number '6' is not used in the test because sniffjoke, when runned
 # in debug mode (--debug 6) instead of filling the random segment of data
 # inject with random data, use the number '6'. Is useful when debugging 
@@ -276,10 +269,6 @@ $SNIFFJOKECLIBIN quit >/dev/null 2>&1
 
 OPTION_TO_TEST=`find . -name 'tested_cmdpart'`
 
-# create simple utility for whom must debug this painful hdr options bizzaro dance
-echo "#!/bin/sh\ntcpdump -vvv -s 0 -n -r \$1 | more\n" >> optprobe/view.sh
-chmod +x optprobe/view.sh
-
 for TOTEST in $OPTION_TO_TEST; 
 do
     echo "${blue}Test #$DONE: Option #`echo $TOTEST | tr -c -d [:digit:]` ($SERVER_IP)"
@@ -287,12 +276,12 @@ do
     DONE=$((DONE+1))
 done
 
-OPTOUTPUT="iptcp-options.conf"
+OPTOUTPUT=$TEMPDIR/"iptcp-options.conf"
 echo "# this is an autogenerated file by sniffjoke-autotest (sj-iptcpopt-test)" > $OPTOUTPUT
 echo "# wheneven your network router, provider or some malfunction is detected" >> $OPTOUTPUT
 echo "# you are invited to regenerate this file" >> $OPTOUTPUT
 echo "# this file describe which combos of IP/TCP options will be used in your location" >> $OPTOUTPUT
-echo "# iptcp-options.conf \"$VERSION\" for location: `basename $WORKDIR` using $SERVER_IP\n" >> $OPTOUTPUT
+echo "# iptcp-options.conf \"$VERSION\" for location: `basename $ROOTDIR` using $SERVER_IP\n" >> $OPTOUTPUT
 
 write_comment() { 
     echo "# option $checkcnt: $1" >> $OPTOUTPUT
@@ -302,10 +291,10 @@ write_comment() {
 # and this is one of the most skinny algorithm in Sj
 for checkcnt in `seq 0 $OPTIONSAMOUNT`; do
 
-    SINGLEDIR="optprobe/$checkcnt/SINGLE"
-    DOUBLEDIR="optprobe/$checkcnt/DOUBLE"
+    SINGLEDIR="$TEMPDIR/optprobe/$checkcnt/SINGLE"
+    DOUBLEDIR="$TEMPDIR/optprobe/$checkcnt/DOUBLE"
 
-    if [ -e "optprobe/$checkcnt/option_disable" ]; then
+    if [ -e "$TEMPDIR/optprobe/$checkcnt/option_disable" ]; then
         write_comment "Option disabled - used for tracking only "
         echo "$checkcnt,16" >> $OPTOUTPUT
         continue;
@@ -334,7 +323,7 @@ for checkcnt in `seq 0 $OPTIONSAMOUNT`; do
     if [ -e "$DOUBLEDIR/CHECKSUM_DIFFER" ]; then
         if [ $DOUBLE_icmp -ge 5 ]; 
         then
-            if [ -e "$SINGLEDIR/CHECKSUM_MATCH" ]; then
+            if [ -e "$TEMPDIR/$SINGLEDIR/CHECKSUM_MATCH" ]; then
                 write_comment "${OPTNAME[$checkcnt]} duplication causes icmp error, but as single is OK"
                 echo "$checkcnt,1" >> $OPTOUTPUT
             else

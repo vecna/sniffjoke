@@ -40,7 +40,6 @@ cmdline_opts(cmdline_opts)
 
     const char *selected_basedir = NULL, *selected_location = NULL;
 
-    /* generating referringdir and configfile (public) */
     if (cmdline_opts.basedir[0])
     {
         if (cmdline_opts.basedir[0] != '/')
@@ -79,7 +78,7 @@ cmdline_opts(cmdline_opts)
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
     snprintf(runcfg.base_dir, sizeof (runcfg.base_dir), "%s", selected_basedir);
-    snprintf(runcfg.working_dir, sizeof (runcfg.working_dir), "%s%s", selected_basedir, selected_location);
+    snprintf(runcfg.working_dir, sizeof (runcfg.working_dir), "%s/%s", selected_basedir, runcfg.location);
     snprintf(runcfg.pidabspath, sizeof (runcfg.pidabspath), "%s%s", selected_basedir, SJ_PIDFILE);
 
     /* checking if the option --location has sense: will be a typo! */
@@ -116,8 +115,6 @@ cmdline_opts(cmdline_opts)
         RUNTIME_EXCEPTION("location required: generate with sniffjoke-autotest");
     }
 #endif
-
-    snprintf(configfile, sizeof (configfile), "%s/%s", runcfg.working_dir, FILE_CONF);
 
     /* loadDiskConfiguration() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
     if (chdir(runcfg.working_dir))
@@ -156,7 +153,7 @@ cmdline_opts(cmdline_opts)
 
 UserConf::~UserConf(void)
 {
-    LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
+    LOG_DEBUG("[pid %d], config %s", getpid(), FILE_CONF);
 }
 
 /*
@@ -286,9 +283,9 @@ bool UserConf::loadDiskConfiguration(void)
 {
     FILE *loadstream = fopen(FILE_CONF, "r");
     if (loadstream == NULL)
-        LOG_ALL("configuration file %s not accessible: %s, using default", configfile, strerror(errno));
+        LOG_ALL("configuration file %s not accessible: %s, using default", FILE_CONF, strerror(errno));
     else
-        LOG_DEBUG("opening configuration file: %s", configfile);
+        LOG_DEBUG("opening configuration file: %s", FILE_CONF);
 
     parseMatch(runcfg.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
     parseMatch(runcfg.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
@@ -302,6 +299,7 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runcfg.use_blacklist, "blacklist", loadstream, cmdline_opts.use_blacklist, DEFAULT_USE_BLACKLIST);
     parseMatch(runcfg.active, "active", loadstream, cmdline_opts.active, DEFAULT_START_STOPPED);
     parseMatch(runcfg.go_foreground, "foreground", loadstream, cmdline_opts.go_foreground, DEFAULT_GO_FOREGROUND);
+    parseMatch(runcfg.dump_packets, "dump-packets", loadstream, cmdline_opts.dump_packets, DEFAULT_DUMP_PACKETS);
     parseMatch(runcfg.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
     parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, DEFAULT_ONLYPLUGIN);
     parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
@@ -445,6 +443,7 @@ bool UserConf::syncDiskConfiguration(void)
     written += dumpIfPresent(out, "blacklist", runcfg.use_blacklist, DEFAULT_USE_BLACKLIST);
     written += dumpIfPresent(out, "active", runcfg.active, DEFAULT_START_STOPPED);
     written += dumpIfPresent(out, "foreground", runcfg.go_foreground, DEFAULT_GO_FOREGROUND);
+    written += dumpIfPresent(out, "dump-packets", runcfg.dump_packets, DEFAULT_DUMP_PACKETS);
     written += dumpIfPresent(out, "debug", runcfg.debug_level, DEFAULT_DEBUG_LEVEL);
     written += dumpIfPresent(out, "max-ttl-probe", runcfg.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
 

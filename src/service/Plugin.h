@@ -106,7 +106,7 @@ public:
     void upgradeChainFlag(Packet *);
 
     /* Plugin is an abstract class */
-    virtual bool init(const scrambleMask &, char *, struct sjEnviron *) = 0;
+    virtual bool init(const scrambleMask &, char *, struct sjEnviron *);
 
     virtual bool condition(const Packet &, scrambleMask &);
     virtual void apply(const Packet &, scrambleMask &);

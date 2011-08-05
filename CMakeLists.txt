@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 PROJECT(sniffjoke)
 
@@ -8,7 +8,7 @@ SET(VERSION_MINOR 4)
 SET(SUFFIX "-1")
 
 SET(CMAKE_SHARED_LIBRARY_PREFIX "")
-SET( CMAKE_CXX_FLAGS "-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros ${CMAKE_CXX_FLAGS}")
 #SET(CMAKE_CXX_FLAGS "-O3 -ansi -pedantic -Wall -Wno-variadic-macros ${CMAKE_CXX_FLAGS}")
 
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/")
