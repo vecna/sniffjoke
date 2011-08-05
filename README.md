@@ -1,10 +1,25 @@
-# SniffJoke: transparent TCP connection scrambler 0.4.1
+# SniffJoke: transparent TCP connection scrambler 0.5-devel
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
+# TODO, for stabilize 0.5
+
+implement the new scrambling tech,
+integration of Janus in the "devel" branch,
+Janus stabilization and portability supports
+IP/TCP opt no more autotested
+Strong use of cache
+location self-recognition, location concept need to be linked with janus
+
+# Janus
+
+SniffJoke since the release 0.5 works only in conjunction with a Janus instance. Janus is a "traffic diverter" and should run in the same host where Sj is running, or in a different hosts.
+
+Since the 0.5 release, SniffJoke aim to became fully portable, and Janus provide network handling (and portability issue)
+
 # Requirements
 
-    cmake, gcc, iptables, tcpdump
+    cmake, gcc, iptables, tcpdump. 
 
 Suggested
 
