@@ -91,6 +91,7 @@ bool Debug::resetLevel(void)
 
 void Debug::log(uint8_t errorlevel, const char *funcname, const char *msg, ...)
 {
+    printf("log\n");
     if (errorlevel <= debuglevel)
     {
         FILE *output_flow;

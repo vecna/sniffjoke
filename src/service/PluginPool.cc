@@ -27,16 +27,16 @@
 
 extern auto_ptr<UserConf> userconf;
 
-PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char *plugOpt)
+PluginTrack::PluginTrack(const char *plugpath, uint8_t enabledScrambles, char *plugOpt)
 {
-    LOG_VERBOSE("constructor %s to %s option [%s]", __func__, plugabspath, plugOpt);
+    LOG_VERBOSE("constructor %s to %s option [%s]", __func__, plugpath, plugOpt);
 
     char enabledScramblesStr[LARGEBUF] = {0};
     void *swapPtr;
 
-    pluginHandler = dlopen(plugabspath, RTLD_NOW);
+    pluginHandler = dlopen(plugpath, RTLD_NOW);
     if (pluginHandler == NULL)
-        RUNTIME_EXCEPTION("unable to load plugin %s: %s", plugabspath, dlerror());
+        RUNTIME_EXCEPTION("unable to load plugin %s: %s", plugpath, dlerror());
 
     /* 
      * Coder: we had used 
@@ -51,26 +51,26 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
      * usage of memcpy between the pointer returned by dlsym and the function pointer (fp_Blah)
      */
 
-    swapPtr = forcedSymbolCopy("createPluginObj", plugabspath);
+    swapPtr = forcedSymbolCopy("createPluginObj", plugpath);
     memcpy( (void *)&fp_CreatePluginObj, &swapPtr, sizeof(void *));
 
-    swapPtr = forcedSymbolCopy("deletePluginObj", plugabspath);
+    swapPtr = forcedSymbolCopy("deletePluginObj", plugpath);
     memcpy( (void *)&fp_DeletePluginObj, &swapPtr, sizeof(void *));
 
-    swapPtr = forcedSymbolCopy("versionValue", plugabspath);
+    swapPtr = forcedSymbolCopy("versionValue", plugpath);
     memcpy( (void *)&fp_versionValue, &swapPtr, sizeof(void *));
 
 
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
     {
         RUNTIME_EXCEPTION("loading %s incorred version (%s) with SniffJoke %s",
-                          plugabspath, fp_versionValue(), SW_VERSION);
+                          plugpath, fp_versionValue(), SW_VERSION);
     }
 
     selfObj = fp_CreatePluginObj();
 
     if (selfObj->pluginName == NULL)
-        RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugabspath);
+        RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugpath);
 
     declaredScramble = enabledScrambles;
 
@@ -82,7 +82,7 @@ PluginTrack::PluginTrack(const char *plugabspath, uint8_t enabledScrambles, char
     snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
     LOG_ALL("Loading of %s: %s, scramble sets %s(%d), acquired option [%s]",
-            plugabspath, selfObj->pluginName,
+            plugpath, selfObj->pluginName,
             enabledScramblesStr, enabledScrambles,
             plugOpt != NULL ? plugOpt : "NONE");
 
@@ -174,9 +174,9 @@ PluginPool::~PluginPool(void)
     }
 }
 
-void PluginPool::importPlugin(const char *plugabspath, uint8_t enabledScramble, char *pOpt)
+void PluginPool::importPlugin(const char *plugpath, uint8_t enabledScramble, char *pOpt)
 {
-    pool.push_back(new PluginTrack(plugabspath, enabledScramble, pOpt));
+    pool.push_back(new PluginTrack(plugpath, enabledScramble, pOpt));
 }
 
 bool PluginPool::parseScrambleOpt(char *list_str, uint8_t *retval, char **opt)
@@ -250,7 +250,7 @@ void PluginPool::parseOnlyPlugin(void)
     char *comma;
     char *pluginOpt = NULL;
     char onlyplugin_cpy[MEDIUMBUF] = {0};
-    char plugabspath[MEDIUMBUF] = {0};
+    char plugpath[MEDIUMBUF] = {0};
     uint8_t pluginEnabledScrambles = 0;
 
     snprintf(onlyplugin_cpy, sizeof (onlyplugin_cpy), "%s", userconf->runcfg.onlyplugin);
@@ -261,12 +261,12 @@ void PluginPool::parseOnlyPlugin(void)
     *comma = 0x00;
     comma++;
 
-    snprintf(plugabspath, sizeof (plugabspath), "%splugins/%s.so", userconf->runcfg.base_dir, onlyplugin_cpy);
+    snprintf(plugpath, sizeof (plugpath), "%s/plugins/%s.so", userconf->runcfg.base_dir, onlyplugin_cpy);
 
     if (!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", userconf->runcfg.onlyplugin);
 
-    importPlugin(plugabspath, pluginEnabledScrambles, pluginOpt);
+    importPlugin(plugpath, pluginEnabledScrambles, pluginOpt);
 
     /* we keep track of enabled scramble to apply confusion on real good packets */
     globalEnabledScrambles |= pluginEnabledScrambles;
@@ -274,16 +274,13 @@ void PluginPool::parseOnlyPlugin(void)
 
 void PluginPool::parseEnablerFile(void)
 {
-    char enablerabspath[LARGEBUF] = {0};
-    char plugabspath[MEDIUMBUF] = {0};
+    char plugpath[MEDIUMBUF] = {0};
     char enabledScramblesStr[LARGEBUF] = {0};
     char enablerentry[LARGEBUF] = {0};
 
-    snprintf(enablerabspath, sizeof (enablerabspath), "%s/%s", userconf->runcfg.working_dir, FILE_PLUGINSENABLER);
-
-    FILE *plugfile = fopen(enablerabspath, "r");
+    FILE *plugfile = fopen(FILE_PLUGINSENABLER, "r");
     if (plugfile == NULL)
-        RUNTIME_EXCEPTION("unable to open in reading %s: %s", enablerabspath, strerror(errno));
+        RUNTIME_EXCEPTION("unable to open in reading %s: %s", FILE_PLUGINSENABLER, strerror(errno));
 
     uint8_t line = 0;
     do
@@ -321,7 +318,7 @@ void PluginPool::parseEnablerFile(void)
         *comma = 0x00;
         comma++;
 
-        snprintf(plugabspath, sizeof (plugabspath), "%splugins/%s.so", userconf->runcfg.base_dir, enablerentry);
+        snprintf(plugpath, sizeof (plugpath), "%splugins/%s.so", userconf->runcfg.base_dir, enablerentry);
 
         if (!parseScrambleOpt(comma, &enabledScrambles, &pluginOpt))
         {
@@ -332,7 +329,7 @@ void PluginPool::parseEnablerFile(void)
         snprintfScramblesList(enabledScramblesStr, sizeof (enabledScramblesStr), enabledScrambles);
 
         LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScramblesStr);
-        importPlugin(plugabspath, enabledScrambles, pluginOpt);
+        importPlugin(plugpath, enabledScrambles, pluginOpt);
 
         /* we keep track of enabled scramble to apply confusion on real good packets */
         globalEnabledScrambles |= enabledScrambles;

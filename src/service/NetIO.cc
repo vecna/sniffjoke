@@ -24,6 +24,7 @@
 #include "UserConf.h"
 
 #include <event.h>
+#include <pcap.h>
 
 extern auto_ptr<UserConf> userconf;
 
@@ -46,7 +47,7 @@ static void netio_recv_cb(struct bufferevent *sabe, void *arg)
         if (bufferevent_read(desc->buff_ev, &desc->pktrecv[0], desc->pktrecv.size()) != desc->pktrecv.size())
             goto netio_recv_error;
 
-        desc->conntrack->writepacket(desc->source, &desc->pktrecv[0], desc->pktrecv.size());
+        desc->netio->conntrack->writepacket(desc->source, &desc->pktrecv[0], desc->pktrecv.size());
 
         desc->pktrecv.clear();
         bufferevent_setwatermark(desc->buff_ev, EV_READ, sizeof (pktsize), sizeof (pktsize));
@@ -88,6 +89,8 @@ int NetIO::JanusConnect(uint16_t port)
                           userconf->runcfg.janus_address, port);
     }
 
+    LOG_ALL("correctly coonected to Janus at address %s on port %u", userconf->runcfg.janus_address, port);
+
     return sock;
 }
 
@@ -101,6 +104,19 @@ void NetIO::setupTUN()
     tunfd = JanusConnect(userconf->runcfg.janus_portout);
 }
 
+void NetIO::dumpPacket(Packet &pkt)
+{
+    vector<unsigned char> dumppkt(4 + pkt.pbuf.size(), 0);
+    *(uint32_t *)&dumppkt[0] = PF_INET;
+    memcpy(&dumppkt[4], &pkt.pbuf[0], pkt.pbuf.size());
+    struct pcap_pkthdr pph;
+    memset(&pph, 0, sizeof (pph));
+    gettimeofday(&pph.ts, NULL);
+    pph.caplen = 4 + pkt.pbuf.size();
+    pph.len = 4 + pkt.pbuf.size();
+    pcap_dump((unsigned char*)dumper, &pph, &dumppkt[0]);
+}
+
 void NetIO::write(void)
 {
     for (uint8_t i = 0; i < 2; ++i)
@@ -111,12 +127,16 @@ void NetIO::write(void)
             uint16_t size = htons(sendpkt->pbuf.size());
             bufferevent_write(netiodesc[i].buff_ev, &size, sizeof (size));
             bufferevent_write(netiodesc[i].buff_ev, &(sendpkt->pbuf[0]), sendpkt->pbuf.size());
+
+            if(dumper != NULL)
+                dumpPacket(*sendpkt);
+
             delete sendpkt;
         }
     }
 }
 
-NetIO::NetIO(TCPTrack *ct) :
+NetIO::NetIO(TCPTrack *ct, bool dump_packets) :
 conntrack(ct)
 {
     LOG_DEBUG("");
@@ -124,17 +144,35 @@ conntrack(ct)
     setupNET();
     setupTUN();
 
-    netiodesc[0].conntrack = ct;
+    netiodesc[0].netio = this;
     netiodesc[0].source = NETWORK;
     netiodesc[0].buff_ev = bufferevent_new(netfd, netio_recv_cb, NULL, netio_error_cb, &netiodesc[0]);
     bufferevent_setwatermark(netiodesc[0].buff_ev, EV_READ, 2, 2);
     bufferevent_enable(netiodesc[0].buff_ev, EV_READ);
 
-    netiodesc[1].conntrack = ct;
+    netiodesc[1].netio = this;
     netiodesc[1].source = TUNNEL;
     netiodesc[1].buff_ev = bufferevent_new(tunfd, netio_recv_cb, NULL, netio_error_cb, &netiodesc[1]);
     bufferevent_setwatermark(netiodesc[1].buff_ev, EV_READ, 2, 2);
     bufferevent_enable(netiodesc[1].buff_ev, EV_READ);
+
+    if(dump_packets)
+    {
+        LOG_ALL("dumping traffic to %s", FILE_PACKETSDUMP);
+
+        dumper = pcap_dump_open(pcap_open_dead(0, 1500), FILE_PACKETSDUMP);
+
+        if(dumper == NULL)
+        {
+            RUNTIME_EXCEPTION("unable to open packets dump file [%s]",
+                              strerror(errno));
+        }
+    }
+    else
+    {
+        dumper = NULL;
+    }
+
 }
 
 NetIO::~NetIO(void)
@@ -144,6 +182,11 @@ NetIO::~NetIO(void)
     close(netfd);
     close(tunfd);
 
+    LOG_ALL("correctly disconnected from Janus");
+
     for (uint8_t i = 0; i < 2; ++i)
         bufferevent_free(netiodesc[i].buff_ev);
+
+    if(dumper != NULL)
+        pcap_dump_close(dumper);
 }

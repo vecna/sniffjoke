@@ -84,7 +84,7 @@ corruption_t OptionPool::lineParser(FILE *flow, uint32_t optLooked)
     while (retval == CORRUPTUNASSIGNED);
 
     if (retval == CORRUPTUNASSIGNED)
-        RUNTIME_EXCEPTION("unable to found option index %u in the option config file", optLooked);
+        RUNTIME_EXCEPTION("unable to find option index %u in the option config file", optLooked);
 
     return retval;
 }

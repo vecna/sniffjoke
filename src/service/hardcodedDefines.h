@@ -50,8 +50,9 @@
                                          (http://freeworld.thc.org/root/phun/unmaintain.html)*/
 #define DEFAULT_GO_FOREGROUND   false
 #define DEFAULT_FORCE_RESTART   false
-#define DEFAULT_ONLYPLUGIN      ""
+#define DEFAULT_DUMP_PACKETS    false
 #define DEFAULT_DEBUG_LEVEL     2
+#define DEFAULT_ONLYPLUGIN      ""
 #define DEFAULT_MAX_TTLPROBE    35
 
 #define MTU                     1500
@@ -62,6 +63,7 @@
 #define FILE_CONF               "sniffjoke-service.conf"
 #define PATH_PLUGINS            "plugins"
 #define FILE_PLUGINSENABLER     "plugins-enabled.conf"
+#define FILE_PACKETSDUMP        "packetsdump.pcap"
 #define FILE_TTLFOCUSMAP        "ttlfocusmap.bin"
 #define FILE_IPWHITELIST        "ipwhitelist.conf"
 #define FILE_IPBLACKLIST        "ipblacklist.conf"
@@ -105,12 +107,6 @@
  */
 
 #define TUN_IF_NAME            "sniffjoke"
-/*
-  this has to be checked: ADSL has an MTU of 1492, but sometime will
-  not be understand by local interface reading
- */
-#define NET_IF_MTU              1492
-#define TUN_IF_MTU_DIFF         80
 
 #define PORTSNUMBER             65536
 
@@ -185,7 +181,7 @@
 #define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)
 
 #define HANDLE_ADMIN_SOCKET_TIMER               100000  /* microseconds (0.1 SECONDS) */
-#define ANALYZE_PACKET_QUEUE_TIMER              200     /* microseconds (0.2 MILLISECONDS) */
+#define ANALYZE_PACKET_QUEUE_TIMER              20000    /* microseconds (0.2 MILLISECONDS) */
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
 #define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
 #define SESSIONTRACK_EXPIRYTIME                 200     /* access expire time in seconds (5 MINUTES) */

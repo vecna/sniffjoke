@@ -26,12 +26,16 @@
 #include "Utils.h"
 #include "TCPTrack.h"
 
+#include <pcap.h>
+
+class NetIO;
+
 struct iodesc
 {
     struct bufferevent *buff_ev;
     source_t source;
     vector<unsigned char> pktrecv;
-    TCPTrack *conntrack;
+    NetIO *netio;
 };
 
 class NetIO
@@ -39,6 +43,8 @@ class NetIO
 public:
 
     TCPTrack *conntrack;
+
+    pcap_dumper_t *dumper;
 
     /* tunfd/netfd: file descriptor for I/O purpose */
     int tunfd;
@@ -49,13 +55,14 @@ public:
     int JanusConnect(uint16_t);
     void setupTUN();
     void setupNET();
+    void dumpPacket(Packet &);
 
     /*
      * networkdown_condition express if the network is down and sniffjoke must be interrupted
      *       --- but not killed!
      */
 
-    NetIO(TCPTrack *);
+    NetIO(TCPTrack *, bool);
     ~NetIO(void);
     void write(void);
 };
