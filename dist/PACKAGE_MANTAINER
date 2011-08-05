@@ -1,0 +1,51 @@
+This is a document written for the package mantainer
+
+The SniffJoke 0.4.x is intended only for Linux, and the package mantainer have some
+operations to check.
+
+As first: I will notice every package mantainer with a signed mail, when a new stable
+          release of sniffjoke has been uploaded in the site.
+
+Git release must not be intended as stable, almost until we don't split the two 
+branches in 'devel' and 'master'
+
+TROUBLE+POSSIBLE BUGS WHILE COMPILING:
+
+    Warnings because the option implement virtual classes has not destructor 
+    (under CentOS causes a verbose shit)
+
+    If you are running centos QA, tell to us eventually warnings
+
+TROUBLE+POSSIBLE BUGS WHILE INSTALLING:
+
+    The usage of different paths, unability to call the three executables, not
+    indexed man pages
+
+    sniffjoke-autotest use 'locate' inside, for found some relevant directory, if you
+    want to avoid, you should set the variable LOCSDIR= by hand, at the start of the
+    script
+
+TROUBLE+POSSIBLE BUGS WHILE RUNNING AUTOTEST:
+
+    Immediate exiting after the test of segmentation,INNOCENT
+    (try the same command line with --foreground option, and check the exception raised)
+
+    network error: unability to contact delirandom.net
+    (check if you can, with curl, reach the links hardcoded in sniffjoke-autotest)
+
+TROUBLE+POSSIBLE BUGS WHILE SJ IS RUNNING:
+
+    SniffJoke is broking all session
+    (try to use --location 'generic', now run in limitated but stable supports)
+
+    SniffJoke crashes
+    (use --debug 6 --foreground and check when the service is quitting)
+
+
+TROUBLE+POSSIBLE BUGS WITH THE SJ CLIENT:
+
+    Check if your architecture is little or big endian
+    (this will be a serious hardcoded bug by us!)
+
+    Check if the client connection is working with telnet
+    (because you should have incidentally some firewall rules)

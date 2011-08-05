@@ -169,7 +169,7 @@ start_test() {
         fi
 
         echo "${yellow}** Executing sniffjoke with $PLUGIN combo${white}"
-        echo "$SNIFFJOKEBIN --debug 6 --dir $ROOTDIR --location $WORKDIR --only-plugin $PLUGIN --no-udp --whitelist"
+        echo "$SNIFFJOKEBIN --start --debug 6 --dir $ROOTDIR --location $WORKDIR --only-plugin $PLUGIN --no-udp --whitelist"
         $SNIFFJOKEBIN --start --dump-packets --debug 6 --dir $ROOTDIR --location $WORKDIR --only-plugin $PLUGIN --no-udp --whitelist >/dev/null 2>&1
         sleep 0.1
 
@@ -289,6 +289,15 @@ if [ -z "$IPTCPPROBE" ]; then
     echo "\n${red}"
     echo "\"which sj-iptcpopt-probe\" has found nothing"
     echo "Are sniffjoke installed correctly ? sj-iptcpopt-probe and sniffjoke-autotest are installed together.."
+    tput sgr0; exit;
+fi
+
+JANUSBIN=`which janus`
+if [ -z "$JANUSBIN" ]; then
+    echo "\n${red}"
+    echo "\"which janus\" has found nothing"
+    echo "janus is required by sniffjoke"
+    echo "${white}"
     tput sgr0; exit;
 fi
 
@@ -445,7 +454,7 @@ GENERATEDDATA=`cat $GENERATEDFILE`
 VERIFYSUM=`md5sum $GENERATEDFILE | cut -b -32`
 
 echo "${yellow}** Starting Janus${white}"
-janus --mtu-fix -80
+$JANUSBIN --mtu-fix -80
 sleep 0.8
 
 # OK GUYS, SINCE HERE WE'D SETUP THE ENVIRONMENT, NOW START THE THREE SECTION Of TESTS:
@@ -495,7 +504,7 @@ echo "# this plugins-enabled.conf \"$VERSION\" its for location: $LOCATION using
 
 success_count=0
 TAR_EXCLUSION=""
-for PLUGIN in `ls $TEMPDIR/*/working_scrambles 2>/dev/null | sed -e 's/\/working_scrambles//'` ; do
+for PLUGIN in `ls $TEMPDIR/*/working_scrambles 2>/dev/null | sed -n 's/.*\/\(.*\)\/.*$/\1/p'` ; do
     SCRAMBLES=`cat $TEMPDIR/$PLUGIN/working_scrambles | tr " " "," | tr [:cntrl:] ","`
     echo "$PLUGIN,$SCRAMBLES" | sed -es/,\$// >> $PeL
     success_count=$(($success_count+1));
