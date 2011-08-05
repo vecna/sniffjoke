@@ -28,7 +28,7 @@
 
 extern auto_ptr<UserConf> userconf;
 
-PluginTrack::PluginTrack(const char *plugabspath, scrambleMask &pluginSupportedScr, char *plugOpt)
+PluginTrack::PluginTrack(const char *plugpath, scrambleMask &pluginSupportedScr, char *plugOpt)
 {
     LOG_VERBOSE("constructor %s to %s option [%s]", __func__, plugpath, plugOpt);
 
@@ -80,7 +80,7 @@ PluginTrack::PluginTrack(const char *plugabspath, scrambleMask &pluginSupportedS
         declaredOpt = NULL;
 
     LOG_ALL("Loading of %s: %s, scramble sets %s, acquired option [%s]",
-            plugabspath, selfObj->pluginName, configuredScramble.debug(), 
+            plugpath, selfObj->pluginName, configuredScramble.debug(), 
             plugOpt != NULL ? plugOpt : "NONE"
             );
 }
@@ -171,9 +171,9 @@ PluginPool::~PluginPool(void)
     }
 }
 
-void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry, scrambleMask &configuredScramble, char *pOpt)
+void PluginPool::importPlugin(const char *plugpath, scrambleMask &configuredScramble, char *pOpt)
 {
-    pool.push_back(new PluginTrack(plugabspath, configuredScramble, pOpt));
+    pool.push_back(new PluginTrack(plugpath, configuredScramble, pOpt));
 }
 
 bool PluginPool::parseScrambleOpt(char *list_str, scrambleMask *retval, char **opt)
@@ -255,7 +255,6 @@ void PluginPool::parseOnlyPlugin(void)
 
 void PluginPool::parseEnablerFile(void)
 {
-    char enablerabspath[LARGEBUF] = {0};
     char plugpath[MEDIUMBUF] = {0};
     char enablerentry[LARGEBUF] = {0};
 
@@ -308,7 +307,7 @@ void PluginPool::parseEnablerFile(void)
         }
 
         LOG_VERBOSE("importing plugin [%s] enabled scrambles %s", enablerentry, enabledScrambles.debug());
-        importPlugin(plugpath, enablerentry, enabledScrambles, pluginOpt);
+        importPlugin(plugpath, enabledScrambles, pluginOpt);
 
         /* we keep track of enabled scramble to apply confusion on real good packets */
         globalEnabledScrambles += enabledScrambles;

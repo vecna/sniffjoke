@@ -131,7 +131,7 @@ int main(int argc, char **argv)
     int charopt;
     uint8_t i;
     char *port;
-    uint16_t checked_port[2] = {0};
+    int32_t checked_port[2] = {0};
     while ((charopt = getopt_long(argc, argv, "i:o:a:j:ctlwbsxrd:up:m:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
                 *port = 0x00;
                 checked_port[0] = atoi(++port);
 
-                if (checked_port[0] >= PORTSNUMBER || checked_port[0] < 0)
+                if (checked_port[0] >= PORTSNUMBER || checked_port[0] < 0 )
                     goto sniffjoke_help;
 
                 useropt.admin_port = checked_port[0];
@@ -168,7 +168,9 @@ int main(int argc, char **argv)
 
                     if ((checked_port[i] >= PORTSNUMBER || checked_port[i] < 0))
                         goto sniffjoke_help;
-                } else break;
+                } 
+                else 
+                    break;
             }
             if(i == 2)
             {

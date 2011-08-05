@@ -52,7 +52,7 @@ private:
 class PluginPool
 {
 private:
-    void importPlugin(const char *, const char *, scrambleMask &, char *);
+    void importPlugin(const char *, scrambleMask &, char *);
     void parseOnlyPlugin(void);
     void parseEnablerFile(void);
     bool parseScrambleOpt(char *, scrambleMask *, char **);
