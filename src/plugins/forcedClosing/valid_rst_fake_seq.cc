@@ -48,17 +48,17 @@ class valid_rst_fake_seq : public Plugin
 private:
     pluginLogHandler pLH;
 
-   /* every hack in "forcedClosing" will be useful "few times in a session", not for the
-    * entire duration of the connections: for this reason is kept a cache record to count every 
-    * time a condition is returned "true"
-    *
-    * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
-    * to be true the condition use an inverted probability, until reach MAX, than will never be 
-    * injected again.
-    *
-    * this is implemented in the condition check and the useful generic method are implemented
-    * in Plugin class, explanation useful will be found in ../PluginList.txt
-    */
+    /* every hack in "forcedClosing" will be useful "few times in a session", not for the
+     * entire duration of the connections: for this reason is kept a cache record to count every
+     * time a condition is returned "true"
+     *
+     * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
+     * to be true the condition use an inverted probability, until reach MAX, than will never be
+     * injected again.
+     *
+     * this is implemented in the condition check and the useful generic method are implemented
+     * in Plugin class, explanation useful will be found in ../PluginList.txt
+     */
     PluginCache OFFRSTcache;
 
 public:
@@ -93,11 +93,11 @@ public:
             return false;
 
         pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
-                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest),
                         origpkt.tcppayloadlen, origpkt.pbuf.size());
 
         /* preliminar condition, TCP and fragment already checked */
-        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin );
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
 
         if (!ret)
             return false;
@@ -105,18 +105,18 @@ public:
         /* cache checking, using the methods provide in the section 'forcedClosing' of Plugin.cc */
         cacheRecord* matchRecord;
 
-        if((matchRecord = verifyIfCache(&(tupleMatch), &OFFRSTcache, origpkt)) != NULL)
+        if ((matchRecord = verifyIfCache(&(tupleMatch), &OFFRSTcache, origpkt)) != NULL)
         {
             uint32_t *injectedYet = (uint32_t*)&(matchRecord->cached_data[0]);
 
             /* if is present, inverseProp, return true with decreasing probability up to MAX_INJ */
             ret = inverseProportionality(*injectedYet, MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
 
-            if(ret)
+            if (ret)
             {
                 ++(*injectedYet);
 
-                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet, 
+                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet,
                                 inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
                                 ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
             }
@@ -132,7 +132,7 @@ public:
         pkt->randomizeID();
 
         pkt->tcp->rst = 1;
-        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (65535 * 5) + (random() % 65535) );
+        pkt->tcp->seq = htonl(ntohl(pkt->tcp->seq) + (65535 * 5) + (random() % 65535));
         pkt->tcp->window = htons((uint16_t) (-1));
 
         /* tcp->ack and tcp->ack_seq is kept untouched */
@@ -162,7 +162,7 @@ extern "C" Plugin* createPluginObj()
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-    delete who;
+    delete (valid_rst_fake_seq *) who;
 }
 
 extern "C" const char *versionValue()

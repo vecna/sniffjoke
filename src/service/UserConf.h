@@ -42,10 +42,11 @@ struct sj_cmdline_opts
     char location[MEDIUMBUF];
 
     /* START OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
-    char user[MEDIUMBUF];
-    char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
+    char janus_address[MEDIUMBUF];
+    uint16_t janus_portin;
+    uint16_t janus_portout;
     bool no_tcp;
     bool no_udp;
     bool chaining;
@@ -56,7 +57,6 @@ struct sj_cmdline_opts
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
-    char gw_mac_str[SMALLBUF];
     /* END OF COMMON PART WITH sj_config THAT WILL BE SAVED IN CONF FILE */
 
     bool force_restart;
@@ -72,14 +72,17 @@ struct sj_config
     float MAGIC; /* integrity check for saved binary configuration */
     char version[SMALLBUF]; /* SW_VERSION from hardcoded-defines.h */
 
+    char base_dir[LARGEBUF];
     char working_dir[LARGEBUF];
+    char pidabspath[LARGEBUF];
     char location[MEDIUMBUF];
 
     /* START OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
-    char user[MEDIUMBUF];
-    char group[MEDIUMBUF];
     char admin_address[MEDIUMBUF];
     uint16_t admin_port;
+    char janus_address[MEDIUMBUF];
+    uint16_t janus_portin;
+    uint16_t janus_portout;
     bool no_tcp;
     bool no_udp;
     bool chaining;
@@ -90,39 +93,17 @@ struct sj_config
     uint16_t debug_level;
     char onlyplugin[MEDIUMBUF];
     uint16_t max_ttl_probe;
-    char gw_mac_str[SMALLBUF];
     /* END OF COMMON PART WITH sj_cmdline_opts THAT WILL BE SAVED IN CONF FILE */
 
     /* mangling policies */
     uint16_t portconf[PORTSNUMBER];
     IPListMap *whitelist;
     IPListMap *blacklist;
-
-    /* system informations, autodetected */
-    char gw_ip_addr[SMALLBUF];
-    char gw_mac_addr[ETH_ALEN];
-    char net_iface_name[SMALLBUF];
-    /* char tun_iface_name[SMALLBUF] statically know as TUN_IF_NAME */
-    char net_iface_ip[SMALLBUF];
-    char tun_iface_ip[SMALLBUF];
-    uint16_t net_iface_mtu;
-    uint16_t tun_iface_mtu;
-
 };
 
 class UserConf
 {
 private:
-
-    /* network configuration autodetect support functions */
-    void autodetectLocalInterface(void);
-    void autodetectLocalInterfaceIPAddress(void);
-    void autodetectGWIPAddress(void);
-    void autodetectGWMACAddress(void);
-    void autodetectFirstAvailableTunnelInterface(void);
-
-    /* network configuration, autodetect utilities */
-    void importMacAddr(const char*);
 
     void parseOnlyParam(const char*);
 

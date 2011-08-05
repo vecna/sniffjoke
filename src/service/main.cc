@@ -27,12 +27,10 @@
 #include <getopt.h>
 #include <stdint.h>
 
-static auto_ptr<SniffJoke> sniffjoke;
-
 /* defined here, is needed by SniffJoke.cc */
 void sigtrap(int signal)
 {
-    sniffjoke->alive = false;
+    event_loopbreak();
 }
 
 static void sj_version(const char *pname)
@@ -45,8 +43,6 @@ static void sj_version(const char *pname)
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
     " --dir <name>\t\tspecify the base directory where the location reside [default: %s]\n"\
     "\t\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
-    " --user <username>\tdowngrade priviledge to the specified user [default: %s]\n"\
-    " --group <groupname>\tdowngrade priviledge to the specified group [default: %s]\n"\
     " --no-tcp\t\tdisable tcp mangling [default: %s]\n"\
     " --no-udp\t\tdisable udp mangling [default: %s]\n"\
     " --whitelist\t\tinject evasion packets only in the specified ip addresses\n"\
@@ -56,11 +52,11 @@ static void sj_version(const char *pname)
     " --debug <level %d-%d>\tset verbosity level [default: %d]\n"\
     "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\
     " --foreground\t\trunning in foreground [default:background]\n"\
-    " --admin <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
+    " --admin <ip>[:port]\tspecify administration IP address/port [default: %s:%d]\n"\
+    " --janus <ip>[:in:out]\tspecify janus IP address/ports [default: %s:%d:%d]\n"\
     " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
-    " --gw-mac-addr\t\tspecify default gateway mac address [default: is autodetected]\n"\
     " --version\t\tshow sniffjoke version\n"\
-    " --help\t\t\tshow this help\n\n"\
+   " --help\t\t\tshow this help\n\n"\
     "\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sj_help(const char *pname)
@@ -69,26 +65,19 @@ static void sj_help(const char *pname)
            pname,
            DEFAULT_LOCATION,
            WORK_DIR,
-           DEFAULT_USER, DEFAULT_GROUP,
            DEFAULT_NO_TCP ? "tcp not mangled" : "tcp mangled",
            DEFAULT_NO_UDP ? "udp not mangled" : "udp mangled",
            DEFAULT_START_STOPPED ? "present" : "not present",
            DEFAULT_CHAINING ? "enabled" : "disabled",
            SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
            SUPPRESS_LEVEL, ALL_LEVEL, VERBOSE_LEVEL, DEBUG_LEVEL, SESSION_LEVEL, PACKET_LEVEL,
-           DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
+           DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT,
+           DEFAULT_JANUS_ADDRESS, DEFAULT_JANUS_PORTIN, DEFAULT_JANUS_PORTOUT
            );
 }
 
 int main(int argc, char **argv)
 {
-
-    if (getuid() || geteuid())
-    {
-        printf("SniffJoke is too dangerous to be run by an humble user; go to fetch daddy root, now!\n");
-        exit(1);
-    }
-
     /*
      * set the default values in the configuration struct
      */
@@ -97,6 +86,8 @@ int main(int argc, char **argv)
 
     /* ordered initialization of all boolean/uint values to the default */
     useropt.admin_port = DEFAULT_ADMIN_PORT;
+    useropt.janus_portin = DEFAULT_JANUS_PORTIN;
+    useropt.janus_portout = DEFAULT_JANUS_PORTOUT;
     useropt.chaining = DEFAULT_CHAINING;
     useropt.no_tcp = DEFAULT_NO_TCP;
     useropt.no_udp = DEFAULT_NO_UDP;
@@ -116,9 +107,8 @@ int main(int argc, char **argv)
     struct option sj_option[] = {
         { "dir", required_argument, NULL, 'i'},
         { "location", required_argument, NULL, 'o'},
-        { "user", required_argument, NULL, 'u'},
-        { "group", required_argument, NULL, 'g'},
         { "admin", required_argument, NULL, 'a'},
+        { "janus", required_argument, NULL, 'j'},
         { "chain", no_argument, NULL, 'c'},
         { "no-tcp", no_argument, NULL, 't'},
         { "no-udp", no_argument, NULL, 'l'},
@@ -130,14 +120,16 @@ int main(int argc, char **argv)
         { "debug", required_argument, NULL, 'd'},
         { "only-plugin", required_argument, NULL, 'p'}, /* not documented in --help */
         { "max-ttl-probe", required_argument, NULL, 'm'}, /* not documented too */
-        { "gw-mac-addr", required_argument, NULL, 'e'},
         { "version", no_argument, NULL, 'v'},
         { "help", no_argument, NULL, 'h'},
         { NULL, 0, NULL, 0}
     };
 
     int charopt;
-    while ((charopt = getopt_long(argc, argv, "i:o:u:g:a:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
+    uint8_t i;
+    char *port;
+    uint16_t checked_port[2] = {0};
+    while ((charopt = getopt_long(argc, argv, "i:o:a:j:ctlwbsxrd:p:m:vh", sj_option, NULL)) != -1)
     {
         switch (charopt)
         {
@@ -149,24 +141,36 @@ int main(int argc, char **argv)
         case 'o':
             snprintf(useropt.location, sizeof (useropt.location), "%s", optarg);
             break;
-        case 'u':
-            snprintf(useropt.user, sizeof (useropt.user), "%s", optarg);
-            break;
-        case 'g':
-            snprintf(useropt.group, sizeof (useropt.group), "%s", optarg);
-            break;
         case 'a':
             snprintf(useropt.admin_address, sizeof (useropt.admin_address), "%s", optarg);
-            char* port;
             if ((port = strchr(useropt.admin_address, ':')) != NULL)
             {
                 *port = 0x00;
-                int checked_port = atoi(++port);
+                checked_port[0] = atoi(++port);
 
-                if (checked_port >= PORTSNUMBER || checked_port < 0)
+                if (checked_port[0] >= PORTSNUMBER || checked_port[0] < 0)
                     goto sniffjoke_help;
 
-                useropt.admin_port = (uint16_t) checked_port;
+                useropt.admin_port = checked_port[0];
+            }
+            break;
+        case 'j':
+            snprintf(useropt.janus_address, sizeof (useropt.janus_address), "%s", optarg);
+            port = strtok(useropt.janus_address, ":");
+            for(i = 0; i < 2; ++i)
+            {
+                if ((port = strtok(NULL, ":")) != NULL)
+                {
+                    checked_port[i] = atoi(port);
+
+                    if ((checked_port[i] >= PORTSNUMBER || checked_port[i] < 0))
+                        goto sniffjoke_help;
+                } else break;
+            }
+            if(i == 2)
+            {
+                useropt.janus_portin = checked_port[0];
+                useropt.janus_portout = checked_port[1];
             }
             break;
         case 'c':
@@ -201,9 +205,6 @@ int main(int argc, char **argv)
         case 'p':
             snprintf(useropt.onlyplugin, sizeof (useropt.onlyplugin), "%s", optarg);
             break;
-        case 'e':
-            snprintf(useropt.gw_mac_str, sizeof (useropt.gw_mac_str), "%s", optarg);
-            break;
         case 'm':
             useropt.max_ttl_probe = atoi(optarg);
             break;
@@ -221,19 +222,15 @@ sniffjoke_help:
         }
     }
 
-    init_random();
-
     try
     {
-        sniffjoke = auto_ptr<SniffJoke > (new SniffJoke(useropt));
-        sniffjoke->run();
+        SniffJoke sniffjoke(useropt);
+        sniffjoke.run();
 
     }
     catch (runtime_error &exception)
     {
         LOG_ALL("[runtime exception] going shutdown: %s", exception.what());
-
-        sniffjoke.reset();
         return 0;
     }
 }

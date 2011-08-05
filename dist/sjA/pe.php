@@ -9,7 +9,7 @@
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+ *   (at your option) any later version.in
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,38 +20,19 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SJ_PROCESS_H
-#define SJ_PROCESS_H
+<?php
 
-#include "Utils.h"
-#include "UserConf.h"
+if(isset($_POST['sparedata'])) {
+        for($x = 0; $x < strlen($_POST['sparedata']); $x++)
+        {
+                if( is_numeric($_POST['sparedata'][$x]) )
+                        continue;
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <pwd.h>
-#include <grp.h>
+                echo "bad value in $x offset";
+                exit;
+        }
+        echo $_POST['sparedata'];
+}
 
-class Process
-{
-private:
-    sigset_t sig_nset;
-    sigset_t sig_oset;
+?>
 
-public:
-    Process(void);
-    ~Process(void);
-
-    pid_t readPidfile(void);
-    void writePidfile(void);
-    void unlinkPidfile(void);
-
-    void sigtrapSetup(void);
-    void sigtrapEnable(void);
-    void sigtrapDisable(void);
-
-    void changedir(void);
-    void background(void);
-    void isolation(void);
-};
-
-#endif /* SJ_PROCESS_H */

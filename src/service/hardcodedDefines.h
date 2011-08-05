@@ -36,10 +36,11 @@
 /* Sniffjoke defaults config values */
 #define DEFAULT_DIR             INSTALL_STATEDIR
 #define DEFAULT_LOCATION        "generic"
-#define DEFAULT_USER            "nobody"
-#define DEFAULT_GROUP           "nogroup"
 #define DEFAULT_ADMIN_ADDRESS   "127.0.0.1"
 #define DEFAULT_ADMIN_PORT      8844
+#define DEFAULT_JANUS_ADDRESS   "127.0.0.1"
+#define DEFAULT_JANUS_PORTIN    30201
+#define DEFAULT_JANUS_PORTOUT   10203
 #define DEFAULT_CHAINING        false
 #define DEFAULT_NO_TCP          false
 #define DEFAULT_NO_UDP          false
@@ -52,16 +53,14 @@
 #define DEFAULT_ONLYPLUGIN      ""
 #define DEFAULT_DEBUG_LEVEL     2
 #define DEFAULT_MAX_TTLPROBE    35
-#define DEFAULT_GW_MAC_ADDR     ""
 
-/* this is not configurabile anyway in some (wrong) local network the
- * class 1.0.0.0/8 is used and should be require change this puppet-IP */
-#define DEFAULT_FAKE_IPADDR     "1.198.10.5"
+#define MTU                     1500
 
 /* configuration dirs/files */
 #define WORK_DIR                INSTALL_STATEDIR
-#define SJ_PIDFILE              "/var/run/sniffjoke.pid"
+#define SJ_PIDFILE              "sniffjoke.pid"
 #define FILE_CONF               "sniffjoke-service.conf"
+#define PATH_PLUGINS            "plugins"
 #define FILE_PLUGINSENABLER     "plugins-enabled.conf"
 #define FILE_TTLFOCUSMAP        "ttlfocusmap.bin"
 #define FILE_IPWHITELIST        "ipwhitelist.conf"
@@ -185,7 +184,8 @@
 /* the last code + 1 */
 #define SUPPORTED_OPTIONS           (LAST_TCPOPT + 1)
 
-#define NETIOBURSTSIZE                          10      /* 10 CYCLES OF I/O (10 in + 10 out pkts max) */
+#define HANDLE_ADMIN_SOCKET_TIMER               100000  /* microseconds (0.1 SECONDS) */
+#define ANALYZE_PACKET_QUEUE_TIMER              200     /* microseconds (0.2 MILLISECONDS) */
 #define SESSIONTRACKMAP_MANAGE_ROUTINE_TIMER    300     /* (5 MINUTES */
 #define TTLFOCUSMAP_MANAGE_ROUTINE_TIMER        3600    /* (1 HOUR) */
 #define SESSIONTRACK_EXPIRYTIME                 200     /* access expire time in seconds (5 MINUTES) */

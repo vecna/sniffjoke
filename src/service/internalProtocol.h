@@ -47,27 +47,20 @@ struct command_ret
 };
 
 /* this is the WHO value in SJStatus */
-#define STAT_ACTIVE         1
-#define STAT_DEBUGL         2
-#define STAT_LOCAT          3
-#define STAT_MACGW          4
-#define STAT_GWADDR         5
-#define STAT_NETIFACENAME   6
-#define STAT_NETIFACEIP     7
-#define STAT_NETIFACEMTU    8
-#define STAT_TUNIFACENAME   9
-#define STAT_TUNIFACEIP     10
-#define STAT_TUNIFACEMTU    11
-#define STAT_BINDA          12
-#define STAT_BINDP          13
-#define STAT_USER           14
-#define STAT_GROUP          15
-#define STAT_CHAINING       16
-#define STAT_NO_TCP         17
-#define STAT_NO_UDP         18
-#define STAT_WHITELIST      19
-#define STAT_BLACKLIST      20
-#define STAT_ONLYP          21
+#define STAT_ACTIVE          1
+#define STAT_DEBUGL          2
+#define STAT_LOCAT           3
+#define STAT_BINDA           4
+#define STAT_BINDP           5
+#define STAT_CHAINING        6
+#define STAT_NO_TCP          7
+#define STAT_NO_UDP          8
+#define STAT_WHITELIST       9
+#define STAT_BLACKLIST      10
+#define STAT_ONLYP          11
+#define STAT_JANUSA         12
+#define STAT_JANUSPIN       13
+#define STAT_JANUSPOUT      14
 
 /* and in SJStatus are used this struct for describe the single block */
 struct single_block

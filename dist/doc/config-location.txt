@@ -48,8 +48,8 @@ can work in every network.
 The script takes as argument the location name, creates the new directory /usr/local/var/sniffjoke/$NEWLOCATION
 and prepares all the related configuration files inside.
 
-When you need to use a specific locaton, you have to run sniffjoke with --location $LOCATIONNAME and
-the related directory will be used for the chroot; from that time on sniffjoke will use that directory as
+When you need to use a specific location, you have to run sniffjoke with --location $LOCATIONNAME and
+sniffjoke will run inside it; from that time on sniffjoke will use that directory as
 storage dir for logs and caches.
 
 * WHAT THE MEANING OF EVERY SINGLE CONFIG FILE ?
@@ -94,19 +94,22 @@ active
     active in hijacking/injection or start and silently make mitm in
     the network without packet injection and session tracking
     default: not present
-user
-    specify the username to use for the privileges downgrade after the chroot
-    default: nobody
-    suggested: it's suggested to a packet maintainer to create a sniffjoke user
-group
-    the same as for user
-    default: nogroup
-    suggested: it's suggested to a packet maintainer to create a sniffjoke group
+
+janus-address
+    is the ip address that sniffjoke will use to connect to Janus
+
+janus-port-in
+    is the port where janus delivers incoming traffic to be mangled by sniffjoke
+
+janus-port-out
+    is the port where janus delivers outgoing traffic to be mangled by sniffjoke
+
 management-address
     is the ip address where sniffjoke will bind the administrative socket,
     it's a required configuration parameter if you plan to use sniffjoke in a gateway
     and you want to manage the service by a different host
     default: 127.0.0.1
+
 management-port
     the UDP port for the administrative traffic
     default: 8844
@@ -116,7 +119,6 @@ management-port
 
 debug
     the verbosity level used by sniffjoke:
- 0: suppress log, 1: common, 2: verbose, 3: debug, 4: session 5: packets
 
     0: suppress log, no one line are provided
     1: common, startup info and error reporting, generated the file sniffjoke.log inside

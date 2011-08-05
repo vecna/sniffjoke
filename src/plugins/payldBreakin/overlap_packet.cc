@@ -67,25 +67,25 @@ private:
         Packet * ret = new Packet(pkt);
 
         ret->randomizeID();
-        ret->tcp->seq = htonl( ntohl(ret->tcp->seq) + seqOff );
+        ret->tcp->seq = htonl(ntohl(ret->tcp->seq) + seqOff);
 
         pLH.completeLog("creation of %d: seqOff %d (%u) new len %d + cache (%s) push (%s) ack (%s)",
                         ret->SjPacketId, seqOff, ntohl(ret->tcp->seq), newTcplen,
                         cache ? "YES" : "NO", psh ? "YES" : "NO", ackkeep ? "YES" : "NO");
 
-        if(newTcplen != ret->tcppayloadlen)
+        if (newTcplen != ret->tcppayloadlen)
         {
             ret->tcppayloadResize(newTcplen);
             memset_random(ret->tcppayload, newTcplen);
         }
 
-        if(!psh)
+        if (!psh)
         {
             ret->tcp->psh = 0;
         }
 
         /* this is checked in every generated packet, to avoid ack duplications */
-        if(!ackkeep)
+        if (!ackkeep)
         {
             ret->tcp->ack = 0;
             ret->tcp->ack_seq = 0;
@@ -96,18 +96,18 @@ private:
 //        ret->choosableScramble = SCRAMBLE_INNOCENT;
         upgradeChainFlag(ret);
 
-        if(cache)
+        if (cache)
         {
             uint32_t expectedAck = htonl(ntohl(ret->tcp->seq) + newTcplen);
 
-            pLH.completeLog("+ expected Ack %u added to the cache (orig seq %u)", ntohl(expectedAck), ntohl(ret->tcp->seq) );
-            
-            OVRLAPcache.add(*ret, (const unsigned char *)&expectedAck, sizeof(expectedAck));
+            pLH.completeLog("+ expected Ack %u added to the cache (orig seq %u)", ntohl(expectedAck), ntohl(ret->tcp->seq));
+
+            OVRLAPcache.add(*ret, (const unsigned char *) &expectedAck, sizeof (expectedAck));
         }
         else
         {
             uint32_t dbg = (ntohl(ret->tcp->seq) + newTcplen);
-            pLH.completeLog("? debug: orig seq %u ack_seq %u pushed len %d (w/out cache)", ntohl(ret->tcp->seq), (dbg), newTcplen );
+            pLH.completeLog("? debug: orig seq %u ack_seq %u pushed len %d (w/out cache)", ntohl(ret->tcp->seq), (dbg), newTcplen);
         }
 
         return ret;
@@ -140,7 +140,7 @@ public:
 
     virtual void mangleIncoming(Packet &inpkt)
     {
-        if( ntohs(inpkt.tcp->source) != 80 )
+        if (ntohs(inpkt.tcp->source) != 80)
             return;
 
         cacheRecord *acked = OVRLAPcache.check(&ackedseqMatch, inpkt);
@@ -164,14 +164,14 @@ public:
 
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
-/*
-        pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d seq %u",
-                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
-                        origpkt.tcppayloadlen, origpkt.pbuf.size(), ntohl(origpkt.tcp->seq) );
-*/
+        /*
+                pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d seq %u",
+                                ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest),
+                                origpkt.tcppayloadlen, origpkt.pbuf.size(), ntohl(origpkt.tcp->seq) );
+         */
         /* preliminar condition, TCP and fragment already checked */
-        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && 
-                     origpkt.tcppayload != NULL && origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst &&
+                origpkt.tcppayload != NULL && origpkt.tcppayloadlen > MIN_PACKET_OVERTRY);
 
         if (!ret)
             return false;
@@ -203,14 +203,12 @@ public:
 
 extern "C" Plugin* createPluginObj()
 {
-
     return new overlap_packet();
 }
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-
-    delete who;
+    delete (overlap_packet *) who;
 }
 
 extern "C" const char *versionValue()

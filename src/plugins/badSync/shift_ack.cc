@@ -96,7 +96,7 @@ extern "C" Plugin* createPluginObj()
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-    delete who;
+    delete (shift_ack *) who;
 }
 
 extern "C" const char *versionValue()

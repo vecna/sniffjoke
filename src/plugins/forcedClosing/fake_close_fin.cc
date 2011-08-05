@@ -77,11 +77,11 @@ public:
             return false;
 
         pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
-                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest),
                         origpkt.tcppayloadlen, origpkt.pbuf.size());
 
         /* preliminar condition, TCP and fragment already checked */
-        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin );
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
 
         if (!ret)
             return false;
@@ -89,18 +89,18 @@ public:
         /* cache checking, using the methods provide in the section 'forcedClosing' of Plugin.cc */
         cacheRecord* matchRecord;
 
-        if((matchRecord = verifyIfCache(&(tupleMatch), &FINcache, origpkt)) != NULL)
+        if ((matchRecord = verifyIfCache(&(tupleMatch), &FINcache, origpkt)) != NULL)
         {
             uint32_t *injectedYet = (uint32_t*)&(matchRecord->cached_data[0]);
 
             /* if is present, inverseProp, return true with decreasing probability up to MAX_INJ */
             ret = inverseProportionality(*injectedYet, MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
 
-            if(ret)
+            if (ret)
             {
                 ++(*injectedYet);
 
-                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet, 
+                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet,
                                 inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
                                 ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
             }
@@ -138,19 +138,19 @@ public:
 
             fixPushFin(pkt, availableScrambles);
 
-            pLH.completeLog("injection with seq/push modification, id %d (psh %d ack %d)", 
-                ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack );
+            pLH.completeLog("injection with seq/push modification, id %d (psh %d ack %d)",
+                            ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
         }
 
-         /* the sniffer trust the FIN because does see a coherent ack_seq in answer */
+        /* the sniffer trust the FIN because does see a coherent ack_seq in answer */
         if (random_percent(80))
         {
             Packet * const pkt = new Packet(origpkt);
 
             fixPushFin(pkt, availableScrambles);
 
-            pLH.completeLog("injection with seq/push coherence keeping, id %d (psh %d ack %d)", 
-                ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
+            pLH.completeLog("injection with seq/push coherence keeping, id %d (psh %d ack %d)",
+                            ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
         }
     }
 };
@@ -162,7 +162,7 @@ extern "C" Plugin* createPluginObj()
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-    delete who;
+    delete (fake_close_fin *) who;
 }
 
 extern "C" const char *versionValue()

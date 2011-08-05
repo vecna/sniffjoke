@@ -48,11 +48,12 @@ private:
 #define MAX_INJECTED_PKTS    10
 
     /* every hack in "forcedClosing" will be useful "few times in a session", not for the
-     * entire duration of the connections: for this reason is kept a cache record to count every 
+     * entire duration of the connections: for this reason is kept a cache record to count every
      * time a condition is returned "true"
      *
      * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
-     * to be true the condition use an inverted probability, until reach MAX, than will never be 
+     * to be true the condition use an inverted probability, until reach MAX, than will never be
+>>>>>>> evil/master
      * injected again.
      *
      * this is implemented in the condition check and the useful generic method are implemented
@@ -78,11 +79,11 @@ public:
             return false;
 
         pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
-                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest), 
+                        ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest),
                         origpkt.tcppayloadlen, origpkt.pbuf.size());
 
         /* preliminar condition, TCP and fragment already checked */
-        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin );
+        bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
 
         if (!ret)
             return false;
@@ -90,18 +91,18 @@ public:
         /* cache checking, using the methods provide in the section 'forcedClosing' of Plugin.cc */
         cacheRecord* matchRecord;
 
-        if((matchRecord = verifyIfCache(&(tupleMatch), &RSTcache, origpkt)) != NULL)
+        if ((matchRecord = verifyIfCache(&(tupleMatch), &RSTcache, origpkt)) != NULL)
         {
             uint32_t *injectedYet = (uint32_t*)&(matchRecord->cached_data[0]);
 
             /* if is present, inverseProp, return true with decreasing probability up to MAX_INJ */
             ret = inverseProportionality(*injectedYet, MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
 
-            if(ret)
+            if (ret)
             {
                 ++(*injectedYet);
 
-                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet, 
+                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet,
                                 inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
                                 ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
             }
@@ -143,7 +144,7 @@ extern "C" Plugin* createPluginObj()
 
 extern "C" void deletePluginObj(Plugin *who)
 {
-    delete who;
+    delete (fake_close_rst *) who;
 }
 
 extern "C" const char *versionValue()

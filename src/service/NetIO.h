@@ -26,12 +26,17 @@
 #include "Utils.h"
 #include "TCPTrack.h"
 
-#include <poll.h>
-#include <netpacket/packet.h>
+struct iodesc
+{
+    struct bufferevent *buff_ev;
+    source_t source;
+    vector<unsigned char> pktrecv;
+    TCPTrack *conntrack;
+};
 
 class NetIO
 {
-private:
+public:
 
     TCPTrack *conntrack;
 
@@ -39,32 +44,20 @@ private:
     int tunfd;
     int netfd;
 
-    /*
-     * these data are required for handle
-     * tunnel/ethernet man in the middle
-     */
-    struct sockaddr_ll send_ll;
+    struct iodesc netiodesc[2];
 
-    /* poll variables, two file descriptors */
-    struct pollfd fds[2];
-    int nfds;
-
-    int size;
-
+    int JanusConnect(uint16_t);
     void setupTUN();
     void setupNET();
-
-public:
 
     /*
      * networkdown_condition express if the network is down and sniffjoke must be interrupted
      *       --- but not killed!
      */
 
-    NetIO(void);
+    NetIO(TCPTrack *);
     ~NetIO(void);
-    void prepareConntrack(TCPTrack *);
-    void networkIO(void);
+    void write(void);
 };
 
 #endif /* SJ_NETIO_H */

@@ -78,7 +78,9 @@ cmdline_opts(cmdline_opts)
     memcpy(runcfg.location, selected_location, strlen(selected_location));
 
     /* in main.cc, near getopt, basedir last char if set to be '/' */
+    snprintf(runcfg.base_dir, sizeof (runcfg.base_dir), "%s", selected_basedir);
     snprintf(runcfg.working_dir, sizeof (runcfg.working_dir), "%s%s", selected_basedir, selected_location);
+    snprintf(runcfg.pidabspath, sizeof (runcfg.pidabspath), "%s%s", selected_basedir, SJ_PIDFILE);
 
     /* checking if the option --location has sense: will be a typo! */
     if (access(runcfg.working_dir, X_OK))
@@ -91,7 +93,7 @@ cmdline_opts(cmdline_opts)
         LOG_DEBUG("checked working directory %s accessible", runcfg.working_dir);
     }
 
-    /* generic has been make usefull again as default, but without MALfORMED attacks supports, this section of code
+    /* generic has been make usefull again as default, but without MALFORMED attacks supports, this section of code
      * is kept until stabilized. */
 #if 0
     char generic_errormsg[MEDIUMBUF];
@@ -115,11 +117,11 @@ cmdline_opts(cmdline_opts)
     }
 #endif
 
-    snprintf(configfile, sizeof (configfile), "%s%s/%s", selected_basedir, selected_location, FILE_CONF);
+    snprintf(configfile, sizeof (configfile), "%s/%s", runcfg.working_dir, FILE_CONF);
 
     /* loadDiskConfiguration() use the default name defined in hardcoded-defines.h, so is required change the current working directory */
     if (chdir(runcfg.working_dir))
-        RUNTIME_EXCEPTION("unable to chdir in the specifiy location");
+        RUNTIME_EXCEPTION("unable to chdir in the specified working dir");
     /* load does NOT memset to 0 the runconfig struct! and load defaults if file are not present */
     loadDiskConfiguration();
 
@@ -155,120 +157,6 @@ cmdline_opts(cmdline_opts)
 UserConf::~UserConf(void)
 {
     LOG_DEBUG("[pid %d], config %s", getpid(), configfile);
-}
-
-void UserConf::autodetectLocalInterface(void)
-{
-    /* check this command: the flag value, matched in 0003, is derived from:
-     *     /usr/src/linux/include/linux/route.h
-     */
-    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $8}'";
-    string imp_str;
-    uint8_t i;
-
-    LOG_ALL("detecting external gateway interface with [%s]", cmd);
-
-    imp_str = execOSCmd(cmd);
-
-    for (i = 0; i < strlen(imp_str.c_str()) && isalnum((imp_str.c_str())[i]); ++i)
-        runcfg.net_iface_name[i] = (imp_str.c_str())[i];
-
-    if (i < 3)
-        RUNTIME_EXCEPTION("default gateway not present: sniffjoke cannot be started");
-    else
-    {
-        LOG_ALL("detected external interface with default gateway: %s",
-                runcfg.net_iface_name);
-    }
-}
-
-void UserConf::autodetectLocalInterfaceIPAddress(void)
-{
-    char cmd[MEDIUMBUF];
-    string imp_str;
-
-    snprintf(cmd, MEDIUMBUF, "ifconfig %s | grep \"inet addr\" | cut -b 21- | awk '{print $1}'",
-             runcfg.net_iface_name);
-
-    LOG_ALL("detecting interface %s ip address with [%s]", runcfg.net_iface_name, cmd);
-
-    imp_str = execOSCmd(cmd);
-
-    strncpy(runcfg.net_iface_ip, imp_str.c_str(), sizeof (runcfg.net_iface_ip));
-
-    LOG_ALL("acquired local ip address: %s", runcfg.net_iface_ip);
-}
-
-void UserConf::autodetectGWIPAddress(void)
-{
-    const char *cmd = "route -n | grep ^0.0.0.0 | grep UG | awk '{print $2}'";
-    string imp_str;
-
-    LOG_ALL("detecting gateway ip address with [%s]", cmd);
-
-    imp_str = execOSCmd(cmd);
-
-    for (uint8_t i = 0; i < strlen(imp_str.c_str()) && (isdigit((imp_str.c_str())[i]) || (imp_str.c_str())[i] == '.'); ++i)
-        runcfg.gw_ip_addr[i] = (imp_str.c_str())[i];
-
-    if (strlen(runcfg.gw_ip_addr) < 7)
-        RUNTIME_EXCEPTION("unable to autodetect gateway ip address, sniffjoke cannot be started");
-    else
-    {
-        LOG_ALL("acquired gateway ip address: %s", runcfg.gw_ip_addr);
-    }
-}
-
-void UserConf::importMacAddr(const char *cmd_out)
-{
-    uint32_t mac[6];
-    uint32_t i;
-
-    for (i = 0; i < strlen(cmd_out) && (isxdigit(cmd_out[i])) || (cmd_out[i] == ':'); ++i)
-        runcfg.gw_mac_str[i] = cmd_out[i];
-
-    if (i != 17)
-        RUNTIME_EXCEPTION("invalid mac address format: [%s] is not long 17 bytes", cmd_out);
-
-    LOG_ALL("acquired gateway mac address from the arp table: %s", runcfg.gw_mac_str);
-    sscanf(runcfg.gw_mac_str, "%2x:%2x:%2x:%2x:%2x:%2x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-    for (i = 0; i < ETH_ALEN; ++i)
-        runcfg.gw_mac_addr[i] = mac[i];
-}
-
-void UserConf::autodetectGWMACAddress(void)
-{
-    char cmd[MEDIUMBUF];
-    string cmdout_str;
-
-    snprintf(cmd, MEDIUMBUF, "arp -ni %s %s | grep %s | awk '{print $3}'",
-             runcfg.net_iface_name, runcfg.gw_ip_addr, runcfg.gw_ip_addr);
-
-    LOG_ALL("detecting mac address of gateway with [%s]", cmd);
-
-    cmdout_str = execOSCmd(cmd);
-    LOG_VERBOSE("received output to detect gateway mac address: %s", cmdout_str.c_str() );
-    importMacAddr( cmdout_str.c_str() );
-}
-
-/* this method is called by SniffJoke.cc */
-void UserConf::networkSetup(void)
-{
-    LOG_DEBUG("initializing network for service/child: %d", getpid());
-
-    /* autodetect is always used, but will be override by --options, for this reason is checked
-     * the presence of previously assignments */
-
-    autodetectLocalInterface();
-    autodetectLocalInterfaceIPAddress();
-    autodetectGWIPAddress();
-
-    if(!strlen(runcfg.gw_mac_str))
-        autodetectGWMACAddress();
-
-    LOG_VERBOSE("* system local interface: %s, %s address", runcfg.net_iface_name, runcfg.net_iface_ip);
-    LOG_VERBOSE("* default gateway mac address: %s", runcfg.gw_mac_str);
-    LOG_VERBOSE("* default gateway ip address: %s", runcfg.gw_ip_addr);
 }
 
 /*
@@ -402,10 +290,11 @@ bool UserConf::loadDiskConfiguration(void)
     else
         LOG_DEBUG("opening configuration file: %s", configfile);
 
-    parseMatch(runcfg.user, "user", loadstream, cmdline_opts.user, DEFAULT_USER);
-    parseMatch(runcfg.group, "group", loadstream, cmdline_opts.group, DEFAULT_GROUP);
     parseMatch(runcfg.admin_address, "management-address", loadstream, cmdline_opts.admin_address, DEFAULT_ADMIN_ADDRESS);
     parseMatch(runcfg.admin_port, "management-port", loadstream, cmdline_opts.admin_port, DEFAULT_ADMIN_PORT);
+    parseMatch(runcfg.janus_address, "janus-address", loadstream, cmdline_opts.janus_address, DEFAULT_JANUS_ADDRESS);
+    parseMatch(runcfg.janus_portin, "janus-port-in", loadstream, cmdline_opts.janus_portin, DEFAULT_JANUS_PORTIN);
+    parseMatch(runcfg.janus_portout, "janus-port-out", loadstream, cmdline_opts.janus_portout, DEFAULT_JANUS_PORTOUT);
     parseMatch(runcfg.chaining, "chaining", loadstream, cmdline_opts.chaining, DEFAULT_CHAINING);
     parseMatch(runcfg.no_tcp, "no-tcp", loadstream, cmdline_opts.no_tcp, DEFAULT_NO_TCP);
     parseMatch(runcfg.no_udp, "no-udp", loadstream, cmdline_opts.no_udp, DEFAULT_NO_UDP);
@@ -416,7 +305,6 @@ bool UserConf::loadDiskConfiguration(void)
     parseMatch(runcfg.debug_level, "debug", loadstream, cmdline_opts.debug_level, DEFAULT_DEBUG_LEVEL);
     parseMatch(runcfg.onlyplugin, "only-plugin", loadstream, cmdline_opts.onlyplugin, DEFAULT_ONLYPLUGIN);
     parseMatch(runcfg.max_ttl_probe, "max-ttl-probe", loadstream, cmdline_opts.max_ttl_probe, DEFAULT_MAX_TTLPROBE);
-    parseMatch(runcfg.gw_mac_str, "gw-mac-addr", loadstream, cmdline_opts.gw_mac_str, DEFAULT_GW_MAC_ADDR);
 
     /* loading of IP lists, in future also the source IP address should be useful */
     if (runcfg.use_blacklist)
@@ -424,12 +312,6 @@ bool UserConf::loadDiskConfiguration(void)
         runcfg.blacklist = new IPListMap(FILE_IPBLACKLIST);
         if ((*(runcfg.blacklist)).empty())
             RUNTIME_EXCEPTION("requested blacklist but blacklist file not found or empty");
-    }
-
-    /* if the network details are passed by options, complete the acquisition */
-    if (strlen(runcfg.gw_mac_str))
-    {
-        importMacAddr(runcfg.gw_mac_str);
     }
 
     if (runcfg.use_whitelist)
@@ -551,10 +433,11 @@ bool UserConf::syncDiskConfiguration(void)
 
     /* this is bad, this segment of code is more coherent in UserConf.cc */
     written += fprintf(out, "# this is a dumped file by SniffJoke version %s\n", SW_VERSION);
-    written += dumpIfPresent(out, "user", runcfg.user, DEFAULT_USER);
-    written += dumpIfPresent(out, "group", runcfg.group, DEFAULT_GROUP);
     written += dumpIfPresent(out, "management-address", runcfg.admin_address, DEFAULT_ADMIN_ADDRESS);
     written += dumpIfPresent(out, "management-port", runcfg.admin_port, DEFAULT_ADMIN_PORT);
+    written += dumpIfPresent(out, "janus-address", runcfg.janus_address, DEFAULT_JANUS_ADDRESS);
+    written += dumpIfPresent(out, "janus-port-in", runcfg.janus_portin, DEFAULT_JANUS_PORTIN);
+    written += dumpIfPresent(out, "janus-port-out", runcfg.janus_portout, DEFAULT_JANUS_PORTOUT);
     written += dumpIfPresent(out, "chaining", runcfg.chaining, DEFAULT_CHAINING);
     written += dumpIfPresent(out, "no-tcp", runcfg.no_tcp, DEFAULT_NO_TCP);
     written += dumpIfPresent(out, "no-udp", runcfg.no_udp, DEFAULT_NO_UDP);

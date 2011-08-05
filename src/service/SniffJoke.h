@@ -36,26 +36,26 @@
 #include "Scramble.h"
 #include "ScrambleImpl.h"
 
+#include <event.h>
+
 class SniffJoke
 {
 public:
-    bool alive;
+    struct event_base *ev_base;
+
+    struct event admin_evtimer;
+    struct timeval admin_timeout;
+
+    struct event analyze_evtimer;
+    struct timeval analyze_timeout;
+
     SniffJoke(const struct sj_cmdline_opts &);
     ~SniffJoke(void);
+    void handleAdminSocket(void);
     void run(void);
 
 private:
     const sj_cmdline_opts &opts;
-
-    auto_ptr<Process> proc;
-    auto_ptr<NetIO> mitm;
-    auto_ptr<TCPTrack> conntrack;
-
-    /* after detach:
-     *     service_pid in the root process [the pid of the user process]
-     *                 in the user process [0]
-     */
-    pid_t service_pid;
 
     int admin_socket;
     int admin_socket_flags_blocking;
@@ -70,10 +70,7 @@ private:
     void updateClock(void);
     void setupDebug(void);
     void cleanDebug(void);
-    void cleanServerRoot(void);
-    void cleanServerUser(void);
     void setupAdminSocket(void);
-    void handleAdminSocket(void);
     void createSjEnvironment(void);
 
     /* internalProtocol handling */

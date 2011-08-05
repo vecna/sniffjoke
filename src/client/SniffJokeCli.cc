@@ -286,41 +286,6 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
             memcpy(&charvar, pointed_data, singleData->len);
             printf("location name:\t\t%s\n", charvar);
             break;
-        case STAT_MACGW:
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("gateway hw address:\t%s\n", charvar);
-            break;
-        case STAT_GWADDR:
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("gateway IP address:\t%s\n", charvar);
-            break;
-        case STAT_NETIFACENAME:
-            /* WARNING - REMIND: this name "hijacked interface" is grepped in sniffjoke-autotest */
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("hijacked interface:\t%s\n", charvar);
-            break;
-        case STAT_NETIFACEIP:
-            /* WARNING: the following name, "hijacked interface etc..." MUST NOT COLLIDE with the grep */
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("hijacked local IPaddr:\t%s\n", charvar);
-            break;
-        case STAT_NETIFACEMTU:
-            /* YEP, here too */
-            memcpy(&intvar, pointed_data, singleData->len);
-            printf("hijacked MTU interface:\t%d\n", intvar);
-            break;
-        case STAT_TUNIFACENAME:
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("tunnel interface:\t%s\n", charvar);
-            break;
-        case STAT_TUNIFACEIP:
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("tunnel local IPaddr:\t%s\n", charvar);
-            break;
-        case STAT_TUNIFACEMTU:
-            memcpy(&intvar, pointed_data, singleData->len);
-            printf("tunnel MTU interface:\t%d\n", intvar);
-            break;
         case STAT_DEBUGL:
             memcpy(&intvar, pointed_data, singleData->len);
             printf("debug level:\t\t%d\n", intvar);
@@ -332,14 +297,6 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
         case STAT_BINDP:
             memcpy(&intvar, pointed_data, singleData->len);
             printf("admin UDP port:\t\t%d\n", intvar);
-            break;
-        case STAT_USER:
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("running user:\t\t%s\n", charvar);
-            break;
-        case STAT_GROUP:
-            memcpy(&charvar, pointed_data, singleData->len);
-            printf("running group:\t\t%s\n", charvar);
             break;
         case STAT_CHAINING:
             boolvar = (bool)(*(uint8_t *) pointed_data);
@@ -364,6 +321,18 @@ bool SniffJokeCli::printSJStat(const uint8_t *statblock, uint32_t blocklen)
         case STAT_ONLYP:
             memcpy(&charvar, pointed_data, singleData->len);
             printf("single plugin:\t\t%s\n", charvar);
+            break;
+        case STAT_JANUSA:
+            memcpy(&charvar, pointed_data, singleData->len);
+            printf("janus address:\t\t%s\n", charvar);
+            break;
+        case STAT_JANUSPIN:
+            memcpy(&intvar, pointed_data, singleData->len);
+            printf("janus TCP port IN:\t%d\n", intvar);
+            break;
+        case STAT_JANUSPOUT:
+            memcpy(&intvar, pointed_data, singleData->len);
+            printf("janus TCP port OUT:\t%d\n", intvar);
             break;
         default:
             break;

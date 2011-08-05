@@ -36,24 +36,24 @@ static void sjcli_version(const char *pname)
 }
 
 #define SNIFFJOKECLI_HELP_FORMAT \
-	"Usage: %s [OPTIONS]... [COMMANDS]...\n"\
-	" --address <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
-	" --version\t\tshow sniffjoke version\n"\
-	" --timeout\t\tset milliseconds timeout when contacting SniffJoke service [default: %d]\n"\
-	" --help\t\t\tshow this help\n\n"\
-	"when sniffjoke is running, you should send commands with a command line argument:\n"\
-	" start\t\t\tstart sniffjoke hijacking/injection\n"\
-	" stop\t\t\tpause sniffjoke\n"\
-	" quit\t\t\tquit sniffjoke\n"\
-	" saveconf\t\tdump configuration file\n"\
-	" stat\t\t\tget statistics about sniffjoke configuration and network\n"\
-	" info\t\t\tget statistics about sniffjoke active sessions\n"\
-	" ttlmap\t\t\tshow the mapped hop count for destination\n"\
-	" showport\t\tshow the running port-aggressivity configuration\n"\
-	" set start:end value\tset the injection's strogness over selected port [not supported!]\n"\
-    "\t\tneed to be set in port-aggressivity.conf\n"\
-	" debug\t\t\t[%d-%d] change the log debug level\n\n"\
-	"\t\t\thttp://www.delirandom.net/sniffjoke\n"
+    "Usage: %s [OPTIONS]... [COMMANDS]...\n"\
+    " --address <ip>[:port]\tspecify administration IP address [default: %s:%d]\n"\
+    " --version\t\tshow sniffjoke version\n"\
+    " --timeout\t\tset milliseconds timeout when contacting SniffJoke service [default: %d]\n"\
+    " --help\t\t\tshow this help\n\n"\
+    "when sniffjoke is running, you should send commands with a command line argument:\n"\
+    " start\t\t\tstart sniffjoke hijacking/injection\n"\
+    " stop\t\t\tpause sniffjoke\n"\
+    " quit\t\t\tquit sniffjoke\n"\
+    " saveconf\t\tdump configuration file\n"\
+    " stat\t\t\tget statistics about sniffjoke configuration and network\n"\
+    " info\t\t\tget statistics about sniffjoke active sessions\n"\
+    " ttlmap\t\t\tshow the mapped hop count for destination\n"\
+    " showport\t\tshow the running port-aggressivity configuration\n"\
+    " set start:end value\tset the injection's strogness over selected port [not supported!]\n"\
+    "\t\t\tneed to be set in port-aggressivity.conf\n"\
+    " debug\t\t\t[%d-%d] change the log debug level\n\n"\
+    "\t\t\thttp://www.delirandom.net/sniffjoke\n"
 
 static void sjcli_help(const char *pname)
 {

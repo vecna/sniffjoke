@@ -60,6 +60,7 @@ PluginTrack::PluginTrack(const char *plugabspath, scrambleMask &pluginSupportedS
     swapPtr = forcedSymbolCopy("versionValue", plugabspath);
     memcpy( (void *)&fp_versionValue, &swapPtr, sizeof(void *));
 
+
     if (strlen(fp_versionValue()) != strlen(SW_VERSION) || strcmp(fp_versionValue(), SW_VERSION))
     {
         RUNTIME_EXCEPTION("loading %s incorred version (%s) with SniffJoke %s",
@@ -69,9 +70,7 @@ PluginTrack::PluginTrack(const char *plugabspath, scrambleMask &pluginSupportedS
     selfObj = fp_CreatePluginObj();
 
     if (selfObj->pluginName == NULL)
-    {
         RUNTIME_EXCEPTION("Invalid implementation: %s lack of ->PluginName member", plugabspath);
-    }
 
     configuredScramble = pluginSupportedScr;
 
@@ -91,9 +90,7 @@ void *PluginTrack::forcedSymbolCopy( const char *symName, const char *pap)
     void *obtainPtr = dlsym(pluginHandler, symName);
 
     if (obtainPtr == NULL )
-    {
         RUNTIME_EXCEPTION("plugin %s lack of the symbol %s mangling symbols", pap, symName);
-    }
 
     return obtainPtr;
 }
@@ -178,8 +175,7 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
 {
     try
     {
-        PluginTrack *plugin = new PluginTrack(plugabspath, configuredScramble, pOpt);
-        pool.push_back(plugin);
+        pool.push_back(new PluginTrack(plugabspath, configuredScramble, pOpt));
     }
     catch (runtime_error &e)
     {
@@ -190,7 +186,8 @@ void PluginPool::importPlugin(const char *plugabspath, const char *enablerEntry,
 bool PluginPool::parseScrambleOpt(char *list_str, scrambleMask *retval, char **opt)
 {
     bool foundScramble = false;
-    char copyStr[MEDIUMBUF] = {0}, *optParse = NULL;
+    char copyStr[MEDIUMBUF] = {0};
+    char *optParse = NULL;
 
     memcpy(copyStr, list_str, strlen(list_str));
 
@@ -252,12 +249,12 @@ void PluginPool::parseOnlyPlugin(void)
     *comma = 0x00;
     comma++;
 
-    snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, onlyplugin_cpy);
+    snprintf(plugabspath, sizeof (plugabspath), "%splugins/%s.so", userconf->runcfg.base_dir, onlyplugin_cpy);
 
     if (!parseScrambleOpt(comma, &pluginEnabledScrambles, &pluginOpt))
         RUNTIME_EXCEPTION("invalid use of --only-plugin: (%s)", userconf->runcfg.onlyplugin);
 
-    importPlugin(plugabspath, userconf->runcfg.onlyplugin, pluginEnabledScrambles, pluginOpt);
+    importPlugin(plugabspath, pluginEnabledScrambles, pluginOpt);
 
     /* we keep track of enabled scramble to apply confusion on real good packets */
     globalEnabledScrambles += pluginEnabledScrambles;
@@ -311,7 +308,7 @@ void PluginPool::parseEnablerFile(void)
         *comma = 0x00;
         comma++;
 
-        snprintf(plugabspath, sizeof (plugabspath), "%s%s.so", INSTALL_LIBDIR, enablerentry);
+        snprintf(plugabspath, sizeof (plugabspath), "%splugins/%s.so", userconf->runcfg.base_dir, enablerentry);
 
         if (!parseScrambleOpt(comma, &enabledScrambles, &pluginOpt))
         {
