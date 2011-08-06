@@ -36,19 +36,71 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
+#include <event.h>
+
 SniffJokeCli::SniffJokeCli(const char* serveraddr, uint16_t serverport, uint32_t ms_timeout) :
 serveraddr(serveraddr),
 serverport(serverport),
-ms_timeout(ms_timeout)
+status(SJ_OK),
+progressive_recvl(0)
 {
+    timeout.tv_sec = 0;
+    timeout.tv_usec = ms_timeout * 1000;
+
+    memset(received_data, 0, sizeof(received_data));
+}
+
+void readEv(int fd, short event, void *arg)
+{
+    SniffJokeCli *cli = (SniffJokeCli *)arg;
+
+    if(event == EV_TIMEOUT)
+    {
+        event_loopbreak();
+
+        cli->status = SJ_TIMEOUT;
+        return;
+    }
+    else
+    {
+        uint8_t received_buf[LARGEBUF] = {0};
+
+        struct sockaddr_in from;
+        int fromlen = sizeof (struct sockaddr_in);
+
+        memset(received_buf, 0x00, LARGEBUF);
+        int rlen = (recvfrom(cli->sock, received_buf, LARGEBUF, MSG_WAITALL, (sockaddr*) &from, (socklen_t *) &fromlen));
+
+        if (rlen == -1)
+        {
+            if (errno != EAGAIN)
+            {
+                printf("unable to receive from local socket: %s\n", strerror(errno));
+                cli->status = SJ_ERROR;
+                event_loopbreak();
+            }
+        }
+
+        if (rlen > 0)
+        {
+            memcpy(&cli->received_data[cli->progressive_recvl], received_buf, rlen);
+            cli->progressive_recvl += rlen;
+        }
+     }
+}
+
+void signalEv(int fd, short event, void *arg)
+{
+    SniffJokeCli *cli = (SniffJokeCli *)arg;
+
+    event_loopbreak();
+    cli->status = SJ_ERROR;
 }
 
 int32_t SniffJokeCli::send_command(const char *cmdstring)
 {
-    int sock;
-    struct sockaddr_in service_sin; /* address of service */
-    struct sockaddr_in from; /* address used for receiving data */
-    int rlen, flagblock;
+    struct sockaddr_in service_sin;
+    int flagblock;
 
     /* Create a UNIX datagram socket for client */
     if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
@@ -83,54 +135,35 @@ int32_t SniffJokeCli::send_command(const char *cmdstring)
         return SJ_ERROR;
     }
 
-    /* poll is required for timeout pourpose checking, because only one file desciption is used */
-    struct pollfd fd;
-    fd.events = POLLIN;
-    fd.fd = sock;
+    struct event_base *ev_base = event_init();
 
-    int nfds = poll(&fd, 1, ms_timeout);
+    event_set(&ev_read, sock, EV_READ | EV_PERSIST, readEv, this);
+    event_set(&ev_signal, sock, EV_SIGNAL | EV_PERSIST, signalEv, this);
 
-    if (nfds == 1)
+    event_add(&ev_read, &timeout);
+    event_add(&ev_signal, NULL);
+
+    event_dispatch();
+
+    event_base_free(ev_base);
+
+    switch(status)
     {
-        /* the same size declared in io_buf SniffJoke.cc service */
-        uint8_t received_data[HUGEBUF * 4] = {0};
-        uint8_t received_buf[LARGEBUF] = {0};
-        uint32_t progressive_recvl = 0;
-        int fromlen = sizeof (struct sockaddr_in);
-
-        do
-        {
-            memset(received_buf, 0x00, LARGEBUF);
-            rlen = (recvfrom(sock, received_buf, LARGEBUF, MSG_WAITALL, (sockaddr*) & from, (socklen_t *) & fromlen));
-
-            if (rlen == -1)
-            {
-                if (errno != EAGAIN)
-                {
-                    printf("unable to receive from local socket: %s\n", strerror(errno));
-                    return SJ_ERROR;
-                }
-                break;
-            }
-            memcpy(&received_data[progressive_recvl], received_buf, rlen);
-            progressive_recvl += rlen;
-        }
-        while (rlen > 0);
-
+    case SJ_TIMEOUT:
+        /* on timeout we analyze the received_data; */
         if (!(parse_SjinternalProto(received_data, progressive_recvl)))
-        {
-            fprintf(stderr, "error in parsing received message\n");
-            return SJ_ERROR;
-        }
-    }
-    else
-    {
-        printf("connection timeout: SniffJoke is not running, or --timeout too low\n");
-        return SJ_ERROR;
+            printf("connection timeout: SniffJoke is not running, or --timeout too low\n");
+        break;
+    case SJ_OK:
+        if (!(parse_SjinternalProto(received_data, progressive_recvl)))
+            status = SJ_ERROR;
+        break;
+    case SJ_ERROR:
+        fprintf(stderr, "error in parsing received message\n");
+        break;
     }
 
-    close(sock);
-    return SJ_OK;
+    return status;
 }
 
 #define SPACESIZE   20
@@ -241,6 +274,8 @@ bool SniffJokeCli::parse_SjinternalProto(uint8_t *recvd, uint32_t rcvdlen)
     case TTLMAP_COMMAND_TYPE:
         printf("received (%d bytes) confirm of TTL MAP command\n", rcvdlen);
         return printSJTTL(&recvd[sizeof (blockInfo)], rcvdlen - sizeof (blockInfo));
+    case END_OF_OUTPUT_TYPE:
+        event_loopbreak();
     case COMMAND_ERROR_MSG:
         printf("received (%d bytes) error in command sent\n", rcvdlen);
         return printSJError(&recvd[sizeof (blockInfo)], rcvdlen - sizeof (blockInfo));

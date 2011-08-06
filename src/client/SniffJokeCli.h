@@ -28,13 +28,16 @@
 #include <cstdio>
 #include <stdint.h>
 
+#include <event.h>
+
 using namespace std;
 
-#define SJCTL_VERSION           "0.4.0"
+#define SJCTL_VERSION           "0.4.3"
 
 #define SJCTL_DEFAULT_TIMEOUT   500
-#define SJ_ERROR                1
 #define SJ_OK                   0
+#define SJ_ERROR                1
+#define SJ_TIMEOUT              2
 
 struct command
 {
@@ -47,7 +50,6 @@ class SniffJokeCli
 private:
     const char *serveraddr;
     uint16_t serverport;
-    uint32_t ms_timeout;
     const char *cmd_buffer;
 
     uint32_t fillingSpaces(uint16_t);
@@ -62,8 +64,19 @@ private:
     bool printSJTTL(const uint8_t *, uint32_t);
 
 public:
+    int status;
+
+    int sock;
+
+    struct event ev_read;
+    struct event ev_signal;
+    struct timeval timeout;
+
+    uint8_t received_data[HUGEBUF * 4];
+    uint32_t progressive_recvl;
+
+
     SniffJokeCli(const char *, uint16_t, uint32_t);
-    /* 0 on success, 1 on error */
     int32_t send_command(const char *cmdstring);
 };
 

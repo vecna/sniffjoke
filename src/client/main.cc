@@ -93,7 +93,6 @@ static bool parse_command(char **av, uint32_t ac, struct command *sjcmdlist, cha
 
 int main(int argc, char **argv)
 {
-
     struct sjcli_cmdline_opts
     {
         char admin_address[256];
@@ -161,6 +160,8 @@ int main(int argc, char **argv)
             break;
         case 't':
             useropt.ms_timeout = atoi(optarg);
+            if (useropt.ms_timeout < 0 || useropt.ms_timeout > 1000)
+                goto sniffjokecli_help;
             break;
         case 'v':
             sjcli_version(argv[0]);
