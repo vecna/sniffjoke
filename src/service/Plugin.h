@@ -104,14 +104,13 @@ public:
     Plugin(const char *, uint16_t);
 
     void upgradeChainFlag(Packet *);
+    void reset(void);
 
-    /* Plugin is an abstract class */
+    /* Plugin is an abstract class, these are the methods implement by the plugin extenstions */
     virtual bool init(const scrambleMask &, char *, struct sjEnviron *) = 0;
-
-    virtual bool condition(const Packet &, scrambleMask &);
-    virtual void apply(const Packet &, scrambleMask &);
-    virtual void mangleIncoming(Packet &);
-    virtual void reset(void);
+    virtual bool condition(const Packet &, scrambleMask &) = 0;
+    virtual void apply(const Packet &, scrambleMask &) = 0;
+    virtual void mangleIncoming(Packet &) = 0;
 
     /* follow the utilities usable by the plugins */
     cacheRecord *verifyIfCache(bool(*)(const cacheRecord &, const Packet &), PluginCache *, const Packet &);

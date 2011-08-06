@@ -153,6 +153,11 @@ public:
                             ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
         }
     }
+
+    virtual void mangleIncoming(Packet &x)
+    {
+        /* not implemented here */
+    }
 };
 
 extern "C" Plugin* createPluginObj()

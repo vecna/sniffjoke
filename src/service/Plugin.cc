@@ -119,26 +119,14 @@ void PluginCache::manage(void)
     manage_timeout = sj_clock + timeout_len;
 }
 
+/*
 Plugin::Plugin(const char* pluginName, uint16_t pluginFrequency) :
 pluginName(pluginName),
 pluginFrequency(pluginFrequency),
 removeOrigPkt(false)
 {
 }
-
-bool Plugin::condition(const Packet &, scrambleMask &)
-{
-    return true;
-}
-
-void Plugin::apply(const Packet &, scrambleMask &)
-{
-    return;
-}
-
-void Plugin::mangleIncoming(Packet &pkt)
-{
-}
+*/
 
 void Plugin::reset(void)
 {
