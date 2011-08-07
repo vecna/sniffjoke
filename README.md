@@ -14,6 +14,8 @@ Suggested
 
     gnupg
 
+
+
 # TODO, for stabilize 0.5
 
     implement/fix the new scrambling tech
@@ -55,8 +57,6 @@ SniffJoke since the release 0.5 works only in conjunction with a Janus instance.
 
 Since the 0.5 release, SniffJoke aim to became fully portable, and Janus provide network handling (and portability issue)
 
-### +++ BELOW +++ everything need to be updated in janus+Sj key +++
-
 # How to compile/install
     mkdir build
     cd build
@@ -65,9 +65,9 @@ Since the 0.5 release, SniffJoke aim to became fully portable, and Janus provide
     sudo -s
     make install
 
-and you could check the exactly installed file by
+# How to use SniffJoke
 
-    cat install_manifest.txt
+you need to have installed Janus, stable release at http://github.com/evilaliv3/janus
 
 # Suggested setup, for configure your network capabilities
     sniffjoke-autotest -l name_of_your_location 
@@ -97,59 +97,61 @@ SniffJoke concepts, goals: http://www.delirandom.net/sniffjoke/sniffjoke-how-doe
     sniffjoke-service.conf
 
 # CACHE and LOGs that should be generated in a location
-    plugin.fake_close_fin.log
-    plugin.fragmentation.log
-    plugin.segmentation.log
+    plugin.$PLUGIN_NAME.log
     ttlfocusmap.bin
 
 # CONFIG FILES generated as location specific by sniffjoke-autotest
     iptcp-options.conf
     plugins-enabled.conf
 
-# Requirements
-
-Linux OS (>=2.6.19) with tun support;
-
-wifi/eth as default gateway (no other interface supported).
-
 ## Installed files 
 
-The service binary
+This is the 'generic' (act as a default) location. Remind: every network location you're using (your office, your home, etc), track different cache. using a cache collected in a different location will cause the total corruption of the connections, and therfore before use sniffjoke you have to create a sperate directory for every network places you are using. In the future, this selection will be automatized using the mac address+IP of the default gateway in order to detect a different location.
+
+    /usr/local/var/sniffjoke/generic
+    /usr/local/var/sniffjoke/generic/plugins-enabled.conf
+    /usr/local/var/sniffjoke/generic/THIS_IS_GENERIC
+    /usr/local/var/sniffjoke/generic/port-aggressivity.conf
+    /usr/local/var/sniffjoke/generic/iptcp-options.conf
+    /usr/local/var/sniffjoke/generic/sniffjoke-service.conf
+    /usr/local/var/sniffjoke/generic/ipwhitelist.conf.example
+    /usr/local/var/sniffjoke/generic/ipblacklist.conf.example
+
+sjA script, nothing useful for an user:
+
+    /usr/local/var/sniffjoke/sjA
+    /usr/local/var/sniffjoke/sjA/pe.php
+    /usr/local/var/sniffjoke/sjA/README.txt
+
+man pages:
+
+    /usr/local/share/man/man1/sniffjoke.1
+    /usr/local/share/man/man1/sniffjokectl.1
+    /usr/local/share/man/man1/sniffjoke-autotest.1
+
+the binaries:
 
     /usr/local/bin/sniffjoke
-
-The client, required to manage remotely the configuration of Sj
-
     /usr/local/bin/sniffjokectl
 
-The "generic location" configuration, containing every default configuration files
+the plugins:
 
-    /usr/local/var/sniffjoke/generic/
+    /usr/local/var/sniffjoke/plugins/fake_close_rst.so
+    /usr/local/var/sniffjoke/plugins/fake_close_fin.so
+    /usr/local/var/sniffjoke/plugins/valid_rst_fake_seq.so
+    /usr/local/var/sniffjoke/plugins/fake_syn.so
+    /usr/local/var/sniffjoke/plugins/[...].so
 
-SniffJoke plugins:
-
-    /usr/local/lib/sniffjoke/*.so
-
-Scripts:
+the scripts:
 
     /usr/local/bin/sniffjoke-autotest
     /usr/local/bin/sj-iptcpopt-probe
     /usr/local/bin/sj-commit-results
 
-Sniffjoke Man pages
-
-    /usr/local/man/man1/sniffjoke.1
-    /usr/local/man/man1/sniffjokectl.1
-    /usr/local/man/man1/sniffjoke-autotest.1
-
 # External service
 
 Sniffjoke in autotesting required to contact http://www.delirandom.net/sjA, this is not striclty required
-and if an user want to perform himself the test, will install the "pe.php" script, present in this package
-here
-
-    conf/sjA/pe.php
-
+and if an user want to perform himself the test, will install the "pe.php" script, present in this package.
 and using the semi-secret options -s and -a in sniffjoke-autotest (you will avoid every contact w/ delirandom)
 
 # Official sniffjoke page:
