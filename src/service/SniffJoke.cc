@@ -36,6 +36,7 @@ auto_ptr<TTLFocusMap> ttlfocus_map;
 auto_ptr<SessionTrackMap> sessiontrack_map;
 auto_ptr<OptionPool> opt_pool;
 auto_ptr<PluginPool> plugin_pool;
+auto_ptr<Scramble> scramble;
 
 void admin_cb(int fd, short what, void *arg)
 {
@@ -708,15 +709,17 @@ uint32_t SniffJoke::appendSJSessionInfo(uint8_t *p, const SessionTrack &SexToDum
 {
     struct sex_record sr;
 
-    if (!SexToDump.packet_number)
+    if (!SexToDump.outgoing.natural)
         return 0;
 
     sr.proto = SexToDump.proto;
     sr.daddr = SexToDump.daddr;
     sr.dport = SexToDump.dport;
     sr.sport = SexToDump.sport;
-    sr.packet_number = SexToDump.packet_number;
-    sr.injected_pktnumber = SexToDump.injected_pktnumber;
+
+    /* this need to be updated, simply all client/server communication need to be substituted */
+    sr.packet_number = (SexToDump.ingoing.natural + SexToDump.outgoing.natural);
+    sr.injected_pktnumber = (SexToDump.ingoing.injected + SexToDump.outgoing.injected);
 
     memcpy((void *) p, (void *) &sr, sizeof (sr));
 

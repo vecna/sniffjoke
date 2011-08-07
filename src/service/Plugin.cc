@@ -119,61 +119,14 @@ void PluginCache::manage(void)
     manage_timeout = sj_clock + timeout_len;
 }
 
+/*
 Plugin::Plugin(const char* pluginName, uint16_t pluginFrequency) :
 pluginName(pluginName),
 pluginFrequency(pluginFrequency),
 removeOrigPkt(false)
 {
 }
-
-/*
- * availableScrambles is passed in the plugin application, is choose 
- * related by the avalability in the sniffjoke status
- *
- * supportedScrambles is the declared usage in the startup
- */
-judge_t Plugin::pktRandomDamage(uint8_t availableScrambles, uint8_t supportedScrambles)
-{
-    uint8_t scrambles = (availableScrambles & supportedScrambles);
-    char availStr[MEDIUMBUF], supportStr[MEDIUMBUF], andedStr[MEDIUMBUF];
-
-    snprintfScramblesList(availStr, MEDIUMBUF, availableScrambles);
-    snprintfScramblesList(supportStr, MEDIUMBUF, supportedScrambles);
-    snprintfScramblesList(andedStr, MEDIUMBUF, scrambles);
-
-    if (ISSET_TTL(scrambles) && random_percent(70))
-    {
-        LOG_PACKET("%s %s: avail [%s] init [%s] both [%s], choosed PRESCRIPTION",
-                   __func__, pluginName, availStr, supportStr, andedStr);
-
-        return PRESCRIPTION;
-    }
-    if (ISSET_MALFORMED(scrambles) && random_percent(95))
-    {
-        LOG_PACKET("%s %s: avail [%s] init [%s] both [%s], choosed MALFORMED",
-                   __func__, pluginName, availStr, supportStr, andedStr);
-        return MALFORMED;
-    }
-
-    LOG_PACKET("%s %s: avail [%s] init [%s] both [%s], choosed GUILTY",
-               __func__, pluginName, availStr, supportStr, andedStr);
-
-    return GUILTY;
-}
-
-bool Plugin::condition(const Packet &, uint8_t availableScrambles)
-{
-    return true;
-}
-
-void Plugin::apply(const Packet &, uint8_t availableScrambles)
-{
-    return;
-}
-
-void Plugin::mangleIncoming(Packet &pkt)
-{
-}
+*/
 
 void Plugin::reset(void)
 {

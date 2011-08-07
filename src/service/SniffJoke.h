@@ -33,6 +33,8 @@
 #include "OptionPool.h"
 #include "PluginPool.h"
 #include "config.h"
+#include "Scramble.h"
+#include "ScrambleImpl.h"
 
 #include <event.h>
 

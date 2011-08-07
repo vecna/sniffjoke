@@ -48,7 +48,7 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         supportedScrambles = configuredScramble;
         return true;
@@ -96,8 +96,8 @@ public:
 
         pkt->source = PLUGIN;
         pkt->position = ANY_POSITION;
-        pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
-        pkt->choosableScramble = (availableScrambles & supportedScrambles);
+        pkt->wtf = CORRUPTNEED;
+        // pkt->usedScramble = availableScrambles;
 
         upgradeChainFlag(pkt);
 

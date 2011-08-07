@@ -1,11 +1,11 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 PROJECT(sniffjoke)
 
 SET(PREFIX "/usr/local")
 SET(VERSION_MAJOR 0)
-SET(VERSION_MINOR 4)
-SET(SUFFIX "-1")
+SET(VERSION_MINOR 5)
+SET(SUFFIX "devel")
 
 SET(CMAKE_SHARED_LIBRARY_PREFIX "")
 SET(CMAKE_CXX_FLAGS "-g3 -O3 -ansi -pedantic -Wall -Wno-variadic-macros ${CMAKE_CXX_FLAGS}")
@@ -20,6 +20,8 @@ INCLUDE_DIRECTORIES(src src/service)
 
 ADD_SUBDIRECTORY(dist)
 ADD_SUBDIRECTORY(src)
+
+MESSAGE(STATUS "ready for build: ${PROJECT_NAME} ${VERSION_MAJOR}.${VERSION_MINOR}.${SUFFIX}")
 
 # uninstall target as officially explained on:
 #   - http://www.youtube.com/watch?v=fw-nJRD78tA

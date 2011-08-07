@@ -47,7 +47,7 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask &configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         supportedScrambles = configuredScramble;
         return true;
@@ -66,7 +66,7 @@ public:
                 origpkt.tcppayload != NULL);
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask &availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -86,8 +86,8 @@ public:
 
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
-        pkt->wtf = pktRandomDamage(availableScrambles, supportedScrambles);
-        pkt->choosableScramble = availableScrambles & supportedScrambles;
+        pkt->wtf = CORRUPTNEED;
+        // pkt->usedScramble = availableScrambles; // & supportedScrambles);
 
         upgradeChainFlag(pkt);
 

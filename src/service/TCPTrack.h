@@ -3,8 +3,9 @@
  *   developed with the aim to improve digital privacy in communications and
  *   to show and test some securiy weakness in traffic analysis software.
  *   
- *   Copyright (C) 2008 vecna <vecna@delirandom.net>
- *                      evilaliv3 <giovanni.pellerano@evilaliv3.org>
+ *   Copyright (C) 2008,2009,2010,2011
+ *                 vecna <vecna@delirandom.net>
+ *                 evilaliv3 <giovanni.pellerano@evilaliv3.org>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,6 +34,7 @@
 #include "TTLFocus.h"
 #include "HDRoptions.h"
 #include "PluginPool.h"
+#include "Scramble.h"
 
 class TCPTrack
 {
@@ -48,17 +50,16 @@ private:
     uint16_t getUserFrequency(const Packet &);
     uint8_t discernAvailScramble(const Packet &);
 
-    void injectTTLProbe(TTLFocus &);
-    void execTTLBruteforces(void);
-    bool extractTTLinfo(const Packet &);
-
     bool notifyIncoming(Packet &);
     bool injectHack(Packet &);
     bool lastPktFix(Packet &);
+    void SjInnerCore(Packet &);
 
     void handleYoungPackets(void);
     void handleKeepPackets(void);
     void handleHackPackets(void);
+
+    uint32_t acquirePktVector(Packet &, vector<Packet *>, const char *, queue_t);
 
 public:
 

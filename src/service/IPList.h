@@ -23,6 +23,7 @@
 #ifndef SJ_IPLIST_H
 #define SJ_IPLIST_H
 
+#include "PacketFilter.h"
 #include "Utils.h"
 
 class IPList

@@ -31,7 +31,7 @@
 #include "config.h"
 
 #define SW_NAME                 "SniffJoke"
-#define SW_VERSION              "0.4.3"
+#define SW_VERSION              "0.5-pre+"
 
 /* Sniffjoke defaults config values */
 #define DEFAULT_DIR             INSTALL_STATEDIR

@@ -1,3 +1,9 @@
+05 Aug 2011:	new branch 'devel' forked (0.5-devel)
+		- janus provide low level handling
+		- Scramble.cc implemented
+		- libevent handle polling
+		- SniffJoke is now an userpriv single process
+
 05 Jul 2011:	published 0.4.2
 		- 'generic/' working again as default
 		- no more hardcoded path

@@ -74,23 +74,26 @@ public:
     {
     };
 
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
+            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
+/*
         if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
         {
             LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
             return false;
         }
 
+*/
         /* the original is removed, and segments are inserted */
-        supportedScrambles = SCRAMBLE_INNOCENT;
+//        supportedScrambles = SCRAMBLE_INNOCENT;
 
         pLH.completeLog("Initialized plugin!");
 
         return true;
     }
 
-    virtual bool condition(const Packet & origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet & origpkt, scrambleMask & availableScrambles)
     {
         pLH.completeLog("verifing condition for id %d (sport %u) datalen %d total len %d",
                         origpkt.ip->id, ntohs(origpkt.tcp->source), origpkt.tcppayloadlen, origpkt.pbuf.size());
@@ -110,7 +113,7 @@ public:
         return false;
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         /*
          * due to the ratio: MIN_TCP_PAYLOAD = (MIN_SPLIT_PKTS * MIN_SPLIT_PAYLOAD)
@@ -183,7 +186,7 @@ public:
             pkt->wtf = origpkt.wtf;
 
             /* useless, INNOCENT is never downgraded in last_pkt_fix */
-            pkt->choosableScramble = (availableScrambles & supportedScrambles);
+//            pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
             /* I was tempted to set it FINALHACK, but Sj supports fragment, lets see */
             upgradeChainFlag(pkt);

@@ -1,14 +1,61 @@
-# SniffJoke: transparent TCP connection scrambler 0.4.1
+# SniffJoke: transparent TCP connection scrambler 0.5-devel
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
 
 # Requirements
 
-    cmake, gcc, iptables, tcpdump
+    janus package: http://github.com/evilavliv3/janus the nighly release
+    libevent installed (developed and tested with the 1.4.2 version)
+    libpcap
+    cmake (minimum version required: 2.8)
+    gcc/g++ (4.2.4 version tested & developed)
 
 Suggested
 
     gnupg
+
+# TODO, for stabilize 0.5
+
+    implement/fix the new scrambling tech
+    verify libevent supports
+    Janus stabilization and portability supports
+    IP/TCP opt no more autotested
+    Strong use of cache
+    location self-recognition, location concept need to be linked with janus
+
+# SniffJoke directory explaination
+
+    dist/doc
+
+documentation, txt, explanation and so on
+
+    dist/generic
+
+the base configuration, every location will start from the 'generic' location
+
+    dist/sjA
+
+sniffjoke autotest scripts, the web service used for test sniffjoke reialability since a location, and (TODO) analysis and stats
+
+    src/service
+
+the core of the project, C++ code that compiled give the sniffjoke binary
+
+    src/client
+
+sniffjoke will be controlled by command line at the startup, or via commands given by a client. In this times, also a windows client is under development, and the client should be remote from Sj (that should be remote from janus)
+
+    src/plugins
+
+the attack metodoloy to defeat sniffer will be improved, personally implemented and enable on requests. plugins contains the C++ classes compiled as shared library, loaded at the startup.
+
+# Janus
+
+SniffJoke since the release 0.5 works only in conjunction with a Janus instance. Janus is a "traffic diverter" and should run in the same host where Sj is running, or in a different hosts.
+
+Since the 0.5 release, SniffJoke aim to became fully portable, and Janus provide network handling (and portability issue)
+
+### +++ BELOW +++ everything need to be updated in janus+Sj key +++
 
 # How to compile/install
     mkdir build

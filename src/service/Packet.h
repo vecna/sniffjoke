@@ -24,6 +24,7 @@
 #define SJ_PACKET_H
 
 #include "Utils.h"
+#include "ScrambleMask.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -40,16 +41,18 @@ enum queue_t
     QUEUEUNASSIGNED = 0, YOUNG = 1, KEEP = 2, HACK = 4, SEND = 8
 };
 
-/* if the packet is injected by sniffjoke is marked with the evilbit */
+/* if the packet is injected by sniffjoke is marked with the evilbit,
+ * GOOD if is a natural packet, EVIL if is an injected one, NEUTRAL if the scramble
+ * has generated a packet which morality will be defined by the plugins */
 enum evilbit_t
 {
-    MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2
+    MORALITYUNASSIGNED = 0, GOOD = 1, EVIL = 2, NEUTRAL = 4
 };
 
 /* the source_t is the nature of the packet, ANY_SOURCE is used at catch-all */
 enum source_t
 {
-    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, PLUGIN = 4, TRACEROUTE = 8
+    SOURCEUNASSIGNED = 0, TUNNEL = 1, NETWORK = 2, PLUGIN = 4, SCRAMBLE = 8
 };
 
 /* an enum for the proto. ANY_PROTO is the catch-all used when the queue(s) are queryed */
@@ -60,12 +63,14 @@ enum proto_t
 
 /* Every sniffjoke packet is based on be discarged from the remote host and accepted from
  * the sniffer, in order to obtain the sniffer tracking poisoning, those marker mean if the
- * packet need to be plain and correct (INNOCENT) to expire prematurely (PRESCRIPTION) to be 
- * consider bad and discarged (GUILTY, corrupt the TCP checksum), MALFORMED (weird ip options)
- * or a random choose of those */
+ * packet need to be plain and correct (INNOCENT) or be CORRUPTED. when a packet is INNOCENT,
+ * mean that that remote host will accept it in the kernel level, when is CORRUPTNEED is a marker
+ * useful for the scramble engine, to understand that the packet has to be modify in order to be
+ * discarged, not accepted, or never reach the remote server application. CORRUPTDONE is useful
+ * to mark a packet that require to be corrupted, and in fact happen. */
 enum judge_t
 {
-    JUDGEUNASSIGNED = 0, INNOCENT = 1, PRESCRIPTION = 2, GUILTY = 4, MALFORMED = 8
+    JUDGEUNASSIGNED = 0, INNOCENT = 1, CORRUPTNEED = 2, CORRUPTDONE = 4
 };
 
 /* a sniffjoke packet should be send before the original packet or after the original packet */
@@ -101,15 +106,18 @@ public:
     /* proto variable, redundant but useful because defined to permit OR masks */
     proto_t proto;
 
+    /* morality of the packet: the goal and the nature */
+    evilbit_t morality;
+
     /* status variable to force relative position of a packet with
        respect to an other. */
     position_t position;
 
-    /* define  the actual selected scramble for the packet */
+    /* define the actual goal for the scrambles */
     judge_t wtf;
 
-    /* defines the acceptable scrambles accepted by the packet */
-    uint8_t choosableScramble;
+    /* specify which kind of scramble will be apply or has been apply */
+    scrambleMask usedScramble;
 
     /* status variable for chained hack inherited on Packet(const Packet &).
        significative only if source == PLUGIN  */
@@ -190,10 +198,6 @@ public:
     void tcppayloadRandomFill(void);
     void udppayloadRandomFill(void);
     void payloadRandomFill(void);
-
-    /* MALFORMED hacks and distortion of INNOCENT packets */
-    bool injectIPOpts(bool, bool);
-    bool injectTCPOpts(bool, bool);
 
     /* utilities */
     void selflog(const char *, const char *, ...) const;

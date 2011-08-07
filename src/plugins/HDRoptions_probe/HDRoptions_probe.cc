@@ -64,9 +64,8 @@ public:
                                            so this way on error we will trigger an exception  */
     }
 
-    /* init is called with pluginName,SCRAMBLE+option,
-     * the option in this case is  */
-    virtual bool init(uint8_t configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    /* init is called after the parsing of pluginName,SCRAMBLE+option, the option in this case is  */
+    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
         OptionPool *optPool = reinterpret_cast<OptionPool *> (sjE->instanced_itopts);
 
@@ -131,7 +130,7 @@ public:
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, uint8_t availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK)
             return false;
@@ -150,7 +149,7 @@ public:
          ** */
     }
 
-    virtual void apply(const Packet &origpkt, uint8_t availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
     {
         Packet * pkt = new Packet(origpkt);
 
@@ -158,7 +157,7 @@ public:
 
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
-        pkt->choosableScramble = SCRAMBLE_INNOCENT;
+//        pkt->choosableScramble = SCRAMBLE_INNOCENT;
         pkt->wtf = INNOCENT;
 
         applyTestedOption(*pkt);

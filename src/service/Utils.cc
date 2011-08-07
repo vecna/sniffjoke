@@ -122,20 +122,3 @@ bool random_percent(int32_t percent)
 
     return ( (random() % 100) + 1 <= percent );
 }
-
-int snprintfScramblesList(char *str, size_t size, uint8_t scramblesList)
-{
-    int len = snprintf(str, size, "%s%s%s%s",
-                       scramblesList & SCRAMBLE_TTL ? "PRESCRIPTION," : "",
-                       scramblesList & SCRAMBLE_MALFORMED ? "MALFORMED," : "",
-                       scramblesList & SCRAMBLE_CHECKSUM ? "GUILTY," : "",
-                       scramblesList & SCRAMBLE_INNOCENT ? "INNOCENT" : "");
-
-    if (str[strlen(str) - 1] == ',')
-    {
-        str[strlen(str) - 1] = '\0';
-        --len;
-    }
-
-    return len;
-}

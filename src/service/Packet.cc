@@ -42,9 +42,10 @@ queue(QUEUEUNASSIGNED),
 SjPacketId(++SjPacketIdCounter),
 source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
+morality(MORALITYUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
-choosableScramble(0),
+usedScramble(NOSCRAMBLESET),
 chainflag(HACKUNASSIGNED),
 fragment(false),
 fragFakeMTU(0),
@@ -61,9 +62,10 @@ queue(QUEUEUNASSIGNED),
 SjPacketId(++SjPacketIdCounter),
 source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
+morality(MORALITYUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
-choosableScramble(0),
+usedScramble(pkt.usedScramble),
 chainflag(pkt.chainflag),
 fragment(false),
 fragFakeMTU(0),
@@ -80,9 +82,10 @@ queue(QUEUEUNASSIGNED),
 SjPacketId(++SjPacketIdCounter),
 source(SOURCEUNASSIGNED),
 proto(PROTOUNASSIGNED),
+morality(MORALITYUNASSIGNED),
 position(POSITIONUNASSIGNED),
 wtf(JUDGEUNASSIGNED),
-choosableScramble(0),
+usedScramble(NOSCRAMBLESET),
 chainflag(pkt.chainflag),
 fragment(true),
 fragFakeMTU(fakeMTU),
@@ -362,12 +365,6 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
         goto errorinfo;
     }
 
-    if (choosableScramble == 0)
-    {
-        LOG_ALL("in %s not set \"choosableScramble\" field (what the fuck Sj can to do with this packet?)", pluginName);
-        goto errorinfo;
-    }
-
     if (proto == PROTOUNASSIGNED)
     {
         LOG_ALL("in %s not set \"proto\" field, required %u", pluginName, pbuf.size());
@@ -386,9 +383,16 @@ bool Packet::selfIntegrityCheck(const char *pluginName)
         goto errorinfo;
     }
 
+    if (morality == MORALITYUNASSIGNED)
+    {
+        LOG_ALL("in %s not set \"morality\" field, required", pluginName);
+        goto errorinfo;
+    }
+
     return true;
+
 errorinfo:
-    LOG_VERBOSE("Invalid packet generation from a plugin: not a strong problem, but must be handled. remind");
+    LOG_VERBOSE("Invalid packet generation from an external class: not a strong problem, but must be handled. remind");
     return false;
 }
 
@@ -697,14 +701,12 @@ const char * Packet::getWtfStr(judge_t wtf) const
 {
     switch (wtf)
     {
-    case PRESCRIPTION:
-        return "ttlexpire";
+    case CORRUPTNEED:
+        return "corruptionNeed";
     case INNOCENT:
         return "innocent";
-    case GUILTY:
-        return "badcksum";
-    case MALFORMED:
-        return "malformed";
+    case CORRUPTDONE:
+        return "corruptionDONE";
     case JUDGEUNASSIGNED:
         return "U";
     default:
@@ -722,8 +724,8 @@ const char * Packet::getSourceStr(source_t source) const
         return "network";
     case PLUGIN:
         return "hackinject";
-    case TRACEROUTE:
-        return "tracert";
+    case SCRAMBLE:
+        return "scramble";
     case SOURCEUNASSIGNED:
         return "U";
     default:

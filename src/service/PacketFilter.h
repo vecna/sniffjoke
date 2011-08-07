@@ -19,6 +19,8 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef SJ_PKTFILTER
+#define SJ_PKTFILTER
 
 #include "Utils.h"
 #include "Packet.h"
@@ -66,3 +68,5 @@ public:
     void add(const Packet& pkt);
     bool match(const Packet& pkt);
 };
+
+#endif // SJ_PKTFILTER
