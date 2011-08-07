@@ -65,13 +65,24 @@ public:
     {
     }
 
-    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(const scrambleMask &configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
-        supportedScrambles = configuredScramble;
-        return true;
+        if(const_cast<scrambleMask &>(configuredScramble).willCorrupt())
+        {
+            supportedScrambles = configuredScramble;
+            return true;
+        }
+        else
+        {
+            LOG_ALL("Plugin %s will not be loaded. Require some scramble supporting the corruption!", PLUGIN_NAME);
+            LOG_ALL("in the configuration line, the scramble [%s] are not enough. 'man sniffjoke-plugins.conf'",
+                   configuredScramble.debug()
+            );
+            return false;
+        }
     }
 
-    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask &availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
@@ -79,6 +90,15 @@ public:
         pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
                         ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest),
                         origpkt.tcppayloadlen, origpkt.pbuf.size());
+
+        /* corruption is required to be available, perhaps usually will fall in the checksum
+         * choosing, but this check is necessary */
+        if(!availableScrambles.willCorrupt())
+        {
+            pLH.completeLog("scramble available don't support the pkts corruption [%s]", 
+                            availableScrambles.debug());
+            return false;
+        }
 
         /* preliminar condition, TCP and fragment already checked */
         bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
@@ -110,7 +130,7 @@ public:
     }
 
     /* to review - scramble not useful */
-    void fixPushFin(Packet * const pkt, scrambleMask & availableScrambles)
+    void fixPushFin(Packet * const pkt, scrambleMask &availableScrambles)
     {
         pkt->randomizeID();
         pkt->tcp->fin = 1;
@@ -118,7 +138,6 @@ public:
         pkt->source = PLUGIN;
         pkt->position = ANTICIPATION;
         pkt->wtf = CORRUPTNEED;
-//        pkt->choosableScramble = (availableScrambles & supportedScrambles);
 
         pkt->chainflag = FINALHACK;
 
@@ -138,7 +157,7 @@ public:
 
             fixPushFin(pkt, availableScrambles);
 
-            pLH.completeLog("injection with seq/push modification, id %d (psh %d ack %d)",
+            pLH.completeLog("injection stripping off push & data: id %d (psh %d ack %d)",
                             ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
         }
 
@@ -149,14 +168,14 @@ public:
 
             fixPushFin(pkt, availableScrambles);
 
-            pLH.completeLog("injection with seq/push coherence keeping, id %d (psh %d ack %d)",
+            pLH.completeLog("injection keeping seq/push coherence: id %d (psh %d ack %d)",
                             ntohs(pkt->ip->id), pkt->tcp->psh, pkt->tcp->ack);
         }
     }
 
     virtual void mangleIncoming(Packet &x)
     {
-        /* not implemented here */
+        /* not required ATM */
     }
 };
 

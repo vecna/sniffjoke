@@ -19,6 +19,8 @@ enum scramble_t
 struct implementedScramble {
     const char *keyword;
     scramble_t scrambleBit;
+    // TODO if the scramble will corruppt, mistyfy, be good or whatever, must be written here 
+    // this data will be used by "willCorrupt" method
 };
 
 #define SCRAMBLE_SUPPORTED  6
@@ -54,8 +56,9 @@ public:
 
     const scrambleMask getShared(const scrambleMask &);
     bool isScrambleSet(const scramble_t);
+    bool willCorrupt(void) const;
 
-    const char *debug(void);
+    const char *debug(void) const;
 
     scrambleMask(void);
     scrambleMask(scramble_t);

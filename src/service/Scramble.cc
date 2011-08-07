@@ -60,7 +60,28 @@ bool scrambleMask::operator!(void)
     return (!(bool)innerMask);
 }
 
-const char *scrambleMask::debug(void)
+bool scrambleMask::isScrambleSet(const scramble_t underTest)
+{
+    return (innerMask & (uint8_t)underTest);
+}
+
+/* scrambleMask.h need to be updated with these information about the morality of the single scramble */
+bool scrambleMask::willCorrupt(void) const
+{
+#if 0
+    uint32_t i;
+
+    for( i = 0; i < SCRAMBLE_SUPPORTED; i++ )
+    {
+
+    }
+#endif
+
+    scramble_t tempCheck = TTL;
+    return (innerMask & (uint8_t)tempCheck );
+}
+
+const char *scrambleMask::debug(void) const
 {
     uint32_t i;
     char *p = &scrambleList[0];

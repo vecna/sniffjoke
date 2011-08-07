@@ -53,7 +53,6 @@ private:
      *
      * MIN_INJECTED_PKTS mean the minimum packets possibile, between MIN < x < MAX, the probability
      * to be true the condition use an inverted probability, until reach MAX, than will never be
->>>>>>> evil/master
      * injected again.
      *
      * this is implemented in the condition check and the useful generic method are implemented
@@ -67,10 +66,21 @@ public:
     {
     };
 
-    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(const scrambleMask &configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
-        supportedScrambles = configuredScramble;
-        return true;
+        if(configuredScramble.willCorrupt())
+        {
+            supportedScrambles = configuredScramble;
+            return true;
+        }
+        else
+        {
+            LOG_ALL("Plugin %s will not be loaded. Require some scramble supporting the corruption!", PLUGIN_NAME); 
+            LOG_ALL("in the configuration line, the scramble [%s] are not enough. 'man sniffjoke-plugins.conf'",
+                   configuredScramble.debug()
+            );
+            return false;
+        }
     }
 
     virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
@@ -88,6 +98,15 @@ public:
         if (!ret)
             return false;
 
+        /* corruption is required to be available, perhaps usually will fall in the checksum
+         * choosing, but this check is necessary */
+        if(!availableScrambles.willCorrupt())
+        {
+            pLH.completeLog("scramble available don't support the pkts corruption [%s]", 
+                            availableScrambles.debug());
+            return false;
+        }
+
         /* cache checking, using the methods provide in the section 'forcedClosing' of Plugin.cc */
         cacheRecord* matchRecord;
 
@@ -102,7 +121,7 @@ public:
             {
                 ++(*injectedYet);
 
-                pLH.completeLog("packets in session #%d %s:%u Sj.hack %s (min %d max %d)", *injectedYet,
+                pLH.completeLog("packets #%d in session %s:%u Sj.hack %s (min %d max %d)", *injectedYet,
                                 inet_ntoa(*((struct in_addr *) &(origpkt.ip->daddr))), ntohs(origpkt.tcp->dest),
                                 ret ? "TRUE" : "FALSE", MIN_INJECTED_PKTS, MAX_INJECTED_PKTS);
             }
@@ -133,6 +152,10 @@ public:
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
+    }
+
+    virtual void mangleIncoming(Packet &inpkt)
+    {
     }
 
 };

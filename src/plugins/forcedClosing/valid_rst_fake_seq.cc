@@ -69,25 +69,15 @@ public:
     {
     };
 
-    virtual bool init(scrambleMask & configuredScramble, char *pluginOption, struct sjEnviron *sjE)
+    virtual bool init(const scrambleMask &configuredScramble, char *pluginOption, struct sjEnviron *sjE)
     {
-/*        if (!(ISSET_INNOCENT(configuredScramble) && !ISSET_INNOCENT(~configuredScramble)))
-        {
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
-            return false;
-        }
-*/
-/* TEMP XXX - how INNOCENT should be done ? */
-            LOG_ALL("%s plugin supports only INNOCENT scramble type", PLUGIN_NAME);
-            return false;
-/* TEMP XXX */
-
-//        supportedScrambles = SCRAMBLE_INNOCENT;
+        LOG_VERBOSE("%s plugin ignore the configured scramble (%s): generate only INNOCENT packets", 
+                    PLUGIN_NAME, configuredScramble.debug() );
 
         return true;
     }
 
-    virtual bool condition(const Packet &origpkt, scrambleMask & availableScrambles)
+    virtual bool condition(const Packet &origpkt, scrambleMask &availableScrambles)
     {
         if (origpkt.chainflag == FINALHACK || origpkt.proto != TCP || origpkt.fragment == true)
             return false;
@@ -95,6 +85,8 @@ public:
         pLH.completeLog("verifing condition for ip.id %d Sj#%u (dport %u) datalen %d total len %d",
                         ntohs(origpkt.ip->id), origpkt.SjPacketId, ntohs(origpkt.tcp->dest),
                         origpkt.tcppayloadlen, origpkt.pbuf.size());
+
+        /* available scramble in the session: don't check, INNOCENT injection always avail will be */
 
         /* preliminar condition, TCP and fragment already checked */
         bool ret = (!origpkt.tcp->syn && !origpkt.tcp->rst && !origpkt.tcp->fin);
@@ -125,7 +117,7 @@ public:
         return ret;
     }
 
-    virtual void apply(const Packet &origpkt, scrambleMask & availableScrambles)
+    virtual void apply(const Packet &origpkt, scrambleMask &availableScrambles)
     {
         Packet * const pkt = new Packet(origpkt);
 
@@ -144,14 +136,15 @@ public:
         pkt->position = ANY_POSITION;
         pkt->wtf = INNOCENT;
 
-        /* useless, INNOCENT is never downgraded in last_pkt_fix, but safe */
-//        pkt->choosableScramble = SCRAMBLE_INNOCENT;
-
         /* this packet will became dangerous if hacked again...
-           is an INNOCENT RST based on the seq... */
+           is an INNOCENT RST based on the sequence number shift! ... */
         pkt->chainflag = FINALHACK;
 
         pktVector.push_back(pkt);
+    }
+
+    virtual void mangleIncoming(Packet &x)
+    {
     }
 };
 
