@@ -40,6 +40,10 @@ static void sj_version(const char *pname)
 
 #define SNIFFJOKE_HELP_FORMAT \
     "Usage: %s [OPTION]... :\n"\
+    " SniffJoke required to be attached to a running instance of Janus diverter\n"\
+    " --janus <ip>[:in:out]\tspecify janus IP address/ports [default: %s:%d:%d]\n"\
+    " remind holy shit: make this location obsolete!\n"\
+    " remind holy rattlesnake: make the *ukin' location obsolete!\n\n"\
     " --location <name>\tspecify the network environment (suggested) [default: %s]\n"\
     " --dir <name>\t\tspecify the base directory where the location reside [default: %s]\n"\
     "\t\t\t[using both location and dir defaults, the configuration status will not be saved]\n"\
@@ -54,7 +58,6 @@ static void sj_version(const char *pname)
     "\t\t\t%d: suppress log, %d: common, %d: verbose, %d: debug, %d: session %d: packets\n"\
     " --foreground\t\trunning in foreground [default:background]\n"\
     " --admin <ip>[:port]\tspecify administration IP address/port [default: %s:%d]\n"\
-    " --janus <ip>[:in:out]\tspecify janus IP address/ports [default: %s:%d:%d]\n"\
     " --force\t\tforce restart (usable when another sniffjoke service is running)\n"\
     " --version\t\tshow sniffjoke version\n"\
    " --help\t\t\tshow this help\n\n"\
@@ -64,6 +67,7 @@ static void sj_help(const char *pname)
 {
     printf(SNIFFJOKE_HELP_FORMAT,
            pname,
+           DEFAULT_JANUS_ADDRESS, DEFAULT_JANUS_PORTIN, DEFAULT_JANUS_PORTOUT,
            DEFAULT_LOCATION,
            WORK_DIR,
            DEFAULT_NO_TCP ? "tcp not mangled" : "tcp mangled",
@@ -72,8 +76,7 @@ static void sj_help(const char *pname)
            DEFAULT_CHAINING ? "enabled" : "disabled",
            SUPPRESS_LEVEL, PACKET_LEVEL, DEFAULT_DEBUG_LEVEL,
            SUPPRESS_LEVEL, ALL_LEVEL, VERBOSE_LEVEL, DEBUG_LEVEL, SESSION_LEVEL, PACKET_LEVEL,
-           DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT,
-           DEFAULT_JANUS_ADDRESS, DEFAULT_JANUS_PORTIN, DEFAULT_JANUS_PORTOUT
+           DEFAULT_ADMIN_ADDRESS, DEFAULT_ADMIN_PORT
            );
 }
 

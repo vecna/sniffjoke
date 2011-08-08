@@ -36,6 +36,7 @@
 #define SHOWPORT_COMMAND_TYPE       8
 #define INFO_COMMAND_TYPE           9
 #define TTLMAP_COMMAND_TYPE        10
+#define END_OF_OUTPUT_TYPE         99
 #define COMMAND_ERROR_MSG         100
 
 /* this contain the description of the entire block */
