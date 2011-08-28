@@ -25,7 +25,7 @@ and you could check the exactly installed file by
 # Suggested setup, for configure your network capabilities
     sniffjoke-autotest -l name_of_your_location 
 
-since you have runned the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with:
+since you have ran    the "autotest" in this network location (office, home, lab, etc...) you will invoke sniffjoke with:
 
     sniffjoke --location name_of_your_location
     sniffjokectl --stat
