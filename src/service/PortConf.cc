@@ -194,6 +194,7 @@ void portLine::extractValue(void)
         { AGG_TIMEBASED20S, AGG_N_TIMEBASED20S},
         { AGG_STARTPEEK, AGG_N_STARTPEEK},
         { AGG_LONGPEEK, AGG_N_LONGPEEK},
+        { AGG_HANDSHAKE, AGG_N_HANDSHAKE},
         { 0, NULL}
     };
 

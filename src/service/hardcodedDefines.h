@@ -148,6 +148,8 @@
 #define AGG_N_STARTPEEK         "PEEKATSTART"
 #define AGG_LONGPEEK            2048
 #define AGG_N_LONGPEEK          "LONGPEEK"
+#define AGG_HANDSHAKE           4096
+#define AGG_N_HANDSHAKE         "HANDSHAKE"
 
 /*
  * these are the IP/TCP options supported in detection, injection,

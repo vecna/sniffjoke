@@ -125,6 +125,13 @@ uint32_t TCPTrack::derivePercentage(uint32_t packet_number, uint16_t frequencyVa
         else
             freqret += 2;
     }
+    if (frequencyValue & AGG_HANDSHAKE)
+    {
+        if (packet_number < 4)
+            freqret += 100;
+        else
+            freqret = 0;
+    }
     if (frequencyValue & AGG_NONE)
         freqret = 0;
 
