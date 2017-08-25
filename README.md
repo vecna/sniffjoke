@@ -1,3 +1,5 @@
+# This project is abandonware
+
 # SniffJoke: transparent TCP connection scrambler 0.4.1
 
 SniffJoke is an application for Linux that handle transparently your TCP connection, delaying, modifyng and inject fake packets inside your transmission, make them almost impossible to be correctly readed by a passive wiretapping technology (IDS or sniffer)
@@ -35,10 +37,10 @@ since you have ran    the "autotest" in this network location (office, home, lab
 
 # Link and info
 
+**The domain name delirandom.org is expired, use the same link in archive.org **
+
 SniffJoke man page: http://www.delirandom.net/sniffjoke/
-
 SniffJoke location requirement: http://www.delirandom.net/sniffjoke/sniffjoke-locations
-
 SniffJoke concepts, goals: http://www.delirandom.net/sniffjoke/sniffjoke-how-does-work
 
 # CONFIG FILES installed in the 'generic' location
@@ -105,7 +107,7 @@ here
 
 and using the semi-secret options -s and -a in sniffjoke-autotest (you will avoid every contact w/ delirandom)
 
-# Official sniffjoke page:
+# Official sniffjoke page (expired domain, use archive.org)
 
 http://www.delirandom.net/sniffjoke
 
